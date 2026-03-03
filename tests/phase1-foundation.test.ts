@@ -2,7 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 import { isProject } from '../lib/schema/guards';
 import { exportSvgString } from '../lib/export/export-svg';
-import { parseSvgPath, serializePath } from '../lib/editor-core/parse';
+import {
+  isPathDirectlyEditable,
+  parseSvgPath,
+  serializePath,
+} from '../lib/editor-core/parse';
 
 describe('phase 1 deterministic checks', () => {
   test('static icon export is byte-stable for same input', () => {
@@ -66,6 +70,12 @@ describe('phase 1 deterministic checks', () => {
       SAMPLE_PROJECT.tokenSet?.colors,
     );
     expect(first).toBe(second);
+  });
+
+
+  test('direct path editing guard rejects unsupported arc paths', () => {
+    expect(isPathDirectlyEditable('M4 4 A2 2 0 0 1 8 8')).toBeFalse();
+    expect(isPathDirectlyEditable('M2 2 L10 2 L10 10 L2 10 Z')).toBeTrue();
   });
 
   test('path parse/serialize round-trip stays stable', () => {

@@ -11,7 +11,7 @@ import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { PathEditor } from '@/lib/editor-core';
-import { parseSvgPath } from '@/lib/editor-core/parse';
+import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -68,6 +68,8 @@ export function Canvas() {
     const layer = currentState.layers[activeLayerId];
     const d = layer?.path?.d;
     if (!d) return;
+
+    if (!isPathDirectlyEditable(d)) return;
 
     const editable = parseSvgPath(d);
     editable.subPaths.forEach((subPath, spIndex) => {

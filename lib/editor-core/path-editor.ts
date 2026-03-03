@@ -4,7 +4,7 @@ import {
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
-import { parseSvgPath, serializePath } from './parse';
+import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
 import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
 
 type DragMode = 'layer' | 'point' | null;
@@ -71,14 +71,24 @@ export class PathEditor {
       return;
     }
 
-    if (tool === 'direct-select' && layerId && pointKey) {
-      state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
-      this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
-      (target as Element).setPointerCapture?.(e.pointerId);
+    if (tool === 'direct-select') {
+      if (layerId && pointKey) {
+        state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+        this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
+        (target as Element).setPointerCapture?.(e.pointerId);
+      } else if (layerId) {
+        const nearestPointKey = this.findNearestPointKey(layerId, e.clientX, e.clientY);
+        state.setSelection({
+          layerIds: [layerId],
+          pointIds: nearestPointKey ? [nearestPointKey] : [],
+        });
+      } else {
+        state.clearSelection();
+      }
       return;
     }
 
-    if (tool === 'select' || tool === 'direct-select') {
+    if (tool === 'select') {
       if (layerId) {
         state.setSelection({ layerIds: [layerId], pointIds: [] });
         this.startLayerDrag(layerId, e.clientX, e.clientY);
@@ -118,7 +128,7 @@ export class PathEditor {
     const state = editorStore.getState();
     const currentState = selectCurrentState(state);
     const pathD = currentState?.layers[layerId]?.path?.d;
-    if (!pathD) return;
+    if (!pathD || !isPathDirectlyEditable(pathD)) return;
 
     this.dragMode = 'point';
     this.isDragging = true;
@@ -270,6 +280,37 @@ export class PathEditor {
     });
   }
 
+  private findNearestPointKey(layerId: string, clientX: number, clientY: number): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const d = state.project?.icons[iconId].states[stateId].layers[layerId]?.path?.d;
+    if (!d || !isPathDirectlyEditable(d)) return null;
+
+    const pointer = this.clientToSvg(clientX, clientY);
+    if (!pointer) return null;
+
+    const editable = parseSvgPath(d);
+    let nearest: { key: string; distSq: number } | null = null;
+
+    editable.subPaths.forEach((subPath, subPathIndex) => {
+      subPath.points.forEach((point, pointIndex) => {
+        const dx = point.position.x - pointer.x;
+        const dy = point.position.y - pointer.y;
+        const distSq = dx * dx + dy * dy;
+        if (!nearest || distSq < nearest.distSq) {
+          nearest = { key: `${subPathIndex}:${pointIndex}`, distSq };
+        }
+      });
+    });
+
+    // Avoid selecting a far-away point when user clicks empty area on the path fill.
+    if (!nearest || nearest.distSq > 2.25) return null;
+    return nearest.key;
+  }
+
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
@@ -277,7 +318,7 @@ export class PathEditor {
     if (!iconId || !stateId) return null;
 
     const layer = state.project?.icons[iconId].states[stateId].layers[layerId];
-    if (!layer?.path?.d) return null;
+    if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;

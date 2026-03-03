@@ -1,4 +1,4 @@
-import { useStore } from 'zustand';
+import { useMemo, useSyncExternalStore } from 'react';
 import { editorStore, type EditorStore } from './store';
 import {
   selectCurrentIcon,
@@ -10,12 +10,15 @@ import {
 import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
 
-// Generic selector hook
 export function useEditorStore<T>(selector: (s: EditorStore) => T): T {
-  return useStore(editorStore, selector);
-}
+  const state = useSyncExternalStore(
+    editorStore.subscribe,
+    editorStore.getState,
+    editorStore.getState,
+  );
 
-// ── Convenience hooks ────────────────────────────────────────
+  return selector(state);
+}
 
 export function useCurrentIcon(): Icon | null {
   return useEditorStore(selectCurrentIcon);
@@ -49,21 +52,31 @@ export function useViewport(): ViewportState {
   return useEditorStore((s) => s.viewport);
 }
 
-// ── Action hooks (stable references) ────────────────────────
-
 export function useEditorActions() {
-  return useEditorStore((s) => ({
-    loadProject: s.loadProject,
-    newProject: s.newProject,
-    setCurrentIcon: s.setCurrentIcon,
-    setCurrentVariant: s.setCurrentVariant,
-    setCurrentState: s.setCurrentState,
-    patchLayer: s.patchLayer,
-    setLayerVisibility: s.setLayerVisibility,
-    setSelection: s.setSelection,
-    clearSelection: s.clearSelection,
-    setViewport: s.setViewport,
-    setTool: s.setTool,
-    updateProjectMeta: s.updateProjectMeta,
-  }));
+  const state = useSyncExternalStore(
+    editorStore.subscribe,
+    editorStore.getState,
+    editorStore.getState,
+  );
+
+  return useMemo(
+    () => ({
+      loadProject: state.loadProject,
+      newProject: state.newProject,
+      setCurrentIcon: state.setCurrentIcon,
+      setCurrentVariant: state.setCurrentVariant,
+      setCurrentState: state.setCurrentState,
+      patchLayer: state.patchLayer,
+      setLayerVisibility: state.setLayerVisibility,
+      setSelection: state.setSelection,
+      clearSelection: state.clearSelection,
+      setViewport: state.setViewport,
+      setTool: state.setTool,
+      updateProjectMeta: state.updateProjectMeta,
+      pauseHistory: state.pauseHistory,
+      resumeHistory: state.resumeHistory,
+      commitHistory: state.commitHistory,
+    }),
+    [state],
+  );
 }

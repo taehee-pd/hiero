@@ -22,11 +22,14 @@ export function exportSvgString(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${variant.size}" height="${variant.size}" fill="none">`,
   );
 
-  const layers = Object.values(state.layers);
+  const layers = Object.keys(state.layers)
+    .sort((a, b) => a.localeCompare(b))
+    .map((id) => state.layers[id]);
   for (const layer of layers) {
     if (layer.visible === false || !layer.path?.d) continue;
 
     const attrs: string[] = [];
+    attrs.push(`id="${escapeAttr(layer.id)}"`);
     attrs.push(`d="${escapeAttr(layer.path.d)}"`);
 
     if (layer.path.fillRule) {

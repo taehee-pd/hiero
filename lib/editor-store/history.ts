@@ -1,21 +1,37 @@
 import { editorStore } from './store';
 
+function getTemporalState() {
+  return editorStore.temporal.getState();
+}
+
 export function undo() {
-  editorStore.temporal.getState().undo();
+  getTemporalState().undo();
 }
 
 export function redo() {
-  editorStore.temporal.getState().redo();
+  getTemporalState().redo();
 }
 
 export function canUndo(): boolean {
-  return editorStore.temporal.getState().pastStates.length > 0;
+  return getTemporalState().pastStates.length > 0;
 }
 
 export function canRedo(): boolean {
-  return editorStore.temporal.getState().futureStates.length > 0;
+  return getTemporalState().futureStates.length > 0;
 }
 
 export function clearHistory() {
-  editorStore.temporal.getState().clear();
+  getTemporalState().clear();
+}
+
+export function pauseHistory() {
+  getTemporalState().pause();
+}
+
+export function resumeHistory() {
+  getTemporalState().resume();
+}
+
+export function commitHistory(label?: string) {
+  getTemporalState().commit(label);
 }

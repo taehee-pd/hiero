@@ -1,9 +1,5 @@
-import { createStore } from 'zustand/vanilla';
-import { temporal } from 'zundo';
 import type { Project, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
-
-// ── State shape ──────────────────────────────────────────────
 
 export type EditorState = {
   project: Project | null;
@@ -15,36 +11,38 @@ export type EditorState = {
   tool: Tool;
 };
 
-// ── Actions ──────────────────────────────────────────────────
-
 export type EditorActions = {
   loadProject(project: Project): void;
   newProject(): void;
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
-  patchLayer(
-    iconId: string,
-    stateId: string,
-    layerId: string,
-    patch: Partial<Layer>,
-  ): void;
-  setLayerVisibility(
-    iconId: string,
-    stateId: string,
-    layerId: string,
-    visible: boolean,
-  ): void;
+  patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
+  setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
   setSelection(selection: SelectionState): void;
   clearSelection(): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
+  pauseHistory(): void;
+  resumeHistory(): void;
+  commitHistory(label?: string): void;
 };
 
 export type EditorStore = EditorState & EditorActions;
 
-// ── Initial state ────────────────────────────────────────────
+type TemporalSnapshot = { project: Project | null };
+
+type TemporalState = {
+  pastStates: TemporalSnapshot[];
+  futureStates: TemporalSnapshot[];
+  undo(): void;
+  redo(): void;
+  clear(): void;
+  pause(): void;
+  resume(): void;
+  commit(_label?: string): void;
+};
 
 const initialState: EditorState = {
   project: null,
@@ -56,185 +54,276 @@ const initialState: EditorState = {
   tool: 'select',
 };
 
-// ── Store factory ────────────────────────────────────────────
+let currentState: EditorStore;
+const listeners = new Set<() => void>();
 
-export const editorStore = createStore<EditorStore>()(
-  temporal(
-    (set) => ({
-      ...initialState,
+const MAX_HISTORY = 100;
+let tracking = true;
+let transactionBase: Project | null | undefined;
+const pastStates: TemporalSnapshot[] = [];
+const futureStates: TemporalSnapshot[] = [];
 
-      loadProject(project: Project) {
-        const firstIconId = Object.keys(project.icons)[0] ?? null;
-        const firstIcon = firstIconId ? project.icons[firstIconId] : null;
-        const firstVariantId = firstIcon
-          ? Object.keys(firstIcon.variants)[0] ?? null
-          : null;
-        const firstStateId = firstIcon
-          ? Object.keys(firstIcon.states)[0] ?? null
-          : null;
+function emit() {
+  for (const l of listeners) l();
+}
 
-        set({
-          project,
-          currentIconId: firstIconId,
-          currentVariantId: firstVariantId,
-          currentStateId: firstStateId,
-          selection: { layerIds: [], pointIds: [] },
-          viewport: { zoom: 12, panX: 0, panY: 0 },
-        });
-      },
+function pushHistorySnapshot(project: Project | null) {
+  pastStates.push({ project });
+  if (pastStates.length > MAX_HISTORY) pastStates.shift();
+  futureStates.length = 0;
+}
 
-      newProject() {
-        const now = new Date().toISOString();
-        const project: Project = {
-          version: '1.0',
-          meta: { name: 'Untitled', createdAt: now, updatedAt: now },
-          icons: {},
-        };
-        set({
-          ...initialState,
-          project,
-        });
-      },
+function applySnapshot(snapshot: TemporalSnapshot) {
+  currentState = {
+    ...currentState,
+    project: snapshot.project,
+    selection: { layerIds: [], pointIds: [] },
+  };
+  emit();
+}
 
-      setCurrentIcon(id: string) {
-        set((s) => {
-          const icon = s.project?.icons[id];
-          if (!icon) return s;
-          const firstVariant = Object.keys(icon.variants)[0] ?? null;
-          const firstState = Object.keys(icon.states)[0] ?? null;
-          return {
-            ...s,
-            currentIconId: id,
-            currentVariantId: firstVariant,
-            currentStateId: firstState,
-            selection: { layerIds: [], pointIds: [] },
-          };
-        });
-      },
+const temporalState: TemporalState = {
+  pastStates,
+  futureStates,
+  undo() {
+    const prev = pastStates.pop();
+    if (!prev) return;
 
-      setCurrentVariant(id: string) {
-        set({ currentVariantId: id });
-      },
+    futureStates.push({ project: currentState.project });
+    applySnapshot(prev);
+  },
 
-      setCurrentState(id: string) {
-        set({
-          currentStateId: id,
-          selection: { layerIds: [], pointIds: [] },
-        });
-      },
+  redo() {
+    const next = futureStates.pop();
+    if (!next) return;
 
-      patchLayer(
-        iconId: string,
-        stateId: string,
-        layerId: string,
-        patch: Partial<Layer>,
-      ) {
-        set((s) => {
-          if (!s.project) return s;
-          const icon = s.project.icons[iconId];
-          if (!icon) return s;
-          const state = icon.states[stateId];
-          if (!state) return s;
-          const layer = state.layers[layerId];
-          if (!layer) return s;
+    pastStates.push({ project: currentState.project });
+    applySnapshot(next);
+  },
 
-          return {
-            project: {
-              ...s.project,
-              icons: {
-                ...s.project.icons,
-                [iconId]: {
-                  ...icon,
-                  states: {
-                    ...icon.states,
-                    [stateId]: {
-                      ...state,
-                      layers: {
-                        ...state.layers,
-                        [layerId]: { ...layer, ...patch },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          };
-        });
-      },
+  clear() {
+    pastStates.length = 0;
+    futureStates.length = 0;
+    transactionBase = undefined;
+  },
 
-      setLayerVisibility(
-        iconId: string,
-        stateId: string,
-        layerId: string,
-        visible: boolean,
-      ) {
-        set((s) => {
-          if (!s.project) return s;
-          const icon = s.project.icons[iconId];
-          if (!icon) return s;
-          const state = icon.states[stateId];
-          if (!state) return s;
-          const layer = state.layers[layerId];
-          if (!layer) return s;
+  pause() {
+    if (!tracking) return;
+    tracking = false;
+    transactionBase = currentState.project;
+  },
 
-          return {
-            project: {
-              ...s.project,
-              icons: {
-                ...s.project.icons,
-                [iconId]: {
-                  ...icon,
-                  states: {
-                    ...icon.states,
-                    [stateId]: {
-                      ...state,
-                      layers: {
-                        ...state.layers,
-                        [layerId]: { ...layer, visible },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          };
-        });
-      },
+  resume() {
+    tracking = true;
+  },
 
-      setSelection(selection: SelectionState) {
-        set({ selection });
-      },
+  commit(_label?: string) {
+    if (transactionBase === undefined) return;
+    if (transactionBase !== currentState.project) {
+      pushHistorySnapshot(transactionBase);
+    }
+    transactionBase = undefined;
+  },
+};
 
-      clearSelection() {
-        set({ selection: { layerIds: [], pointIds: [] } });
-      },
+const editorStoreApi = {
+  getState: () => currentState,
+  setState: (
+    updater: Partial<EditorStore> | ((s: EditorStore) => Partial<EditorStore> | EditorStore),
+    replace = false,
+  ) => {
+    const prev = currentState;
+    const nextPatch = typeof updater === 'function' ? updater(prev) : updater;
+    const next = replace
+      ? (nextPatch as EditorStore)
+      : ({ ...prev, ...nextPatch } as EditorStore);
 
-      setViewport(viewport: Partial<ViewportState>) {
-        set((s) => ({ viewport: { ...s.viewport, ...viewport } }));
-      },
+    if (prev.project !== next.project) {
+      if (tracking) {
+        pushHistorySnapshot(prev.project);
+      } else if (transactionBase === undefined) {
+        transactionBase = prev.project;
+      }
+    }
 
-      setTool(tool: Tool) {
-        set({ tool, selection: { layerIds: [], pointIds: [] } });
-      },
+    currentState = next;
+    emit();
+  },
 
-      updateProjectMeta(patch: Partial<Project['meta']>) {
-        set((s) => {
-          if (!s.project) return s;
-          return {
-            project: {
-              ...s.project,
-              meta: { ...s.project.meta, ...patch },
-            },
-          };
-        });
-      },
-    }),
-    {
-      // zundo config: only track project mutations for undo/redo
-      partialize: (state) => ({
-        project: state.project,
-      }),
-      limit: 100,
+  subscribe: (listener: () => void) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+
+  temporal: {
+    getState: () => temporalState,
+  },
+};
+
+function resetHistoryForLoadedDocument() {
+  temporalState.clear();
+}
+
+function createActions(): EditorActions {
+  return {
+    loadProject(project) {
+      const firstIconId = Object.keys(project.icons)[0] ?? null;
+      const firstIcon = firstIconId ? project.icons[firstIconId] : null;
+      const firstVariantId = firstIcon ? Object.keys(firstIcon.variants)[0] ?? null : null;
+      const firstStateId = firstIcon ? Object.keys(firstIcon.states)[0] ?? null : null;
+
+      editorStoreApi.setState({
+        project,
+        currentIconId: firstIconId,
+        currentVariantId: firstVariantId,
+        currentStateId: firstStateId,
+        selection: { layerIds: [], pointIds: [] },
+        viewport: { zoom: 12, panX: 0, panY: 0 },
+      });
+      resetHistoryForLoadedDocument();
     },
-  ),
-);
+
+    newProject() {
+      const now = new Date().toISOString();
+      const project: Project = {
+        version: '1.0',
+        meta: { name: 'Untitled', createdAt: now, updatedAt: now },
+        icons: {},
+      };
+      editorStoreApi.setState({ ...initialState, project });
+      resetHistoryForLoadedDocument();
+    },
+
+    setCurrentIcon(id) {
+      editorStoreApi.setState((s) => {
+        const icon = s.project?.icons[id];
+        if (!icon) return s;
+        return {
+          currentIconId: id,
+          currentVariantId: Object.keys(icon.variants)[0] ?? null,
+          currentStateId: Object.keys(icon.states)[0] ?? null,
+          selection: { layerIds: [], pointIds: [] },
+        };
+      });
+    },
+
+    setCurrentVariant(id) {
+      editorStoreApi.setState({ currentVariantId: id });
+    },
+
+    setCurrentState(id) {
+      editorStoreApi.setState({ currentStateId: id, selection: { layerIds: [], pointIds: [] } });
+    },
+
+    patchLayer(iconId, stateId, layerId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const state = icon?.states[stateId];
+        const layer = state?.layers[layerId];
+        if (!icon || !state || !layer) return s;
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                states: {
+                  ...icon.states,
+                  [stateId]: {
+                    ...state,
+                    layers: {
+                      ...state.layers,
+                      [layerId]: { ...layer, ...patch },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    setLayerVisibility(iconId, stateId, layerId, visible) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const state = icon?.states[stateId];
+        const layer = state?.layers[layerId];
+        if (!icon || !state || !layer) return s;
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                states: {
+                  ...icon.states,
+                  [stateId]: {
+                    ...state,
+                    layers: {
+                      ...state.layers,
+                      [layerId]: { ...layer, visible },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    setSelection(selection) {
+      editorStoreApi.setState({ selection });
+    },
+
+    clearSelection() {
+      editorStoreApi.setState({ selection: { layerIds: [], pointIds: [] } });
+    },
+
+    setViewport(viewport) {
+      editorStoreApi.setState((s) => ({ viewport: { ...s.viewport, ...viewport } }));
+    },
+
+    setTool(tool) {
+      editorStoreApi.setState({ tool, selection: { layerIds: [], pointIds: [] } });
+    },
+
+    updateProjectMeta(patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, ...patch },
+          },
+        };
+      });
+    },
+
+    pauseHistory() {
+      temporalState.pause();
+    },
+
+    resumeHistory() {
+      temporalState.resume();
+    },
+
+    commitHistory(label?: string) {
+      temporalState.commit(label);
+    },
+  };
+}
+
+currentState = {
+  ...initialState,
+  ...createActions(),
+};
+
+export const editorStore = editorStoreApi;

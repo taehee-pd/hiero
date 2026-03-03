@@ -10,6 +10,10 @@ import {
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
+import { PathEditor } from '@/lib/editor-core';
+import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,11 +27,21 @@ export function Canvas() {
   const viewport = useEditorStore((s) => s.viewport);
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
+  const tool = useEditorStore((s) => s.tool);
 
-  // Render SVG geometry when state changes
+  const activeGuideSet =
+    icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
+
+  // Render SVG geometry when state changes.
+  // Always clear stale geometry if the active icon/variant/state becomes unavailable.
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || !icon || !variant || !currentState) return;
+    if (!svg) return;
+
+    if (!icon || !variant || !currentState) {
+      svg.innerHTML = '';
+      return;
+    }
 
     renderSvg(
       {
@@ -40,12 +54,58 @@ export function Canvas() {
     );
   }, [icon, variant, currentState, project?.tokenSet?.colors]);
 
+  // Draw direct-select handles on selected layer.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    svg.querySelectorAll('[data-editor-handle="true"]').forEach((el) => el.remove());
+
+    if (tool !== 'direct-select') return;
+    const activeLayerId = selection.layerIds[0];
+    if (!activeLayerId || !currentState) return;
+
+    const layer = currentState.layers[activeLayerId];
+    const d = layer?.path?.d;
+    if (!d) return;
+
+    if (!isPathDirectlyEditable(d)) return;
+
+    const editable = parseSvgPath(d);
+    editable.subPaths.forEach((subPath, spIndex) => {
+      subPath.points.forEach((point, pointIndex) => {
+        const handle = document.createElementNS(SVG_NS, 'circle');
+        handle.setAttribute('cx', `${point.position.x}`);
+        handle.setAttribute('cy', `${point.position.y}`);
+        handle.setAttribute('r', '0.45');
+        handle.setAttribute('fill', '#22d3ee');
+        handle.setAttribute('stroke', '#0f172a');
+        handle.setAttribute('stroke-width', '0.1');
+        handle.setAttribute('data-editor-handle', 'true');
+        handle.setAttribute('data-layer-id', activeLayerId);
+        handle.setAttribute('data-point-key', `${spIndex}:${pointIndex}`);
+        handle.style.pointerEvents = 'all';
+        svg.appendChild(handle);
+      });
+    });
+  }, [tool, selection.layerIds, currentState]);
+
+  // Imperative pointer interaction engine.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const editor = new PathEditor(svg);
+    return () => editor.destroy();
+  }, []);
+
   // Canvas overlay for selection/guides
   useCanvasOverlay(canvasRef, containerRef, {
     viewport,
     selection,
     layers: currentState?.layers ?? {},
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
+    guideSet: activeGuideSet,
   });
 
   // ── Zoom via wheel ──────────────────────────────────────
@@ -66,25 +126,6 @@ export function Canvas() {
         panX: viewport.panX - e.deltaX,
         panY: viewport.panY - e.deltaY,
       });
-    }
-  }, []);
-
-  // ── Pointer interaction for selection ─────────────────────
-
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    const target = e.target as Element;
-    const layerId = target.getAttribute?.('data-layer-id');
-
-    if (layerId) {
-      editorStore.getState().setSelection({
-        layerIds: [layerId],
-        pointIds: [],
-      });
-    } else if (target === svg || target.closest('[data-canvas-root]')) {
-      editorStore.getState().clearSelection();
     }
   }, []);
 
@@ -126,7 +167,6 @@ export function Canvas() {
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: '#e2e8f0',
         }}
-        onPointerDown={handlePointerDown}
         aria-label="Icon canvas"
       />
 
@@ -138,7 +178,7 @@ export function Canvas() {
       />
 
       {/* Empty state */}
-      {!icon && (
+      {(!icon || !variant || !currentState) && (
         <div className="absolute flex flex-col items-center gap-2 text-muted-foreground">
           <p className="text-sm">No icon selected</p>
           <p className="text-xs">Open a project or create a new one</p>

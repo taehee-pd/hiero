@@ -33,7 +33,9 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     },
   );
 
-  const layers = Object.values(state.layers);
+  const layers = Object.keys(state.layers)
+    .sort((a, b) => a.localeCompare(b))
+    .map((id) => state.layers[id]);
   const rendered = new Set<string>();
 
   for (const layer of layers) {

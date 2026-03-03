@@ -5,6 +5,19 @@ function nextId(prefix: string): string {
   return `${prefix}-${++_idCounter}`;
 }
 
+
+const EDITABLE_COMMANDS = new Set(['M', 'L', 'H', 'V', 'C', 'Q', 'Z']);
+
+export function isPathDirectlyEditable(d: string): boolean {
+  const tokens = tokenize(d);
+  for (const token of tokens) {
+    if (/^[a-zA-Z]$/.test(token) && !EDITABLE_COMMANDS.has(token.toUpperCase())) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Parse an SVG path `d` attribute into an editable path model.
  * Handles M, L, C, Q, Z commands (absolute only for now).

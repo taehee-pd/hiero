@@ -65,5 +65,8 @@ export function useEditorActions() {
     setViewport: s.setViewport,
     setTool: s.setTool,
     updateProjectMeta: s.updateProjectMeta,
+    pauseHistory: s.pauseHistory,
+    resumeHistory: s.resumeHistory,
+    commitHistory: s.commitHistory,
   }));
 }

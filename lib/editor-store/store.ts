@@ -3,8 +3,6 @@ import { temporal } from 'zundo';
 import type { Project, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
 
-// ── State shape ──────────────────────────────────────────────
-
 export type EditorState = {
   project: Project | null;
   currentIconId: string | null;
@@ -14,8 +12,6 @@ export type EditorState = {
   viewport: ViewportState;
   tool: Tool;
 };
-
-// ── Actions ──────────────────────────────────────────────────
 
 export type EditorActions = {
   loadProject(project: Project): void;
@@ -40,11 +36,12 @@ export type EditorActions = {
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
+  pauseHistory(): void;
+  resumeHistory(): void;
+  commitHistory(label?: string): void;
 };
 
 export type EditorStore = EditorState & EditorActions;
-
-// ── Initial state ────────────────────────────────────────────
 
 const initialState: EditorState = {
   project: null,
@@ -55,8 +52,6 @@ const initialState: EditorState = {
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
 };
-
-// ── Store factory ────────────────────────────────────────────
 
 export const editorStore = createStore<EditorStore>()(
   temporal(
@@ -90,23 +85,18 @@ export const editorStore = createStore<EditorStore>()(
           meta: { name: 'Untitled', createdAt: now, updatedAt: now },
           icons: {},
         };
-        set({
-          ...initialState,
-          project,
-        });
+        set({ ...initialState, project });
       },
 
       setCurrentIcon(id: string) {
         set((s) => {
           const icon = s.project?.icons[id];
           if (!icon) return s;
-          const firstVariant = Object.keys(icon.variants)[0] ?? null;
-          const firstState = Object.keys(icon.states)[0] ?? null;
           return {
             ...s,
             currentIconId: id,
-            currentVariantId: firstVariant,
-            currentStateId: firstState,
+            currentVariantId: Object.keys(icon.variants)[0] ?? null,
+            currentStateId: Object.keys(icon.states)[0] ?? null,
             selection: { layerIds: [], pointIds: [] },
           };
         });
@@ -117,26 +107,16 @@ export const editorStore = createStore<EditorStore>()(
       },
 
       setCurrentState(id: string) {
-        set({
-          currentStateId: id,
-          selection: { layerIds: [], pointIds: [] },
-        });
+        set({ currentStateId: id, selection: { layerIds: [], pointIds: [] } });
       },
 
-      patchLayer(
-        iconId: string,
-        stateId: string,
-        layerId: string,
-        patch: Partial<Layer>,
-      ) {
+      patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>) {
         set((s) => {
           if (!s.project) return s;
           const icon = s.project.icons[iconId];
-          if (!icon) return s;
-          const state = icon.states[stateId];
-          if (!state) return s;
-          const layer = state.layers[layerId];
-          if (!layer) return s;
+          const state = icon?.states[stateId];
+          const layer = state?.layers[layerId];
+          if (!icon || !state || !layer) return s;
 
           return {
             project: {
@@ -162,20 +142,13 @@ export const editorStore = createStore<EditorStore>()(
         });
       },
 
-      setLayerVisibility(
-        iconId: string,
-        stateId: string,
-        layerId: string,
-        visible: boolean,
-      ) {
+      setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean) {
         set((s) => {
           if (!s.project) return s;
           const icon = s.project.icons[iconId];
-          if (!icon) return s;
-          const state = icon.states[stateId];
-          if (!state) return s;
-          const layer = state.layers[layerId];
-          if (!layer) return s;
+          const state = icon?.states[stateId];
+          const layer = state?.layers[layerId];
+          if (!icon || !state || !layer) return s;
 
           return {
             project: {
@@ -228,12 +201,25 @@ export const editorStore = createStore<EditorStore>()(
           };
         });
       },
+
+      pauseHistory() {
+        const temporalState = editorStore.temporal.getState() as any;
+        temporalState.pause?.();
+        temporalState.setIsTracking?.(false);
+      },
+
+      resumeHistory() {
+        const temporalState = editorStore.temporal.getState() as any;
+        temporalState.resume?.();
+        temporalState.setIsTracking?.(true);
+      },
+
+      commitHistory(_label?: string) {
+        // semantic boundary hook; zundo records on mutation already
+      },
     }),
     {
-      // zundo config: only track project mutations for undo/redo
-      partialize: (state) => ({
-        project: state.project,
-      }),
+      partialize: (state) => ({ project: state.project }),
       limit: 100,
     },
   ),

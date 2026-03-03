@@ -4,7 +4,10 @@ import {
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
-import { ViewportController } from './viewport';
+import { parseSvgPath, serializePath } from './parse';
+import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
+
+type DragMode = 'layer' | 'point' | null;
 
 /**
  * PathEditor: imperative interaction engine for the canvas.
@@ -13,18 +16,19 @@ import { ViewportController } from './viewport';
  */
 export class PathEditor {
   private svg: SVGSVGElement;
-  private viewport: ViewportController;
   private isDragging = false;
+  private dragMode: DragMode = null;
   private dragStartX = 0;
   private dragStartY = 0;
   private dragLayerId: string | null = null;
+  private dragPointKey: string | null = null;
   private originalTransform: { x: number; y: number } | null = null;
+  private originalPathD: string | null = null;
   private animFrameId = 0;
   private cleanup: (() => void) | null = null;
 
-  constructor(svg: SVGSVGElement, viewport: ViewportController) {
+  constructor(svg: SVGSVGElement) {
     this.svg = svg;
-    this.viewport = viewport;
     this.attach();
   }
 
@@ -50,118 +54,278 @@ export class PathEditor {
     const tool = state.tool;
     const target = e.target as Element;
     const layerId = target.getAttribute?.('data-layer-id');
+    const pointKey = target.getAttribute?.('data-point-key');
+
+    if (tool === 'pen') {
+      if (!layerId) return;
+      const next = this.addPointAtPointer(layerId, e.clientX, e.clientY);
+      if (next) {
+        state.setSelection({ layerIds: [layerId], pointIds: [next] });
+      }
+      return;
+    }
+
+    if (tool === 'direct-select' && layerId && pointKey) {
+      state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+      this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
+      (target as Element).setPointerCapture?.(e.pointerId);
+      return;
+    }
 
     if (tool === 'select' || tool === 'direct-select') {
       if (layerId) {
         state.setSelection({ layerIds: [layerId], pointIds: [] });
-
-        // Start drag
-        this.isDragging = true;
-        this.dragLayerId = layerId;
-        this.dragStartX = e.clientX;
-        this.dragStartY = e.clientY;
-
-        // Get current transform
-        const icon = selectCurrentIcon(state);
-        const currentState = selectCurrentState(state);
-        if (icon && currentState) {
-          const layer = currentState.layers[layerId];
-          this.originalTransform = {
-            x: layer?.transform?.x ?? 0,
-            y: layer?.transform?.y ?? 0,
-          };
-        }
-
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        this.startLayerDrag(layerId, e.clientX, e.clientY);
+        (target as Element).setPointerCapture?.(e.pointerId);
       } else {
         state.clearSelection();
       }
-    } else if (tool === 'pen' && layerId) {
-      // Pen tool: select layer for future point addition
-      state.setSelection({ layerIds: [layerId], pointIds: [] });
     }
   }
 
-  private onPointerMove(e: PointerEvent) {
-    if (!this.isDragging || !this.dragLayerId || !this.originalTransform) return;
-
+  private startLayerDrag(layerId: string, clientX: number, clientY: number) {
     const state = editorStore.getState();
-    const variant = selectCurrentVariant(state);
-    if (!variant) return;
+    const icon = selectCurrentIcon(state);
+    const currentState = selectCurrentState(state);
+    if (!icon || !currentState) return;
+    const layer = currentState.layers[layerId];
+    if (!layer) return;
 
-    // Calculate delta in SVG units
-    const zoom = state.viewport.zoom;
-    const iconSize = variant.viewBox[2];
-    const renderSize = iconSize * zoom;
-    const svgPerPx = iconSize / renderSize;
+    this.dragMode = 'layer';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragStartX = clientX;
+    this.dragStartY = clientY;
+    this.originalTransform = {
+      x: layer.transform?.x ?? 0,
+      y: layer.transform?.y ?? 0,
+    };
+    pauseHistory();
+  }
 
+  private startPointDrag(
+    layerId: string,
+    pointKey: string,
+    clientX: number,
+    clientY: number,
+  ) {
+    const state = editorStore.getState();
+    const currentState = selectCurrentState(state);
+    const pathD = currentState?.layers[layerId]?.path?.d;
+    if (!pathD) return;
+
+    this.dragMode = 'point';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragPointKey = pointKey;
+    this.dragStartX = clientX;
+    this.dragStartY = clientY;
+    this.originalPathD = pathD;
+    pauseHistory();
+  }
+
+  private onPointerMove(e: PointerEvent) {
+    if (!this.isDragging || !this.dragLayerId) return;
+
+    if (this.dragMode === 'layer') {
+      this.dragLayer(e);
+      return;
+    }
+
+    if (this.dragMode === 'point' && this.dragPointKey && this.originalPathD) {
+      this.dragPoint(e);
+    }
+  }
+
+  private dragLayer(e: PointerEvent) {
+    if (!this.originalTransform || !this.dragLayerId) return;
+    const svgPerPx = this.svgUnitsPerScreenPx();
     const dx = (e.clientX - this.dragStartX) * svgPerPx;
     const dy = (e.clientY - this.dragStartY) * svgPerPx;
 
-    // Apply transform via RAF to bypass React
     const layerId = this.dragLayerId;
     const newX = this.originalTransform.x + dx;
     const newY = this.originalTransform.y + dy;
 
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     this.animFrameId = requestAnimationFrame(() => {
-      // Direct DOM update for smooth dragging
       const pathEl = this.svg.querySelector(
         `[data-layer-id="${layerId}"]`,
       ) as SVGPathElement | null;
-      if (pathEl) {
-        const parts: string[] = [];
-        parts.push(`translate(${newX}, ${newY})`);
-        pathEl.setAttribute('transform', parts.join(' '));
-      }
+      if (!pathEl) return;
+      pathEl.setAttribute('transform', `translate(${newX}, ${newY})`);
     });
   }
 
-  private onPointerUp(_e: PointerEvent) {
-    if (!this.isDragging || !this.dragLayerId || !this.originalTransform) {
-      this.isDragging = false;
+  private dragPoint(e: PointerEvent) {
+    if (!this.dragPointKey || !this.dragLayerId || !this.originalPathD) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const editable = parseSvgPath(this.originalPathD);
+    const point = this.resolvePoint(editable, this.dragPointKey);
+    if (!point) return;
+
+    point.position.x = svgPoint.x;
+    point.position.y = svgPoint.y;
+
+    const nextD = serializePath(editable);
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    this.animFrameId = requestAnimationFrame(() => {
+      const pathEl = this.svg.querySelector(
+        `[data-layer-id="${this.dragLayerId}"]`,
+      ) as SVGPathElement | null;
+      if (!pathEl) return;
+      pathEl.setAttribute('d', nextD);
+    });
+  }
+
+  private onPointerUp(e: PointerEvent) {
+    if (!this.isDragging || !this.dragLayerId) {
+      this.resetDrag();
       return;
     }
+
+    if (this.dragMode === 'layer') {
+      this.commitLayerDrag(e);
+    } else if (this.dragMode === 'point') {
+      this.commitPointDrag(e);
+    }
+
+    resumeHistory();
+    commitHistory('pointer-up');
+    this.resetDrag();
+  }
+
+  private commitLayerDrag(e: PointerEvent) {
+    if (!this.originalTransform || !this.dragLayerId) return;
 
     const state = editorStore.getState();
+    const svgPerPx = this.svgUnitsPerScreenPx();
+    const dx = (e.clientX - this.dragStartX) * svgPerPx;
+    const dy = (e.clientY - this.dragStartY) * svgPerPx;
+
+    if (Math.abs(dx) <= 0.01 && Math.abs(dy) <= 0.01) return;
+
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    const icon = state.project?.icons[iconId];
+    const currentState = icon?.states[stateId];
+    const layer = currentState?.layers[this.dragLayerId];
+    if (!layer) return;
+
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      transform: {
+        ...(layer.transform ?? {}),
+        x: this.originalTransform.x + dx,
+        y: this.originalTransform.y + dy,
+      },
+    });
+  }
+
+  private commitPointDrag(e: PointerEvent) {
+    if (!this.dragLayerId || !this.dragPointKey || !this.originalPathD) return;
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const editable = parseSvgPath(this.originalPathD);
+    const point = this.resolvePoint(editable, this.dragPointKey);
+    if (!point) return;
+
+    point.position.x = svgPoint.x;
+    point.position.y = svgPoint.y;
+
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      path: {
+        ...(state.project?.icons[iconId].states[stateId].layers[this.dragLayerId]
+          .path ?? { d: '' }),
+        d: serializePath(editable),
+      },
+    });
+  }
+
+  private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const layer = state.project?.icons[iconId].states[stateId].layers[layerId];
+    if (!layer?.path?.d) return null;
+
+    const svgPoint = this.clientToSvg(clientX, clientY);
+    if (!svgPoint) return null;
+
+    const editable = parseSvgPath(layer.path.d);
+    const subPath = editable.subPaths[0];
+    if (!subPath) return null;
+
+    subPath.points.push({
+      id: `${subPath.id}-pt-${subPath.points.length}`,
+      position: { x: svgPoint.x, y: svgPoint.y },
+      handleIn: null,
+      handleOut: null,
+      nodeType: 'corner',
+    });
+
+    state.patchLayer(iconId, stateId, layerId, {
+      path: { ...layer.path, d: serializePath(editable) },
+    });
+
+    return `0:${subPath.points.length - 1}`;
+  }
+
+  private resolvePoint(
+    editable: ReturnType<typeof parseSvgPath>,
+    pointKey: string,
+  ) {
+    const [subPathIdxRaw, pointIdxRaw] = pointKey.split(':');
+    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
+    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
+    const subPath = editable.subPaths[subPathIdx];
+    if (!subPath) return null;
+    return subPath.points[pointIdx] ?? null;
+  }
+
+  private svgUnitsPerScreenPx(): number {
+    const state = editorStore.getState();
     const variant = selectCurrentVariant(state);
-    if (!variant) {
-      this.isDragging = false;
-      return;
-    }
+    if (!variant) return 0;
 
-    // Calculate final delta
-    const zoom = state.viewport.zoom;
-    const iconSize = variant.viewBox[2];
-    const renderSize = iconSize * zoom;
-    const svgPerPx = iconSize / renderSize;
+    const rect = this.svg.getBoundingClientRect();
+    return rect.width <= 0 ? 0 : variant.viewBox[2] / rect.width;
+  }
 
-    const dx = (_e.clientX - this.dragStartX) * svgPerPx;
-    const dy = (_e.clientY - this.dragStartY) * svgPerPx;
+  private clientToSvg(clientX: number, clientY: number): { x: number; y: number } | null {
+    const state = editorStore.getState();
+    const variant = selectCurrentVariant(state);
+    if (!variant) return null;
 
-    // Commit to store (this triggers undo/redo tracking)
-    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
-      const iconId = state.currentIconId;
-      const stateId = state.currentStateId;
-      if (iconId && stateId) {
-        const icon = state.project?.icons[iconId];
-        const st = icon?.states[stateId];
-        const layer = st?.layers[this.dragLayerId];
-        if (layer) {
-          state.patchLayer(iconId, stateId, this.dragLayerId, {
-            transform: {
-              ...(layer.transform ?? {}),
-              x: this.originalTransform.x + dx,
-              y: this.originalTransform.y + dy,
-            },
-          });
-        }
-      }
-    }
+    const rect = this.svg.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
 
+    const [vx, vy, vw, vh] = variant.viewBox;
+    return {
+      x: vx + ((clientX - rect.left) / rect.width) * vw,
+      y: vy + ((clientY - rect.top) / rect.height) * vh,
+    };
+  }
+
+  private resetDrag() {
     this.isDragging = false;
+    this.dragMode = null;
     this.dragLayerId = null;
+    this.dragPointKey = null;
     this.originalTransform = null;
+    this.originalPathD = null;
   }
 
   destroy() {

@@ -90,7 +90,8 @@ export function Canvas() {
 
   // Compute icon positioning
   const vb = variant?.viewBox ?? [0, 0, 24, 24];
-  const iconSize = vb[2]; // viewBox width
+  const iconWidth = vb[2];
+  const iconHeight = vb[3];
   const scale = viewport.zoom;
 
   return (
@@ -120,8 +121,8 @@ export function Canvas() {
         ref={svgRef}
         className="pointer-events-auto cursor-crosshair"
         style={{
-          width: `${iconSize * scale}px`,
-          height: `${iconSize * scale}px`,
+          width: `${iconWidth * scale}px`,
+          height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: '#e2e8f0',
         }}

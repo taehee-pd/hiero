@@ -41,7 +41,7 @@ type TemporalState = {
   clear(): void;
   pause(): void;
   resume(): void;
-  setIsTracking(v: boolean): void;
+  commit(_label?: string): void;
 };
 
 const initialState: EditorState = {
@@ -56,7 +56,10 @@ const initialState: EditorState = {
 
 let currentState: EditorStore;
 const listeners = new Set<() => void>();
+
+const MAX_HISTORY = 100;
 let tracking = true;
+let transactionBase: Project | null | undefined;
 const pastStates: TemporalSnapshot[] = [];
 const futureStates: TemporalSnapshot[] = [];
 
@@ -64,10 +67,17 @@ function emit() {
   for (const l of listeners) l();
 }
 
+function pushHistorySnapshot(project: Project | null) {
+  pastStates.push({ project });
+  if (pastStates.length > MAX_HISTORY) pastStates.shift();
+  futureStates.length = 0;
+}
+
 function applySnapshot(snapshot: TemporalSnapshot) {
   currentState = {
     ...currentState,
     project: snapshot.project,
+    selection: { layerIds: [], pointIds: [] },
   };
   emit();
 }
@@ -78,54 +88,81 @@ const temporalState: TemporalState = {
   undo() {
     const prev = pastStates.pop();
     if (!prev) return;
+
     futureStates.push({ project: currentState.project });
     applySnapshot(prev);
   },
+
   redo() {
     const next = futureStates.pop();
     if (!next) return;
+
     pastStates.push({ project: currentState.project });
     applySnapshot(next);
   },
+
   clear() {
     pastStates.length = 0;
     futureStates.length = 0;
+    transactionBase = undefined;
   },
+
   pause() {
+    if (!tracking) return;
     tracking = false;
+    transactionBase = currentState.project;
   },
+
   resume() {
     tracking = true;
   },
-  setIsTracking(v: boolean) {
-    tracking = v;
+
+  commit(_label?: string) {
+    if (transactionBase === undefined) return;
+    if (transactionBase !== currentState.project) {
+      pushHistorySnapshot(transactionBase);
+    }
+    transactionBase = undefined;
   },
 };
 
 const editorStoreApi = {
   getState: () => currentState,
-  setState: (updater: Partial<EditorStore> | ((s: EditorStore) => Partial<EditorStore> | EditorStore), replace = false) => {
+  setState: (
+    updater: Partial<EditorStore> | ((s: EditorStore) => Partial<EditorStore> | EditorStore),
+    replace = false,
+  ) => {
     const prev = currentState;
     const nextPatch = typeof updater === 'function' ? updater(prev) : updater;
-    const next = replace ? (nextPatch as EditorStore) : ({ ...prev, ...nextPatch } as EditorStore);
+    const next = replace
+      ? (nextPatch as EditorStore)
+      : ({ ...prev, ...nextPatch } as EditorStore);
 
-    if (tracking && prev.project !== next.project) {
-      pastStates.push({ project: prev.project });
-      if (pastStates.length > 100) pastStates.shift();
-      futureStates.length = 0;
+    if (prev.project !== next.project) {
+      if (tracking) {
+        pushHistorySnapshot(prev.project);
+      } else if (transactionBase === undefined) {
+        transactionBase = prev.project;
+      }
     }
 
     currentState = next;
     emit();
   },
+
   subscribe: (listener: () => void) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
+
   temporal: {
     getState: () => temporalState,
   },
 };
+
+function resetHistoryForLoadedDocument() {
+  temporalState.clear();
+}
 
 function createActions(): EditorActions {
   return {
@@ -143,6 +180,7 @@ function createActions(): EditorActions {
         selection: { layerIds: [], pointIds: [] },
         viewport: { zoom: 12, panX: 0, panY: 0 },
       });
+      resetHistoryForLoadedDocument();
     },
 
     newProject() {
@@ -153,6 +191,7 @@ function createActions(): EditorActions {
         icons: {},
       };
       editorStoreApi.setState({ ...initialState, project });
+      resetHistoryForLoadedDocument();
     },
 
     setCurrentIcon(id) {
@@ -270,15 +309,15 @@ function createActions(): EditorActions {
 
     pauseHistory() {
       temporalState.pause();
-      temporalState.setIsTracking(false);
     },
 
     resumeHistory() {
       temporalState.resume();
-      temporalState.setIsTracking(true);
     },
 
-    commitHistory(_label?: string) {},
+    commitHistory(label?: string) {
+      temporalState.commit(label);
+    },
   };
 }
 

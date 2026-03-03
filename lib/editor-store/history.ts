@@ -1,9 +1,7 @@
 import { editorStore } from './store';
 
-let historyPaused = false;
-
-function getTemporalState(): any {
-  return editorStore.temporal.getState() as any;
+function getTemporalState() {
+  return editorStore.temporal.getState();
 }
 
 export function undo() {
@@ -27,31 +25,13 @@ export function clearHistory() {
 }
 
 export function pauseHistory() {
-  historyPaused = true;
-  const temporal = getTemporalState();
-  if (typeof temporal.pause === 'function') temporal.pause();
-  if (typeof temporal.setIsTracking === 'function') temporal.setIsTracking(false);
+  getTemporalState().pause();
 }
 
 export function resumeHistory() {
-  historyPaused = false;
-  const temporal = getTemporalState();
-  if (typeof temporal.resume === 'function') temporal.resume();
-  if (typeof temporal.setIsTracking === 'function') temporal.setIsTracking(true);
+  getTemporalState().resume();
 }
 
-/**
- * Explicit history checkpoint API used by pointer sessions.
- * History records on each project mutation; checkpoint is primarily semantic.
- */
-export function commitHistory(_label?: string) {
-  const temporal = getTemporalState();
-  if (historyPaused) {
-    if (typeof temporal.resume === 'function') temporal.resume();
-    if (typeof temporal.pause === 'function') temporal.pause();
-  }
-}
-
-export function isHistoryPaused(): boolean {
-  return historyPaused;
+export function commitHistory(label?: string) {
+  getTemporalState().commit(label);
 }

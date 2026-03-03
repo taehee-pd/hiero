@@ -32,10 +32,16 @@ export function Canvas() {
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
 
-  // Render SVG geometry when state changes
+  // Render SVG geometry when state changes.
+  // Always clear stale geometry if the active icon/variant/state becomes unavailable.
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || !icon || !variant || !currentState) return;
+    if (!svg) return;
+
+    if (!icon || !variant || !currentState) {
+      svg.innerHTML = '';
+      return;
+    }
 
     renderSvg(
       {
@@ -169,7 +175,7 @@ export function Canvas() {
       />
 
       {/* Empty state */}
-      {!icon && (
+      {(!icon || !variant || !currentState) && (
         <div className="absolute flex flex-col items-center gap-2 text-muted-foreground">
           <p className="text-sm">No icon selected</p>
           <p className="text-xs">Open a project or create a new one</p>

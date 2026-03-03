@@ -42,8 +42,15 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     }
   }
 
-  // Escape clears selection
+  // Escape exits point editing first, then clears selection.
   if (key === 'escape') {
-    editorStore.getState().clearSelection();
+    e.preventDefault();
+    const state = editorStore.getState();
+    if (state.selection.pointIds.length > 0) {
+      state.setSelection({ layerIds: state.selection.layerIds, pointIds: [] });
+      return;
+    }
+
+    state.clearSelection();
   }
 }

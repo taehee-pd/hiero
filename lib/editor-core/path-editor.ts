@@ -36,15 +36,21 @@ export class PathEditor {
     const onDown = this.onPointerDown.bind(this);
     const onMove = this.onPointerMove.bind(this);
     const onUp = this.onPointerUp.bind(this);
+    const onCancel = this.onPointerCancel.bind(this);
+    const onKeyDown = this.onKeyDown.bind(this);
 
     this.svg.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKeyDown);
 
     this.cleanup = () => {
       this.svg.removeEventListener('pointerdown', onDown);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('keydown', onKeyDown);
       if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     };
   }
@@ -179,6 +185,18 @@ export class PathEditor {
       if (!pathEl) return;
       pathEl.setAttribute('d', nextD);
     });
+  }
+
+  private onPointerCancel() {
+    if (!this.isDragging) return;
+    resumeHistory();
+    this.resetDrag();
+  }
+
+  private onKeyDown(e: KeyboardEvent) {
+    if (e.key !== 'Escape' || !this.isDragging) return;
+    resumeHistory();
+    this.resetDrag();
   }
 
   private onPointerUp(e: PointerEvent) {

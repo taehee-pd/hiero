@@ -8,6 +8,7 @@ import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
 import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
 
 type DragMode = 'layer' | 'point' | null;
+const HALF_PIXEL_STEP = 0.5;
 
 /**
  * PathEditor: imperative interaction engine for the canvas.
@@ -178,13 +179,14 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
+    const snappedPoint = this.snapPointToGrid(svgPoint);
 
     const editable = parseSvgPath(this.originalPathD);
     const point = this.resolvePoint(editable, this.dragPointKey);
     if (!point) return;
 
-    point.position.x = svgPoint.x;
-    point.position.y = svgPoint.y;
+    point.position.x = snappedPoint.x;
+    point.position.y = snappedPoint.y;
 
     const nextD = serializePath(editable);
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
@@ -194,6 +196,7 @@ export class PathEditor {
       ) as SVGPathElement | null;
       if (!pathEl) return;
       pathEl.setAttribute('d', nextD);
+      this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
     });
   }
 
@@ -263,13 +266,14 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
+    const snappedPoint = this.snapPointToGrid(svgPoint);
 
     const editable = parseSvgPath(this.originalPathD);
     const point = this.resolvePoint(editable, this.dragPointKey);
     if (!point) return;
 
-    point.position.x = svgPoint.x;
-    point.position.y = svgPoint.y;
+    point.position.x = snappedPoint.x;
+    point.position.y = snappedPoint.y;
 
     state.patchLayer(iconId, stateId, this.dragLayerId, {
       path: {
@@ -322,6 +326,7 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
+    const snappedPoint = this.snapPointToGrid(svgPoint);
 
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
@@ -329,7 +334,7 @@ export class PathEditor {
 
     subPath.points.push({
       id: `${subPath.id}-pt-${subPath.points.length}`,
-      position: { x: svgPoint.x, y: svgPoint.y },
+      position: { x: snappedPoint.x, y: snappedPoint.y },
       handleIn: null,
       handleOut: null,
       nodeType: 'corner',
@@ -376,6 +381,29 @@ export class PathEditor {
       x: vx + ((clientX - rect.left) / rect.width) * vw,
       y: vy + ((clientY - rect.top) / rect.height) * vh,
     };
+  }
+
+  private snapPointToGrid(point: { x: number; y: number }): { x: number; y: number } {
+    return {
+      x: this.snapToStep(point.x, HALF_PIXEL_STEP),
+      y: this.snapToStep(point.y, HALF_PIXEL_STEP),
+    };
+  }
+
+  private snapToStep(value: number, step: number): number {
+    return Math.round(value / step) * step;
+  }
+
+  private updateDraggedPointHandles(x: number, y: number) {
+    if (!this.dragLayerId || !this.dragPointKey) return;
+    const handles = this.svg.querySelectorAll<SVGCircleElement>(
+      `[data-editor-handle="true"][data-layer-id="${this.dragLayerId}"][data-point-key="${this.dragPointKey}"]`,
+    );
+
+    handles.forEach((handle) => {
+      handle.setAttribute('cx', `${x}`);
+      handle.setAttribute('cy', `${y}`);
+    });
   }
 
   private resetDrag() {

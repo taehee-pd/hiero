@@ -14,6 +14,10 @@ import { PathEditor } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const HANDLE_RADIUS_PX = 4;
+const HANDLE_STROKE_PX = 1.5;
+const HANDLE_HIT_RADIUS_PX = 9;
+const HANDLE_ACTIVE_INNER_DOT_PX = 1.4;
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,24 +75,63 @@ export function Canvas() {
 
     if (!isPathDirectlyEditable(d)) return;
 
+    const zoom = Math.max(viewport.zoom, 0.01);
+    const handleRadius = HANDLE_RADIUS_PX / zoom;
+    const handleStroke = HANDLE_STROKE_PX / zoom;
+    const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
+    const activeInnerDotRadius = HANDLE_ACTIVE_INNER_DOT_PX / zoom;
+    const selectedPointKey = selection.pointIds[0] ?? null;
+
     const editable = parseSvgPath(d);
     editable.subPaths.forEach((subPath, spIndex) => {
       subPath.points.forEach((point, pointIndex) => {
-        const handle = document.createElementNS(SVG_NS, 'circle');
-        handle.setAttribute('cx', `${point.position.x}`);
-        handle.setAttribute('cy', `${point.position.y}`);
-        handle.setAttribute('r', '0.45');
-        handle.setAttribute('fill', '#22d3ee');
-        handle.setAttribute('stroke', '#0f172a');
-        handle.setAttribute('stroke-width', '0.1');
-        handle.setAttribute('data-editor-handle', 'true');
-        handle.setAttribute('data-layer-id', activeLayerId);
-        handle.setAttribute('data-point-key', `${spIndex}:${pointIndex}`);
-        handle.style.pointerEvents = 'all';
-        svg.appendChild(handle);
+        const pointKey = `${spIndex}:${pointIndex}`;
+        const isActive = selectedPointKey === pointKey;
+
+        const hitTarget = document.createElementNS(SVG_NS, 'circle');
+        hitTarget.setAttribute('cx', `${point.position.x}`);
+        hitTarget.setAttribute('cy', `${point.position.y}`);
+        hitTarget.setAttribute('r', `${hitRadius}`);
+        hitTarget.setAttribute('fill', 'rgba(0, 0, 0, 0)');
+        hitTarget.setAttribute('data-editor-handle', 'true');
+        hitTarget.setAttribute('data-layer-id', activeLayerId);
+        hitTarget.setAttribute('data-point-key', pointKey);
+        hitTarget.setAttribute('data-handle-role', 'hit');
+        hitTarget.style.pointerEvents = 'all';
+        hitTarget.style.cursor = 'default';
+        svg.appendChild(hitTarget);
+
+        const handleOuter = document.createElementNS(SVG_NS, 'circle');
+        handleOuter.setAttribute('cx', `${point.position.x}`);
+        handleOuter.setAttribute('cy', `${point.position.y}`);
+        handleOuter.setAttribute('r', `${handleRadius}`);
+        handleOuter.setAttribute('fill', isActive ? '#0ea5e9' : '#ffffff');
+        handleOuter.setAttribute('stroke', '#0ea5e9');
+        handleOuter.setAttribute('stroke-width', `${handleStroke}`);
+        handleOuter.setAttribute('data-editor-handle', 'true');
+        handleOuter.setAttribute('data-layer-id', activeLayerId);
+        handleOuter.setAttribute('data-point-key', pointKey);
+        handleOuter.setAttribute('data-handle-role', 'visible');
+        handleOuter.style.pointerEvents = 'none';
+        svg.appendChild(handleOuter);
+
+        if (isActive) {
+          const activeInnerDot = document.createElementNS(SVG_NS, 'circle');
+          activeInnerDot.setAttribute('cx', `${point.position.x}`);
+          activeInnerDot.setAttribute('cy', `${point.position.y}`);
+          activeInnerDot.setAttribute('r', `${activeInnerDotRadius}`);
+          activeInnerDot.setAttribute('fill', '#ffffff');
+          activeInnerDot.setAttribute('stroke', 'none');
+          activeInnerDot.setAttribute('data-editor-handle', 'true');
+          activeInnerDot.setAttribute('data-layer-id', activeLayerId);
+          activeInnerDot.setAttribute('data-point-key', pointKey);
+          activeInnerDot.setAttribute('data-handle-role', 'active-dot');
+          activeInnerDot.style.pointerEvents = 'none';
+          svg.appendChild(activeInnerDot);
+        }
       });
     });
-  }, [tool, selection.layerIds, currentState]);
+  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom]);
 
   // Imperative pointer interaction engine.
   useEffect(() => {
@@ -131,7 +174,8 @@ export function Canvas() {
 
   // Compute icon positioning
   const vb = variant?.viewBox ?? [0, 0, 24, 24];
-  const iconSize = vb[2]; // viewBox width
+  const iconWidth = vb[2];
+  const iconHeight = vb[3];
   const scale = viewport.zoom;
 
   return (
@@ -161,8 +205,8 @@ export function Canvas() {
         ref={svgRef}
         className="pointer-events-auto cursor-crosshair"
         style={{
-          width: `${iconSize * scale}px`,
-          height: `${iconSize * scale}px`,
+          width: `${iconWidth * scale}px`,
+          height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: '#e2e8f0',
         }}

@@ -1,4 +1,4 @@
-import { useStore } from 'zustand';
+import { useSyncExternalStore } from 'react';
 import { editorStore, type EditorStore } from './store';
 import {
   selectCurrentIcon,
@@ -10,12 +10,9 @@ import {
 import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
 
-// Generic selector hook
 export function useEditorStore<T>(selector: (s: EditorStore) => T): T {
-  return useStore(editorStore, selector);
+  return useSyncExternalStore(editorStore.subscribe, () => selector(editorStore.getState()));
 }
-
-// ── Convenience hooks ────────────────────────────────────────
 
 export function useCurrentIcon(): Icon | null {
   return useEditorStore(selectCurrentIcon);
@@ -48,8 +45,6 @@ export function useSelection(): SelectionState {
 export function useViewport(): ViewportState {
   return useEditorStore((s) => s.viewport);
 }
-
-// ── Action hooks (stable references) ────────────────────────
 
 export function useEditorActions() {
   return useEditorStore((s) => ({

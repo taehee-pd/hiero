@@ -18,7 +18,7 @@ This document tracks implementation progress against the planned architecture an
 
 ### `editor-store`
 - [x] Zustand vanilla store implemented with editor state slices.
-- [x] zundo temporal history integration is wired.
+- [x] Temporal history integration is wired.
 - [x] Project load/new + active icon/variant/state switching implemented.
 - [x] Layer patching, selection, viewport, and tool switching actions implemented.
 - [x] Selector helpers for current icon/variant/state/layers are implemented.
@@ -54,7 +54,7 @@ This document tracks implementation progress against the planned architecture an
 ## Remaining roadmap
 
 ### Phase 1 completion checklist
-- [x] Add explicit zundo history boundary controls (`pause`, `resume`, `commit`).
+- [x] Add explicit history boundary controls (`pause`, `resume`, `commit`).
 - [x] Complete direct-select + pen editing baseline interactions in `editor-core` (anchor handles, point dragging, point insertion, pointer-up commit).
 - [x] Add deterministic regression checks for static save/load + SVG export + path round-trip stability (`bun test`).
 

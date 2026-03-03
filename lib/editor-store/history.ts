@@ -42,7 +42,7 @@ export function resumeHistory() {
 
 /**
  * Explicit history checkpoint API used by pointer sessions.
- * zundo records on each mutating set; checkpoint is primarily semantic.
+ * History records on each project mutation; checkpoint is primarily semantic.
  */
 export function commitHistory(_label?: string) {
   const temporal = getTemporalState();

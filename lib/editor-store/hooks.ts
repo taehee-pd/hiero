@@ -11,7 +11,8 @@ import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
 
 export function useEditorStore<T>(selector: (s: EditorStore) => T): T {
-  return useSyncExternalStore(editorStore.subscribe, () => selector(editorStore.getState()));
+  const getSnapshot = () => selector(editorStore.getState());
+  return useSyncExternalStore(editorStore.subscribe, getSnapshot, getSnapshot);
 }
 
 export function useCurrentIcon(): Icon | null {

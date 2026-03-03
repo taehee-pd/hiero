@@ -196,6 +196,7 @@ export class PathEditor {
       ) as SVGPathElement | null;
       if (!pathEl) return;
       pathEl.setAttribute('d', nextD);
+      this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
     });
   }
 
@@ -391,6 +392,18 @@ export class PathEditor {
 
   private snapToStep(value: number, step: number): number {
     return Math.round(value / step) * step;
+  }
+
+  private updateDraggedPointHandles(x: number, y: number) {
+    if (!this.dragLayerId || !this.dragPointKey) return;
+    const handles = this.svg.querySelectorAll<SVGCircleElement>(
+      `[data-editor-handle="true"][data-layer-id="${this.dragLayerId}"][data-point-key="${this.dragPointKey}"]`,
+    );
+
+    handles.forEach((handle) => {
+      handle.setAttribute('cx', `${x}`);
+      handle.setAttribute('cy', `${y}`);
+    });
   }
 
   private resetDrag() {

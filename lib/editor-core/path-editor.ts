@@ -8,7 +8,16 @@ import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
 import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
 
 type DragMode = 'layer' | 'point' | null;
+type PenPlacement = {
+  layerId: string;
+  pointKey: string;
+  anchor: { x: number; y: number };
+  pointerId: number;
+  basePathD: string;
+};
+
 const HALF_PIXEL_STEP = 0.5;
+const PEN_CLOSE_DIST_SQ = 1;
 
 /**
  * PathEditor: imperative interaction engine for the canvas.
@@ -26,6 +35,7 @@ export class PathEditor {
   private originalTransform: { x: number; y: number } | null = null;
   private originalPathD: string | null = null;
   private animFrameId = 0;
+  private penPlacement: PenPlacement | null = null;
   private cleanup: (() => void) | null = null;
 
   constructor(svg: SVGSVGElement) {
@@ -67,10 +77,18 @@ export class PathEditor {
     const pointKey = target.getAttribute?.('data-point-key');
 
     if (tool === 'pen') {
-      if (!layerId) return;
-      const next = this.addPointAtPointer(layerId, e.clientX, e.clientY);
-      if (next) {
-        state.setSelection({ layerIds: [layerId], pointIds: [next] });
+      const activeLayerId = layerId ?? state.selection.layerIds[0] ?? null;
+      if (!activeLayerId) return;
+
+      const result = this.beginPenPlacement(activeLayerId, e.clientX, e.clientY, e.pointerId);
+      if (result === 'closed') {
+        state.setSelection({ layerIds: [activeLayerId], pointIds: [] });
+        return;
+      }
+
+      if (result) {
+        state.setSelection({ layerIds: [activeLayerId], pointIds: [result.pointKey] });
+        (target as Element).setPointerCapture?.(e.pointerId);
       }
       return;
     }
@@ -122,6 +140,68 @@ export class PathEditor {
     });
   }
 
+  private beginPenPlacement(
+    layerId: string,
+    clientX: number,
+    clientY: number,
+    pointerId: number,
+  ): PenPlacement | 'closed' | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const layer = state.project?.icons[iconId].states[stateId].layers[layerId];
+    if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
+
+    const svgPoint = this.clientToSvg(clientX, clientY);
+    if (!svgPoint) return null;
+    const snappedPoint = this.snapPointToGrid(svgPoint);
+
+    const editable = parseSvgPath(layer.path.d);
+    const subPath = editable.subPaths[0];
+    if (!subPath) return null;
+
+    const firstPoint = subPath.points[0]?.position;
+    const canClose = !!firstPoint && subPath.points.length >= 3 && !subPath.closed;
+    if (canClose) {
+      const dx = firstPoint.x - snappedPoint.x;
+      const dy = firstPoint.y - snappedPoint.y;
+      if (dx * dx + dy * dy <= PEN_CLOSE_DIST_SQ) {
+        subPath.closed = true;
+        state.patchLayer(iconId, stateId, layerId, {
+          path: { ...layer.path, d: serializePath(editable) },
+        });
+        return 'closed';
+      }
+    }
+
+    const newPointIndex = subPath.points.length;
+    subPath.points.push({
+      id: `${subPath.id}-pt-${newPointIndex}`,
+      position: { x: snappedPoint.x, y: snappedPoint.y },
+      handleIn: null,
+      handleOut: null,
+      nodeType: 'corner',
+    });
+
+    const basePathD = serializePath(editable);
+    state.patchLayer(iconId, stateId, layerId, {
+      path: { ...layer.path, d: basePathD },
+    });
+
+    this.penPlacement = {
+      layerId,
+      pointKey: `0:${newPointIndex}`,
+      anchor: snappedPoint,
+      pointerId,
+      basePathD,
+    };
+    pauseHistory();
+
+    return this.penPlacement;
+  }
+
   private startLayerDrag(layerId: string, clientX: number, clientY: number) {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
@@ -164,6 +244,11 @@ export class PathEditor {
   }
 
   private onPointerMove(e: PointerEvent) {
+    if (this.penPlacement && e.pointerId === this.penPlacement.pointerId) {
+      this.updatePenCurvePreview(e);
+      return;
+    }
+
     if (!this.isDragging || !this.dragLayerId) return;
 
     if (this.dragMode === 'layer') {
@@ -222,19 +307,92 @@ export class PathEditor {
     });
   }
 
+  private updatePenCurvePreview(e: PointerEvent) {
+    if (!this.penPlacement) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const editable = parseSvgPath(this.penPlacement.basePathD);
+    const point = this.resolvePoint(editable, this.penPlacement.pointKey);
+    if (!point) return;
+
+    const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
+    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
+    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
+    const subPath = editable.subPaths[subPathIdx];
+    if (!subPath) return;
+
+    const prev = subPath.points[pointIdx - 1] ?? null;
+    const dx = snappedPoint.x - this.penPlacement.anchor.x;
+    const dy = snappedPoint.y - this.penPlacement.anchor.y;
+    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+
+    if (prev) {
+      if (moved) {
+        prev.handleOut = {
+          x: this.penPlacement.anchor.x + dx,
+          y: this.penPlacement.anchor.y + dy,
+        };
+        prev.nodeType = 'smooth';
+        point.handleIn = {
+          x: this.penPlacement.anchor.x - dx,
+          y: this.penPlacement.anchor.y - dy,
+        };
+        point.nodeType = 'smooth';
+      } else {
+        prev.handleOut = null;
+        point.handleIn = null;
+        point.nodeType = 'corner';
+      }
+    }
+
+    const nextD = serializePath(editable);
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    this.animFrameId = requestAnimationFrame(() => {
+      const pathEl = this.svg.querySelector(
+        `[data-layer-id="${this.penPlacement?.layerId}"]`,
+      ) as SVGPathElement | null;
+      if (!pathEl) return;
+      pathEl.setAttribute('d', nextD);
+    });
+  }
+
   private onPointerCancel() {
+    if (this.penPlacement) {
+      resumeHistory();
+      this.penPlacement = null;
+    }
+
     if (!this.isDragging) return;
     resumeHistory();
     this.resetDrag();
   }
 
   private onKeyDown(e: KeyboardEvent) {
-    if (e.key !== 'Escape' || !this.isDragging) return;
+    if (e.key !== 'Escape') return;
+
+    if (this.penPlacement) {
+      resumeHistory();
+      this.penPlacement = null;
+      return;
+    }
+
+    if (!this.isDragging) return;
     resumeHistory();
     this.resetDrag();
   }
 
   private onPointerUp(e: PointerEvent) {
+    if (this.penPlacement && e.pointerId === this.penPlacement.pointerId) {
+      this.commitPenPlacement(e);
+      resumeHistory();
+      commitHistory('pen-point');
+      this.penPlacement = null;
+      return;
+    }
+
     if (!this.isDragging || !this.dragLayerId) {
       this.resetDrag();
       return;
@@ -249,6 +407,59 @@ export class PathEditor {
     resumeHistory();
     commitHistory('pointer-up');
     this.resetDrag();
+  }
+
+  private commitPenPlacement(e: PointerEvent) {
+    if (!this.penPlacement) return;
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    const layer = state.project?.icons[iconId].states[stateId].layers[this.penPlacement.layerId];
+    if (!layer?.path) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const editable = parseSvgPath(this.penPlacement.basePathD);
+    const point = this.resolvePoint(editable, this.penPlacement.pointKey);
+    if (!point) return;
+
+    const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
+    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
+    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
+    const subPath = editable.subPaths[subPathIdx];
+    const prev = subPath?.points[pointIdx - 1] ?? null;
+
+    const dx = snappedPoint.x - this.penPlacement.anchor.x;
+    const dy = snappedPoint.y - this.penPlacement.anchor.y;
+    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+
+    if (prev) {
+      if (moved) {
+        prev.handleOut = {
+          x: this.penPlacement.anchor.x + dx,
+          y: this.penPlacement.anchor.y + dy,
+        };
+        prev.nodeType = 'smooth';
+        point.handleIn = {
+          x: this.penPlacement.anchor.x - dx,
+          y: this.penPlacement.anchor.y - dy,
+        };
+        point.nodeType = 'smooth';
+      } else {
+        prev.handleOut = null;
+        point.handleIn = null;
+        point.nodeType = 'corner';
+      }
+    }
+
+    state.patchLayer(iconId, stateId, this.penPlacement.layerId, {
+      path: { ...layer.path, d: serializePath(editable) },
+    });
   }
 
   private commitLayerDrag(e: PointerEvent) {

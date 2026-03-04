@@ -11,6 +11,15 @@ import { useTool, useEditorActions } from '@/lib/editor-store/hooks';
 import type { Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
 
+
+const VECTOR_SHORTCUTS = [
+  { key: 'Delete', label: 'Delete selected point' },
+  { key: 'Shift+C', label: 'Toggle corner/smooth point' },
+  { key: 'Shift+I', label: 'Insert midpoint after selection' },
+  { key: 'Shift+O', label: 'Open/close selected path' },
+  { key: 'Arrow', label: 'Nudge selected point (0.5)' },
+];
+
 const TOOLS: Array<{
   id: Tool;
   icon: React.ComponentType<{ className?: string }>;
@@ -63,6 +72,22 @@ export function ToolPanel() {
             </Tooltip>
           );
         })}
+      </div>
+
+      <div className="mt-2 rounded border border-border/60 bg-muted/20 p-2">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Vector Editing
+        </p>
+        <ul className="mt-1 space-y-1">
+          {VECTOR_SHORTCUTS.map((item) => (
+            <li key={item.key} className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span>{item.label}</span>
+              <span className="rounded bg-muted px-1 py-0.5 font-mono text-[9px]">
+                {item.key}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

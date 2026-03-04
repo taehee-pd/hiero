@@ -39,8 +39,10 @@ export class PathEditor {
     const onUp = this.onPointerUp.bind(this);
     const onCancel = this.onPointerCancel.bind(this);
     const onKeyDown = this.onKeyDown.bind(this);
+    const onDblClick = this.onDoubleClick.bind(this);
 
     this.svg.addEventListener('pointerdown', onDown);
+    this.svg.addEventListener('dblclick', onDblClick);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onCancel);
@@ -48,6 +50,7 @@ export class PathEditor {
 
     this.cleanup = () => {
       this.svg.removeEventListener('pointerdown', onDown);
+      this.svg.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
@@ -98,6 +101,25 @@ export class PathEditor {
         state.clearSelection();
       }
     }
+  }
+
+  private onDoubleClick(e: MouseEvent) {
+    const state = editorStore.getState();
+    const target = e.target as Element;
+    const layerId = target.getAttribute?.('data-layer-id');
+
+    state.setTool('direct-select');
+
+    if (!layerId) {
+      state.clearSelection();
+      return;
+    }
+
+    const nearestPointKey = this.findNearestPointKey(layerId, e.clientX, e.clientY);
+    state.setSelection({
+      layerIds: [layerId],
+      pointIds: nearestPointKey ? [nearestPointKey] : [],
+    });
   }
 
   private startLayerDrag(layerId: string, clientX: number, clientY: number) {

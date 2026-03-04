@@ -77,8 +77,14 @@ export class PathEditor {
     const pointKey = target.getAttribute?.('data-point-key');
 
     if (tool === 'pen') {
-      const activeLayerId = layerId ?? state.selection.layerIds[0] ?? null;
-      if (!activeLayerId) return;
+      const activeLayerId = layerId ?? this.resolvePenLayerAtPointer();
+      if (!activeLayerId) {
+        const createdLayerId = this.createNewPenLayerAt(e.clientX, e.clientY);
+        if (createdLayerId) {
+          state.setSelection({ layerIds: [createdLayerId], pointIds: ['0:0'] });
+        }
+        return;
+      }
 
       const result = this.beginPenPlacement(activeLayerId, e.clientX, e.clientY, e.pointerId);
       if (result === 'closed') {
@@ -140,6 +146,88 @@ export class PathEditor {
     });
   }
 
+  private resolvePenLayerAtPointer(): string | null {
+    const state = editorStore.getState();
+    const selectedLayerId = state.selection.layerIds[0] ?? null;
+    if (!selectedLayerId) return null;
+
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const selectedPath =
+      state.project?.icons[iconId].states[stateId].layers[selectedLayerId]?.path?.d;
+    if (!selectedPath || !isPathDirectlyEditable(selectedPath)) return null;
+
+    return selectedLayerId;
+  }
+
+  private createNewPenLayerAt(clientX: number, clientY: number): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId || !state.project) return null;
+
+    const svgPoint = this.clientToSvg(clientX, clientY);
+    if (!svgPoint) return null;
+    const snappedPoint = this.snapPointToGrid(svgPoint);
+
+    const icon = state.project.icons[iconId];
+    const currentState = icon?.states[stateId];
+    if (!icon || !currentState) return null;
+
+    const ids = Object.keys(currentState.layers);
+    let index = 1;
+    let nextLayerId = `path-${index}`;
+    while (ids.includes(nextLayerId)) {
+      index += 1;
+      nextLayerId = `path-${index}`;
+    }
+
+    editorStore.setState((s) => {
+      if (!s.project) return s;
+      const currentIcon = s.project.icons[iconId];
+      const currentIconState = currentIcon?.states[stateId];
+      if (!currentIcon || !currentIconState) return s;
+
+      return {
+        project: {
+          ...s.project,
+          icons: {
+            ...s.project.icons,
+            [iconId]: {
+              ...currentIcon,
+              states: {
+                ...currentIcon.states,
+                [stateId]: {
+                  ...currentIconState,
+                  layers: {
+                    ...currentIconState.layers,
+                    [nextLayerId]: {
+                      id: nextLayerId,
+                      role: 'primary',
+                      visible: true,
+                      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
+                      style: {
+                        fill: { mode: 'fixed', value: 'none' },
+                        stroke: { mode: 'currentColor' },
+                        strokeWidth: 2,
+                        lineCap: 'round',
+                        lineJoin: 'round',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+    });
+
+    return nextLayerId;
+  }
+
   private beginPenPlacement(
     layerId: string,
     clientX: number,
@@ -161,6 +249,7 @@ export class PathEditor {
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
     if (!subPath) return null;
+
 
     const firstPoint = subPath.points[0]?.position;
     const canClose = !!firstPoint && subPath.points.length >= 3 && !subPath.closed;

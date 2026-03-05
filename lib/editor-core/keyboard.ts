@@ -21,10 +21,19 @@ const TOOL_SHORTCUTS: Record<string, Tool> = {
  * Global keyboard event handler for the editor.
  * Handles tool shortcuts and undo/redo.
  */
+export function isEditableEventTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+
+  if (el.isContentEditable) return true;
+
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
 export function handleEditorKeyDown(e: KeyboardEvent): void {
-  // Skip if user is typing in an input/textarea
-  const tag = (e.target as HTMLElement)?.tagName;
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  // Skip if user is typing in form/content-editable controls
+  if (isEditableEventTarget(e.target)) return;
 
   const key = e.key.toLowerCase();
   const mod = e.metaKey || e.ctrlKey;
@@ -37,6 +46,13 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     } else {
       undo();
     }
+    return;
+  }
+
+  // Windows/Linux convention for redo
+  if (mod && !e.shiftKey && key === 'y') {
+    e.preventDefault();
+    redo();
     return;
   }
 

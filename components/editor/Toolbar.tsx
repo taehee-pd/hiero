@@ -96,7 +96,12 @@ export function Toolbar() {
     const currentState = selectCurrentState(state);
     if (!icon || !variant || !currentState) return;
 
-    const svg = exportSvgString(icon, variant.id, currentState.id);
+    const svg = exportSvgString(
+      icon,
+      variant.id,
+      currentState.id,
+      state.project?.tokenSet?.colors,
+    );
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

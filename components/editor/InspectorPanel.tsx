@@ -18,6 +18,9 @@ export function InspectorPanel() {
   const currentState = useEditorStore(selectCurrentState);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
+  const colorTokens = useEditorStore(
+    (s) => s.project?.tokenSet?.colors ?? {},
+  );
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const layer =
@@ -83,6 +86,8 @@ export function InspectorPanel() {
             <PaintField
               label="Fill"
               paint={layer.style.fill}
+              colorTokens={colorTokens}
+              fillModeOptions
               onChange={(paint) =>
                 patchStyle(currentIconId, currentStateId, layer.id, {
                   fill: paint,
@@ -92,6 +97,7 @@ export function InspectorPanel() {
             <PaintField
               label="Stroke"
               paint={layer.style.stroke}
+              colorTokens={colorTokens}
               onChange={(paint) =>
                 patchStyle(currentIconId, currentStateId, layer.id, {
                   stroke: paint,
@@ -303,33 +309,62 @@ function NumberField({
 function PaintField({
   label,
   paint,
+  colorTokens,
+  fillModeOptions,
   onChange,
 }: {
   label: string;
   paint: PaintRef | undefined;
+  colorTokens: Record<string, string>;
+  fillModeOptions?: boolean;
   onChange: (paint: PaintRef) => void;
 }) {
-  const currentValue =
-    paint?.mode === 'fixed'
-      ? paint.value
-      : paint?.mode === 'currentColor'
-        ? 'currentColor'
-        : paint?.mode === 'token'
-          ? `token:${paint.token}`
-          : 'none';
+  const tokenNames = Object.keys(colorTokens);
+  const uniqueValue =
+    !fillModeOptions && paint?.mode === 'currentColor'
+      ? 'currentColor'
+      : paint?.mode === 'token'
+      ? paint.token
+      : paint?.mode === 'fixed'
+        ? paint.value
+        : 'none';
 
-  const handleChange = useCallback(
+  const paintKind =
+    paint?.mode === 'currentColor'
+      ? 'currentFill'
+      : paint?.mode === 'token' || paint?.mode === 'fixed'
+        ? 'unique'
+        : 'currentFill';
+
+  const handleRawInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value.trim();
       if (val === 'currentColor') {
         onChange({ mode: 'currentColor' });
-      } else if (val.startsWith('token:')) {
-        onChange({ mode: 'token', token: val.slice(6) });
+      } else if (tokenNames.includes(val)) {
+        onChange({ mode: 'token', token: val });
       } else {
         onChange({ mode: 'fixed', value: val || 'none' });
       }
     },
-    [onChange],
+    [onChange, tokenNames],
+  );
+
+  const handleKindChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const nextKind = e.target.value;
+      if (nextKind === 'currentFill') {
+        onChange({ mode: 'currentColor' });
+        return;
+      }
+
+      if (paint?.mode === 'token' || paint?.mode === 'fixed') {
+        onChange(paint);
+      } else {
+        onChange({ mode: 'fixed', value: '#000000' });
+      }
+    },
+    [onChange, paint],
   );
 
   const isColor =
@@ -343,6 +378,17 @@ function PaintField({
         {label}
       </Label>
       <div className="flex flex-1 items-center gap-1.5">
+        {fillModeOptions && (
+          <select
+            value={paintKind}
+            onChange={handleKindChange}
+            className="h-7 rounded-md border border-input bg-input px-2 text-xs"
+            aria-label={`${label} mode`}
+          >
+            <option value="currentFill">currentFill</option>
+            <option value="unique">Unique color</option>
+          </select>
+        )}
         {isColor && (
           <input
             type="color"
@@ -356,10 +402,20 @@ function PaintField({
         )}
         <Input
           type="text"
-          value={currentValue}
-          onChange={handleChange}
+          value={uniqueValue}
+          onChange={handleRawInputChange}
+          disabled={fillModeOptions && paintKind === 'currentFill'}
+          list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
+          placeholder={fillModeOptions ? '#RRGGBB or token name' : 'currentColor / #RRGGBB / token'}
           className="h-7 text-xs font-mono bg-input"
         />
+        {tokenNames.length > 0 && (
+          <datalist id={`${label.toLowerCase()}-token-list`}>
+            {tokenNames.map((tokenName) => (
+              <option key={tokenName} value={tokenName} />
+            ))}
+          </datalist>
+        )}
       </div>
     </div>
   );

@@ -14,10 +14,9 @@ import { PathEditor } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const HANDLE_RADIUS_PX = 4;
-const HANDLE_STROKE_PX = 1.5;
+const HANDLE_RADIUS_PX = 3;
+const HANDLE_STROKE_PX = 1;
 const HANDLE_HIT_RADIUS_PX = 9;
-const HANDLE_ACTIVE_INNER_DOT_PX = 1.4;
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -79,7 +78,6 @@ export function Canvas() {
     const handleRadius = HANDLE_RADIUS_PX / zoom;
     const handleStroke = HANDLE_STROKE_PX / zoom;
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
-    const activeInnerDotRadius = HANDLE_ACTIVE_INNER_DOT_PX / zoom;
     const selectedPointKey = selection.pointIds[0] ?? null;
 
     const editable = parseSvgPath(d);
@@ -105,8 +103,8 @@ export function Canvas() {
         handleOuter.setAttribute('cx', `${point.position.x}`);
         handleOuter.setAttribute('cy', `${point.position.y}`);
         handleOuter.setAttribute('r', `${handleRadius}`);
-        handleOuter.setAttribute('fill', isActive ? '#0ea5e9' : '#ffffff');
-        handleOuter.setAttribute('stroke', '#0ea5e9');
+        handleOuter.setAttribute('fill', '#ffffff');
+        handleOuter.setAttribute('stroke', isActive ? '#10b981' : '#9ca3af');
         handleOuter.setAttribute('stroke-width', `${handleStroke}`);
         handleOuter.setAttribute('data-editor-handle', 'true');
         handleOuter.setAttribute('data-layer-id', activeLayerId);
@@ -115,20 +113,6 @@ export function Canvas() {
         handleOuter.style.pointerEvents = 'none';
         svg.appendChild(handleOuter);
 
-        if (isActive) {
-          const activeInnerDot = document.createElementNS(SVG_NS, 'circle');
-          activeInnerDot.setAttribute('cx', `${point.position.x}`);
-          activeInnerDot.setAttribute('cy', `${point.position.y}`);
-          activeInnerDot.setAttribute('r', `${activeInnerDotRadius}`);
-          activeInnerDot.setAttribute('fill', '#ffffff');
-          activeInnerDot.setAttribute('stroke', 'none');
-          activeInnerDot.setAttribute('data-editor-handle', 'true');
-          activeInnerDot.setAttribute('data-layer-id', activeLayerId);
-          activeInnerDot.setAttribute('data-point-key', pointKey);
-          activeInnerDot.setAttribute('data-handle-role', 'active-dot');
-          activeInnerDot.style.pointerEvents = 'none';
-          svg.appendChild(activeInnerDot);
-        }
       });
     });
   }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom]);

@@ -1,8 +1,8 @@
 'use client';
 
 import { Eye, EyeOff } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import { Button } from '@/components/kibo-ui/button';
 import {
   useCurrentLayers,
   useSelection,
@@ -19,12 +19,12 @@ export function LayerPanel() {
   const { setSelection, setLayerVisibility } = useEditorActions();
 
   return (
-    <div className="flex flex-1 flex-col min-h-0">
-      <span className="px-3 pt-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="flex min-h-0 flex-1 flex-col bg-transparent">
+      <span className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         Layers
       </span>
       <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-0.5 px-1 pb-2">
+        <div className="flex flex-col gap-1 px-2 pb-2">
           {layers.length === 0 && (
             <p className="px-2 py-4 text-xs text-muted-foreground text-center">
               No layers
@@ -38,9 +38,9 @@ export function LayerPanel() {
               <div
                 key={layer.id}
                 className={cn(
-                  'group flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm cursor-pointer transition-colors',
-                  'hover:bg-secondary',
-                  isSelected && 'bg-accent/15 text-accent',
+                  'group flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-2 text-sm transition-colors',
+                  'hover:bg-secondary/80',
+                  isSelected && 'bg-primary/12 text-primary',
                 )}
                 onClick={() =>
                   setSelection({ layerIds: [layer.id], pointIds: [] })
@@ -80,7 +80,7 @@ export function LayerPanel() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="size-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+                  className="size-6 rounded-lg opacity-0 text-muted-foreground transition-opacity group-hover:opacity-100 hover:bg-background/70 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (currentIconId && currentStateId) {

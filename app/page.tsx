@@ -1,7 +1,7 @@
 'use client';
 
-import { EditorShell } from '@/components/editor/EditorShell';
+import { ExplorerShell } from '@/components/explorer/ExplorerShell';
 
 export default function Page() {
-  return <EditorShell />;
+  return <ExplorerShell />;
 }

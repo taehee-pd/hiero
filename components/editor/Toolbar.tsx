@@ -12,13 +12,13 @@ import {
   ZoomOut,
   Maximize2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/kibo-ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Separator } from '@/components/ui/separator';
+} from '@/components/kibo-ui/tooltip';
+import { Separator } from '@/components/kibo-ui/separator';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
@@ -96,7 +96,12 @@ export function Toolbar() {
     const currentState = selectCurrentState(state);
     if (!icon || !variant || !currentState) return;
 
-    const svg = exportSvgString(icon, variant.id, currentState.id);
+    const svg = exportSvgString(
+      icon,
+      variant.id,
+      currentState.id,
+      state.project?.tokenSet?.colors,
+    );
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,9 +128,9 @@ export function Toolbar() {
   }, []);
 
   return (
-    <header className="flex h-11 items-center gap-1 border-b border-border bg-toolbar-bg px-2">
+    <header className="mx-4 mb-2 mt-3 flex h-12 items-center gap-1 rounded-xl border border-border/60 bg-toolbar-bg/90 px-3 backdrop-blur-md">
       {/* Project name */}
-      <span className="mr-2 text-sm font-medium text-foreground truncate max-w-40">
+      <span className="mr-2 max-w-40 truncate text-sm font-semibold text-foreground">
         {projectName}
       </span>
 
@@ -160,7 +165,7 @@ export function Toolbar() {
 
       {/* Zoom controls */}
       <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
-      <span className="min-w-12 text-center text-xs text-muted-foreground tabular-nums">
+      <span className="min-w-12 text-center text-xs font-medium text-muted-foreground tabular-nums">
         {Math.round(zoom * 100)}%
       </span>
       <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
@@ -194,7 +199,7 @@ function ToolbarButton({
           size="icon-sm"
           onClick={onClick}
           aria-label={label}
-          className="text-muted-foreground hover:text-foreground"
+          className="rounded-xl text-muted-foreground hover:bg-background/70 hover:text-foreground"
         >
           <Icon className="size-4" />
         </Button>

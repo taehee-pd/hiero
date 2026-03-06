@@ -334,9 +334,9 @@ function drawGuidePresets(
   const safeRect = new scope.Path.Rectangle({
     from: safeTopLeft,
     to: safeBottomRight,
-    strokeColor: new scope.Color('rgba(251,191,36,0.45)'),
-    strokeWidth: 1,
-    dashArray: [6, 4],
+    strokeColor: new scope.Color('rgba(148,163,184,0.18)'),
+    strokeWidth: 0.8,
+    dashArray: [4, 6],
   });
   safeRect.fillColor = null;
 
@@ -347,8 +347,9 @@ function drawGuidePresets(
   const keylineCircle = new scope.Path.Circle({
     center,
     radius,
-    strokeColor: new scope.Color('rgba(34,211,238,0.35)'),
-    strokeWidth: 1,
+    strokeColor: new scope.Color('rgba(148,163,184,0.14)'),
+    strokeWidth: 0.8,
+    dashArray: [3, 5],
   });
   keylineCircle.fillColor = null;
 
@@ -359,8 +360,9 @@ function drawGuidePresets(
       radius * 2,
       radius * 2,
     ),
-    strokeColor: new scope.Color('rgba(34,211,238,0.35)'),
-    strokeWidth: 1,
+    strokeColor: new scope.Color('rgba(148,163,184,0.14)'),
+    strokeWidth: 0.8,
+    dashArray: [3, 5],
   });
   keylineSquare.fillColor = null;
 }
@@ -372,8 +374,8 @@ function drawGuideItems(
   toScreen: (x: number, y: number) => any,
 ) {
   const [vx, vy, vw, vh] = viewBox;
-  const guideStroke = new scope.Color('rgba(244,114,182,0.45)');
-  const guideFill = new scope.Color('rgba(244,114,182,0.6)');
+  const guideStroke = new scope.Color('rgba(148,163,184,0.24)');
+  const guideFill = new scope.Color('rgba(148,163,184,0.30)');
 
   for (const item of items) {
     switch (item.kind) {

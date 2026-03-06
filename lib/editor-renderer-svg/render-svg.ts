@@ -59,6 +59,8 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     pathEl.setAttribute('d', layer.path.d);
     if (layer.path.fillRule) {
       pathEl.setAttribute('fill-rule', layer.path.fillRule);
+    } else {
+      pathEl.removeAttribute('fill-rule');
     }
 
     // Styles
@@ -120,9 +122,14 @@ function applyLayerStyle(
 
   if (s.lineCap) {
     el.setAttribute('stroke-linecap', s.lineCap);
+  } else {
+    el.removeAttribute('stroke-linecap');
   }
+
   if (s.lineJoin) {
     el.setAttribute('stroke-linejoin', s.lineJoin);
+  } else {
+    el.removeAttribute('stroke-linejoin');
   }
 }
 

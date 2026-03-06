@@ -165,7 +165,7 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden bg-canvas-bg"
+      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-canvas-bg"
       onWheel={handleWheel}
       data-canvas-root
     >
@@ -192,7 +192,8 @@ export function Canvas() {
           width: `${iconWidth * scale}px`,
           height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
-          color: '#e2e8f0',
+          color: 'currentColor',
+          filter: 'drop-shadow(0 24px 32px rgba(15, 23, 42, 0.12))',
         }}
         aria-label="Icon canvas"
       />

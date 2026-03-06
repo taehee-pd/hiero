@@ -1,12 +1,12 @@
 'use client';
 
 import { MousePointer2, Move, Pen, Square, Ruler } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/kibo-ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@/components/kibo-ui/tooltip';
 import { useTool, useEditorActions } from '@/lib/editor-store/hooks';
 import type { Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
@@ -25,12 +25,13 @@ const TOOLS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   shortcut: string;
+  disabled?: boolean;
 }> = [
   { id: 'select', icon: MousePointer2, label: 'Select', shortcut: 'V' },
   { id: 'direct-select', icon: Move, label: 'Direct Select', shortcut: 'A' },
   { id: 'pen', icon: Pen, label: 'Pen', shortcut: 'P' },
   { id: 'shape', icon: Square, label: 'Shape', shortcut: 'U' },
-  { id: 'guide', icon: Ruler, label: 'Guide', shortcut: 'G' },
+  { id: 'guide', icon: Ruler, label: 'Guide Preset', shortcut: 'G', disabled: true },
 ];
 
 export function ToolPanel() {
@@ -38,11 +39,11 @@ export function ToolPanel() {
   const { setTool } = useEditorActions();
 
   return (
-    <div className="flex flex-col gap-1 border-b border-border p-2">
-      <span className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/45 p-3">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         Tools
       </span>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {TOOLS.map((tool) => {
           const isActive = activeTool === tool.id;
           return (
@@ -51,13 +52,17 @@ export function ToolPanel() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => setTool(tool.id)}
+                  onClick={() => {
+                    if (!tool.disabled) setTool(tool.id);
+                  }}
                   aria-label={tool.label}
                   aria-pressed={isActive}
+                  disabled={tool.disabled}
                   className={cn(
-                    'text-muted-foreground',
+                    'rounded-xl text-muted-foreground',
                     isActive &&
-                      'bg-accent/20 text-accent ring-1 ring-accent/40',
+                      'bg-primary/15 text-primary ring-1 ring-primary/30',
+                    tool.disabled && 'opacity-50',
                   )}
                 >
                   <tool.icon className="size-4" />
@@ -68,14 +73,17 @@ export function ToolPanel() {
                 <span className="ml-2 rounded bg-muted px-1 py-0.5 text-[10px] font-mono text-muted-foreground">
                   {tool.shortcut}
                 </span>
+                {tool.disabled && (
+                  <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
+                )}
               </TooltipContent>
             </Tooltip>
           );
         })}
       </div>
 
-      <div className="mt-2 rounded border border-border/60 bg-muted/20 p-2">
-        <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="rounded-lg bg-background/50 p-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Vector Editing
         </p>
         <ul className="mt-1 space-y-1">
@@ -89,6 +97,10 @@ export function ToolPanel() {
           ))}
         </ul>
       </div>
+
+      <p className="text-[10px] text-muted-foreground">
+        Guides are reference-only in canvas and should be authored as reusable presets.
+      </p>
     </div>
   );
 }

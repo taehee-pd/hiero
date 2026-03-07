@@ -22,9 +22,12 @@ function ActiveIconHeader() {
   const stateId = useEditorStore((s) => s.currentStateId);
 
   return (
-    <div className="rounded-[1.5rem] border border-border/70 bg-background/72 p-4">
+    <div className="rounded-[1.2rem] border border-border/70 bg-background/78 p-4">
       <div className="min-w-0">
-        <p className="truncate font-display text-3xl leading-none tracking-[-0.05em] text-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Design
+        </p>
+        <p className="mt-2 truncate font-display text-2xl leading-none tracking-[-0.05em] text-foreground">
           {icon?.name ?? 'No icon'}
         </p>
         {icon?.id ? <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{icon.id}</p> : null}
@@ -64,21 +67,26 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   return (
     <div className="swift-surface relative flex h-dvh w-full flex-col overflow-hidden text-foreground">
       <Toolbar />
-      <div className="relative z-10 grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[19rem_1fr_23rem] lg:px-5 lg:pb-5">
-        <aside className="studio-panel min-h-0 space-y-3 overflow-auto rounded-[2rem] p-4 lg:max-h-full">
-          <ActiveIconHeader />
+      <div className="relative z-10 grid min-h-0 flex-1 grid-cols-1 gap-3 px-4 pb-4 xl:grid-cols-[4.25rem_18rem_minmax(0,1fr)_21rem] xl:px-5 xl:pb-5">
+        <aside className="studio-panel min-h-0 rounded-[1.75rem] p-2 xl:max-h-full">
           <ToolPanel />
         </aside>
 
-        <main className="studio-panel min-h-[22rem] overflow-hidden rounded-[2rem] p-3 lg:min-h-0">
+        <aside className="studio-panel flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] xl:max-h-full">
+          <div className="border-b border-border/55 p-3">
+            <ActiveIconHeader />
+          </div>
+          <div className="min-h-0 flex-1">
+            <LayerPanel />
+          </div>
+        </aside>
+
+        <main className="studio-panel min-h-[22rem] overflow-hidden rounded-[1.75rem] p-3 xl:min-h-0">
           <Canvas />
         </main>
 
-        <aside className="studio-panel flex min-h-0 flex-col overflow-hidden rounded-[2rem] lg:max-h-full">
-          <div className={cn('max-h-64 border-b border-border/55 lg:max-h-72')}>
-            <LayerPanel />
-          </div>
-          <div className="min-h-0 flex-1">
+        <aside className="studio-panel flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] xl:max-h-full">
+          <div className={cn('min-h-0 flex-1')}>
             <InspectorPanel />
           </div>
         </aside>

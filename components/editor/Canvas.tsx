@@ -161,30 +161,46 @@ export function Canvas() {
   const iconWidth = vb[2];
   const iconHeight = vb[3];
   const scale = viewport.zoom;
+  const stageStyle = {
+    width: `${iconWidth * scale}px`,
+    height: `${iconHeight * scale}px`,
+    transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
+  };
 
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-canvas-bg"
+      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.25rem] bg-[#e7eaef] dark:bg-[#1f2329]"
       onWheel={handleWheel}
       data-canvas-root
     >
-      {/* Checkerboard pattern (CSS) */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-5"
+        className="pointer-events-none absolute inset-0 opacity-[0.06]"
         style={{
           backgroundImage: `
-            linear-gradient(45deg, #888 25%, transparent 25%),
-            linear-gradient(-45deg, #888 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #888 75%),
-            linear-gradient(-45deg, transparent 75%, #888 75%)
+            linear-gradient(45deg, #6b7280 25%, transparent 25%),
+            linear-gradient(-45deg, #6b7280 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #6b7280 75%),
+            linear-gradient(-45deg, transparent 75%, #6b7280 75%)
           `,
-          backgroundSize: '20px 20px',
-          backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0',
+          backgroundSize: '18px 18px',
+          backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0',
         }}
       />
 
-      {/* SVG layer (icon geometry) */}
+      {icon && variant && currentState && (
+        <div
+          className="pointer-events-none absolute rounded-[1rem] border border-slate-300/70 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.16)] dark:border-slate-700 dark:bg-[#111318]"
+          style={stageStyle}
+        />
+      )}
+
+      {icon && variant && currentState && (
+        <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-black/8 bg-white/85 px-3 py-1.5 text-[11px] font-medium tabular-nums text-slate-500 shadow-sm dark:border-white/8 dark:bg-black/20 dark:text-slate-300">
+          {vb[2]} x {vb[3]}
+        </div>
+      )}
+
       <svg
         ref={svgRef}
         className="pointer-events-auto cursor-crosshair"
@@ -193,7 +209,7 @@ export function Canvas() {
           height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: 'currentColor',
-          filter: 'drop-shadow(0 24px 32px rgba(15, 23, 42, 0.12))',
+          filter: 'drop-shadow(0 12px 20px rgba(15, 23, 42, 0.08))',
         }}
         aria-label="Icon canvas"
       />
@@ -205,11 +221,9 @@ export function Canvas() {
         style={{ width: '100%', height: '100%' }}
       />
 
-      {/* Empty state */}
       {(!icon || !variant || !currentState) && (
         <div className="absolute flex flex-col items-center gap-2 text-muted-foreground">
-          <p className="text-sm">No icon selected</p>
-          <p className="text-xs">Open a project or create a new one</p>
+          <p className="text-sm font-medium">No icon</p>
         </div>
       )}
     </div>

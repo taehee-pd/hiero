@@ -127,12 +127,12 @@ export function Toolbar() {
   }, []);
 
   return (
-    <header className="studio-panel relative z-10 mx-4 mb-2 mt-3 rounded-[1.75rem] px-4 py-3 backdrop-blur-md lg:mx-5">
+    <header className="studio-panel relative z-10 mx-4 mb-2 mt-3 rounded-[1.35rem] px-3 py-2.5 backdrop-blur-md lg:mx-5">
       <div className="relative z-10 flex flex-wrap items-center gap-3">
         <div className="mr-auto min-w-0">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate font-display text-2xl leading-none tracking-[-0.05em] text-foreground">{projectName}</span>
-            <span className="rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium tabular-nums text-muted-foreground">
+            <span className="truncate text-sm font-medium text-foreground">{projectName}</span>
+            <span className="rounded-[0.8rem] border border-border/70 bg-background/75 px-2.5 py-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
               {Math.round(zoom * 100)}%
             </span>
           </div>
@@ -183,7 +183,7 @@ function ToolbarGroup({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-full border border-border/70 bg-toolbar-bg/90 px-2 py-2">
+    <div className="flex items-center gap-1 rounded-[1rem] border border-border/70 bg-toolbar-bg/90 px-1.5 py-1.5">
       <div className="flex items-center gap-1">{children}</div>
     </div>
   );
@@ -210,7 +210,7 @@ function ToolbarButton({
           size="icon-sm"
           onClick={onClick}
           aria-label={label}
-          className="rounded-full border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/70 hover:text-foreground"
+          className="rounded-[0.8rem] border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/70 hover:text-foreground"
         >
           <Icon className="size-4" />
         </Button>

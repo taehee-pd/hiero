@@ -39,12 +39,8 @@ export function ToolPanel() {
   const { setTool } = useEditorActions();
 
   return (
-    <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">Tools</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
+    <div className="flex h-full flex-col items-center gap-2 py-1">
+      <div className="flex flex-col gap-2">
         {TOOLS.map((tool) => {
           const isActive = activeTool === tool.id;
           return (
@@ -52,7 +48,7 @@ export function ToolPanel() {
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="default"
+                  size="icon"
                   onClick={() => {
                     if (!tool.disabled) setTool(tool.id);
                   }}
@@ -60,23 +56,20 @@ export function ToolPanel() {
                   aria-pressed={isActive}
                   disabled={tool.disabled}
                   className={cn(
-                    'h-14 justify-start rounded-[1.2rem] border border-border/60 px-4 text-left text-muted-foreground',
+                    'size-11 rounded-[1rem] border border-transparent bg-background/58 text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.4)]',
                     isActive &&
                       'border-primary/45 bg-primary/12 text-primary ring-1 ring-primary/20',
                     tool.disabled && 'opacity-50',
                   )}
                 >
                   <tool.icon className="size-4" />
-                  <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                    <span className="truncate text-sm font-medium">{tool.label}</span>
-                    <span className="rounded-full bg-background/70 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground">
-                      {tool.shortcut}
-                    </span>
-                  </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
                 {tool.label}
+                <span className="ml-2 rounded-full border border-border/50 bg-background/85 px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.12em]">
+                  {tool.shortcut}
+                </span>
                 {tool.disabled && (
                   <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
                 )}
@@ -86,18 +79,17 @@ export function ToolPanel() {
         })}
       </div>
 
-      <div className="mt-4 rounded-[1.25rem] border border-border/65 bg-card/75 p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Keys</p>
-        <ul className="mt-3 space-y-2">
-          {VECTOR_SHORTCUTS.map((item) => (
-            <li key={item.key} className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-              <span>{item.label}</span>
-              <span className="rounded-full border border-border/55 bg-background/75 px-2 py-1 font-mono text-[9px]">
-                {item.key}
-              </span>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-auto flex flex-col gap-2">
+        {VECTOR_SHORTCUTS.slice(0, 3).map((item) => (
+          <div
+            key={item.key}
+            className="flex min-h-8 items-center justify-center rounded-[0.9rem] border border-border/60 bg-background/60 px-2 text-[10px] font-mono text-muted-foreground"
+            aria-label={`${item.label}: ${item.key}`}
+            title={`${item.label}: ${item.key}`}
+          >
+            {item.key}
+          </div>
+        ))}
       </div>
     </div>
   );

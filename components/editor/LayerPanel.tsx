@@ -20,14 +20,16 @@ export function LayerPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-transparent">
-      <div className="px-4 pt-4 pb-2">
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">Layers</p>
-          <span className="studio-chip">{layers.length}</span>
+      <div className="border-b border-border/55 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Layers</p>
+          <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+            {layers.length}
+          </span>
         </div>
       </div>
       <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-1.5 px-3 pb-3">
+        <div className="flex flex-col gap-1 px-2 py-2">
           {layers.length === 0 && (
             <p className="px-2 py-4 text-xs text-muted-foreground text-center">
               No layers
@@ -41,9 +43,9 @@ export function LayerPanel() {
               <div
                 key={layer.id}
                 className={cn(
-                  'group flex cursor-pointer items-center gap-2 rounded-[1.15rem] border border-transparent px-3 py-3 text-sm transition-colors',
-                  'bg-background/45 hover:border-border/65 hover:bg-secondary/55',
-                  isSelected && 'border-primary/35 bg-primary/12 text-primary',
+                  'group flex cursor-pointer items-center gap-2 rounded-[0.9rem] border border-transparent px-2.5 py-2 text-sm transition-colors',
+                  'bg-background/38 hover:border-border/60 hover:bg-secondary/45',
+                  isSelected && 'border-primary/35 bg-primary/10 text-primary',
                 )}
                 onClick={() =>
                   setSelection({ layerIds: [layer.id], pointIds: [] })
@@ -83,7 +85,7 @@ export function LayerPanel() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="size-7 rounded-full border border-transparent opacity-0 text-muted-foreground transition-opacity group-hover:opacity-100 hover:border-border/60 hover:bg-background/70 hover:text-foreground"
+                  className="size-7 rounded-[0.8rem] border border-transparent opacity-0 text-muted-foreground transition-opacity group-hover:opacity-100 hover:border-border/60 hover:bg-background/70 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (currentIconId && currentStateId) {

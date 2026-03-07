@@ -90,9 +90,10 @@ export function ExplorerShell() {
   return (
     <div className="swift-surface flex h-dvh flex-col overflow-hidden text-foreground">
       <header className="px-4 pt-4 md:px-6 md:pt-6">
-        <div className="studio-panel mx-auto flex w-full max-w-[120rem] flex-wrap items-center gap-3 rounded-[1.75rem] px-4 py-3 md:px-5">
+        <div className="workspace-header mx-auto flex w-full max-w-[120rem] flex-wrap items-center gap-3 rounded-[1.9rem] px-4 py-4 md:px-5">
           <div className="mr-auto min-w-0">
-            <h1 className="truncate font-display text-2xl leading-none tracking-[-0.05em]">{projectName}</h1>
+            <p className="workspace-kicker">Library</p>
+            <h1 className="mt-2 truncate font-display text-[2rem] leading-none tracking-[-0.06em]">{projectName}</h1>
           </div>
 
           <div className="relative min-w-[16rem] flex-1 md:max-w-md">
@@ -101,7 +102,7 @@ export function ExplorerShell() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search"
-              className="h-10 rounded-full border-border/70 bg-background/85 pl-10"
+              className="h-11 rounded-full border-border/70 bg-background/88 pl-10"
             />
           </div>
 
@@ -111,25 +112,28 @@ export function ExplorerShell() {
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-0 w-full max-w-[120rem] flex-1 grid-cols-1 gap-4 px-4 pb-4 md:px-6 md:pb-6 xl:grid-cols-[15rem_1fr]">
-        <aside className="studio-panel min-h-0 rounded-[1.75rem] p-3 md:p-4">
+      <main className="workspace-shell mx-auto grid min-h-0 w-full max-w-[120rem] flex-1 grid-cols-1 gap-4 px-4 pb-4 md:px-6 md:pb-6 xl:grid-cols-[17rem_1fr]">
+        <aside className="studio-panel min-h-0 rounded-[2rem] p-3.5 md:p-4">
           <div className="flex h-full flex-col gap-3">
-            <div className="flex items-center justify-between rounded-[1.2rem] border border-border/70 bg-background/72 px-3 py-3">
-              <span className="text-sm font-medium">Selection</span>
-              <span className="rounded-full border border-border/60 bg-card/90 px-2 py-1 text-xs tabular-nums">
-                {selection.length}
-              </span>
+            <div className="workspace-meta-card rounded-[1.45rem] px-3.5 py-3.5">
+              <p className="workspace-kicker">Selection</p>
+              <div className="relative z-10 mt-3 flex items-center justify-between">
+                <span className="text-sm font-medium">Batch actions</span>
+                <span className="workspace-badge text-xs tabular-nums">
+                  {selection.length}
+                </span>
+              </div>
             </div>
 
             <div className="grid gap-2">
               <Button
-                className="h-10 rounded-full border border-border/70 bg-foreground text-background hover:bg-foreground/90"
+                className="h-11 rounded-full border border-border/70 bg-foreground text-background hover:bg-foreground/90"
                 onClick={() => setSelection(filtered.map((icon) => icon.id))}
               >
                 Select all
               </Button>
               <Button
-                className="h-10 rounded-full"
+                className="h-11 rounded-full"
                 variant="outline"
                 onClick={() => setSelection([])}
               >
@@ -137,37 +141,60 @@ export function ExplorerShell() {
               </Button>
             </div>
 
-            <div className="mt-1 rounded-[1.2rem] border border-border/70 bg-background/72 p-3">
+            <div className="workspace-meta-card rounded-[1.45rem] p-3.5">
+              <p className="workspace-kicker">Recategorize</p>
               <Input
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
                 placeholder="Category"
-                className="h-10 rounded-full border-border/70 bg-background/85"
+                className="mt-3 h-11 rounded-full border-border/70 bg-background/88"
               />
               <Button
-                className="mt-2 h-10 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                className="mt-2 h-11 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={assignCategory}
                 disabled={selection.length === 0 || !categoryInput.trim()}
               >
-                Apply
+                Apply category
               </Button>
+            </div>
+
+            <div className="workspace-empty-state mt-auto rounded-[1.45rem] px-3.5 py-4">
+              <p className="workspace-kicker">Flow</p>
+              <p className="mt-2 text-sm font-medium text-foreground">Select, inspect, edit.</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Pick icons here, then jump into the editor for path and style work.
+              </p>
             </div>
           </div>
         </aside>
 
-        <section className="studio-panel flex min-h-0 flex-col rounded-[1.75rem] p-3">
-          <ScrollArea className="min-h-0 flex-1">
+        <section className="studio-panel flex min-h-0 flex-col rounded-[2rem] p-3.5">
+          <div className="workspace-panel-header mb-3 rounded-[1.45rem] px-4 py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="workspace-kicker">Catalog</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">Browse by category</p>
+              </div>
+              <span className="workspace-badge text-[10px] tabular-nums text-muted-foreground">
+                {filtered.length}
+              </span>
+            </div>
+          </div>
+          <ScrollArea className="workspace-scroll min-h-0 flex-1">
             <div className="space-y-6 px-1 pb-2">
               {groups.length === 0 ? (
-                <div className="flex min-h-[20rem] items-center justify-center rounded-[1.5rem] border border-dashed border-border/70 bg-background/50">
+                <div className="workspace-empty-state flex min-h-[20rem] items-center justify-center rounded-[1.6rem]">
                   <p className="text-sm text-muted-foreground">No results</p>
                 </div>
               ) : (
                 groups.map(([category, categoryIcons]) => (
                   <section key={category} className="space-y-3">
                     <div className="flex items-center justify-between gap-3 border-b border-border/55 px-1 pb-2">
-                      <h2 className="truncate text-sm font-semibold capitalize">{category}</h2>
-                      <span className="text-xs tabular-nums text-muted-foreground">{categoryIcons.length}</span>
+                      <div>
+                        <p className="workspace-kicker">Category</p>
+                        <h2 className="mt-2 truncate text-sm font-semibold capitalize">{category}</h2>
+                      </div>
+                      <span className="workspace-badge text-xs tabular-nums text-muted-foreground">{categoryIcons.length}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -187,7 +214,7 @@ export function ExplorerShell() {
                           <article
                             key={icon.id}
                             className={cn(
-                              'studio-card rounded-[1.2rem] p-2.5',
+                              'studio-card rounded-[1.35rem] p-3',
                               active && 'border-primary/65 bg-primary/10 ring-1 ring-primary/20',
                             )}
                           >
@@ -213,7 +240,7 @@ export function ExplorerShell() {
                               onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
                               className="group block"
                             >
-                              <div className="studio-preview mb-2 flex aspect-square items-center justify-center rounded-[1rem] border border-border/70">
+                              <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-[1.1rem] border border-border/70">
                                 {svg ? (
                                   <div
                                     className="h-14 w-14 text-slate-900 transition-transform duration-200 group-hover:scale-105 dark:text-slate-100"
@@ -260,7 +287,7 @@ function CountChip({
     <div
       aria-label={`${label} ${value}`}
       className={cn(
-        'rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium tabular-nums text-muted-foreground',
+        'workspace-badge tabular-nums text-muted-foreground',
         active && 'border-primary/40 bg-primary/10 text-primary',
       )}
     >

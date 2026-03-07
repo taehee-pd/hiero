@@ -148,43 +148,46 @@
 
   .swift-surface {
     background-image:
-      linear-gradient(90deg, color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px),
-      linear-gradient(color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px),
-      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 14%, transparent) 0%, transparent 34%),
-      radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 16%, transparent) 0%, transparent 38%),
-      linear-gradient(180deg, color-mix(in oklab, var(--background) 92%, white 8%), var(--background));
-    background-size: 28px 28px, 28px 28px, auto, auto, auto;
+      linear-gradient(90deg, color-mix(in oklab, var(--foreground) 4%, transparent) 1px, transparent 1px),
+      linear-gradient(color-mix(in oklab, var(--foreground) 4%, transparent) 1px, transparent 1px),
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 18%, transparent) 0%, transparent 28%),
+      radial-gradient(circle at 85% 8%, color-mix(in oklab, var(--accent) 18%, transparent) 0%, transparent 24%),
+      radial-gradient(circle at 50% 120%, color-mix(in oklab, var(--chart-3) 14%, transparent) 0%, transparent 30%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 89%, white 11%), color-mix(in oklab, var(--background) 97%, black 3%));
+    background-size: 32px 32px, 32px 32px, auto, auto, auto, auto;
     background-position: -1px -1px, -1px -1px, center, center, center;
   }
 
   .dark .swift-surface {
     background-image:
-      linear-gradient(90deg, color-mix(in oklab, white 5%, transparent) 1px, transparent 1px),
-      linear-gradient(color-mix(in oklab, white 5%, transparent) 1px, transparent 1px),
-      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 22%, transparent) 0%, transparent 30%),
-      radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 18%, transparent) 0%, transparent 34%),
-      linear-gradient(180deg, color-mix(in oklab, var(--background) 96%, black 4%), var(--background));
+      linear-gradient(90deg, color-mix(in oklab, white 4%, transparent) 1px, transparent 1px),
+      linear-gradient(color-mix(in oklab, white 4%, transparent) 1px, transparent 1px),
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 24%, transparent) 0%, transparent 30%),
+      radial-gradient(circle at 85% 8%, color-mix(in oklab, var(--accent) 20%, transparent) 0%, transparent 26%),
+      radial-gradient(circle at 50% 120%, color-mix(in oklab, var(--chart-3) 18%, transparent) 0%, transparent 32%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 95%, white 5%), var(--background));
   }
 }
 
 @layer components {
   .studio-panel {
     background:
-      linear-gradient(180deg, color-mix(in oklab, var(--card) 88%, white 12%), color-mix(in oklab, var(--card) 95%, transparent 5%));
-    border: 1px solid color-mix(in oklab, var(--border) 76%, var(--foreground) 24%);
+      linear-gradient(180deg, color-mix(in oklab, var(--card) 84%, white 16%), color-mix(in oklab, var(--card) 97%, transparent 3%));
+    border: 1px solid color-mix(in oklab, var(--border) 70%, var(--foreground) 30%);
     box-shadow:
-      0 1px 0 color-mix(in oklab, white 40%, transparent),
-      0 22px 48px color-mix(in oklab, var(--foreground) 10%, transparent);
+      0 1px 0 color-mix(in oklab, white 48%, transparent),
+      0 26px 60px color-mix(in oklab, var(--foreground) 10%, transparent);
+    backdrop-filter: blur(18px);
     position: relative;
     overflow: hidden;
   }
 
   .dark .studio-panel {
     background:
-      linear-gradient(180deg, color-mix(in oklab, var(--card) 88%, white 3%), color-mix(in oklab, var(--card) 98%, transparent 2%));
+      linear-gradient(180deg, color-mix(in oklab, var(--card) 84%, white 5%), color-mix(in oklab, var(--card) 98%, transparent 2%));
     box-shadow:
       0 1px 0 color-mix(in oklab, white 10%, transparent),
-      0 24px 54px color-mix(in oklab, black 34%, transparent);
+      0 28px 64px color-mix(in oklab, black 38%, transparent);
   }
 
   .studio-panel::before {
@@ -192,9 +195,10 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 26%),
-      linear-gradient(180deg, color-mix(in oklab, white 28%, transparent), transparent 32%);
-    opacity: 0.8;
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 12%, transparent) 0%, transparent 24%),
+      radial-gradient(circle at bottom right, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 26%),
+      linear-gradient(180deg, color-mix(in oklab, white 28%, transparent), transparent 34%);
+    opacity: 0.85;
     pointer-events: none;
   }
 
@@ -268,5 +272,177 @@
     background-image:
       radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 22%, transparent) 0%, transparent 30%),
       linear-gradient(135deg, color-mix(in oklab, var(--background) 90%, white 10%), color-mix(in oklab, var(--background) 98%, black 2%));
+  }
+
+  .workspace-shell {
+    position: relative;
+    z-index: 10;
+  }
+
+  .workspace-header {
+    position: relative;
+    z-index: 10;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--card) 88%, white 12%), color-mix(in oklab, var(--card) 97%, transparent 3%));
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 42%, transparent),
+      0 18px 44px color-mix(in oklab, var(--foreground) 8%, transparent);
+    backdrop-filter: blur(20px);
+  }
+
+  .workspace-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 14%, transparent) 0%, transparent 22%),
+      linear-gradient(180deg, color-mix(in oklab, white 28%, transparent), transparent 36%);
+  }
+
+  .workspace-panel-header {
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 68%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 70%, white 30%), color-mix(in oklab, var(--background) 94%, transparent 6%));
+  }
+
+  .workspace-kicker {
+    font-size: 0.65rem;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .workspace-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.1rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background: color-mix(in oklab, var(--background) 74%, white 26%);
+    padding: 0.4rem 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--foreground);
+  }
+
+  .dark .workspace-badge {
+    background: color-mix(in oklab, var(--background) 88%, white 12%);
+  }
+
+  .workspace-meta-card {
+    position: relative;
+    border: 1px solid color-mix(in oklab, var(--border) 70%, var(--foreground) 30%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 76%, white 24%), color-mix(in oklab, var(--card) 92%, transparent 8%));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 36%, transparent),
+      0 12px 30px color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+
+  .workspace-meta-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 24%),
+      radial-gradient(circle at bottom right, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 24%);
+    opacity: 0.85;
+  }
+
+  .workspace-toolbar-group {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 1.25rem;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 78%, white 22%), color-mix(in oklab, var(--background) 95%, transparent 5%));
+    padding: 0.35rem;
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 24%, transparent);
+  }
+
+  .workspace-tool-button {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 76%, white 24%), color-mix(in oklab, var(--background) 96%, transparent 4%));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 30%, transparent),
+      0 8px 20px color-mix(in oklab, var(--foreground) 4%, transparent);
+  }
+
+  .workspace-tool-button:hover {
+    border-color: color-mix(in oklab, var(--primary) 34%, var(--border));
+  }
+
+  .workspace-tool-button[data-active='true'] {
+    border-color: color-mix(in oklab, var(--primary) 52%, var(--border));
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--primary) 12%, white 88%), color-mix(in oklab, var(--primary) 7%, var(--card)));
+    color: var(--primary);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
+      0 14px 28px color-mix(in oklab, var(--primary) 14%, transparent);
+  }
+
+  .dark .workspace-tool-button[data-active='true'] {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--primary) 18%, black 82%), color-mix(in oklab, var(--primary) 10%, var(--card)));
+  }
+
+  .workspace-scroll {
+    scrollbar-color: color-mix(in oklab, var(--border) 88%, var(--primary) 12%) transparent;
+  }
+
+  .workspace-canvas-shell {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--border) 74%, var(--foreground) 26%);
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 8%, transparent) 0%, transparent 24%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 82%, white 18%), color-mix(in oklab, var(--background) 95%, black 5%));
+  }
+
+  .dark .workspace-canvas-shell {
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 14%, transparent) 0%, transparent 24%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 90%, white 10%), color-mix(in oklab, var(--background) 98%, black 2%));
+  }
+
+  .workspace-stage {
+    border: 1px solid color-mix(in oklab, var(--border) 76%, transparent);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, white 92%, var(--background) 8%), white);
+    box-shadow:
+      0 24px 64px color-mix(in oklab, var(--foreground) 12%, transparent),
+      inset 0 1px 0 color-mix(in oklab, white 46%, transparent);
+  }
+
+  .dark .workspace-stage {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 72%, white 28%), color-mix(in oklab, var(--background) 88%, black 12%));
+  }
+
+  .workspace-canvas-grid {
+    background-image:
+      linear-gradient(90deg, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      radial-gradient(circle at center, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 52%);
+    background-size: 22px 22px, 22px 22px, auto;
+    background-position: -1px -1px, -1px -1px, center;
+  }
+
+  .workspace-empty-state {
+    border: 1px dashed color-mix(in oklab, var(--border) 74%, var(--foreground) 26%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 76%, white 24%), color-mix(in oklab, var(--background) 96%, transparent 4%));
   }
 }

@@ -1,136 +1,221 @@
 'use client';
 
-import { useCallback } from 'react';
+import { LoaderCircle, Minus, Shapes, SplitSquareHorizontal, Squircle } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
-import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
+import { toast } from '@/components/ui/use-toast';
 import {
   useEditorStore,
   useSelection,
 } from '@/lib/editor-store/hooks';
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
+import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { Layer, PaintRef } from '@/lib/schema/types';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
+import { cn } from '@/lib/utils';
+
+const BOOLEAN_ACTIONS: Array<{
+  mode: BooleanMode;
+  label: string;
+  icon: typeof Shapes;
+}> = [
+  { mode: 'unite', label: 'Unite', icon: Shapes },
+  { mode: 'subtract', label: 'Subtract', icon: Minus },
+  { mode: 'intersect', label: 'Intersect', icon: SplitSquareHorizontal },
+  { mode: 'exclude', label: 'Exclude', icon: Squircle },
+];
 
 export function InspectorPanel() {
   const selection = useSelection();
   const currentState = useEditorStore(selectCurrentState);
+  const applyBoolean = useEditorStore((s) => s.applyBoolean);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const colorTokens = useEditorStore(
     (s) => s.project?.tokenSet?.colors ?? {},
   );
+  const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const layer =
     currentState && selectedLayerId
       ? currentState.layers[selectedLayerId] ?? null
       : null;
+  const multipleLayersSelected = selection.layerIds.length > 1;
+  const hasBooleanableSelection = Boolean(
+    currentState &&
+      multipleLayersSelected &&
+      selection.layerIds.every((layerId) => Boolean(currentState.layers[layerId]?.path?.d)),
+  );
+  const booleanDisabled = !hasBooleanableSelection || pendingBooleanMode !== null;
 
   if (!layer) {
     return (
       <div className="flex h-full flex-col bg-transparent">
-        <div className="px-4 pt-3 pb-2">
-          <span className="text-sm font-semibold">Inspect</span>
+        <div className="workspace-panel-header px-4 py-4">
+          <p className="workspace-kicker">
+            Inspector
+          </p>
+          <p className="mt-2 font-display text-2xl tracking-[-0.05em] text-foreground">
+            No selection
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Select a layer to inspect geometry, styling, and transforms.
+          </p>
         </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-xs text-muted-foreground">No layer</p>
+        <div className="flex flex-1 items-center justify-center px-4 py-6">
+          <div className="workspace-empty-state w-full rounded-[1.35rem] px-5 py-8 text-center">
+            <p className="text-sm font-semibold text-foreground">Inspector is standing by</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Layer details appear here once a path or shape is selected on the canvas.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   const pointContext = getSelectedPointContext(layer, selection.pointIds);
-  const multipleLayersSelected = selection.layerIds.length > 1;
+  const hasEditablePath = Boolean(layer.path?.d && isPathDirectlyEditable(layer.path.d));
+  const pathPreview = layer.path?.d
+    ? layer.path.d.length > 84
+      ? `${layer.path.d.slice(0, 84)}...`
+      : layer.path.d
+    : 'No path';
+  const handleBooleanAction = useCallback(
+    async (mode: BooleanMode) => {
+      if (booleanDisabled) return;
+
+      setPendingBooleanMode(mode);
+      try {
+        await applyBoolean(mode);
+      } catch (error) {
+        console.error('[InspectorPanel] boolean operation failed', error);
+        toast({
+          title: 'Boolean operation failed',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Selected layers could not be combined. Check that each layer has a valid path.',
+        });
+      } finally {
+        setPendingBooleanMode(null);
+      }
+    },
+    [applyBoolean, booleanDisabled],
+  );
 
   return (
     <div className="flex h-full flex-col bg-transparent">
-      <div className="px-4 pt-3 pb-2">
-        <span className="text-sm font-semibold">Inspect</span>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-4 px-4 pb-4">
-          <Section title="Layer">
-            <ReadOnlyField label="ID" value={layer.id} />
-            <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
-          </Section>
-
-          <Separator />
-
-          <Section title="Boolean">
-            <div className="grid grid-cols-2 gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'unite')
-                }
-              >
-                Unite
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'subtract')
-                }
-              >
-                Subtract
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'intersect')
-                }
-              >
-                Intersect
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'exclude')
-                }
-              >
-                Exclude
-              </Button>
+      <div className="workspace-panel-header px-4 py-4">
+        <p className="workspace-kicker">
+          Inspector
+        </p>
+        <div className="workspace-meta-card mt-3 rounded-[1.35rem] p-4">
+          <div className="relative z-10 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate font-display text-[1.7rem] leading-none tracking-[-0.06em] text-foreground">
+                {layer.id}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {layer.role ?? 'Unassigned role'}
+              </p>
             </div>
-            {!multipleLayersSelected && (
-              <p className="text-[11px] text-muted-foreground">2+ layers</p>
-            )}
+            <span className="workspace-badge text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              {selection.layerIds.length} selected
+            </span>
+          </div>
+          <div className="relative z-10 mt-4 grid grid-cols-3 gap-2">
+            <InspectorStat
+              label="Path"
+              value={layer.path ? 'Ready' : 'Missing'}
+            />
+            <InspectorStat
+              label="Points"
+              value={pointContext.count.toString().padStart(2, '0')}
+            />
+            <InspectorStat
+              label="Mode"
+              value={hasEditablePath ? 'Edit' : 'Mixed'}
+            />
+          </div>
+        </div>
+      </div>
+      <ScrollArea className="workspace-scroll flex-1">
+        <div className="flex flex-col gap-3 px-4 py-4">
+          <Section
+            title="Boolean"
+            description="Fuse or carve the current multi-layer selection into one surviving path."
+          >
+            <div className="grid grid-cols-2 gap-2">
+              {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
+                const isPending = pendingBooleanMode === mode;
+                return (
+                  <Button
+                    key={mode}
+                    size="sm"
+                    variant="outline"
+                    disabled={booleanDisabled}
+                    onClick={() => void handleBooleanAction(mode)}
+                    className={cn(
+                      'h-11 rounded-2xl border-border/70 bg-background/60 px-3 text-left transition hover:border-primary/35 hover:bg-background/90',
+                      isPending && 'border-primary/40 text-primary',
+                    )}
+                  >
+                    <span className="flex w-full items-center gap-2.5">
+                      {isPending ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <Icon className="size-4" />
+                      )}
+                      <span className="flex flex-col items-start leading-none">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">
+                          {label}
+                        </span>
+                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                          {isPending ? 'Applying...' : 'Merge selection'}
+                        </span>
+                      </span>
+                    </span>
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="workspace-meta-card rounded-2xl px-3 py-2">
+              <p className="text-[11px] text-muted-foreground">
+                {hasBooleanableSelection
+                  ? 'Selected layers will collapse into the first selected layer.'
+                  : 'Select at least two path layers to enable pathfinder actions.'}
+              </p>
+              {pendingBooleanMode ? (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  Running
+                </span>
+              ) : null}
+            </div>
           </Section>
 
-          <Separator />
+          <Section title="Layer" description="Identity and structural metadata for the active layer.">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ReadOnlyField label="ID" value={layer.id} />
+              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
+            </div>
+          </Section>
 
           {layer.path && (
-            <>
-              <Section title="Path">
-                <ReadOnlyField
-                  label="d"
-                  value={
-                    layer.path.d.length > 60
-                      ? layer.path.d.slice(0, 60) + '...'
-                      : layer.path.d
-                  }
-                  mono
-                />
-                {layer.path.fillRule && (
-                  <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
-                )}
-              </Section>
-              <Separator />
-            </>
+            <Section title="Path" description="Live SVG data for the selected layer.">
+              <ReadOnlyField label="Path Data" value={pathPreview} mono />
+              {layer.path.fillRule && (
+                <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
+              )}
+            </Section>
           )}
 
-          <Section title="Style">
+          <Section title="Style" description="Surface appearance and stroke behavior.">
             <PaintField
               label="Fill"
               paint={layer.style.fill}
@@ -152,215 +237,220 @@ export function InspectorPanel() {
                 })
               }
             />
-            <NumberField
-              label="Stroke Width"
-              value={layer.style.strokeWidth}
-              onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
-                  strokeWidth: v,
-                })
-              }
-            />
-            <SelectField
-              label="Line Cap"
-              value={layer.style.lineCap ?? 'butt'}
-              options={[
-                ['butt', 'Butt'],
-                ['round', 'Round'],
-                ['square', 'Square'],
-              ]}
-              onChange={(value) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
-                  lineCap: value as Layer['style']['lineCap'],
-                })
-              }
-            />
-            <SelectField
-              label="Line Join"
-              value={layer.style.lineJoin ?? 'miter'}
-              options={[
-                ['miter', 'Miter'],
-                ['round', 'Round'],
-                ['bevel', 'Bevel'],
-              ]}
-              onChange={(value) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
-                  lineJoin: value as Layer['style']['lineJoin'],
-                })
-              }
-            />
-            <NumberField
-              label="Fill Opacity"
-              value={layer.style.fillOpacity}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
-                  fillOpacity: v,
-                })
-              }
-            />
-            <NumberField
-              label="Stroke Opacity"
-              value={layer.style.strokeOpacity}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
-                  strokeOpacity: v,
-                })
-              }
-            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <NumberField
+                label="Stroke Width"
+                value={layer.style.strokeWidth}
+                onChange={(v) =>
+                  patchStyle(currentIconId, currentStateId, layer.id, {
+                    strokeWidth: v,
+                  })
+                }
+              />
+              <SelectField
+                label="Line Cap"
+                value={layer.style.lineCap ?? 'butt'}
+                options={[
+                  ['butt', 'Butt'],
+                  ['round', 'Round'],
+                  ['square', 'Square'],
+                ]}
+                onChange={(value) =>
+                  patchStyle(currentIconId, currentStateId, layer.id, {
+                    lineCap: value as Layer['style']['lineCap'],
+                  })
+                }
+              />
+              <SelectField
+                label="Line Join"
+                value={layer.style.lineJoin ?? 'miter'}
+                options={[
+                  ['miter', 'Miter'],
+                  ['round', 'Round'],
+                  ['bevel', 'Bevel'],
+                ]}
+                onChange={(value) =>
+                  patchStyle(currentIconId, currentStateId, layer.id, {
+                    lineJoin: value as Layer['style']['lineJoin'],
+                  })
+                }
+              />
+              <NumberField
+                label="Fill Opacity"
+                value={layer.style.fillOpacity}
+                min={0}
+                max={1}
+                step={0.05}
+                onChange={(v) =>
+                  patchStyle(currentIconId, currentStateId, layer.id, {
+                    fillOpacity: v,
+                  })
+                }
+              />
+              <NumberField
+                label="Stroke Opacity"
+                value={layer.style.strokeOpacity}
+                min={0}
+                max={1}
+                step={0.05}
+                onChange={(v) =>
+                  patchStyle(currentIconId, currentStateId, layer.id, {
+                    strokeOpacity: v,
+                  })
+                }
+              />
+            </div>
           </Section>
 
-          <Separator />
-
-          <Section title="Points">
-            <ReadOnlyField label="Selected" value={String(pointContext.count)} />
-            <NumberField
-              label="X"
-              value={pointContext.x}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.position.x = v;
-                })
-              }
-            />
-            <NumberField
-              label="Y"
-              value={pointContext.y}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.position.y = v;
-                })
-              }
-            />
-            <NumberField
-              label="Radius"
-              value={pointContext.radius}
-              min={0}
-              step={0.25}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
-              }
-            />
-            <SelectField
-              label="Point Type"
-              value={pointContext.nodeType}
-              disabled={pointContext.count === 0}
-              options={[
-                ['corner', 'Corner'],
-                ['smooth', 'Smooth'],
-                ['symmetric', 'Symmetric'],
-              ]}
-              onChange={(value) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.nodeType = value as typeof pt.nodeType;
-                  if (value === 'corner') {
-                    pt.handleIn = null;
-                    pt.handleOut = null;
-                  }
-                })
-              }
-            />
-
-            <NumberField
-              label="In X"
-              value={pointContext.handleInX}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleIn = { x: v, y: pt.handleIn?.y ?? pt.position.y };
-                })
-              }
-            />
-            <NumberField
-              label="In Y"
-              value={pointContext.handleInY}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleIn = { x: pt.handleIn?.x ?? pt.position.x, y: v };
-                })
-              }
-            />
-            <NumberField
-              label="Out X"
-              value={pointContext.handleOutX}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleOut = { x: v, y: pt.handleOut?.y ?? pt.position.y };
-                })
-              }
-            />
-            <NumberField
-              label="Out Y"
-              value={pointContext.handleOutY}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleOut = { x: pt.handleOut?.x ?? pt.position.x, y: v };
-                })
-              }
-            />
+          <Section title="Points" description="Selected anchor coordinates and bezier handle tuning.">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ReadOnlyField label="Selected" value={String(pointContext.count)} />
+              <SelectField
+                label="Point Type"
+                value={pointContext.nodeType}
+                disabled={pointContext.count === 0}
+                options={[
+                  ['corner', 'Corner'],
+                  ['smooth', 'Smooth'],
+                  ['symmetric', 'Symmetric'],
+                ]}
+                onChange={(value) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.nodeType = value as typeof pt.nodeType;
+                    if (value === 'corner') {
+                      pt.handleIn = null;
+                      pt.handleOut = null;
+                    }
+                  })
+                }
+              />
+              <NumberField
+                label="X"
+                value={pointContext.x}
+                disabled={pointContext.count === 0}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.position.x = v;
+                  })
+                }
+              />
+              <NumberField
+                label="Y"
+                value={pointContext.y}
+                disabled={pointContext.count === 0}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.position.y = v;
+                  })
+                }
+              />
+              <NumberField
+                label="Radius"
+                value={pointContext.radius}
+                min={0}
+                step={0.25}
+                disabled={pointContext.count === 0}
+                onChange={(v) =>
+                  applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
+                }
+              />
+              <ReadOnlyField
+                label="Editing"
+                value={pointContext.count === 1 ? 'Single point' : pointContext.count > 1 ? 'Multi-point' : 'Inactive'}
+              />
+              <NumberField
+                label="In X"
+                value={pointContext.handleInX}
+                disabled={pointContext.count !== 1}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.handleIn = { x: v, y: pt.handleIn?.y ?? pt.position.y };
+                  })
+                }
+              />
+              <NumberField
+                label="In Y"
+                value={pointContext.handleInY}
+                disabled={pointContext.count !== 1}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.handleIn = { x: pt.handleIn?.x ?? pt.position.x, y: v };
+                  })
+                }
+              />
+              <NumberField
+                label="Out X"
+                value={pointContext.handleOutX}
+                disabled={pointContext.count !== 1}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.handleOut = { x: v, y: pt.handleOut?.y ?? pt.position.y };
+                  })
+                }
+              />
+              <NumberField
+                label="Out Y"
+                value={pointContext.handleOutY}
+                disabled={pointContext.count !== 1}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    pt.handleOut = { x: pt.handleOut?.x ?? pt.position.x, y: v };
+                  })
+                }
+              />
+            </div>
           </Section>
 
-          <Separator />
-
-          <Section title="Transform">
-            <NumberField
-              label="X"
-              value={layer.transform?.x}
-              onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
-                  x: v,
-                })
-              }
-            />
-            <NumberField
-              label="Y"
-              value={layer.transform?.y}
-              onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
-                  y: v,
-                })
-              }
-            />
-            <NumberField
-              label="Rotate"
-              value={layer.transform?.rotate}
-              onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
-                  rotate: v,
-                })
-              }
-            />
-            <NumberField
-              label="Scale X"
-              value={layer.transform?.scaleX}
-              step={0.1}
-              onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
-                  scaleX: v,
-                })
-              }
-            />
-            <NumberField
-              label="Scale Y"
-              value={layer.transform?.scaleY}
-              step={0.1}
-              onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
-                  scaleY: v,
-                })
-              }
-            />
+          <Section title="Transform" description="Positional offsets and scale controls for this layer.">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <NumberField
+                label="X"
+                value={layer.transform?.x}
+                onChange={(v) =>
+                  patchTransform(currentIconId, currentStateId, layer.id, {
+                    x: v,
+                  })
+                }
+              />
+              <NumberField
+                label="Y"
+                value={layer.transform?.y}
+                onChange={(v) =>
+                  patchTransform(currentIconId, currentStateId, layer.id, {
+                    y: v,
+                  })
+                }
+              />
+              <NumberField
+                label="Rotate"
+                value={layer.transform?.rotate}
+                onChange={(v) =>
+                  patchTransform(currentIconId, currentStateId, layer.id, {
+                    rotate: v,
+                  })
+                }
+              />
+              <NumberField
+                label="Scale X"
+                value={layer.transform?.scaleX}
+                step={0.1}
+                onChange={(v) =>
+                  patchTransform(currentIconId, currentStateId, layer.id, {
+                    scaleX: v,
+                  })
+                }
+              />
+              <NumberField
+                label="Scale Y"
+                value={layer.transform?.scaleY}
+                step={0.1}
+                onChange={(v) =>
+                  patchTransform(currentIconId, currentStateId, layer.id, {
+                    scaleY: v,
+                  })
+                }
+              />
+            </div>
           </Section>
         </div>
       </ScrollArea>
@@ -402,37 +492,6 @@ function patchTransform(
   state.patchLayer(iconId, stateId, layerId, {
     transform: { ...(layer.transform ?? {}), ...transformPatch },
   });
-}
-
-function applyPathfinderCompound(
-  iconId: string | null,
-  stateId: string | null,
-  layerIds: string[],
-  mode: 'unite' | 'subtract' | 'intersect' | 'exclude',
-) {
-  if (!iconId || !stateId || layerIds.length < 2) return;
-  const state = editorStore.getState();
-  const icon = state.project?.icons[iconId];
-  const st = icon?.states[stateId];
-  if (!st) return;
-
-  const pathLayers = layerIds
-    .map((id) => st.layers[id])
-    .filter((l): l is Layer => Boolean(l?.path?.d));
-
-  if (pathLayers.length < 2) return;
-
-  const base = pathLayers[0];
-  const combined = pathLayers.map((layer) => layer.path!.d).join(' ');
-  const fillRule = mode === 'unite' ? 'nonzero' : 'evenodd';
-
-  state.patchLayer(iconId, stateId, base.id, {
-    path: { d: combined, fillRule },
-  });
-
-  for (let i = 1; i < pathLayers.length; i++) {
-    state.setLayerVisibility(iconId, stateId, pathLayers[i].id, false);
-  }
 }
 
 type EditablePoint = {
@@ -545,17 +604,43 @@ function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {title}
-      </span>
-      {children}
+    <section className="workspace-meta-card rounded-[1.35rem] p-3.5">
+      <div className="mb-3">
+        <p className="workspace-kicker">
+          {title}
+        </p>
+        {description ? (
+          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </section>
+  );
+}
+
+function InspectorStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="workspace-meta-card rounded-2xl px-3 py-2">
+      <p className="workspace-kicker">
+        {label}
+      </p>
+      <p className="relative z-10 mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -570,12 +655,15 @@ function ReadOnlyField({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1.5">
+      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
       <span
-        className={`flex-1 truncate text-xs ${mono ? 'font-mono' : ''} text-foreground`}
+        className={cn(
+          'min-h-9 truncate rounded-2xl border border-border/55 bg-card/45 px-3 py-2 text-sm text-foreground',
+          mono && 'font-mono text-[11px]',
+        )}
       >
         {value}
       </span>
@@ -609,8 +697,8 @@ function NumberField({
   );
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1.5">
+      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -621,7 +709,7 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-7 bg-input text-xs"
+        className="h-9 rounded-2xl border-border/55 bg-card/45 text-sm"
       />
     </div>
   );
@@ -641,15 +729,15 @@ function SelectField({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1.5">
+      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
       <select
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-full rounded-xl border border-input bg-input/80 px-2 text-xs"
+        className="h-9 w-full rounded-2xl border border-border/55 bg-card/45 px-3 text-sm"
       >
         {options.map(([v, labelText]) => (
           <option key={v} value={v}>
@@ -728,16 +816,16 @@ function PaintField({
     paint.value.startsWith('#');
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1.5">
+      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
-      <div className="flex flex-1 items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-[1.1rem] border border-border/55 bg-card/45 p-2">
         {fillModeOptions && (
           <select
             value={paintKind}
             onChange={handleKindChange}
-            className="h-8 rounded-xl border border-input bg-input/80 px-2 text-xs"
+            className="h-9 rounded-2xl border border-border/55 bg-background/70 px-3 text-sm"
             aria-label={`${label} mode`}
           >
             <option value="currentFill">currentFill</option>
@@ -751,7 +839,7 @@ function PaintField({
             onChange={(e) =>
               onChange({ mode: 'fixed', value: e.target.value })
             }
-            className="size-7 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+            className="size-9 cursor-pointer rounded-xl border border-border/70 bg-transparent p-1"
             aria-label={`${label} color picker`}
           />
         )}
@@ -762,7 +850,7 @@ function PaintField({
           disabled={fillModeOptions && paintKind === 'currentFill'}
           list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
           placeholder={fillModeOptions ? '#RRGGBB or token name' : 'currentColor / #RRGGBB / token'}
-          className="h-7 bg-input font-mono text-xs"
+          className="h-9 min-w-[12rem] flex-1 rounded-2xl border-border/55 bg-background/70 font-mono text-[11px]"
         />
         {tokenNames.length > 0 && (
           <datalist id={`${label.toLowerCase()}-token-list`}>

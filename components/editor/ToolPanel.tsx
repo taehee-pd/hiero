@@ -39,8 +39,13 @@ export function ToolPanel() {
   const { setTool } = useEditorActions();
 
   return (
-    <div className="flex h-full flex-col items-center gap-2 py-1">
-      <div className="flex flex-col gap-2">
+    <div className="flex h-full flex-col items-center gap-3 py-2">
+      <div className="workspace-meta-card flex w-full flex-col items-center gap-1 rounded-[1.55rem] px-2 py-3">
+        <p className="workspace-kicker">Tools</p>
+        <span className="font-display text-xl tracking-[-0.08em] text-foreground">K</span>
+      </div>
+
+      <div className="flex w-full flex-col gap-2">
         {TOOLS.map((tool) => {
           const isActive = activeTool === tool.id;
           return (
@@ -55,10 +60,9 @@ export function ToolPanel() {
                   aria-label={tool.label}
                   aria-pressed={isActive}
                   disabled={tool.disabled}
+                  data-active={isActive ? 'true' : 'false'}
                   className={cn(
-                    'size-11 rounded-[1rem] border border-transparent bg-background/58 text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.4)]',
-                    isActive &&
-                      'border-primary/45 bg-primary/12 text-primary ring-1 ring-primary/20',
+                    'workspace-tool-button size-12 rounded-[1.15rem] text-muted-foreground',
                     tool.disabled && 'opacity-50',
                   )}
                 >
@@ -79,11 +83,11 @@ export function ToolPanel() {
         })}
       </div>
 
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto flex w-full flex-col gap-2">
         {VECTOR_SHORTCUTS.slice(0, 3).map((item) => (
           <div
             key={item.key}
-            className="flex min-h-8 items-center justify-center rounded-[0.9rem] border border-border/60 bg-background/60 px-2 text-[10px] font-mono text-muted-foreground"
+            className="workspace-meta-card flex min-h-9 items-center justify-center rounded-[1rem] px-2 text-[10px] font-mono text-muted-foreground"
             aria-label={`${item.label}: ${item.key}`}
             title={`${item.label}: ${item.key}`}
           >

@@ -170,34 +170,35 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.25rem] bg-[#e7eaef] dark:bg-[#1f2329]"
+      className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-[1.45rem]"
       onWheel={handleWheel}
       data-canvas-root
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: `
-            linear-gradient(45deg, #6b7280 25%, transparent 25%),
-            linear-gradient(-45deg, #6b7280 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #6b7280 75%),
-            linear-gradient(-45deg, transparent 75%, #6b7280 75%)
-          `,
-          backgroundSize: '18px 18px',
-          backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0',
-        }}
+        className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
       />
 
       {icon && variant && currentState && (
         <div
-          className="pointer-events-none absolute rounded-[1rem] border border-slate-300/70 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.16)] dark:border-slate-700 dark:bg-[#111318]"
+          className="workspace-stage pointer-events-none absolute rounded-[1.2rem]"
           style={stageStyle}
         />
       )}
 
+      <div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-center gap-2">
+        <div className="workspace-badge bg-background/84 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+          Canvas
+        </div>
+        {icon && variant && currentState ? (
+          <div className="workspace-badge bg-background/84 text-[10px] tabular-nums text-muted-foreground">
+            {vb[2]} x {vb[3]}
+          </div>
+        ) : null}
+      </div>
+
       {icon && variant && currentState && (
-        <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-black/8 bg-white/85 px-3 py-1.5 text-[11px] font-medium tabular-nums text-slate-500 shadow-sm dark:border-white/8 dark:bg-black/20 dark:text-slate-300">
-          {vb[2]} x {vb[3]}
+        <div className="pointer-events-none absolute right-4 top-4 max-w-[15rem] rounded-[1.1rem] border border-border/60 bg-background/82 px-3 py-2 text-[11px] leading-5 text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.08)] backdrop-blur-md">
+          Scroll to pan. Pinch or hold <span className="font-mono">ctrl</span> to zoom.
         </div>
       )}
 
@@ -209,7 +210,7 @@ export function Canvas() {
           height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: 'currentColor',
-          filter: 'drop-shadow(0 12px 20px rgba(15, 23, 42, 0.08))',
+          filter: 'drop-shadow(0 18px 28px rgba(15, 23, 42, 0.12))',
         }}
         aria-label="Icon canvas"
       />
@@ -222,8 +223,9 @@ export function Canvas() {
       />
 
       {(!icon || !variant || !currentState) && (
-        <div className="absolute flex flex-col items-center gap-2 text-muted-foreground">
-          <p className="text-sm font-medium">No icon</p>
+        <div className="workspace-empty-state absolute flex flex-col items-center gap-2 rounded-[1.5rem] px-8 py-8 text-muted-foreground">
+          <p className="font-display text-2xl tracking-[-0.05em] text-foreground">No icon</p>
+          <p className="text-xs">Open or create a document to start editing.</p>
         </div>
       )}
     </div>

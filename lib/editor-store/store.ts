@@ -1,4 +1,5 @@
 import type { Project, Layer } from '@/lib/schema/types';
+import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { Tool, SelectionState, ViewportState } from './types';
 
 export type EditorState = {
@@ -27,6 +28,7 @@ export type EditorActions = {
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
+  applyBoolean(mode: BooleanMode): Promise<void>;
 };
 
 export type EditorStore = EditorState & EditorActions;
@@ -317,6 +319,81 @@ function createActions(): EditorActions {
 
     commitHistory(label?: string) {
       temporalState.commit(label);
+    },
+
+    async applyBoolean(mode) {
+      const snapshot = editorStoreApi.getState();
+      const iconId = snapshot.currentIconId;
+      const stateId = snapshot.currentStateId;
+      const selectedLayerIds = Array.from(new Set(snapshot.selection.layerIds));
+      if (!snapshot.project || !iconId || !stateId || selectedLayerIds.length < 2) return;
+
+      const icon = snapshot.project.icons[iconId];
+      const state = icon?.states[stateId];
+      if (!icon || !state) return;
+
+      const selectedLayers = selectedLayerIds.map((layerId) => ({
+        layerId,
+        layer: state.layers[layerId],
+      }));
+
+      if (selectedLayers.some(({ layer }) => !layer?.path?.d)) return;
+
+      let result = selectedLayers[0]!.layer.path!.d;
+      for (const { layer } of selectedLayers.slice(1)) {
+        result = await booleanOp(mode, result, layer.path!.d);
+      }
+
+      temporalState.pause();
+      try {
+        editorStoreApi.setState((s) => {
+          if (!s.project) return s;
+          const liveIcon = s.project.icons[iconId];
+          const liveState = liveIcon?.states[stateId];
+          const primaryLayerId = selectedLayerIds[0]!;
+          const primaryLayer = liveState?.layers[primaryLayerId];
+          if (!liveIcon || !liveState || !primaryLayer?.path) return s;
+
+          const nextLayers = { ...liveState.layers };
+          nextLayers[primaryLayerId] = {
+            ...primaryLayer,
+            path: {
+              ...primaryLayer.path,
+              d: result,
+            },
+          };
+
+          for (const layerId of selectedLayerIds.slice(1)) {
+            delete nextLayers[layerId];
+          }
+
+          return {
+            project: {
+              ...s.project,
+              icons: {
+                ...s.project.icons,
+                [iconId]: {
+                  ...liveIcon,
+                  states: {
+                    ...liveIcon.states,
+                    [stateId]: {
+                      ...liveState,
+                      layers: nextLayers,
+                    },
+                  },
+                },
+              },
+            },
+            selection: {
+              layerIds: [primaryLayerId],
+              pointIds: [],
+            },
+          };
+        });
+      } finally {
+        temporalState.resume();
+        temporalState.commit(`boolean:${mode}`);
+      }
     },
   };
 }

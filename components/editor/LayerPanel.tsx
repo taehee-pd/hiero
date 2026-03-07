@@ -20,20 +20,23 @@ export function LayerPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-transparent">
-      <div className="border-b border-border/55 px-4 py-3">
+      <div className="workspace-panel-header px-4 py-3.5">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Layers</p>
-          <span className="rounded-full border border-border/60 bg-background/80 px-2 py-1 text-[10px] font-medium tabular-nums text-muted-foreground">
+          <div>
+            <p className="workspace-kicker">Layers</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">Document stack</p>
+          </div>
+          <span className="workspace-badge text-[10px] tabular-nums text-muted-foreground">
             {layers.length}
           </span>
         </div>
       </div>
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-1 px-2 py-2">
+      <ScrollArea className="workspace-scroll flex-1">
+        <div className="flex flex-col gap-2 px-3 py-3">
           {layers.length === 0 && (
-            <p className="px-2 py-4 text-xs text-muted-foreground text-center">
+            <div className="workspace-empty-state rounded-[1.3rem] px-3 py-6 text-center text-xs text-muted-foreground">
               No layers
-            </p>
+            </div>
           )}
           {layers.map((layer) => {
             const isSelected = selection.layerIds.includes(layer.id);
@@ -43,9 +46,9 @@ export function LayerPanel() {
               <div
                 key={layer.id}
                 className={cn(
-                  'group flex cursor-pointer items-center gap-2 rounded-[0.9rem] border border-transparent px-2.5 py-2 text-sm transition-colors',
-                  'bg-background/38 hover:border-border/60 hover:bg-secondary/45',
-                  isSelected && 'border-primary/35 bg-primary/10 text-primary',
+                  'group workspace-meta-card flex cursor-pointer items-center gap-3 rounded-[1.2rem] px-3 py-3 text-sm transition',
+                  'hover:-translate-y-px hover:border-primary/22',
+                  isSelected && 'border-primary/35 bg-primary/10 text-primary shadow-[0_18px_38px_color-mix(in_oklab,var(--primary)_12%,transparent)]',
                 )}
                 onClick={() =>
                   setSelection({ layerIds: [layer.id], pointIds: [] })
@@ -85,7 +88,7 @@ export function LayerPanel() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="size-7 rounded-[0.8rem] border border-transparent opacity-0 text-muted-foreground transition-opacity group-hover:opacity-100 hover:border-border/60 hover:bg-background/70 hover:text-foreground"
+                  className="workspace-tool-button size-8 rounded-[0.95rem] opacity-0 text-muted-foreground transition-opacity group-hover:opacity-100 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (currentIconId && currentStateId) {

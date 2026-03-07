@@ -18,7 +18,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/kibo-ui/tooltip';
-import { Separator } from '@/components/kibo-ui/separator';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
@@ -128,23 +127,43 @@ export function Toolbar() {
   }, []);
 
   return (
-    <header className="mx-4 mb-2 mt-3 flex h-12 items-center gap-1 rounded-xl border border-border/60 bg-toolbar-bg/90 px-3 backdrop-blur-md">
-      {/* Project name */}
-      <span className="mr-2 max-w-40 truncate text-sm font-semibold text-foreground">
-        {projectName}
-      </span>
+    <header className="studio-panel relative z-10 mx-4 mb-2 mt-3 rounded-[1.75rem] px-4 py-3 backdrop-blur-md lg:mx-5">
+      <div className="relative z-10 flex flex-wrap items-center gap-3">
+        <div className="mr-auto min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-display text-2xl leading-none tracking-[-0.05em] text-foreground">{projectName}</span>
+            <span className="rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium tabular-nums text-muted-foreground">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+        </div>
 
-      <Separator orientation="vertical" className="h-5" />
+        <ToolbarGroup>
+          <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
+          <ToolbarButton icon={FolderOpen} label="Open JSON" onClick={handleOpen} />
+          <ToolbarButton icon={Save} label="Save JSON" onClick={handleSave} />
+          <ToolbarButton
+            icon={Download}
+            label="Export SVG"
+            onClick={handleExportSvg}
+          />
+        </ToolbarGroup>
 
-      {/* File actions */}
-      <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
-      <ToolbarButton icon={FolderOpen} label="Open JSON" onClick={handleOpen} />
-      <ToolbarButton icon={Save} label="Save JSON" onClick={handleSave} />
-      <ToolbarButton
-        icon={Download}
-        label="Export SVG"
-        onClick={handleExportSvg}
-      />
+        <ToolbarGroup>
+          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} />
+          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} />
+        </ToolbarGroup>
+
+        <ToolbarGroup>
+          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
+          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
+          <ToolbarButton
+            icon={Maximize2}
+            label="Fit to Content"
+            onClick={handleZoomFit}
+          />
+        </ToolbarGroup>
+      </div>
 
       <input
         ref={fileInputRef}
@@ -154,27 +173,19 @@ export function Toolbar() {
         onChange={handleFileChange}
         aria-label="Open project file"
       />
-
-      <Separator orientation="vertical" className="h-5" />
-
-      {/* Undo / Redo */}
-      <ToolbarButton icon={Undo2} label="Undo" onClick={undo} />
-      <ToolbarButton icon={Redo2} label="Redo" onClick={redo} />
-
-      <Separator orientation="vertical" className="h-5" />
-
-      {/* Zoom controls */}
-      <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
-      <span className="min-w-12 text-center text-xs font-medium text-muted-foreground tabular-nums">
-        {Math.round(zoom * 100)}%
-      </span>
-      <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
-      <ToolbarButton
-        icon={Maximize2}
-        label="Fit to Content"
-        onClick={handleZoomFit}
-      />
     </header>
+  );
+}
+
+function ToolbarGroup({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-full border border-border/70 bg-toolbar-bg/90 px-2 py-2">
+      <div className="flex items-center gap-1">{children}</div>
+    </div>
   );
 }
 
@@ -199,7 +210,7 @@ function ToolbarButton({
           size="icon-sm"
           onClick={onClick}
           aria-label={label}
-          className="rounded-xl text-muted-foreground hover:bg-background/70 hover:text-foreground"
+          className="rounded-full border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/70 hover:text-foreground"
         >
           <Icon className="size-4" />
         </Button>

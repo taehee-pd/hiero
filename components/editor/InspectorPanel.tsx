@@ -34,12 +34,10 @@ export function InspectorPanel() {
     return (
       <div className="flex h-full flex-col bg-transparent">
         <div className="px-4 pt-3 pb-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Inspector
-          </span>
+          <span className="text-sm font-semibold">Inspect</span>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-xs text-muted-foreground">Select a layer</p>
+          <p className="text-xs text-muted-foreground">No layer</p>
         </div>
       </div>
     );
@@ -51,9 +49,7 @@ export function InspectorPanel() {
   return (
     <div className="flex h-full flex-col bg-transparent">
       <div className="px-4 pt-3 pb-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Properties
-        </span>
+        <span className="text-sm font-semibold">Inspect</span>
       </div>
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 px-4 pb-4">
@@ -64,10 +60,7 @@ export function InspectorPanel() {
 
           <Separator />
 
-          <Section title="Pathfinder">
-            <p className="text-[11px] text-muted-foreground">
-              Basic compound operations on selected layers.
-            </p>
+          <Section title="Boolean">
             <div className="grid grid-cols-2 gap-1">
               <Button
                 size="sm"
@@ -111,7 +104,7 @@ export function InspectorPanel() {
               </Button>
             </div>
             {!multipleLayersSelected && (
-              <p className="text-[11px] text-muted-foreground">Select 2+ layers to enable.</p>
+              <p className="text-[11px] text-muted-foreground">2+ layers</p>
             )}
           </Section>
 
@@ -224,7 +217,7 @@ export function InspectorPanel() {
 
           <Separator />
 
-          <Section title="Point Properties">
+          <Section title="Points">
             <ReadOnlyField label="Selected" value={String(pointContext.count)} />
             <NumberField
               label="X"

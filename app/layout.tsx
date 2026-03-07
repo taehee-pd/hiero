@@ -1,15 +1,37 @@
-import type { Metadata } from 'next'
-import { Analytics } from '@vercel/analytics/next'
-import { ThemeProvider } from '@/components/theme-provider'
-import './globals.css'
+import type { Metadata } from 'next';
+import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
+import { IBM_Plex_Mono, Instrument_Sans, Syne } from 'next/font/google';
+import { ThemeProvider } from '@/components/theme-provider';
+import './globals.css';
+
+const sans = Instrument_Sans({
+  subsets: ['latin'],
+  variable: '--font-body-source',
+  display: 'swap',
+});
+
+const display = Syne({
+  subsets: ['latin'],
+  variable: '--font-display-source',
+  weight: ['500', '600', '700', '800'],
+  display: 'swap',
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono-source',
+  weight: ['400', '500'],
+  display: 'swap',
+});
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#111827' },
+    { media: '(prefers-color-scheme: light)', color: '#f4efe5' },
+    { media: '(prefers-color-scheme: dark)', color: '#13100d' },
   ],
 };
 
@@ -33,21 +55,24 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
-      <body className="font-sans antialiased overflow-hidden">
+      <body
+        className={`${sans.variable} ${display.variable} ${mono.variable} overflow-hidden font-sans antialiased`}
+      >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Analytics />
         </ThemeProvider>
+        <Script src="https://mcp.figma.com/mcp/html-to-design/capture.js" strategy="afterInteractive" />
       </body>
     </html>
-  )
+  );
 }

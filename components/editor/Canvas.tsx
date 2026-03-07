@@ -202,6 +202,27 @@ export function Canvas() {
         </div>
       )}
 
+      {icon && variant && currentState && (
+        <div className="pointer-events-none absolute inset-x-4 bottom-4">
+          <div className="workspace-status-strip rounded-[1.35rem] px-3 py-3">
+            <div className="relative z-10 flex flex-wrap items-center gap-2">
+              <span className="workspace-badge bg-background/82 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                {tool.replace('-', ' ')}
+              </span>
+              <span className="workspace-badge bg-background/82 text-[10px] tabular-nums text-muted-foreground">
+                {selection.layerIds.length} layer{selection.layerIds.length === 1 ? '' : 's'}
+              </span>
+              <span className="workspace-badge bg-background/82 text-[10px] tabular-nums text-muted-foreground">
+                {selection.pointIds.length} point{selection.pointIds.length === 1 ? '' : 's'}
+              </span>
+              <p className="ml-auto text-[11px] leading-5 text-muted-foreground">
+                Stage follows the icon viewBox and stays editable at any zoom level.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <svg
         ref={svgRef}
         className="pointer-events-auto cursor-crosshair"

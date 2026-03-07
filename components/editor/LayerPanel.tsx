@@ -21,14 +21,33 @@ export function LayerPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-transparent">
       <div className="workspace-panel-header px-4 py-3.5">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <p className="workspace-kicker">Layers</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">Document stack</p>
+            <p className="mt-2 font-display text-[1.45rem] leading-none tracking-[-0.05em] text-foreground">
+              Document stack
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Select the survivor path before applying booleans or point edits.
+            </p>
           </div>
           <span className="workspace-badge text-[10px] tabular-nums text-muted-foreground">
             {layers.length}
           </span>
+        </div>
+        <div className="workspace-meta-card mt-4 rounded-[1.2rem] px-3 py-3">
+          <div className="relative z-10 grid grid-cols-2 gap-2">
+            <div>
+              <p className="workspace-kicker text-[0.58rem]">Selected</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{selection.layerIds.length}</p>
+            </div>
+            <div>
+              <p className="workspace-kicker text-[0.58rem]">Visible</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {layers.filter((layer) => layer.visible !== false).length}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       <ScrollArea className="workspace-scroll flex-1">
@@ -75,14 +94,12 @@ export function LayerPanel() {
                 />
 
                 {/* Layer name */}
-                <span
-                  className={cn(
-                    'flex-1 truncate',
-                    !isVisible && 'opacity-40',
-                  )}
-                >
-                  {layer.id}
-                </span>
+                <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-40')}>
+                  <p className="truncate text-sm font-medium">{layer.id}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {layer.role ?? 'No role'} · {layer.path?.d ? 'Path layer' : 'Empty'}
+                  </p>
+                </div>
 
                 {/* Visibility toggle */}
                 <Button

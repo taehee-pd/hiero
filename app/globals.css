@@ -445,4 +445,96 @@
     background:
       linear-gradient(180deg, color-mix(in oklab, var(--background) 76%, white 24%), color-mix(in oklab, var(--background) 96%, transparent 4%));
   }
+
+  .workspace-column {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .workspace-section-card {
+    position: relative;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 80%, white 20%), color-mix(in oklab, var(--card) 96%, transparent 4%));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 30%, transparent),
+      0 16px 32px color-mix(in oklab, var(--foreground) 6%, transparent);
+  }
+
+  .workspace-insight-grid {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-insight-card {
+    border-radius: 1.05rem;
+    border: 1px solid color-mix(in oklab, var(--border) 70%, var(--foreground) 30%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 82%, white 18%), color-mix(in oklab, var(--background) 96%, transparent 4%));
+    padding: 0.9rem;
+    box-shadow: inset 0 1px 0 color-mix(in oklab, white 26%, transparent);
+  }
+
+  .workspace-nav-button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 78%, white 22%), color-mix(in oklab, var(--background) 95%, transparent 5%));
+    padding: 0.8rem 0.9rem;
+    text-align: left;
+    transition:
+      border-color 180ms ease,
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      background 180ms ease;
+  }
+
+  .workspace-nav-button:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in oklab, var(--primary) 36%, var(--border));
+    box-shadow: 0 14px 28px color-mix(in oklab, var(--foreground) 8%, transparent);
+  }
+
+  .workspace-nav-button[data-active='true'] {
+    border-color: color-mix(in oklab, var(--primary) 54%, var(--border));
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--primary) 12%, white 88%), color-mix(in oklab, var(--primary) 8%, var(--card)));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
+      0 18px 32px color-mix(in oklab, var(--primary) 12%, transparent);
+  }
+
+  .dark .workspace-nav-button[data-active='true'] {
+    background:
+      linear-gradient(180deg, color-mix(in oklab, var(--primary) 18%, black 82%), color-mix(in oklab, var(--primary) 10%, var(--card)));
+  }
+
+  .workspace-status-strip {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--border) 72%, var(--foreground) 28%);
+    background:
+      linear-gradient(120deg, color-mix(in oklab, var(--background) 82%, white 18%), color-mix(in oklab, var(--card) 96%, transparent 4%));
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 34%, transparent),
+      0 18px 34px color-mix(in oklab, var(--foreground) 7%, transparent);
+  }
+
+  .workspace-status-strip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 22%),
+      radial-gradient(circle at bottom right, color-mix(in oklab, var(--accent) 8%, transparent) 0%, transparent 24%);
+  }
 }

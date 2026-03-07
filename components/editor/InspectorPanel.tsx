@@ -52,6 +52,28 @@ export function InspectorPanel() {
       selection.layerIds.every((layerId) => Boolean(currentState.layers[layerId]?.path?.d)),
   );
   const booleanDisabled = !hasBooleanableSelection || pendingBooleanMode !== null;
+  const handleBooleanAction = useCallback(
+    async (mode: BooleanMode) => {
+      if (booleanDisabled) return;
+
+      setPendingBooleanMode(mode);
+      try {
+        await applyBoolean(mode);
+      } catch (error) {
+        console.error('[InspectorPanel] boolean operation failed', error);
+        toast({
+          title: 'Boolean operation failed',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Selected layers could not be combined. Check that each layer has a valid path.',
+        });
+      } finally {
+        setPendingBooleanMode(null);
+      }
+    },
+    [applyBoolean, booleanDisabled],
+  );
 
   if (!layer) {
     return (
@@ -86,28 +108,6 @@ export function InspectorPanel() {
       ? `${layer.path.d.slice(0, 84)}...`
       : layer.path.d
     : 'No path';
-  const handleBooleanAction = useCallback(
-    async (mode: BooleanMode) => {
-      if (booleanDisabled) return;
-
-      setPendingBooleanMode(mode);
-      try {
-        await applyBoolean(mode);
-      } catch (error) {
-        console.error('[InspectorPanel] boolean operation failed', error);
-        toast({
-          title: 'Boolean operation failed',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'Selected layers could not be combined. Check that each layer has a valid path.',
-        });
-      } finally {
-        setPendingBooleanMode(null);
-      }
-    },
-    [applyBoolean, booleanDisabled],
-  );
 
   return (
     <div className="flex h-full flex-col bg-transparent">

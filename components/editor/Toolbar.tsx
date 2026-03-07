@@ -11,6 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import {
@@ -35,6 +36,8 @@ export function Toolbar() {
     (s) => s.project?.meta.name ?? 'Icophone',
   );
   const zoom = useEditorStore((s) => s.viewport.zoom);
+  const tool = useEditorStore((s) => s.tool);
+  const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
 
   // ── File actions ──────────────────────────────────────────
 
@@ -131,17 +134,24 @@ export function Toolbar() {
       <div className="relative z-10 flex flex-wrap items-center gap-3">
         <div className="mr-auto min-w-0">
           <p className="workspace-kicker">Workspace</p>
-          <div className="mt-2 flex min-w-0 items-center gap-2">
-            <span className="truncate font-display text-[1.4rem] leading-none tracking-[-0.05em] text-foreground">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+            <span className="truncate font-display text-[1.45rem] leading-none tracking-[-0.05em] text-foreground">
               {projectName}
             </span>
-            <span className="workspace-badge tabular-nums">
-              {Math.round(zoom * 100)}%
+            <span className="workspace-badge tabular-nums">{Math.round(zoom * 100)}%</span>
+            <span className="workspace-badge text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              {tool.replace('-', ' ')}
+            </span>
+            <span className="workspace-badge text-[10px] tabular-nums text-muted-foreground">
+              {selectionCount} selected
             </span>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Author paths, align geometry, and export icon states from one control surface.
+          </p>
         </div>
 
-        <ToolbarGroup>
+        <ToolbarGroup label="File">
           <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
           <ToolbarButton icon={FolderOpen} label="Open JSON" onClick={handleOpen} />
           <ToolbarButton icon={Save} label="Save JSON" onClick={handleSave} />
@@ -152,12 +162,12 @@ export function Toolbar() {
           />
         </ToolbarGroup>
 
-        <ToolbarGroup>
+        <ToolbarGroup label="History">
           <ToolbarButton icon={Undo2} label="Undo" onClick={undo} />
           <ToolbarButton icon={Redo2} label="Redo" onClick={redo} />
         </ToolbarGroup>
 
-        <ToolbarGroup>
+        <ToolbarGroup label="View">
           <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
           <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
           <ToolbarButton
@@ -166,6 +176,16 @@ export function Toolbar() {
             onClick={handleZoomFit}
           />
         </ToolbarGroup>
+
+        <div className="workspace-section-card hidden rounded-[1.2rem] px-3 py-2.5 xl:block">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Sparkles className="size-3.5" />
+            <span className="workspace-kicker text-[0.58rem]">Flow</span>
+          </div>
+          <p className="mt-2 max-w-[13rem] text-xs leading-5 text-muted-foreground">
+            Use the left rail to frame the edit, the center stage to draw, and the inspector to refine booleans and fills.
+          </p>
+        </div>
       </div>
 
       <input
@@ -182,11 +202,16 @@ export function Toolbar() {
 
 function ToolbarGroup({
   children,
+  label,
 }: {
   children: React.ReactNode;
+  label: string;
 }) {
   return (
     <div className="workspace-toolbar-group">
+      <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
       <div className="flex items-center gap-1">{children}</div>
     </div>
   );

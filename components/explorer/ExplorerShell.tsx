@@ -46,6 +46,7 @@ export function ExplorerShell() {
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
     const state = editorStore.getState();
@@ -67,6 +68,20 @@ export function ExplorerShell() {
   const groups = useMemo(() => categorizeIcons(filtered), [filtered]);
   const selectionSet = useMemo(() => new Set(selection), [selection]);
   const projectName = project?.meta.name ?? 'Icophone';
+  const visibleIcons = useMemo(
+    () =>
+      activeCategory === 'all'
+        ? filtered
+        : filtered.filter((icon) => (icon.category || 'uncategorized') === activeCategory),
+    [activeCategory, filtered],
+  );
+
+  useEffect(() => {
+    if (activeCategory === 'all') return;
+    if (!groups.some(([category]) => category === activeCategory)) {
+      setActiveCategory('all');
+    }
+  }, [activeCategory, groups]);
 
   const assignCategory = () => {
     const nextCategory = categoryInput.trim();
@@ -89,156 +104,148 @@ export function ExplorerShell() {
 
   return (
     <div className="swift-surface flex h-dvh flex-col overflow-hidden text-foreground">
-      <header className="px-4 pt-4 md:px-6 md:pt-6">
-        <div className="studio-panel mx-auto flex w-full max-w-[120rem] flex-wrap items-center gap-3 rounded-[1.75rem] px-4 py-3 md:px-5">
+      <header className="workspace-header mx-3 mb-3 mt-3 rounded-xl px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="mr-auto min-w-0">
-            <h1 className="truncate font-display text-2xl leading-none tracking-[-0.05em]">{projectName}</h1>
+            <p className="truncate text-sm font-medium text-foreground">{projectName}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{filtered.length} icons</p>
           </div>
-
-          <div className="relative min-w-[16rem] flex-1 md:max-w-md">
+          <div className="relative min-w-[16rem] flex-1 md:max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search"
-              className="h-10 rounded-full border-border/70 bg-background/85 pl-10"
+              className="h-9 rounded-md border-border bg-background pl-10"
             />
           </div>
-
-          <CountChip value={icons.length} label="Total" />
-          <CountChip value={filtered.length} label="Shown" />
-          <CountChip value={selection.length} label="Picked" active={selection.length > 0} />
         </div>
       </header>
 
-      <main className="mx-auto grid min-h-0 w-full max-w-[120rem] flex-1 grid-cols-1 gap-4 px-4 pb-4 md:px-6 md:pb-6 xl:grid-cols-[15rem_1fr]">
-        <aside className="studio-panel min-h-0 rounded-[1.75rem] p-3 md:p-4">
-          <div className="flex h-full flex-col gap-3">
-            <div className="flex items-center justify-between rounded-[1.2rem] border border-border/70 bg-background/72 px-3 py-3">
-              <span className="text-sm font-medium">Selection</span>
-              <span className="rounded-full border border-border/60 bg-card/90 px-2 py-1 text-xs tabular-nums">
-                {selection.length}
-              </span>
+      <main className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[14rem_minmax(0,1fr)]">
+        <aside className="studio-panel min-h-0 overflow-hidden rounded-xl">
+          <div className="workspace-panel-header px-4 py-3">
+            <p className="text-sm font-medium text-foreground">Categories</p>
+          </div>
+          <div className="flex h-full min-h-0 flex-col gap-3 p-3">
+            <div className="grid gap-1">
+              <CategoryButton
+                label="All"
+                count={filtered.length}
+                active={activeCategory === 'all'}
+                onClick={() => setActiveCategory('all')}
+              />
+              {groups.map(([category, categoryIcons]) => (
+                <CategoryButton
+                  key={category}
+                  label={category}
+                  count={categoryIcons.length}
+                  active={activeCategory === category}
+                  onClick={() => setActiveCategory(category)}
+                />
+              ))}
             </div>
 
-            <div className="grid gap-2">
-              <Button
-                className="h-10 rounded-full border border-border/70 bg-foreground text-background hover:bg-foreground/90"
-                onClick={() => setSelection(filtered.map((icon) => icon.id))}
-              >
-                Select all
-              </Button>
-              <Button
-                className="h-10 rounded-full"
-                variant="outline"
-                onClick={() => setSelection([])}
-              >
-                Clear
-              </Button>
-            </div>
-
-            <div className="mt-1 rounded-[1.2rem] border border-border/70 bg-background/72 p-3">
+            <div className="mt-auto space-y-2 border-t border-border pt-3">
               <Input
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
-                placeholder="Category"
-                className="h-10 rounded-full border-border/70 bg-background/85"
+                placeholder="New category"
+                className="h-9 rounded-md border-border bg-background"
               />
               <Button
-                className="mt-2 h-10 w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                variant="outline"
+                className="h-9 w-full rounded-md"
                 onClick={assignCategory}
                 disabled={selection.length === 0 || !categoryInput.trim()}
               >
-                Apply
+                Apply to selection
               </Button>
             </div>
           </div>
         </aside>
 
-        <section className="studio-panel flex min-h-0 flex-col rounded-[1.75rem] p-3">
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="space-y-6 px-1 pb-2">
-              {groups.length === 0 ? (
-                <div className="flex min-h-[20rem] items-center justify-center rounded-[1.5rem] border border-dashed border-border/70 bg-background/50">
-                  <p className="text-sm text-muted-foreground">No results</p>
+        <section className="studio-panel min-h-0 overflow-hidden rounded-xl">
+          <div className="workspace-panel-header flex items-center justify-between px-4 py-3">
+            <p className="text-sm font-medium text-foreground">
+              {activeCategory === 'all' ? 'All icons' : activeCategory}
+            </p>
+            <span className="text-xs text-muted-foreground">
+              {visibleIcons.length}
+            </span>
+          </div>
+
+          <ScrollArea className="workspace-scroll h-full">
+            <div className="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              {visibleIcons.length === 0 ? (
+                <div className="workspace-empty-state col-span-full rounded-md px-4 py-10 text-center text-sm text-muted-foreground">
+                  No results
                 </div>
-              ) : (
-                groups.map(([category, categoryIcons]) => (
-                  <section key={category} className="space-y-3">
-                    <div className="flex items-center justify-between gap-3 border-b border-border/55 px-1 pb-2">
-                      <h2 className="truncate text-sm font-semibold capitalize">{category}</h2>
-                      <span className="text-xs tabular-nums text-muted-foreground">{categoryIcons.length}</span>
+              ) : null}
+              {visibleIcons.map((icon) => {
+                const iconDef = project?.icons[icon.id];
+                const svg =
+                  iconDef &&
+                  exportSvgString(
+                    iconDef,
+                    Object.keys(iconDef.variants)[0],
+                    Object.keys(iconDef.states)[0],
+                    project?.tokenSet?.colors,
+                  );
+                const active = selectionSet.has(icon.id);
+
+                return (
+                  <article
+                    key={icon.id}
+                    className={cn(
+                      'studio-card rounded-lg p-3',
+                      active && 'border-foreground/20 bg-foreground/[0.04]',
+                    )}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="truncate text-[11px] text-muted-foreground">{icon.category || 'uncategorized'}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSelection(icon.id)}
+                        aria-pressed={active}
+                        aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
+                        className={cn(
+                          'inline-flex size-7 items-center justify-center rounded-md border',
+                          active
+                            ? 'border-foreground/20 bg-foreground/10 text-foreground'
+                            : 'border-border bg-background text-muted-foreground',
+                        )}
+                      >
+                        <Check className="size-3.5" />
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                      {categoryIcons.map((icon) => {
-                        const iconDef = project?.icons[icon.id];
-                        const svg =
-                          iconDef &&
-                          exportSvgString(
-                            iconDef,
-                            Object.keys(iconDef.variants)[0],
-                            Object.keys(iconDef.states)[0],
-                            project?.tokenSet?.colors,
-                          );
-                        const active = selectionSet.has(icon.id);
-
-                        return (
-                          <article
-                            key={icon.id}
-                            className={cn(
-                              'studio-card rounded-[1.2rem] p-2.5',
-                              active && 'border-primary/65 bg-primary/10 ring-1 ring-primary/20',
-                            )}
-                          >
-                            <div className="mb-2 flex items-center justify-end">
-                              <button
-                                type="button"
-                                onClick={() => toggleSelection(icon.id)}
-                                aria-pressed={active}
-                                aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
-                                className={cn(
-                                  'inline-flex size-8 items-center justify-center rounded-full border transition',
-                                  active
-                                    ? 'border-primary/50 bg-primary text-primary-foreground'
-                                    : 'border-border/65 bg-background/80 text-muted-foreground hover:border-primary/35 hover:text-foreground',
-                                )}
-                              >
-                                <Check className="size-3.5" />
-                              </button>
-                            </div>
-
-                            <Link
-                              href={`/editor/${icon.id}`}
-                              onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
-                              className="group block"
-                            >
-                              <div className="studio-preview mb-2 flex aspect-square items-center justify-center rounded-[1rem] border border-border/70">
-                                {svg ? (
-                                  <div
-                                    className="h-14 w-14 text-slate-900 transition-transform duration-200 group-hover:scale-105 dark:text-slate-100"
-                                    dangerouslySetInnerHTML={{ __html: svg }}
-                                  />
-                                ) : (
-                                  <Grid3X3 className="size-5 text-muted-foreground" />
-                                )}
-                              </div>
-
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-medium">{icon.name}</p>
-                                  <p className="truncate font-mono text-[11px] text-muted-foreground">{icon.id}</p>
-                                </div>
-                                <ArrowUpRight className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
-                              </div>
-                            </Link>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))
-              )}
+                    <Link
+                      href={`/editor/${icon.id}`}
+                      onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
+                      className="group block"
+                    >
+                      <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-md border border-border">
+                        {svg ? (
+                          <div
+                            className="h-14 w-14 text-slate-900 dark:text-slate-100"
+                            dangerouslySetInnerHTML={{ __html: svg }}
+                          />
+                        ) : (
+                          <Grid3X3 className="size-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{icon.name}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">{icon.id}</p>
+                        </div>
+                        <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+                      </div>
+                    </Link>
+                  </article>
+                );
+              })}
             </div>
           </ScrollArea>
         </section>
@@ -247,24 +254,26 @@ export function ExplorerShell() {
   );
 }
 
-function CountChip({
-  value,
+function CategoryButton({
   label,
-  active = false,
+  count,
+  active,
+  onClick,
 }: {
-  value: number;
   label: string;
-  active?: boolean;
+  count: number;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div
-      aria-label={`${label} ${value}`}
-      className={cn(
-        'rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium tabular-nums text-muted-foreground',
-        active && 'border-primary/40 bg-primary/10 text-primary',
-      )}
+    <button
+      type="button"
+      data-active={active ? 'true' : 'false'}
+      onClick={onClick}
+      className="workspace-nav-button h-9 rounded-md px-3 py-2"
     >
-      {value}
-    </div>
+      <span className="truncate text-sm text-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{count}</span>
+    </button>
   );
 }

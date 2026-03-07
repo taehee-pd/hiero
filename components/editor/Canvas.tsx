@@ -170,36 +170,30 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.25rem] bg-[#e7eaef] dark:bg-[#1f2329]"
+      className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg"
       onWheel={handleWheel}
       data-canvas-root
     >
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: `
-            linear-gradient(45deg, #6b7280 25%, transparent 25%),
-            linear-gradient(-45deg, #6b7280 25%, transparent 25%),
-            linear-gradient(45deg, transparent 75%, #6b7280 75%),
-            linear-gradient(-45deg, transparent 75%, #6b7280 75%)
-          `,
-          backgroundSize: '18px 18px',
-          backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0',
-        }}
+        className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
       />
 
       {icon && variant && currentState && (
         <div
-          className="pointer-events-none absolute rounded-[1rem] border border-slate-300/70 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.16)] dark:border-slate-700 dark:bg-[#111318]"
+          className="workspace-stage pointer-events-none absolute rounded-md"
           style={stageStyle}
         />
       )}
 
-      {icon && variant && currentState && (
-        <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-black/8 bg-white/85 px-3 py-1.5 text-[11px] font-medium tabular-nums text-slate-500 shadow-sm dark:border-white/8 dark:bg-black/20 dark:text-slate-300">
-          {vb[2]} x {vb[3]}
+      {icon && variant && currentState ? (
+        <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{tool}</span>
+          <span>·</span>
+          <span>{vb[2]} × {vb[3]}</span>
+          <span>·</span>
+          <span>{selection.layerIds.length} layers</span>
         </div>
-      )}
+      ) : null}
 
       <svg
         ref={svgRef}
@@ -209,7 +203,7 @@ export function Canvas() {
           height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: 'currentColor',
-          filter: 'drop-shadow(0 12px 20px rgba(15, 23, 42, 0.08))',
+          filter: 'drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08))',
         }}
         aria-label="Icon canvas"
       />
@@ -222,8 +216,8 @@ export function Canvas() {
       />
 
       {(!icon || !variant || !currentState) && (
-        <div className="absolute flex flex-col items-center gap-2 text-muted-foreground">
-          <p className="text-sm font-medium">No icon</p>
+        <div className="workspace-empty-state absolute rounded-md px-6 py-5 text-sm text-muted-foreground">
+          No icon selected
         </div>
       )}
     </div>

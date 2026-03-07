@@ -170,7 +170,7 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-[1.45rem]"
+      className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg"
       onWheel={handleWheel}
       data-canvas-root
     >
@@ -180,48 +180,20 @@ export function Canvas() {
 
       {icon && variant && currentState && (
         <div
-          className="workspace-stage pointer-events-none absolute rounded-[1.2rem]"
+          className="workspace-stage pointer-events-none absolute rounded-md"
           style={stageStyle}
         />
       )}
 
-      <div className="pointer-events-none absolute left-4 top-4 flex flex-wrap items-center gap-2">
-        <div className="workspace-badge bg-background/84 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-          Canvas
+      {icon && variant && currentState ? (
+        <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{tool}</span>
+          <span>·</span>
+          <span>{vb[2]} × {vb[3]}</span>
+          <span>·</span>
+          <span>{selection.layerIds.length} layers</span>
         </div>
-        {icon && variant && currentState ? (
-          <div className="workspace-badge bg-background/84 text-[10px] tabular-nums text-muted-foreground">
-            {vb[2]} x {vb[3]}
-          </div>
-        ) : null}
-      </div>
-
-      {icon && variant && currentState && (
-        <div className="pointer-events-none absolute right-4 top-4 max-w-[15rem] rounded-[1.1rem] border border-border/60 bg-background/82 px-3 py-2 text-[11px] leading-5 text-muted-foreground shadow-[0_14px_34px_rgba(15,23,42,0.08)] backdrop-blur-md">
-          Scroll to pan. Pinch or hold <span className="font-mono">ctrl</span> to zoom.
-        </div>
-      )}
-
-      {icon && variant && currentState && (
-        <div className="pointer-events-none absolute inset-x-4 bottom-4">
-          <div className="workspace-status-strip rounded-[1.35rem] px-3 py-3">
-            <div className="relative z-10 flex flex-wrap items-center gap-2">
-              <span className="workspace-badge bg-background/82 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                {tool.replace('-', ' ')}
-              </span>
-              <span className="workspace-badge bg-background/82 text-[10px] tabular-nums text-muted-foreground">
-                {selection.layerIds.length} layer{selection.layerIds.length === 1 ? '' : 's'}
-              </span>
-              <span className="workspace-badge bg-background/82 text-[10px] tabular-nums text-muted-foreground">
-                {selection.pointIds.length} point{selection.pointIds.length === 1 ? '' : 's'}
-              </span>
-              <p className="ml-auto text-[11px] leading-5 text-muted-foreground">
-                Stage follows the icon viewBox and stays editable at any zoom level.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       <svg
         ref={svgRef}
@@ -231,7 +203,7 @@ export function Canvas() {
           height: `${iconHeight * scale}px`,
           transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
           color: 'currentColor',
-          filter: 'drop-shadow(0 18px 28px rgba(15, 23, 42, 0.12))',
+          filter: 'drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08))',
         }}
         aria-label="Icon canvas"
       />
@@ -244,9 +216,8 @@ export function Canvas() {
       />
 
       {(!icon || !variant || !currentState) && (
-        <div className="workspace-empty-state absolute flex flex-col items-center gap-2 rounded-[1.5rem] px-8 py-8 text-muted-foreground">
-          <p className="font-display text-2xl tracking-[-0.05em] text-foreground">No icon</p>
-          <p className="text-xs">Open or create a document to start editing.</p>
+        <div className="workspace-empty-state absolute rounded-md px-6 py-5 text-sm text-muted-foreground">
+          No icon selected
         </div>
       )}
     </div>

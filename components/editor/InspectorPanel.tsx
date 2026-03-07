@@ -77,24 +77,13 @@ export function InspectorPanel() {
 
   if (!layer) {
     return (
-      <div className="flex h-full flex-col bg-transparent">
-        <div className="workspace-panel-header px-4 py-4">
-          <p className="workspace-kicker">
-            Inspector
-          </p>
-          <p className="mt-2 font-display text-2xl tracking-[-0.05em] text-foreground">
-            No selection
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Select a layer to inspect geometry, styling, and transforms.
-          </p>
+      <div className="flex h-full flex-col">
+        <div className="workspace-panel-header px-4 py-3">
+          <p className="text-sm font-medium text-foreground">Inspector</p>
         </div>
         <div className="flex flex-1 items-center justify-center px-4 py-6">
-          <div className="workspace-empty-state w-full rounded-[1.35rem] px-5 py-8 text-center">
-            <p className="text-sm font-semibold text-foreground">Inspector is standing by</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Layer details appear here once a path or shape is selected on the canvas.
-            </p>
+          <div className="workspace-empty-state w-full rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
+            No selection
           </div>
         </div>
       </div>
@@ -110,47 +99,24 @@ export function InspectorPanel() {
     : 'No path';
 
   return (
-    <div className="flex h-full flex-col bg-transparent">
-      <div className="workspace-panel-header px-4 py-4">
-        <p className="workspace-kicker">
-          Inspector
-        </p>
-        <div className="workspace-meta-card mt-3 rounded-[1.35rem] p-4">
-          <div className="relative z-10 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-display text-[1.7rem] leading-none tracking-[-0.06em] text-foreground">
-                {layer.id}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {layer.role ?? 'Unassigned role'}
-              </p>
-            </div>
-            <span className="workspace-badge text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              {selection.layerIds.length} selected
-            </span>
+    <div className="flex h-full flex-col">
+      <div className="workspace-panel-header px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{layer.role ?? 'layer'}</p>
           </div>
-          <div className="relative z-10 mt-4 grid grid-cols-3 gap-2">
-            <InspectorStat
-              label="Path"
-              value={layer.path ? 'Ready' : 'Missing'}
-            />
-            <InspectorStat
-              label="Points"
-              value={pointContext.count.toString().padStart(2, '0')}
-            />
-            <InspectorStat
-              label="Mode"
-              value={hasEditablePath ? 'Edit' : 'Mixed'}
-            />
-          </div>
+          <span className="text-xs text-muted-foreground">{selection.layerIds.length} selected</span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <InspectorStat label="Path" value={layer.path ? 'Ready' : 'Missing'} />
+          <InspectorStat label="Points" value={pointContext.count.toString().padStart(2, '0')} />
+          <InspectorStat label="Mode" value={hasEditablePath ? 'Edit' : 'Mixed'} />
         </div>
       </div>
       <ScrollArea className="workspace-scroll flex-1">
         <div className="flex flex-col gap-3 px-4 py-4">
-          <Section
-            title="Boolean"
-            description="Fuse or carve the current multi-layer selection into one surviving path."
-          >
+          <Section title="Boolean">
             <div className="grid grid-cols-2 gap-2">
               {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
                 const isPending = pendingBooleanMode === mode;
@@ -162,7 +128,7 @@ export function InspectorPanel() {
                     disabled={booleanDisabled}
                     onClick={() => void handleBooleanAction(mode)}
                     className={cn(
-                      'h-11 rounded-2xl border-border/70 bg-background/60 px-3 text-left transition hover:border-primary/35 hover:bg-background/90',
+                      'h-10 rounded-md border-border bg-background px-3 text-left transition hover:bg-accent/40',
                       isPending && 'border-primary/40 text-primary',
                     )}
                   >
@@ -173,33 +139,20 @@ export function InspectorPanel() {
                         <Icon className="size-4" />
                       )}
                       <span className="flex flex-col items-start leading-none">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em]">
-                          {label}
-                        </span>
-                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">
-                          {isPending ? 'Applying...' : 'Merge selection'}
-                        </span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">{label}</span>
+                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">{isPending ? 'Applying...' : ''}</span>
                       </span>
                     </span>
                   </Button>
                 );
               })}
             </div>
-            <div className="workspace-meta-card rounded-2xl px-3 py-2">
-              <p className="text-[11px] text-muted-foreground">
-                {hasBooleanableSelection
-                  ? 'Selected layers will collapse into the first selected layer.'
-                  : 'Select at least two path layers to enable pathfinder actions.'}
-              </p>
-              {pendingBooleanMode ? (
-                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-                  Running
-                </span>
-              ) : null}
-            </div>
+            {!hasBooleanableSelection ? (
+              <p className="text-[11px] text-muted-foreground">Select at least two path layers.</p>
+            ) : null}
           </Section>
 
-          <Section title="Layer" description="Identity and structural metadata for the active layer.">
+          <Section title="Layer">
             <div className="grid gap-2 sm:grid-cols-2">
               <ReadOnlyField label="ID" value={layer.id} />
               <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
@@ -207,7 +160,7 @@ export function InspectorPanel() {
           </Section>
 
           {layer.path && (
-            <Section title="Path" description="Live SVG data for the selected layer.">
+            <Section title="Path">
               <ReadOnlyField label="Path Data" value={pathPreview} mono />
               {layer.path.fillRule && (
                 <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
@@ -215,7 +168,7 @@ export function InspectorPanel() {
             </Section>
           )}
 
-          <Section title="Style" description="Surface appearance and stroke behavior.">
+          <Section title="Style">
             <PaintField
               label="Fill"
               paint={layer.style.fill}
@@ -302,7 +255,7 @@ export function InspectorPanel() {
             </div>
           </Section>
 
-          <Section title="Points" description="Selected anchor coordinates and bezier handle tuning.">
+          <Section title="Points">
             <div className="grid gap-2 sm:grid-cols-2">
               <ReadOnlyField label="Selected" value={String(pointContext.count)} />
               <SelectField
@@ -401,7 +354,7 @@ export function InspectorPanel() {
             </div>
           </Section>
 
-          <Section title="Transform" description="Positional offsets and scale controls for this layer.">
+          <Section title="Transform">
             <div className="grid gap-2 sm:grid-cols-2">
               <NumberField
                 label="X"
@@ -604,24 +557,15 @@ function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
 
 function Section({
   title,
-  description,
   children,
 }: {
   title: string;
-  description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="workspace-meta-card rounded-[1.35rem] p-3.5">
+    <section className="workspace-meta-card rounded-md p-3">
       <div className="mb-3">
-        <p className="workspace-kicker">
-          {title}
-        </p>
-        {description ? (
-          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
+        <p className="text-xs font-medium text-foreground">{title}</p>
       </div>
       <div className="flex flex-col gap-2.5">{children}</div>
     </section>
@@ -636,11 +580,9 @@ function InspectorStat({
   value: string;
 }) {
   return (
-    <div className="workspace-meta-card rounded-2xl px-3 py-2">
-      <p className="workspace-kicker">
-        {label}
-      </p>
-      <p className="relative z-10 mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
+    <div className="rounded-md border border-border bg-background px-3 py-2">
+      <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -661,7 +603,7 @@ function ReadOnlyField({
       </Label>
       <span
         className={cn(
-          'min-h-9 truncate rounded-2xl border border-border/55 bg-card/45 px-3 py-2 text-sm text-foreground',
+          'min-h-9 truncate rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground',
           mono && 'font-mono text-[11px]',
         )}
       >
@@ -709,7 +651,7 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-9 rounded-2xl border-border/55 bg-card/45 text-sm"
+        className="h-9 rounded-md border-border bg-background text-sm"
       />
     </div>
   );
@@ -737,7 +679,7 @@ function SelectField({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-full rounded-2xl border border-border/55 bg-card/45 px-3 text-sm"
+        className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
       >
         {options.map(([v, labelText]) => (
           <option key={v} value={v}>
@@ -820,12 +762,12 @@ function PaintField({
       <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-[1.1rem] border border-border/55 bg-card/45 p-2">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-background p-2">
         {fillModeOptions && (
           <select
             value={paintKind}
             onChange={handleKindChange}
-            className="h-9 rounded-2xl border border-border/55 bg-background/70 px-3 text-sm"
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
             aria-label={`${label} mode`}
           >
             <option value="currentFill">currentFill</option>
@@ -839,7 +781,7 @@ function PaintField({
             onChange={(e) =>
               onChange({ mode: 'fixed', value: e.target.value })
             }
-            className="size-9 cursor-pointer rounded-xl border border-border/70 bg-transparent p-1"
+            className="size-9 cursor-pointer rounded-md border border-border bg-transparent p-1"
             aria-label={`${label} color picker`}
           />
         )}
@@ -850,7 +792,7 @@ function PaintField({
           disabled={fillModeOptions && paintKind === 'currentFill'}
           list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
           placeholder={fillModeOptions ? '#RRGGBB or token name' : 'currentColor / #RRGGBB / token'}
-          className="h-9 min-w-[12rem] flex-1 rounded-2xl border-border/55 bg-background/70 font-mono text-[11px]"
+          className="h-9 min-w-[12rem] flex-1 rounded-md border-border bg-background font-mono text-[11px]"
         />
         {tokenNames.length > 0 && (
           <datalist id={`${label.toLowerCase()}-token-list`}>

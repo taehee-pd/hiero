@@ -1,4 +1,3 @@
-import paper from 'paper';
 import { commitHistory, pauseHistory, resumeHistory } from '@/lib/editor-store/history';
 import { editorStore } from '@/lib/editor-store/store';
 import type { Layer } from '@/lib/schema/types';
@@ -31,17 +30,58 @@ const DEFAULT_ARRANGE_SETTINGS = {
   epsilon: 1e-6,
 } as const;
 
-let paperScope: paper.PaperScope | null = null;
+type PaperModule = {
+  PaperScope: new () => {
+    setup: (size: { width: number; height: number }) => void;
+    Size: new (width: number, height: number) => unknown;
+    CompoundPath: new (pathData: string) => any;
+    Point: new (x: number, y: number) => unknown;
+  };
+};
 
-function getPaperScope(): paper.PaperScope {
+declare global {
+  interface Window {
+    paper?: PaperModule;
+  }
+}
+
+let paperScope: any | null = null;
+
+function loadPaperModule(): PaperModule | null {
+  if (typeof window !== 'undefined') {
+    return window.paper ?? null;
+  }
+
+  try {
+    const req = Function('return require')() as (id: string) => PaperModule;
+    return req('paper/dist/paper-core');
+  } catch {
+    return null;
+  }
+}
+
+function getPaperScope(): any | null {
   if (paperScope) return paperScope;
 
-  paperScope = new paper.PaperScope();
+  const paperModule = loadPaperModule();
+  if (!paperModule) return null;
+
+  paperScope = new paperModule.PaperScope();
   paperScope.setup(new paperScope.Size(1, 1));
   return paperScope;
 }
 
-function toBounds(rect: paper.Rectangle): Bounds | null {
+function toBounds(rect: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  center: { x: number; y: number };
+}): Bounds | null {
   const values = [rect.x, rect.y, rect.width, rect.height];
   if (values.some((value) => !Number.isFinite(value))) return null;
 
@@ -64,6 +104,7 @@ function computeLayerBounds(layer: Layer): Bounds | null {
   if (!d) return null;
 
   const scope = getPaperScope();
+  if (!scope) return null;
 
   try {
     const item = new scope.CompoundPath(d);

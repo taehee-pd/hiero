@@ -679,21 +679,6 @@ function IconActionButton({
   );
 }
 
-function InspectorStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-md border border-border bg-background px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
-    </div>
-  );
-}
-
 function ReadOnlyField({
   label,
   value,

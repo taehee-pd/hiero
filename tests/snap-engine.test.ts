@@ -36,32 +36,32 @@ function createProjectFixture(): Project {
         id: 'snap',
         name: 'Snap',
         variants: {
-          v24: {
-            id: 'v24',
-            size: 24,
-            viewBox: [0, 0, 24, 24],
-            defaultState: 'default',
-          },
-        },
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              moving: {
-                id: 'moving',
-                visible: true,
-                path: { d: 'M1 1 L2 2' },
-                style: {},
-              },
-              anchor: {
-                id: 'anchor',
-                visible: true,
-                path: { d: 'M8 10 L12 14' },
-                style: {},
+        v24: {
+          id: 'v24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          defaultState: 'default',
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                moving: {
+                  id: 'moving',
+                  visible: true,
+                  path: { d: 'M1 1 L2 2' },
+                  style: {},
+                },
+                anchor: {
+                  id: 'anchor',
+                  visible: true,
+                  path: { d: 'M8 10 L12 14' },
+                  style: {},
+                },
               },
             },
           },
         },
+      },
         transitions: {},
       },
     },
@@ -175,7 +175,7 @@ describe('snap engine', () => {
     expect(tight.snappedX).toBeTrue();
 
     // Mutate layer geometry and emit store update to trigger cache invalidation.
-    state.project!.icons.snap.states.default.layers.anchor.path!.d = 'M16 16 L20 20';
+    state.project!.icons.snap.variants.v24.states.default.layers.anchor.path!.d = 'M16 16 L20 20';
     store.emit();
 
     const afterChange = engine.computeSnap(
@@ -223,6 +223,40 @@ describe('snap engine', () => {
     expect(result.snappedX).toBeFalse();
     expect(result.snappedY).toBeFalse();
     expect(result.guides).toEqual([]);
+
+    engine.destroy();
+  });
+
+  test('prefers the nearest candidate on each axis over a farther grid snap', () => {
+    const project = createProjectFixture();
+    project.icons.snap.variants.v24.guideMasterId = 'primary-guides';
+
+    const state = {
+      ...editorStore.getState(),
+      project,
+      currentIconId: 'snap',
+      currentVariantId: 'v24',
+      currentStateId: 'default',
+      snapEnabled: true,
+      viewport: { zoom: 4, panX: 0, panY: 0 },
+    } as EditorStore;
+
+    const store = createMockStore(state);
+    const engine = new SnapEngine(store);
+
+    const result = engine.computeSnap(
+      { x: 5.92, y: 17.9 },
+      { sourceLayerId: 'moving', tolerancePx: 3, gridStep: 4 },
+    );
+
+    expect(result.x).toBe(6);
+    expect(result.y).toBe(18);
+    expect(result.guides).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'guide', x: 6 }),
+        expect.objectContaining({ type: 'guide', y: 18 }),
+      ]),
+    );
 
     engine.destroy();
   });

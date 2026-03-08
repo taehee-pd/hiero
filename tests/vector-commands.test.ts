@@ -29,10 +29,21 @@ function setupLayerSelection(pointKey: string) {
 function setupLayerMultiSelection(pointKeys: string[]) {
   const state = editorStore.getState();
   const iconId = state.currentIconId!;
+  const variantId = state.currentVariantId!;
   const stateId = state.currentStateId!;
   const layerId = 'chevron';
   state.setSelection({ layerIds: [layerId], pointIds: pointKeys });
-  return { iconId, stateId, layerId };
+  return { iconId, variantId, stateId, layerId };
+}
+
+function getLayerPath(
+  iconId: string,
+  variantId: string,
+  stateId: string,
+  layerId: string,
+) {
+  return editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId].layers[layerId]
+    .path!.d;
 }
 
 const ARC_HANDLE_PROJECT: Project = {
@@ -52,16 +63,16 @@ const ARC_HANDLE_PROJECT: Project = {
           size: 24,
           viewBox: [0, 0, 24, 24],
           defaultState: 'default',
-        },
-      },
-      states: {
-        default: {
-          id: 'default',
-          layers: {
-            curve: {
-              id: 'curve',
-              path: { d: 'M2 12 A8 8 0 0 1 18 12' },
-              style: {},
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                curve: {
+                  id: 'curve',
+                  path: { d: 'M2 12 A8 8 0 0 1 18 12' },
+                  style: {},
+                },
+              },
             },
           },
         },
@@ -88,16 +99,16 @@ const CUBIC_HANDLE_PROJECT: Project = {
           size: 24,
           viewBox: [0, 0, 24, 24],
           defaultState: 'default',
-        },
-      },
-      states: {
-        default: {
-          id: 'default',
-          layers: {
-            curve: {
-              id: 'curve',
-              path: { d: 'M0 0 C5 5 10 10 15 0' },
-              style: {},
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                curve: {
+                  id: 'curve',
+                  path: { d: 'M0 0 C5 5 10 10 15 0' },
+                  style: {},
+                },
+              },
             },
           },
         },
@@ -122,14 +133,12 @@ function bootstrapCubicHandleProject() {
 describe('vector commands', () => {
   test('deletes selected point', () => {
     bootstrap();
-    const { iconId, stateId, layerId } = setupLayerSelection('0:1');
-    const before = editorStore.getState().project!.icons[iconId].states[stateId].layers[layerId].path!
-      .d;
+    const { iconId, variantId, stateId, layerId } = setupLayerSelection('0:1');
+    const before = getLayerPath(iconId, variantId, stateId, layerId);
 
     expect(deleteSelectedPoint()).toBeTrue();
 
-    const after = editorStore.getState().project!.icons[iconId].states[stateId].layers[layerId].path!
-      .d;
+    const after = getLayerPath(iconId, variantId, stateId, layerId);
     expect(after).not.toBe(before);
     expect(after).toBe('M9.5 7 L9.5 17');
   });
@@ -139,13 +148,11 @@ describe('vector commands', () => {
     setupLayerSelection('0:1');
 
     expect(toggleSelectedPointType()).toBeTrue();
-    const smooth =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const smooth = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(smooth.includes('C')).toBeTrue();
 
     expect(toggleSelectedPointType()).toBeTrue();
-    const corner =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const corner = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(corner).toBe('M9.5 7 C9.5 7 14.5 12 14.5 12 C14.5 12 9.5 17 9.5 17');
   });
 
@@ -155,8 +162,7 @@ describe('vector commands', () => {
 
     expect(insertPointAfterSelection()).toBeTrue();
 
-    const d = editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!
-      .d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(d).toBe('M9.5 7 L12 9.5 L14.5 12 L9.5 17');
   });
 
@@ -165,13 +171,11 @@ describe('vector commands', () => {
     setupLayerSelection('0:0');
 
     expect(toggleSelectedPathClosed()).toBeTrue();
-    const closed =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const closed = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(closed.endsWith(' Z')).toBeTrue();
 
     expect(toggleSelectedPathClosed()).toBeTrue();
-    const reopened =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const reopened = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(reopened).toBe('M9.5 7 L14.5 12 L9.5 17');
   });
 
@@ -181,8 +185,7 @@ describe('vector commands', () => {
 
     expect(nudgeSelectedPointByArrow('ArrowRight')).toBeTrue();
 
-    const d = editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!
-      .d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(d).toBe('M9.5 7 L15 12 L9.5 17');
   });
 
@@ -203,17 +206,43 @@ describe('vector commands', () => {
     });
   });
 
+  test('deduplicates point handles when computing the selected points bounding box', () => {
+    bootstrap();
+    setupLayerMultiSelection(['0:1', '0:1@in', '0:1@out', '0:2']);
+
+    expect(getSelectedPointsBoundingBox()).toEqual({
+      minX: 9.5,
+      minY: 12,
+      maxX: 14.5,
+      maxY: 17,
+      points: [
+        { key: '0:1', x: 14.5, y: 12 },
+        { key: '0:2', x: 9.5, y: 17 },
+      ],
+    });
+  });
+
   test('aligns selected points to the left edge of their bounding box', () => {
     bootstrap();
     setupLayerMultiSelection(['0:0', '0:1', '0:2']);
 
     expect(alignSelectedPoints('x', 'min')).toBeTrue();
 
-    const d =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     const path = parseSvgPath(d);
     const xValues = path.subPaths[0]!.points.map((point) => point.position.x);
     expect(xValues).toEqual([9.5, 9.5, 9.5]);
+  });
+
+  test('aligns selected points to the vertical center of their bounding box', () => {
+    bootstrap();
+    setupLayerMultiSelection(['0:0', '0:1', '0:2']);
+
+    expect(alignSelectedPoints('y', 'center')).toBeTrue();
+
+    const path = parseSvgPath(getLayerPath('icon-chevron', 'v24', 'default', 'chevron'));
+    const yValues = path.subPaths[0]!.points.map((point) => point.position.y);
+    expect(yValues).toEqual([12, 12, 12]);
   });
 
   test('distributes selected points evenly on an axis', () => {
@@ -226,8 +255,7 @@ describe('vector commands', () => {
 
     expect(distributeSelectedPoints('x')).toBeTrue();
 
-    const d =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(d).toBe('M0 0 L6.667 0 L13.333 0 L20 0');
   });
 
@@ -241,8 +269,7 @@ describe('vector commands', () => {
 
     expect(setSelectedPointType('symmetric')).toBeTrue();
 
-    const d =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     const path = parseSvgPath(d);
     const point = path.subPaths[0]!.points[1]!;
     expect(point.handleIn).not.toBeNull();
@@ -275,8 +302,7 @@ describe('vector commands', () => {
 
     expect(nudgeSelectedPointByArrow('ArrowRight')).toBeTrue();
 
-    const d =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(d).toBe('M10 7 L15 12 L10 17');
   });
 
@@ -286,8 +312,7 @@ describe('vector commands', () => {
 
     expect(deleteSelectedPoints()).toBeTrue();
 
-    const d =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!.d;
+    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
     expect(d).toBe('M9.5 17');
   });
 
@@ -298,7 +323,7 @@ describe('vector commands', () => {
     expect(deleteSelectedPoint()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.arc.variants.v24.states.default.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
@@ -311,7 +336,7 @@ describe('vector commands', () => {
     expect(deleteSelectedPoint()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.arc.variants.v24.states.default.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
@@ -324,9 +349,24 @@ describe('vector commands', () => {
     expect(deleteSelectedPoints()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.cubic.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.cubic.variants.v24.states.default.layers[layerId].path!.d;
     expect(d).toBe('M0 0 L15 0');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
+  });
+
+  test('deleteSelectedPoints removes mixed anchor and handle selections in one command', () => {
+    const { layerId } = bootstrapCubicHandleProject();
+    editorStore.getState().setSelection({
+      layerIds: [layerId],
+      pointIds: ['0:0', '0:1@in'],
+    });
+
+    expect(deleteSelectedPoints()).toBeTrue();
+
+    const d = editorStore.getState().project!.icons.cubic.variants.v24.states.default.layers[layerId]
+      .path!.d;
+    expect(d).toBe('M15 0');
+    expect(editorStore.getState().selection.pointIds).toEqual([]);
   });
 });

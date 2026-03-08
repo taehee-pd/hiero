@@ -53,8 +53,15 @@ function createMockSvg(): SVGSVGElement {
     querySelector() {
       return null;
     },
+    querySelectorAll() {
+      return [];
+    },
     setPointerCapture() {},
   } as unknown as SVGSVGElement;
+}
+
+function getCurrentLayer(layerId: string) {
+  return editorStore.getState().project!.icons['icon-chevron'].variants.v24.states.default.layers[layerId];
 }
 
 function pointerEvent(init: {
@@ -102,21 +109,18 @@ describe('shape tool drag interactions', () => {
     expect(canUndo()).toBeFalse();
 
     (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-    const previewPath =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers[layerId].path!.d;
+    const previewPath = getCurrentLayer(layerId).path!.d;
     expect(previewPath).toBe(createRectPath(2, 3, 6, 7));
 
     (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 100 }));
     expect(canUndo()).toBeTrue();
 
     undo();
-    const afterUndo =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers[layerId];
+    const afterUndo = getCurrentLayer(layerId);
     expect(afterUndo).toBeUndefined();
 
     redo();
-    const afterRedo =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers[layerId].path!.d;
+    const afterRedo = getCurrentLayer(layerId).path!.d;
     expect(afterRedo).toBe(createRectPath(2, 3, 6, 7));
 
     editor.destroy();
@@ -140,8 +144,7 @@ describe('shape tool drag interactions', () => {
       pointerEvent({ clientX: 180, clientY: 140, shiftKey: true, altKey: true }),
     );
 
-    const path =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers[layerId].path!.d;
+    const path = getCurrentLayer(layerId).path!.d;
     expect(path).toBe(createEllipsePath(12, 12, 6, 6));
 
     editor.destroy();
@@ -161,8 +164,7 @@ describe('shape tool drag interactions', () => {
 
     (editor as any).onPointerUp(pointerEvent({ clientX: 140, clientY: 100 }));
 
-    const path =
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers[layerId].path!.d;
+    const path = getCurrentLayer(layerId).path!.d;
     expect(path).toBe(createPolygonPath(8, 6, 4, 6));
     expect(editorStore.getState().shapePolygonSides).toBe(6);
 
@@ -184,9 +186,7 @@ describe('shape tool drag interactions', () => {
     (editor as any).onPointerMove(pointerEvent({ clientX: 120, clientY: 120 }));
     (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
 
-    expect(
-      editorStore.getState().project!.icons['icon-chevron'].states.default.layers['shape-1'],
-    ).toBeUndefined();
+    expect(getCurrentLayer('shape-1')).toBeUndefined();
     expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
     expect(canUndo()).toBeFalse();
 

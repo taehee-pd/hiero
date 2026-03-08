@@ -1,4 +1,4 @@
-import type { Project, Layer } from '@/lib/schema/types';
+import type { Project, Icon, Layer } from '@/lib/schema/types';
 import type {
   Tool,
   SelectionState,
@@ -30,6 +30,7 @@ export type EditorState = {
 export type EditorActions = {
   loadProject(project: Project): void;
   newProject(): void;
+  insertIcon(icon: Icon): void;
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
@@ -241,6 +242,48 @@ function createActions(): EditorActions {
       };
       editorStoreApi.setState({ ...initialState, project });
       resetHistoryForLoadedDocument();
+    },
+
+    insertIcon(icon) {
+      editorStoreApi.setState((s) => {
+        const now = new Date().toISOString();
+        const project =
+          s.project ??
+          ({
+            version: '1.0',
+            meta: { name: 'Untitled', createdAt: now, updatedAt: now },
+            icons: {},
+          } satisfies Project);
+
+        const nextIconId = ensureUniqueIconId(icon.id, Object.keys(project.icons));
+        const nextIcon =
+          nextIconId === icon.id
+            ? icon
+            : {
+                ...icon,
+                id: nextIconId,
+              };
+        const nextVariantId = Object.keys(nextIcon.variants)[0] ?? null;
+        const nextStateId = Object.keys(nextIcon.states)[0] ?? null;
+
+        return {
+          project: {
+            ...project,
+            meta: { ...project.meta, updatedAt: now },
+            icons: {
+              ...project.icons,
+              [nextIconId]: nextIcon,
+            },
+          },
+          currentIconId: nextIconId,
+          currentVariantId: nextVariantId,
+          currentStateId: nextStateId,
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
+          pointTransformLabel: null,
+        };
+      });
     },
 
     setCurrentIcon(id) {
@@ -502,4 +545,16 @@ export const editorStore = editorStoreApi;
 function clampInteger(value: number, minimum: number): number {
   if (!Number.isFinite(value)) return minimum;
   return Math.max(minimum, Math.round(value));
+}
+
+function ensureUniqueIconId(candidate: string, existingIds: string[]): string {
+  if (!existingIds.includes(candidate)) return candidate;
+
+  let counter = 2;
+  let nextId = `${candidate}-${counter}`;
+  while (existingIds.includes(nextId)) {
+    counter += 1;
+    nextId = `${candidate}-${counter}`;
+  }
+  return nextId;
 }

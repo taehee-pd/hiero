@@ -159,11 +159,17 @@ export function InspectorPanel() {
   if (!layer && !showShapeToolSettings) {
     return (
       <div className="flex h-full flex-col bg-transparent">
-        <div className="px-4 pt-3 pb-2">
-          <span className="text-sm font-semibold">Inspect</span>
+        <div className="px-4 pt-4 pb-3">
+          <span className="workspace-kicker">Inspect</span>
+          <p className="mt-2 text-base font-semibold text-foreground">Nothing selected</p>
         </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-xs text-muted-foreground">No layer</p>
+        <div className="flex flex-1 items-center justify-center px-4">
+          <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+            <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Layer, style, vector, and transform controls appear only when they are relevant.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -171,11 +177,14 @@ export function InspectorPanel() {
 
   return (
     <div className="flex h-full flex-col bg-transparent">
-      <div className="px-4 pt-3 pb-2">
-        <span className="text-sm font-semibold">Inspect</span>
+      <div className="px-4 pt-4 pb-3">
+        <span className="workspace-kicker">Inspect</span>
+        <p className="mt-2 text-base font-semibold text-foreground">
+          {layer ? layer.id : 'Shape tool'}
+        </p>
       </div>
       <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-4 px-4 pb-4">
+        <div className="flex flex-col gap-5 px-4 pb-4">
           {showShapeToolSettings && (
             <>
               <Section title="Shape Tool">
@@ -228,47 +237,53 @@ export function InspectorPanel() {
 
           <Separator />
 
-          <Section title="Boolean">
-            <div className="grid grid-cols-2 gap-2">
-              {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
-                const isPending = pendingBooleanMode === mode;
-                return (
-                  <Button
-                    key={mode}
-                    size="sm"
-                    variant="outline"
-                    disabled={booleanDisabled}
-                    onClick={() => void handleBooleanAction(mode)}
-                    className={cn(
-                      'h-10 rounded-md border-border bg-background px-3 text-left transition hover:bg-accent/40',
-                      isPending && 'border-primary/40 text-primary',
-                    )}
-                  >
-                    <span className="flex w-full items-center gap-2.5">
-                      {isPending ? (
-                        <LoaderCircle className="size-4 animate-spin" />
-                      ) : (
-                        <Icon className="size-4" />
-                      )}
-                      <span className="flex flex-col items-start leading-none">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
-                          {label}
-                        </span>
-                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">
-                          {isPending ? 'Applying...' : ''}
-                        </span>
-                      </span>
-                    </span>
-                  </Button>
-                );
-              })}
-            </div>
-            {!hasBooleanableSelection ? (
-              <p className="text-[11px] text-muted-foreground">Select at least two path layers.</p>
-            ) : null}
-          </Section>
+          {multipleLayersSelected ? (
+            <>
+              <Separator />
 
-          <Separator />
+              <Section title="Boolean">
+                <div className="grid grid-cols-2 gap-2">
+                  {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
+                    const isPending = pendingBooleanMode === mode;
+                    return (
+                      <Button
+                        key={mode}
+                        size="sm"
+                        variant="outline"
+                        disabled={booleanDisabled}
+                        onClick={() => void handleBooleanAction(mode)}
+                        className={cn(
+                          'h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40',
+                          isPending && 'border-primary/40 text-primary',
+                        )}
+                      >
+                        <span className="flex w-full items-center gap-2.5">
+                          {isPending ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : (
+                            <Icon className="size-4" />
+                          )}
+                          <span className="flex flex-col items-start leading-none">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                              {label}
+                            </span>
+                            <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                              {isPending ? 'Applying...' : 'Combine selected paths'}
+                            </span>
+                          </span>
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+                {!hasBooleanableSelection ? (
+                  <InlineMessage>
+                    Choose at least two path layers to unlock Boolean actions.
+                  </InlineMessage>
+                ) : null}
+              </Section>
+            </>
+          ) : null}
 
           {multipleLayersSelected && (
             <>
@@ -301,7 +316,7 @@ export function InspectorPanel() {
                   ))}
                 </div>
                 {!enoughLayersToDistribute && (
-                  <p className="text-[11px] text-muted-foreground">Distribute requires 3+ layers</p>
+                  <InlineMessage>Distribute requires at least three layers.</InlineMessage>
                 )}
               </Section>
               <Separator />
@@ -416,168 +431,180 @@ export function InspectorPanel() {
           <Separator />
 
           <Section title="Vector">
-            <div className="flex items-center gap-1">
-              {POINT_ALIGN_ACTIONS.slice(0, 3).map((action) => (
-                <IconActionButton
-                  key={`${action.axis}-${action.anchor}`}
-                  label={action.label}
-                  disabled={!canAlignPoints}
-                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
-                >
-                  <action.icon className="size-4" />
-                </IconActionButton>
-              ))}
-              <div className="mx-1 h-6 w-px bg-border/70" />
-              {POINT_ALIGN_ACTIONS.slice(3).map((action) => (
-                <IconActionButton
-                  key={`${action.axis}-${action.anchor}`}
-                  label={action.label}
-                  disabled={!canAlignPoints}
-                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
-                >
-                  <action.icon className="size-4" />
-                </IconActionButton>
-              ))}
-              <div className="mx-1 h-6 w-px bg-border/70" />
-              {POINT_DISTRIBUTE_ACTIONS.map((action) => (
-                <IconActionButton
-                  key={action.axis}
-                  label={action.label}
-                  disabled={!canDistributePoints}
-                  onClick={() => distributeSelectedPoints(action.axis)}
-                >
-                  <Minus className={`size-4 ${action.rotate}`} />
-                </IconActionButton>
-              ))}
-            </div>
+            {pointContext.count === 0 ? (
+              <InlineMessage>
+                Select one or more anchor points on the canvas to edit vector positions and handles.
+              </InlineMessage>
+            ) : (
+              <>
+                <div className="flex items-center gap-1">
+                  {POINT_ALIGN_ACTIONS.slice(0, 3).map((action) => (
+                    <IconActionButton
+                      key={`${action.axis}-${action.anchor}`}
+                      label={action.label}
+                      disabled={!canAlignPoints}
+                      onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                  <div className="mx-1 h-6 w-px bg-border/70" />
+                  {POINT_ALIGN_ACTIONS.slice(3).map((action) => (
+                    <IconActionButton
+                      key={`${action.axis}-${action.anchor}`}
+                      label={action.label}
+                      disabled={!canAlignPoints}
+                      onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                  <div className="mx-1 h-6 w-px bg-border/70" />
+                  {POINT_DISTRIBUTE_ACTIONS.map((action) => (
+                    <IconActionButton
+                      key={action.axis}
+                      label={action.label}
+                      disabled={!canDistributePoints}
+                      onClick={() => distributeSelectedPoints(action.axis)}
+                    >
+                      <Minus className={`size-4 ${action.rotate}`} />
+                    </IconActionButton>
+                  ))}
+                </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <AxisField
-                label="X"
-                value={pointContext.xMixed ? undefined : pointContext.x}
-                placeholder={pointContext.xMixed ? 'Mixed' : undefined}
-                disabled={pointContext.count === 0}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    translatePointPosition(pt, v - pt.position.x, 0);
-                  })
-                }
-              />
-              <AxisField
-                label="Y"
-                value={pointContext.yMixed ? undefined : pointContext.y}
-                placeholder={pointContext.yMixed ? 'Mixed' : undefined}
-                disabled={pointContext.count === 0}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    translatePointPosition(pt, 0, v - pt.position.y);
-                  })
-                }
-              />
-            </div>
+                <InlineStat>
+                  {pointContext.count} point{pointContext.count > 1 ? 's' : ''} selected
+                </InlineStat>
 
-            <div className="flex items-center gap-2">
-              <Label className="w-20 shrink-0 text-xs text-muted-foreground">
-                Type
-              </Label>
-              <div className="flex flex-1 items-center gap-1">
-                {NODE_TYPE_OPTIONS.map((option) => (
-                  <NodeTypeButton
-                    key={option.value}
-                    label={option.label}
-                    active={isVisualNodeTypeActive(pointContext.nodeType, option.value)}
+                <div className="grid grid-cols-2 gap-2">
+                  <AxisField
+                    label="X"
+                    value={pointContext.xMixed ? undefined : pointContext.x}
+                    placeholder={pointContext.xMixed ? 'Mixed' : undefined}
                     disabled={pointContext.count === 0}
-                    onClick={() => setSelectedPointType(option.value)}
-                  >
-                    {option.glyph}
-                  </NodeTypeButton>
-                ))}
-              </div>
-            </div>
+                    onChange={(v) =>
+                      patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                        translatePointPosition(pt, v - pt.position.x, 0);
+                      })
+                    }
+                  />
+                  <AxisField
+                    label="Y"
+                    value={pointContext.yMixed ? undefined : pointContext.y}
+                    placeholder={pointContext.yMixed ? 'Mixed' : undefined}
+                    disabled={pointContext.count === 0}
+                    onChange={(v) =>
+                      patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                        translatePointPosition(pt, 0, v - pt.position.y);
+                      })
+                    }
+                  />
+                </div>
 
-            <IconNumberField
-              label="Radius"
-              icon="⌒"
-              value={pointContext.radius}
-              min={0}
-              step={0.25}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
-              }
-            />
+                <div className="flex items-center gap-2">
+                  <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+                    Type
+                  </Label>
+                  <div className="flex flex-1 items-center gap-1">
+                    {NODE_TYPE_OPTIONS.map((option) => (
+                      <NodeTypeButton
+                        key={option.value}
+                        label={option.label}
+                        active={isVisualNodeTypeActive(pointContext.nodeType, option.value)}
+                        disabled={pointContext.count === 0}
+                        onClick={() => setSelectedPointType(option.value)}
+                      >
+                        {option.glyph}
+                      </NodeTypeButton>
+                    ))}
+                  </div>
+                </div>
 
-            {hasSinglePointSelection && (
-              <div className="grid grid-cols-2 gap-2">
-                <AxisField
-                  label="In X"
-                  value={pointContext.handleInX}
-                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                <IconNumberField
+                  label="Radius"
+                  icon="⌒"
+                  value={pointContext.radius}
+                  min={0}
+                  step={0.25}
+                  disabled={pointContext.count === 0}
                   onChange={(v) =>
-                    updateSelectedHandle(
-                      currentIconId,
-                      currentStateId,
-                      layer.id,
-                      selection.pointIds,
-                      pointContext.nodeType,
-                      'in',
-                      'x',
-                      v,
-                    )
+                    applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
                   }
                 />
-                <AxisField
-                  label="In Y"
-                  value={pointContext.handleInY}
-                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
-                  onChange={(v) =>
-                    updateSelectedHandle(
-                      currentIconId,
-                      currentStateId,
-                      layer.id,
-                      selection.pointIds,
-                      pointContext.nodeType,
-                      'in',
-                      'y',
-                      v,
-                    )
-                  }
-                />
-                <AxisField
-                  label="Out X"
-                  value={pointContext.handleOutX}
-                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
-                  onChange={(v) =>
-                    updateSelectedHandle(
-                      currentIconId,
-                      currentStateId,
-                      layer.id,
-                      selection.pointIds,
-                      pointContext.nodeType,
-                      'out',
-                      'x',
-                      v,
-                    )
-                  }
-                />
-                <AxisField
-                  label="Out Y"
-                  value={pointContext.handleOutY}
-                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
-                  onChange={(v) =>
-                    updateSelectedHandle(
-                      currentIconId,
-                      currentStateId,
-                      layer.id,
-                      selection.pointIds,
-                      pointContext.nodeType,
-                      'out',
-                      'y',
-                      v,
-                    )
-                  }
-                />
-              </div>
+
+                {hasSinglePointSelection && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <AxisField
+                      label="In X"
+                      value={pointContext.handleInX}
+                      disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                      onChange={(v) =>
+                        updateSelectedHandle(
+                          currentIconId,
+                          currentStateId,
+                          layer.id,
+                          selection.pointIds,
+                          pointContext.nodeType,
+                          'in',
+                          'x',
+                          v,
+                        )
+                      }
+                    />
+                    <AxisField
+                      label="In Y"
+                      value={pointContext.handleInY}
+                      disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                      onChange={(v) =>
+                        updateSelectedHandle(
+                          currentIconId,
+                          currentStateId,
+                          layer.id,
+                          selection.pointIds,
+                          pointContext.nodeType,
+                          'in',
+                          'y',
+                          v,
+                        )
+                      }
+                    />
+                    <AxisField
+                      label="Out X"
+                      value={pointContext.handleOutX}
+                      disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                      onChange={(v) =>
+                        updateSelectedHandle(
+                          currentIconId,
+                          currentStateId,
+                          layer.id,
+                          selection.pointIds,
+                          pointContext.nodeType,
+                          'out',
+                          'x',
+                          v,
+                        )
+                      }
+                    />
+                    <AxisField
+                      label="Out Y"
+                      value={pointContext.handleOutY}
+                      disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                      onChange={(v) =>
+                        updateSelectedHandle(
+                          currentIconId,
+                          currentStateId,
+                          layer.id,
+                          selection.pointIds,
+                          pointContext.nodeType,
+                          'out',
+                          'y',
+                          v,
+                        )
+                      }
+                    />
+                  </div>
+                )}
+              </>
             )}
           </Section>
 
@@ -971,7 +998,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {title}
       </span>
@@ -1016,12 +1043,12 @@ function ReadOnlyField({
   mono?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1">
+      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
       <span
-        className={`flex-1 truncate text-xs ${mono ? 'font-mono' : ''} text-foreground`}
+        className={`truncate rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-xs ${mono ? 'font-mono' : ''} text-foreground`}
       >
         {value}
       </span>
@@ -1055,8 +1082,8 @@ function NumberField({
   );
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="grid gap-1">
+      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -1067,8 +1094,24 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-7 bg-input text-xs"
+        className="h-9 rounded-xl bg-input text-xs"
       />
+    </div>
+  );
+}
+
+function InlineMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-[11px] text-muted-foreground">
+      {children}
+    </div>
+  );
+}
+
+function InlineStat({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-[11px] font-medium text-foreground/80">
+      {children}
     </div>
   );
 }
@@ -1519,11 +1562,11 @@ function PaintField({
   }, [boundedSelectedStopIndex, commitGradient, gradientPaint]);
 
   return (
-    <div className="flex items-start gap-2">
-      <Label className="w-20 shrink-0 pt-2 text-xs text-muted-foreground">
-        {label}
-      </Label>
-      <div className="flex flex-1 flex-col gap-2 rounded-xl border border-border/60 bg-background/30 p-2">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/35 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
+        </Label>
         <div className="flex items-center gap-1.5">
           <select
             value={paintMode}
@@ -1542,12 +1585,12 @@ function PaintField({
             <option value="radialGradient">Radial gradient</option>
           </select>
         </div>
+      </div>
 
-        {paintMode === 'none' ? (
-          <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
-            {label} is disabled.
-          </div>
-        ) : !gradientPaint ? (
+      {paintMode === 'none' ? (
+        <InlineMessage>{label} is disabled for this layer.</InlineMessage>
+      ) : !gradientPaint ? (
+        <>
           <div className="flex items-center gap-1.5">
             {isColor && (
               <input
@@ -1576,7 +1619,7 @@ function PaintField({
                   ? '#RRGGBB or token name'
                   : 'currentColor / #RRGGBB / token'
               }
-              className="h-7 bg-input font-mono text-xs"
+              className="h-9 rounded-xl bg-input font-mono text-xs"
             />
             {tokenNames.length > 0 && (
               <datalist id={`${label.toLowerCase()}-token-list`}>
@@ -1586,7 +1629,11 @@ function PaintField({
               </datalist>
             )}
           </div>
-        ) : (
+          <p className="text-[11px] text-muted-foreground">
+            Use a hex value, <span className="font-mono">currentColor</span>, or a token name.
+          </p>
+        </>
+      ) : (
           <>
             <div className="relative pt-8">
               <div
@@ -1751,8 +1798,7 @@ function PaintField({
               </div>
             )}
           </>
-        )}
-      </div>
+      )}
     </div>
   );
 }

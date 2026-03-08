@@ -63,6 +63,7 @@ export function useEditorActions() {
     () => ({
       loadProject: state.loadProject,
       newProject: state.newProject,
+      insertIcon: state.insertIcon,
       setCurrentIcon: state.setCurrentIcon,
       setCurrentVariant: state.setCurrentVariant,
       setCurrentState: state.setCurrentState,

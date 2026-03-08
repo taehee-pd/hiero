@@ -53,4 +53,35 @@ describe('safety net checks', () => {
     expect(svg).not.toContain('hline');
     expect(svg).not.toContain('vline');
   });
+
+  test('svg export emits deterministic gradient defs and references', () => {
+    const icon = structuredClone(SAMPLE_PROJECT.icons['icon-chevron']);
+    icon.states.default.layers.chevron.style.fill = {
+      mode: 'linearGradient',
+      angle: 90,
+      stops: [
+        { offset: 0, color: '#111111' },
+        { offset: 1, color: '#eeeeee', opacity: 0.4 },
+      ],
+    };
+    icon.states.default.layers.chevron.style.stroke = {
+      mode: 'radialGradient',
+      cx: 0.5,
+      cy: 0.5,
+      r: 0.5,
+      stops: [
+        { offset: 0, color: '#38bdf8' },
+        { offset: 1, color: '#0f172a' },
+      ],
+    };
+
+    const svg = exportSvgString(icon, 'v24', 'default', SAMPLE_PROJECT.tokenSet?.colors);
+
+    expect(svg).toContain('<defs>');
+    expect(svg).toContain('id="gradient-chevron-fill"');
+    expect(svg).toContain('id="gradient-chevron-stroke"');
+    expect(svg).toContain('fill="url(#gradient-chevron-fill)"');
+    expect(svg).toContain('stroke="url(#gradient-chevron-stroke)"');
+    expect(svg).toContain('stop-opacity="0.4"');
+  });
 });

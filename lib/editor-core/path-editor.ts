@@ -353,7 +353,7 @@ export class PathEditor {
       position: { x: snappedPoint.x, y: snappedPoint.y },
       handleIn: null,
       handleOut: null,
-      nodeType: 'corner',
+      nodeType: 'static',
       segment: { type: 'line' },
     });
 
@@ -791,7 +791,7 @@ export class PathEditor {
       } else {
         prev.handleOut = null;
         point.handleIn = null;
-        point.nodeType = 'corner';
+        point.nodeType = 'static';
       }
     }
 
@@ -961,7 +961,7 @@ export class PathEditor {
       } else {
         prev.handleOut = null;
         point.handleIn = null;
-        point.nodeType = 'corner';
+        point.nodeType = 'static';
       }
     }
 
@@ -1147,7 +1147,7 @@ export class PathEditor {
       position: { x: snappedPoint.x, y: snappedPoint.y },
       handleIn: null,
       handleOut: null,
-      nodeType: 'corner',
+      nodeType: 'static',
       segment: { type: 'line' },
     });
 

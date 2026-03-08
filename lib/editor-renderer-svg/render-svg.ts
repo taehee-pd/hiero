@@ -9,6 +9,8 @@ export type RenderSvgInput = {
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const MANAGED_DEFS_ATTR = 'data-managed-by';
+const MANAGED_DEFS_VALUE = 'render-svg';
 
 /**
  * Imperatively render icon geometry into an existing SVG element.
@@ -23,6 +25,9 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
   // Set viewBox
   const [vx, vy, vw, vh] = variant.viewBox;
   target.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+
+  const defs = ensureManagedDefs(target);
+  defs.replaceChildren();
 
   // Collect existing path elements keyed by data-layer-id
   const existing = new Map<string, SVGPathElement>();
@@ -64,7 +69,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     }
 
     // Styles
-    applyLayerStyle(pathEl, layer, tokens);
+    applyLayerStyle(pathEl, layer, defs, tokens);
 
     // Transform
     applyTransform(pathEl, layer);
@@ -74,10 +79,17 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
   existing.forEach((el, id) => {
     if (!rendered.has(id)) el.remove();
   });
+
+  if (defs.childNodes.length === 0) {
+    defs.remove();
+  }
 }
 
 function resolvePaint(
   paint: PaintRef | undefined,
+  layerId: string,
+  role: 'fill' | 'stroke',
+  defs: SVGDefsElement,
   tokens?: Record<string, string>,
 ): string {
   if (!paint) return 'none';
@@ -88,6 +100,16 @@ function resolvePaint(
       return paint.value;
     case 'token':
       return tokens?.[paint.token] ?? 'currentColor';
+    case 'linearGradient': {
+      const gradientId = buildGradientId(layerId, role);
+      defs.appendChild(createLinearGradient(gradientId, paint));
+      return `url(#${gradientId})`;
+    }
+    case 'radialGradient': {
+      const gradientId = buildGradientId(layerId, role);
+      defs.appendChild(createRadialGradient(gradientId, paint));
+      return `url(#${gradientId})`;
+    }
     default:
       return 'none';
   }
@@ -96,11 +118,15 @@ function resolvePaint(
 function applyLayerStyle(
   el: SVGPathElement,
   layer: Layer,
+  defs: SVGDefsElement,
   tokens?: Record<string, string>,
 ): void {
   const s = layer.style;
-  el.setAttribute('fill', resolvePaint(s.fill, tokens));
-  el.setAttribute('stroke', resolvePaint(s.stroke, tokens));
+  el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
+  el.setAttribute(
+    'stroke',
+    resolvePaint(s.stroke, layer.id, 'stroke', defs, tokens),
+  );
 
   if (s.strokeWidth !== undefined) {
     el.setAttribute('stroke-width', String(s.strokeWidth));
@@ -156,4 +182,88 @@ function applyTransform(el: SVGPathElement, layer: Layer): void {
   } else {
     el.removeAttribute('transform');
   }
+}
+
+function ensureManagedDefs(target: SVGSVGElement): SVGDefsElement {
+  const existing = target.querySelector<SVGDefsElement>(
+    `defs[${MANAGED_DEFS_ATTR}="${MANAGED_DEFS_VALUE}"]`,
+  );
+  if (existing) return existing;
+
+  const defs = document.createElementNS(SVG_NS, 'defs');
+  defs.setAttribute(MANAGED_DEFS_ATTR, MANAGED_DEFS_VALUE);
+  target.insertBefore(defs, target.firstChild);
+  return defs;
+}
+
+function buildGradientId(layerId: string, role: 'fill' | 'stroke'): string {
+  return `gradient-${layerId}-${role}`;
+}
+
+function createLinearGradient(
+  id: string,
+  paint: Extract<PaintRef, { mode: 'linearGradient' }>,
+): SVGLinearGradientElement {
+  const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+  const [x1, y1, x2, y2] = getLinearGradientVector(paint.angle);
+
+  gradient.setAttribute('id', id);
+  gradient.setAttribute('x1', formatNumber(x1));
+  gradient.setAttribute('y1', formatNumber(y1));
+  gradient.setAttribute('x2', formatNumber(x2));
+  gradient.setAttribute('y2', formatNumber(y2));
+  appendGradientStops(gradient, paint.stops);
+
+  return gradient;
+}
+
+function createRadialGradient(
+  id: string,
+  paint: Extract<PaintRef, { mode: 'radialGradient' }>,
+): SVGRadialGradientElement {
+  const gradient = document.createElementNS(SVG_NS, 'radialGradient');
+
+  gradient.setAttribute('id', id);
+  gradient.setAttribute('cx', formatNumber(paint.cx));
+  gradient.setAttribute('cy', formatNumber(paint.cy));
+  gradient.setAttribute('r', formatNumber(paint.r));
+  appendGradientStops(gradient, paint.stops);
+
+  return gradient;
+}
+
+function appendGradientStops(
+  gradient: SVGLinearGradientElement | SVGRadialGradientElement,
+  stops: Array<{ offset: number; color: string; opacity?: number }>,
+): void {
+  for (const stop of stops) {
+    const stopEl = document.createElementNS(SVG_NS, 'stop');
+    stopEl.setAttribute('offset', formatNumber(stop.offset));
+    stopEl.setAttribute('stop-color', stop.color);
+    if (stop.opacity !== undefined) {
+      stopEl.setAttribute('stop-opacity', formatNumber(stop.opacity));
+    }
+    gradient.appendChild(stopEl);
+  }
+}
+
+function getLinearGradientVector(
+  angle: number,
+): [number, number, number, number] {
+  const radians = (angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const scale = 0.5 / Math.max(Math.abs(cos), Math.abs(sin), 1e-6);
+
+  return [
+    0.5 - cos * scale,
+    0.5 - sin * scale,
+    0.5 + cos * scale,
+    0.5 + sin * scale,
+  ];
+}
+
+function formatNumber(value: number): string {
+  const rounded = Number(value.toFixed(6));
+  return Object.is(rounded, -0) ? '0' : String(rounded);
 }

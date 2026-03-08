@@ -1,4 +1,4 @@
-export type NodeType = 'smooth' | 'corner' | 'symmetric';
+export type NodeType = 'static' | 'smooth' | 'corner' | 'symmetric';
 
 export type PathSegment =
   | { type: 'line' }

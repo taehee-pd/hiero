@@ -61,7 +61,17 @@ export type Layer = {
 export type PaintRef =
   | { mode: 'currentColor' }
   | { mode: 'fixed'; value: string }
-  | { mode: 'token'; token: string };
+  | { mode: 'token'; token: string }
+  | { mode: 'linearGradient'; stops: GradientStop[]; angle: number }
+  | {
+      mode: 'radialGradient';
+      stops: GradientStop[];
+      cx: number;
+      cy: number;
+      r: number;
+    };
+
+export type GradientStop = { offset: number; color: string; opacity?: number };
 
 export type Transition = {
   id: string;

@@ -261,7 +261,7 @@ function makePoint(x: number, y: number, segment: PathSegment | null = null): Pa
     position: { x, y },
     handleIn: null,
     handleOut: null,
-    nodeType: 'corner',
+    nodeType: 'static',
     segment,
   };
 }

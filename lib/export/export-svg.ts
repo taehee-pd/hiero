@@ -17,6 +17,8 @@ export function exportSvgString(
 
   const [vx, vy, vw, vh] = variant.viewBox;
   const lines: string[] = [];
+  const pathLines: string[] = [];
+  const defs = new Map<string, string>();
 
   lines.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${variant.size}" height="${variant.size}" fill="none">`,
@@ -37,13 +39,19 @@ export function exportSvgString(
     }
 
     // Fill
-    const fill = resolvePaint(layer.style.fill, tokens);
+    const fill = resolvePaint(layer.style.fill, layer.id, 'fill', defs, tokens);
     if (fill !== 'none') {
       attrs.push(`fill="${escapeAttr(fill)}"`);
     }
 
     // Stroke
-    const stroke = resolvePaint(layer.style.stroke, tokens);
+    const stroke = resolvePaint(
+      layer.style.stroke,
+      layer.id,
+      'stroke',
+      defs,
+      tokens,
+    );
     if (stroke !== 'none') {
       attrs.push(`stroke="${escapeAttr(stroke)}"`);
     }
@@ -70,15 +78,27 @@ export function exportSvgString(
       attrs.push(`transform="${escapeAttr(transform)}"`);
     }
 
-    lines.push(`  <path ${attrs.join(' ')}/>`);
+    pathLines.push(`  <path ${attrs.join(' ')}/>`);
   }
 
+  if (defs.size > 0) {
+    lines.push('  <defs>');
+    for (const definition of defs.values()) {
+      lines.push(`    ${definition}`);
+    }
+    lines.push('  </defs>');
+  }
+
+  lines.push(...pathLines);
   lines.push('</svg>');
   return lines.join('\n');
 }
 
 function resolvePaint(
   paint: PaintRef | undefined,
+  layerId: string,
+  role: 'fill' | 'stroke',
+  defs: Map<string, string>,
   tokens?: Record<string, string>,
 ): string {
   if (!paint) return 'none';
@@ -89,6 +109,16 @@ function resolvePaint(
       return paint.value;
     case 'token':
       return tokens?.[paint.token] ?? 'currentColor';
+    case 'linearGradient': {
+      const gradientId = buildGradientId(layerId, role);
+      defs.set(gradientId, serializeLinearGradient(gradientId, paint));
+      return `url(#${gradientId})`;
+    }
+    case 'radialGradient': {
+      const gradientId = buildGradientId(layerId, role);
+      defs.set(gradientId, serializeRadialGradient(gradientId, paint));
+      return `url(#${gradientId})`;
+    }
     default:
       return 'none';
   }
@@ -112,4 +142,68 @@ function buildTransform(layer: Layer): string | null {
 
 function escapeAttr(val: string): string {
   return val.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function buildGradientId(layerId: string, role: 'fill' | 'stroke'): string {
+  return `gradient-${layerId}-${role}`;
+}
+
+function serializeLinearGradient(
+  id: string,
+  paint: Extract<PaintRef, { mode: 'linearGradient' }>,
+): string {
+  const [x1, y1, x2, y2] = getLinearGradientVector(paint.angle);
+
+  return `<linearGradient id="${escapeAttr(id)}" x1="${formatNumber(x1)}" y1="${formatNumber(y1)}" x2="${formatNumber(x2)}" y2="${formatNumber(y2)}">${serializeGradientStops(
+    paint.stops,
+  )}</linearGradient>`;
+}
+
+function serializeRadialGradient(
+  id: string,
+  paint: Extract<PaintRef, { mode: 'radialGradient' }>,
+): string {
+  return `<radialGradient id="${escapeAttr(id)}" cx="${formatNumber(
+    paint.cx,
+  )}" cy="${formatNumber(paint.cy)}" r="${formatNumber(
+    paint.r,
+  )}">${serializeGradientStops(paint.stops)}</radialGradient>`;
+}
+
+function serializeGradientStops(
+  stops: Array<{ offset: number; color: string; opacity?: number }>,
+): string {
+  return stops
+    .map((stop) => {
+      const attrs = [
+        `offset="${formatNumber(stop.offset)}"`,
+        `stop-color="${escapeAttr(stop.color)}"`,
+      ];
+      if (stop.opacity !== undefined) {
+        attrs.push(`stop-opacity="${formatNumber(stop.opacity)}"`);
+      }
+      return `<stop ${attrs.join(' ')}/>`;
+    })
+    .join('');
+}
+
+function getLinearGradientVector(
+  angle: number,
+): [number, number, number, number] {
+  const radians = (angle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const scale = 0.5 / Math.max(Math.abs(cos), Math.abs(sin), 1e-6);
+
+  return [
+    0.5 - cos * scale,
+    0.5 - sin * scale,
+    0.5 + cos * scale,
+    0.5 + sin * scale,
+  ];
+}
+
+function formatNumber(value: number): string {
+  const rounded = Number(value.toFixed(6));
+  return Object.is(rounded, -0) ? '0' : String(rounded);
 }

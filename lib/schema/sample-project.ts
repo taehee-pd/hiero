@@ -20,52 +20,54 @@ export const SAMPLE_PROJECT: Project = {
       variants: {
         v24: {
           id: 'v24',
+          name: '24',
           size: 24,
           viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
           defaultState: 'default',
-        },
-      },
-      states: {
-        default: {
-          id: 'default',
-          layers: {
-            'bg-circle': {
-              id: 'bg-circle',
-              role: 'secondary',
-              visible: true,
-              path: {
-                d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2Z',
-              },
-              style: {
-                fill: { mode: 'fixed', value: '#1e293b' },
-                fillOpacity: 1,
-              },
-            },
-            chevron: {
-              id: 'chevron',
-              role: 'primary',
-              visible: true,
-              path: {
-                d: 'M9.5 7l5 5-5 5',
-              },
-              style: {
-                fill: { mode: 'fixed', value: 'none' },
-                stroke: { mode: 'currentColor' },
-                strokeWidth: 2,
-                lineCap: 'round',
-                lineJoin: 'round',
-              },
-            },
-            'accent-dot': {
-              id: 'accent-dot',
-              role: 'tertiary',
-              visible: true,
-              path: {
-                d: 'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0',
-              },
-              style: {
-                fill: { mode: 'fixed', value: '#38bdf8' },
-                fillOpacity: 0.8,
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                'bg-circle': {
+                  id: 'bg-circle',
+                  role: 'secondary',
+                  visible: true,
+                  path: {
+                    d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2Z',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: '#1e293b' },
+                    fillOpacity: 1,
+                  },
+                },
+                chevron: {
+                  id: 'chevron',
+                  role: 'primary',
+                  visible: true,
+                  path: {
+                    d: 'M9.5 7l5 5-5 5',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+                'accent-dot': {
+                  id: 'accent-dot',
+                  role: 'tertiary',
+                  visible: true,
+                  path: {
+                    d: 'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: '#38bdf8' },
+                    fillOpacity: 0.8,
+                  },
+                },
               },
             },
           },
@@ -81,24 +83,26 @@ export const SAMPLE_PROJECT: Project = {
       variants: {
         v24: {
           id: 'v24',
+          name: '24',
           size: 24,
           viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
           defaultState: 'default',
-        },
-      },
-      states: {
-        default: {
-          id: 'default',
-          layers: {
-            triangle: {
-              id: 'triangle',
-              role: 'primary',
-              visible: true,
-              path: {
-                d: 'M6.5 4.268a1 1 0 0 1 1.5-.866l11 6.732a1 1 0 0 1 0 1.732l-11 6.732a1 1 0 0 1-1.5-.866V4.268Z',
-              },
-              style: {
-                fill: { mode: 'currentColor' },
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                triangle: {
+                  id: 'triangle',
+                  role: 'primary',
+                  visible: true,
+                  path: {
+                    d: 'M6.5 4.268a1 1 0 0 1 1.5-.866l11 6.732a1 1 0 0 1 0 1.732l-11 6.732a1 1 0 0 1-1.5-.866V4.268Z',
+                  },
+                  style: {
+                    fill: { mode: 'currentColor' },
+                  },
+                },
               },
             },
           },

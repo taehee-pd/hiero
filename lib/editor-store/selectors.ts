@@ -20,9 +20,9 @@ export function selectCurrentVariant(s: EditorStore): Variant | null {
 }
 
 export function selectCurrentState(s: EditorStore): State | null {
-  const icon = selectCurrentIcon(s);
-  if (!icon || !s.currentStateId) return null;
-  return icon.states[s.currentStateId] ?? null;
+  const variant = selectCurrentVariant(s);
+  if (!variant || !s.currentStateId) return null;
+  return variant.states[s.currentStateId] ?? null;
 }
 
 export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
@@ -31,8 +31,19 @@ export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
   if (!variant || !guideMasters) return null;
 
   return (
-    Object.values(guideMasters).find((guideMaster) => guideMaster.targetSize === variant.size) ?? null
+    (variant.guideMasterId ? guideMasters[variant.guideMasterId] : null) ??
+    Object.values(guideMasters).find((guideMaster) => guideMaster.targetSize === variant.size) ??
+    null
   );
+}
+
+export function selectVariantStateById(
+  icon: Icon | null | undefined,
+  variantId: string | null | undefined,
+  stateId: string | null | undefined,
+): State | null {
+  if (!icon || !variantId || !stateId) return null;
+  return icon.variants[variantId]?.states[stateId] ?? null;
 }
 
 export function selectCurrentLayers(s: EditorStore): Layer[] {

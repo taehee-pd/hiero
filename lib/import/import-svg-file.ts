@@ -42,15 +42,16 @@ export function createImportedIcon(
     variants: {
       [variantId]: {
         id: variantId,
+        name: String(size),
         size,
         viewBox,
         defaultState: 'default',
-      },
-    },
-    states: {
-      default: {
-        id: 'default',
-        layers,
+        states: {
+          default: {
+            id: 'default',
+            layers,
+          },
+        },
       },
     },
     transitions: {},

@@ -24,15 +24,16 @@ type MultiSelectionTarget = {
 function getSelectionTarget(): SelectionTarget | null {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
+  const variantId = state.currentVariantId;
   const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
   const rawPointKey = state.selection.pointIds[0];
 
-  if (!iconId || !stateId || !layerId || !rawPointKey) return null;
+  if (!iconId || !variantId || !stateId || !layerId || !rawPointKey) return null;
 
   const { pointKey, handleDirection } = parseSelectionPointKey(rawPointKey);
 
-  const pathD = state.project?.icons[iconId]?.states[stateId]?.layers[layerId]?.path?.d;
+  const pathD = state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
   return { iconId, stateId, layerId, pointKey, handleDirection, pathD };
@@ -52,6 +53,7 @@ function parseSelectionPointKey(rawPointKey: string): {
 function getMultiSelectionTarget(minPoints = 1): MultiSelectionTarget | null {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
+  const variantId = state.currentVariantId;
   const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
   const rawPointKeys = Array.from(new Set(state.selection.pointIds));
@@ -59,9 +61,9 @@ function getMultiSelectionTarget(minPoints = 1): MultiSelectionTarget | null {
     new Set(rawPointKeys.map((rawPointKey) => parseSelectionPointKey(rawPointKey).pointKey)),
   );
 
-  if (!iconId || !stateId || !layerId || pointKeys.length < minPoints) return null;
+  if (!iconId || !variantId || !stateId || !layerId || pointKeys.length < minPoints) return null;
 
-  const pathD = state.project?.icons[iconId]?.states[stateId]?.layers[layerId]?.path?.d;
+  const pathD = state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
   return { iconId, stateId, layerId, rawPointKeys, pointKeys, pathD };
@@ -93,7 +95,10 @@ function resolvePointInEditable(editable: ReturnType<typeof parseSvgPath>, point
 
 function patchPath(iconId: string, stateId: string, layerId: string, nextD: string) {
   const state = editorStore.getState();
-  const layer = state.project?.icons[iconId]?.states[stateId]?.layers[layerId];
+  const layer =
+    state.currentVariantId
+      ? state.project?.icons[iconId]?.variants[state.currentVariantId]?.states[stateId]?.layers[layerId]
+      : null;
   if (!layer?.path) return;
 
   state.patchLayer(iconId, stateId, layerId, {
@@ -204,11 +209,13 @@ export function insertPointAfterSelection(): boolean {
 export function toggleSelectedPathClosed(): boolean {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
+  const variantId = state.currentVariantId;
   const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
-  if (!iconId || !stateId || !layerId) return false;
+  if (!iconId || !variantId || !stateId || !layerId) return false;
 
-  const pathD = state.project?.icons[iconId]?.states[stateId]?.layers[layerId]?.path?.d;
+  const pathD =
+    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return false;
 
   const editable = parseSvgPath(pathD);

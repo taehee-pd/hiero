@@ -43,6 +43,13 @@
   --selection: oklch(0.66 0.18 33);
   --handle: oklch(0.28 0.02 30);
   --toolbar-bg: oklch(0.97 0.012 85 / 88%);
+  --type-family-default: var(--font-geist-sans);
+  --type-family-display: 'Work Sans', var(--font-geist-sans), sans-serif;
+  --type-family-mono: var(--font-geist-mono);
+  --type-weight-default: 450;
+  --type-weight-medium: 450;
+  --type-weight-strong: 550;
+  --type-weight-heavy: 550;
 }
 
 .dark {
@@ -81,9 +88,32 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-body-source);
-  --font-display: var(--font-display-source);
-  --font-mono: var(--font-mono-source);
+  --font-sans: var(--type-family-default);
+  --font-display: var(--type-family-display);
+  --font-mono: var(--type-family-mono);
+  --font-weight-normal: var(--type-weight-default);
+  --font-weight-medium: var(--type-weight-medium);
+  --font-weight-semibold: var(--type-weight-strong);
+  --font-weight-bold: var(--type-weight-heavy);
+  --font-weight-extrabold: var(--type-weight-heavy);
+  --text-xs: 0.5625rem;
+  --text-xs--line-height: 0.875rem;
+  --text-xs--letter-spacing: 0.03125rem;
+  --text-sm: 0.6875rem;
+  --text-sm--line-height: 1rem;
+  --text-sm--letter-spacing: 0.03125rem;
+  --text-base: 0.8125rem;
+  --text-base--line-height: 1.375rem;
+  --text-base--letter-spacing: -0.015625rem;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.5625rem;
+  --text-lg--letter-spacing: -0.03125rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+  --text-xl--letter-spacing: -0.10625rem;
+  --text-2xl: 3rem;
+  --text-2xl--line-height: 3.5rem;
+  --text-2xl--letter-spacing: -0.1875rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -139,11 +169,20 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--type-family-default);
+    font-weight: var(--type-weight-default);
     background-image:
       radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 30%),
       radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
       linear-gradient(180deg, color-mix(in oklab, var(--background) 94%, white 6%) 0%, var(--background) 100%);
     min-height: 100vh;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--type-family-mono);
   }
 
   .swift-surface {
@@ -179,9 +218,11 @@
   }
 
   .studio-kicker {
-    font-size: 0.68rem;
-    line-height: 1;
-    letter-spacing: 0.28em;
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.03125rem;
     text-transform: uppercase;
     color: var(--muted-foreground);
   }
@@ -194,9 +235,11 @@
     border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
     background: color-mix(in oklab, var(--background) 98%, black 2%);
     padding: 0.32rem 0.72rem;
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.03125rem;
     text-transform: uppercase;
   }
 
@@ -235,10 +278,11 @@
   }
 
   .workspace-kicker {
-    font-size: 0.65rem;
-    line-height: 1;
-    font-weight: 700;
-    letter-spacing: 0.24em;
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.03125rem;
     text-transform: uppercase;
     color: var(--muted-foreground);
   }
@@ -253,9 +297,11 @@
     border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
     background: color-mix(in oklab, var(--background) 98%, black 2%);
     padding: 0.28rem 0.72rem;
-    font-size: 0.68rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.03125rem;
     color: var(--foreground);
   }
 
@@ -384,5 +430,89 @@
   .workspace-status-strip {
     border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
     background: color-mix(in oklab, var(--background) 99%, black 1%);
+  }
+
+  .type-body-lg {
+    font-family: var(--type-family-default);
+    font-size: 0.8125rem;
+    line-height: 1.375rem;
+    font-weight: var(--type-weight-default);
+    letter-spacing: -0.015625rem;
+  }
+
+  .type-body-lg-strong {
+    font-family: var(--type-family-default);
+    font-size: 0.8125rem;
+    line-height: 1.375rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: -0.015625rem;
+  }
+
+  .type-body-md {
+    font-family: var(--type-family-default);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: var(--type-weight-medium);
+    letter-spacing: 0.03125rem;
+  }
+
+  .type-body-md-strong {
+    font-family: var(--type-family-default);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    font-weight: var(--type-weight-heavy);
+    letter-spacing: 0.03125rem;
+  }
+
+  .type-body-sm {
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-default);
+    letter-spacing: 0.03125rem;
+  }
+
+  .type-body-sm-strong {
+    font-family: var(--type-family-default);
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.03125rem;
+  }
+
+  .type-heading-display {
+    font-family: var(--type-family-display);
+    font-size: 3rem;
+    line-height: 3.5rem;
+    font-weight: var(--type-weight-default);
+    letter-spacing: -0.1875rem;
+  }
+
+  .type-heading-lg {
+    font-family: var(--type-family-default);
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: var(--type-weight-heavy);
+    letter-spacing: -0.10625rem;
+  }
+
+  .type-heading-md {
+    font-family: var(--type-family-default);
+    font-size: 0.9375rem;
+    line-height: 1.5625rem;
+    font-weight: var(--type-weight-heavy);
+    letter-spacing: -0.03125rem;
+  }
+
+  .type-heading-sm {
+    font-family: var(--type-family-default);
+    font-size: 0.8125rem;
+    line-height: 1.375rem;
+    font-weight: var(--type-weight-heavy);
+    letter-spacing: -0.015625rem;
+  }
+
+  .type-mono {
+    font-family: var(--type-family-mono);
   }
 }

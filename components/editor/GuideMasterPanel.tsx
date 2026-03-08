@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import { useCurrentVariant, useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import type { GuideItem, GuideMaster } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
@@ -34,12 +35,12 @@ const ITEM_KIND_OPTIONS: Array<GuideItem['kind']> = [
 export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   const project = useEditorStore((s) => s.project);
   const variant = useCurrentVariant();
+  const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const guideMasters = project?.guideMasters ?? {};
   const guideMasterList = useMemo(() => Object.values(guideMasters), [guideMasters]);
-  const activeMasterId =
-    guideMasterList.find((master) => master.targetSize === variant?.size)?.id ?? null;
+  const activeMasterId = activeGuideMaster?.id ?? null;
   const groupedMasters = useMemo(() => {
     const groups = new Map<number, GuideMaster[]>();
     for (const master of guideMasterList) {
@@ -141,7 +142,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
         <div>
           <p className="workspace-kicker">Guides</p>
           <p className="mt-2 text-sm font-semibold text-foreground">Guide masters</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="mt-1 text-sm uppercase text-muted-foreground">
             {variant ? `${variant.size}px variant overlay` : 'No active variant'}
           </p>
         </div>
@@ -222,7 +223,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
               ) : null}
               {groupedMasters.map((group) => (
                 <div key={group.size} className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="text-sm font-semibold uppercase text-muted-foreground">
                     {group.size}px
                   </p>
                   <div className="space-y-2">
@@ -247,12 +248,12 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                               <p className="truncate text-sm font-medium text-foreground">
                                 {master.name}
                               </p>
-                              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                              <p className="mt-1 text-sm uppercase text-muted-foreground">
                                 {master.items.length} items
                               </p>
                             </div>
                             {isActive ? (
-                              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">
+                              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold uppercase text-primary">
                                 Active
                               </span>
                             ) : null}
@@ -427,7 +428,7 @@ function GuideItemCard({
   return (
     <div className="rounded-xl border border-border/70 bg-background/80 p-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
           {item.kind}
         </span>
         <Button
@@ -540,7 +541,7 @@ function GuideItemFields({
               onValueChange={(t) => onChange({ ...item, t })}
             />
             <div className="grid gap-1.5">
-              <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              <Label className="text-sm uppercase text-muted-foreground">
                 Direction
               </Label>
               <Select
@@ -578,7 +579,7 @@ function NumericField({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <Label className="text-sm uppercase text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -605,7 +606,7 @@ function TextField({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <Label className="text-sm uppercase text-muted-foreground">
         {label}
       </Label>
       <Input value={value} onChange={(event) => onValueChange(event.target.value)} />
@@ -616,7 +617,7 @@ function TextField({
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2">
-      <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <p className="text-sm uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>
   );

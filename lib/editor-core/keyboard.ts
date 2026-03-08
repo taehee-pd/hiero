@@ -114,17 +114,20 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
 
   if (key === 'delete' || key === 'backspace') {
     const state = editorStore.getState();
-    if (
-      state.currentIconId &&
-      state.selectedIconGuideIndex !== null &&
-      state.selectedIconGuideIndex >= 0
-    ) {
-      state.removeIconGuide(state.currentIconId, state.selectedIconGuideIndex);
+    if (deleteSelectedPoints()) {
       e.preventDefault();
       return;
     }
 
-    if (deleteSelectedPoints()) {
+    const selectedGuideIndexes = state.selection.guideIndexes ?? [];
+    const hasLayers = state.selection.layerIds.length > 0;
+    if (state.currentIconId && (selectedGuideIndexes.length > 0 || hasLayers)) {
+      if (selectedGuideIndexes.length > 0) {
+        state.removeSelectedGuides(state.currentIconId, selectedGuideIndexes);
+      }
+      if (hasLayers) {
+        state.removeSelectedLayers();
+      }
       e.preventDefault();
     }
     return;
@@ -167,7 +170,11 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     }
 
     if (state.selection.pointIds.length > 0) {
-      state.setSelection({ layerIds: state.selection.layerIds, pointIds: [] });
+      state.setSelection({
+        layerIds: state.selection.layerIds,
+        pointIds: [],
+        guideIndexes: state.selection.guideIndexes ?? [],
+      });
       return;
     }
 

@@ -4,6 +4,7 @@ export type ShapeType = 'rectangle' | 'ellipse' | 'polygon' | 'star' | 'line';
 export type SelectionState = {
   layerIds: string[];
   pointIds: string[];
+  guideIndexes?: number[];
 };
 
 export type ViewportState = {

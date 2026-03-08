@@ -2,6 +2,7 @@ import type {
   Project,
   Icon,
   Layer,
+  State,
   GuideMaster,
   GuideSet,
   GuideItem,
@@ -43,6 +44,19 @@ export type EditorActions = {
   loadProject(project: ProjectInput): void;
   newProject(): void;
   insertIcon(icon: Icon): void;
+  addVariant(
+    iconId: string,
+    size: number,
+    viewBox: [number, number, number, number],
+    options?: { name?: string; guideMasterId?: string; sourceVariantId?: string },
+  ): void;
+  removeVariant(iconId: string, variantId: string): void;
+  duplicateLayersToVariant(
+    iconId: string,
+    fromVariantId: string,
+    toVariantId: string,
+    stateId?: string,
+  ): void;
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
@@ -74,6 +88,8 @@ export type EditorActions = {
   addIconGuide(iconId: string, item: GuideItem): void;
   updateIconGuide(iconId: string, index: number, item: GuideItem): void;
   removeIconGuide(iconId: string, index: number): void;
+  removeSelectedGuides(iconId: string, indexes: number[]): void;
+  removeSelectedLayers(): void;
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
@@ -84,10 +100,12 @@ export type EditorStore = EditorState & EditorActions;
 
 type LegacyVariant = Variant & {
   guideSetId?: string;
+  states?: Record<string, State>;
 };
 
-type LegacyIcon = Icon & {
+type LegacyIcon = Omit<Icon, 'variants'> & {
   variants: Record<string, LegacyVariant>;
+  states?: Record<string, State>;
   guides?: Record<string, GuideSet>;
 };
 
@@ -133,6 +151,7 @@ let currentState: EditorStore;
 const listeners = new Set<() => void>();
 
 const MAX_HISTORY = 100;
+export const VARIANT_SIZE_PRESETS = [12, 16, 20, 24, 32, 48] as const;
 let tracking = true;
 let transactionBase: Project | null | undefined;
 const pastStates: TemporalSnapshot[] = [];
@@ -140,6 +159,14 @@ const futureStates: TemporalSnapshot[] = [];
 
 function emit() {
   for (const l of listeners) l();
+}
+
+function normalizeSelection(selection: SelectionState): Required<SelectionState> {
+  return {
+    layerIds: Array.from(new Set(selection.layerIds)),
+    pointIds: Array.from(new Set(selection.pointIds)),
+    guideIndexes: Array.from(new Set(selection.guideIndexes ?? [])).sort((a, b) => a - b),
+  };
 }
 
 function pushHistorySnapshot(project: Project | null) {
@@ -260,6 +287,7 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
   const nextIcons = Object.fromEntries(
     Object.entries(project.icons).map(([iconId, icon]) => {
       const variants = icon.variants;
+      const legacyStates = icon.states ?? {};
       const guideRefsBySetId = new Map<string, LegacyVariant[]>();
 
       for (const variant of Object.values(variants)) {
@@ -316,11 +344,38 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
 
       const migratedVariants = Object.fromEntries(
         Object.entries(variants).map(([variantId, variant]) => {
-          const { guideSetId: _guideSetId, ...rest } = variant;
-          return [variantId, rest];
+          const {
+            guideSetId: legacyGuideSetId,
+            states: variantStates,
+            name,
+            guideMasterId,
+            ...rest
+          } = variant;
+          const targetGuideMaster =
+            guideMasterId ??
+            (legacyGuideSetId
+              ? Object.values(nextGuideMasters).find(
+                  (master) =>
+                    master.targetSize === variant.size &&
+                    master.name === buildGuideMasterName(legacyGuideSetId, variant.size),
+                )?.id
+              : undefined) ??
+            Object.values(nextGuideMasters).find(
+              (master) => master.targetSize === variant.size,
+            )?.id;
+
+          return [
+            variantId,
+            {
+              ...rest,
+              name: name ?? String(variant.size),
+              guideMasterId: targetGuideMaster,
+              states: cloneStateRecord(variantStates ?? legacyStates),
+            },
+          ];
         }),
       ) as Icon['variants'];
-      const { guides: _guides, ...restIcon } = icon;
+      const { guides: _guides, states: _legacyStates, ...restIcon } = icon;
 
       return [
         iconId,
@@ -376,6 +431,123 @@ function buildGuideMasterName(guideSetId: string, targetSize: number) {
   return normalized ? `${targetSize}px ${normalized}` : `${targetSize}px Guide`;
 }
 
+function cloneLayer(layer: Layer): Layer {
+  return {
+    ...layer,
+    path: layer.path ? { ...layer.path } : undefined,
+    style: { ...layer.style },
+    transform: layer.transform ? { ...layer.transform } : undefined,
+    importMeta: layer.importMeta
+      ? {
+          ...layer.importMeta,
+          unsupported: layer.importMeta.unsupported?.map((entry) => ({
+            ...entry,
+            attributes: entry.attributes ? { ...entry.attributes } : undefined,
+          })),
+        }
+      : undefined,
+  };
+}
+
+function cloneStateRecord(states: Record<string, State>): Record<string, State> {
+  return Object.fromEntries(
+    Object.entries(states).map(([stateId, state]) => [
+      stateId,
+      {
+        ...state,
+        layers: Object.fromEntries(
+          Object.entries(state.layers).map(([layerId, layer]) => [layerId, cloneLayer(layer)]),
+        ),
+        topology: state.topology
+          ? {
+              ...state.topology,
+              layerPairs: state.topology.layerPairs.map((pair) => ({
+                ...pair,
+                commandSignature: [...pair.commandSignature],
+                closed: [...pair.closed],
+              })),
+            }
+          : undefined,
+      },
+    ]),
+  );
+}
+
+function getVariantById(
+  project: Project | null,
+  iconId: string | null | undefined,
+  variantId: string | null | undefined,
+): Variant | null {
+  if (!project || !iconId || !variantId) return null;
+  return project.icons[iconId]?.variants[variantId] ?? null;
+}
+
+function getVariantStateById(
+  project: Project | null,
+  iconId: string | null | undefined,
+  variantId: string | null | undefined,
+  stateId: string | null | undefined,
+): State | null {
+  const variant = getVariantById(project, iconId, variantId);
+  if (!variant || !stateId) return null;
+  return variant.states[stateId] ?? null;
+}
+
+function buildVariantName(size: number, existingNames: string[], preferredName?: string): string {
+  const baseName = (preferredName?.trim() || String(size)).slice(0, 64);
+  if (!existingNames.includes(baseName)) return baseName;
+
+  let counter = 2;
+  let nextName = `${baseName} ${counter}`;
+  while (existingNames.includes(nextName)) {
+    counter += 1;
+    nextName = `${baseName} ${counter}`;
+  }
+  return nextName;
+}
+
+function buildVariantId(size: number, existingIds: string[]): string {
+  return ensureUniqueRecordId(`v${Math.round(size)}`, existingIds);
+}
+
+function scaleViewBoxToSize(
+  sourceViewBox: [number, number, number, number],
+  size: number,
+): [number, number, number, number] {
+  const sourceSize = Math.max(sourceViewBox[2], sourceViewBox[3], 1);
+  const scale = size / sourceSize;
+  return [
+    Number((sourceViewBox[0] * scale).toFixed(3)),
+    Number((sourceViewBox[1] * scale).toFixed(3)),
+    Number((sourceViewBox[2] * scale).toFixed(3)),
+    Number((sourceViewBox[3] * scale).toFixed(3)),
+  ];
+}
+
+function replaceVariantState(
+  icon: Icon,
+  variantId: string,
+  stateId: string,
+  nextState: State,
+): Icon {
+  const variant = icon.variants[variantId];
+  if (!variant) return icon;
+
+  return {
+    ...icon,
+    variants: {
+      ...icon.variants,
+      [variantId]: {
+        ...variant,
+        states: {
+          ...variant.states,
+          [stateId]: nextState,
+        },
+      },
+    },
+  };
+}
+
 function createActions(): EditorActions {
   return {
     loadProject(project) {
@@ -383,7 +555,9 @@ function createActions(): EditorActions {
       const firstIconId = Object.keys(project.icons)[0] ?? null;
       const firstIcon = firstIconId ? migratedProject.icons[firstIconId] : null;
       const firstVariantId = firstIcon ? Object.keys(firstIcon.variants)[0] ?? null : null;
-      const firstStateId = firstIcon ? Object.keys(firstIcon.states)[0] ?? null : null;
+      const firstStateId = firstVariantId
+        ? Object.keys(firstIcon?.variants[firstVariantId]?.states ?? {})[0] ?? null
+        : null;
 
       editorStoreApi.setState({
         project: migratedProject,
@@ -438,7 +612,9 @@ function createActions(): EditorActions {
                 id: nextIconId,
               };
         const nextVariantId = Object.keys(nextIcon.variants)[0] ?? null;
-        const nextStateId = Object.keys(nextIcon.states)[0] ?? null;
+        const nextStateId = nextVariantId
+          ? Object.keys(nextIcon.variants[nextVariantId]?.states ?? {})[0] ?? null
+          : null;
 
         return {
           project: {
@@ -460,14 +636,182 @@ function createActions(): EditorActions {
       });
     },
 
+    addVariant(iconId, size, viewBox, options) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const sourceVariantId =
+          options?.sourceVariantId ??
+          (s.currentIconId === iconId ? s.currentVariantId : null) ??
+          Object.keys(icon.variants)[0] ??
+          null;
+        const sourceVariant = sourceVariantId ? icon.variants[sourceVariantId] : null;
+        if (!sourceVariant) return s;
+
+        const nextVariantId = buildVariantId(size, Object.keys(icon.variants));
+        const nextVariantName = buildVariantName(
+          size,
+          Object.values(icon.variants).map((variant) => variant.name ?? String(variant.size)),
+          options?.name,
+        );
+        const nextStates = cloneStateRecord(sourceVariant.states);
+        const nextViewBox = scaleViewBoxToSize(
+          viewBox[2] > 0 && viewBox[3] > 0 ? viewBox : sourceVariant.viewBox,
+          size,
+        );
+
+        const nextVariant: Variant = {
+          id: nextVariantId,
+          name: nextVariantName,
+          size,
+          viewBox: nextViewBox,
+          guideMasterId:
+            options?.guideMasterId ??
+            sourceVariant.guideMasterId ??
+            Object.values(s.project.guideMasters ?? {}).find(
+              (master) => master.targetSize === size,
+            )?.id,
+          defaultState: sourceVariant.defaultState,
+          states: nextStates,
+        };
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [nextVariantId]: nextVariant,
+                },
+              },
+            },
+          },
+          currentIconId: iconId,
+          currentVariantId: nextVariantId,
+          currentStateId:
+            (s.currentStateId && nextVariant.states[s.currentStateId] ? s.currentStateId : null) ??
+            nextVariant.defaultState ??
+            Object.keys(nextVariant.states)[0] ??
+            null,
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          selectedIconGuideIndex: null,
+          pointMarquee: null,
+          pointTransformLabel: null,
+        };
+      });
+    },
+
+    removeVariant(iconId, variantId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon || !icon.variants[variantId]) return s;
+
+        const variantIds = Object.keys(icon.variants);
+        if (variantIds.length <= 1) return s;
+
+        const nextVariants = { ...icon.variants };
+        delete nextVariants[variantId];
+
+        const fallbackVariantId =
+          s.currentVariantId === variantId
+            ? Object.keys(nextVariants)[0] ?? null
+            : s.currentVariantId;
+        const fallbackVariant = fallbackVariantId ? nextVariants[fallbackVariantId] : null;
+        const fallbackStateId =
+          fallbackVariant && s.currentVariantId === variantId
+            ? (s.currentStateId && fallbackVariant.states[s.currentStateId]
+                ? s.currentStateId
+                : fallbackVariant.defaultState) ?? Object.keys(fallbackVariant.states)[0] ?? null
+            : s.currentStateId;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: nextVariants,
+              },
+            },
+          },
+          currentVariantId: fallbackVariantId,
+          currentStateId: fallbackStateId,
+          selection: s.currentVariantId === variantId ? { layerIds: [], pointIds: [] } : s.selection,
+          activeSnapGuides: s.currentVariantId === variantId ? [] : s.activeSnapGuides,
+          selectedIconGuideIndex: s.currentVariantId === variantId ? null : s.selectedIconGuideIndex,
+          pointMarquee: s.currentVariantId === variantId ? null : s.pointMarquee,
+          pointTransformLabel:
+            s.currentVariantId === variantId ? null : s.pointTransformLabel,
+        };
+      });
+    },
+
+    duplicateLayersToVariant(iconId, fromVariantId, toVariantId, stateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const fromVariant = icon?.variants[fromVariantId];
+        const toVariant = icon?.variants[toVariantId];
+        if (!icon || !fromVariant || !toVariant) return s;
+
+        const nextStates = { ...toVariant.states };
+        if (stateId) {
+          const sourceState = fromVariant.states[stateId];
+          if (!sourceState) return s;
+          nextStates[stateId] = {
+            ...sourceState,
+            layers: cloneStateRecord({ [stateId]: sourceState })[stateId]!.layers,
+            topology: sourceState.topology
+              ? cloneStateRecord({ [stateId]: sourceState })[stateId]!.topology
+              : undefined,
+          };
+        } else {
+          Object.assign(nextStates, cloneStateRecord(fromVariant.states));
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [toVariantId]: {
+                    ...toVariant,
+                    states: nextStates,
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
     setCurrentIcon(id) {
       editorStoreApi.setState((s) => {
         const icon = s.project?.icons[id];
         if (!icon) return s;
+        const nextVariantId = Object.keys(icon.variants)[0] ?? null;
         return {
           currentIconId: id,
-          currentVariantId: Object.keys(icon.variants)[0] ?? null,
-          currentStateId: Object.keys(icon.states)[0] ?? null,
+          currentVariantId: nextVariantId,
+          currentStateId: nextVariantId
+            ? Object.keys(icon.variants[nextVariantId]?.states ?? {})[0] ?? null
+            : null,
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
@@ -477,11 +821,25 @@ function createActions(): EditorActions {
     },
 
     setCurrentVariant(id) {
-      editorStoreApi.setState({
-        currentVariantId: id,
-        activeSnapGuides: [],
-        pointMarquee: null,
-        selectedIconGuideIndex: null,
+      editorStoreApi.setState((s) => {
+        const icon = s.currentIconId ? s.project?.icons[s.currentIconId] : null;
+        const variant = icon?.variants[id];
+        if (!variant) return s;
+
+        const nextStateId =
+          (s.currentStateId && variant.states[s.currentStateId] ? s.currentStateId : null) ??
+          variant.defaultState ??
+          Object.keys(variant.states)[0] ??
+          null;
+
+        return {
+          currentVariantId: id,
+          currentStateId: nextStateId,
+          activeSnapGuides: [],
+          pointMarquee: null,
+          selectedIconGuideIndex: null,
+          selection: { layerIds: [], pointIds: [] },
+        };
       });
     },
 
@@ -498,17 +856,18 @@ function createActions(): EditorActions {
     setSelectedIconGuideIndex(index) {
       editorStoreApi.setState({
         selectedIconGuideIndex: index,
-        selection: { layerIds: [], pointIds: [] },
+        selection: { layerIds: [], pointIds: [], guideIndexes: index === null ? [] : [index] },
       });
     },
 
     patchLayer(iconId, stateId, layerId, patch) {
       editorStoreApi.setState((s) => {
-        if (!s.project) return s;
+        if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
-        const state = icon?.states[stateId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[stateId];
         const layer = state?.layers[layerId];
-        if (!icon || !state || !layer) return s;
+        if (!icon || !variant || !state || !layer) return s;
 
         return {
           project: {
@@ -516,17 +875,13 @@ function createActions(): EditorActions {
             icons: {
               ...s.project.icons,
               [iconId]: {
-                ...icon,
-                states: {
-                  ...icon.states,
-                  [stateId]: {
-                    ...state,
-                    layers: {
-                      ...state.layers,
-                      [layerId]: { ...layer, ...patch },
-                    },
+                ...replaceVariantState(icon, s.currentVariantId, stateId, {
+                  ...state,
+                  layers: {
+                    ...state.layers,
+                    [layerId]: { ...layer, ...patch },
                   },
-                },
+                }),
               },
             },
           },
@@ -536,11 +891,12 @@ function createActions(): EditorActions {
 
     setLayerVisibility(iconId, stateId, layerId, visible) {
       editorStoreApi.setState((s) => {
-        if (!s.project) return s;
+        if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
-        const state = icon?.states[stateId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[stateId];
         const layer = state?.layers[layerId];
-        if (!icon || !state || !layer) return s;
+        if (!icon || !variant || !state || !layer) return s;
 
         return {
           project: {
@@ -548,17 +904,13 @@ function createActions(): EditorActions {
             icons: {
               ...s.project.icons,
               [iconId]: {
-                ...icon,
-                states: {
-                  ...icon.states,
-                  [stateId]: {
-                    ...state,
-                    layers: {
-                      ...state.layers,
-                      [layerId]: { ...layer, visible },
-                    },
+                ...replaceVariantState(icon, s.currentVariantId, stateId, {
+                  ...state,
+                  layers: {
+                    ...state.layers,
+                    [layerId]: { ...layer, visible },
                   },
-                },
+                }),
               },
             },
           },
@@ -568,11 +920,12 @@ function createActions(): EditorActions {
 
     setClipMask(clipLayerId, targetLayerIds) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentStateId) return s;
+        if (!s.project || !s.currentIconId || !s.currentVariantId || !s.currentStateId) return s;
         const icon = s.project.icons[s.currentIconId];
-        const state = icon?.states[s.currentStateId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[s.currentStateId];
         const maskLayer = state?.layers[clipLayerId];
-        if (!icon || !state || !maskLayer) return s;
+        if (!icon || !variant || !state || !maskLayer) return s;
 
         const nextTargetIds = Array.from(new Set(targetLayerIds)).filter(
           (layerId) => layerId !== clipLayerId && Boolean(state.layers[layerId]),
@@ -620,14 +973,10 @@ function createActions(): EditorActions {
             icons: {
               ...s.project.icons,
               [icon.id]: {
-                ...icon,
-                states: {
-                  ...icon.states,
-                  [state.id]: {
-                    ...state,
-                    layers: nextLayers,
-                  },
-                },
+                ...replaceVariantState(icon, s.currentVariantId, state.id, {
+                  ...state,
+                  layers: nextLayers,
+                }),
               },
             },
           },
@@ -637,11 +986,12 @@ function createActions(): EditorActions {
 
     releaseClipMask(layerId) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentStateId) return s;
+        if (!s.project || !s.currentIconId || !s.currentVariantId || !s.currentStateId) return s;
         const icon = s.project.icons[s.currentIconId];
-        const state = icon?.states[s.currentStateId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[s.currentStateId];
         const layer = state?.layers[layerId];
-        if (!icon || !state || !layer) return s;
+        if (!icon || !variant || !state || !layer) return s;
 
         const nextLayers = { ...state.layers };
 
@@ -684,14 +1034,10 @@ function createActions(): EditorActions {
             icons: {
               ...s.project.icons,
               [icon.id]: {
-                ...icon,
-                states: {
-                  ...icon.states,
-                  [state.id]: {
-                    ...state,
-                    layers: nextLayers,
-                  },
-                },
+                ...replaceVariantState(icon, s.currentVariantId, state.id, {
+                  ...state,
+                  layers: nextLayers,
+                }),
               },
             },
           },
@@ -700,12 +1046,16 @@ function createActions(): EditorActions {
     },
 
     setSelection(selection) {
-      editorStoreApi.setState({ selection });
+      const nextSelection = normalizeSelection(selection);
+      editorStoreApi.setState({
+        selection: nextSelection,
+        selectedIconGuideIndex: nextSelection.guideIndexes[0] ?? null,
+      });
     },
 
     clearSelection() {
       editorStoreApi.setState({
-        selection: { layerIds: [], pointIds: [] },
+        selection: { layerIds: [], pointIds: [], guideIndexes: [] },
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
@@ -995,6 +1345,82 @@ function createActions(): EditorActions {
       });
     },
 
+    removeSelectedGuides(iconId, indexes) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || indexes.length === 0) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.customGuides?.length) return s;
+
+        const toRemove = new Set(indexes.filter((index) => index >= 0 && index < icon.customGuides!.length));
+        if (toRemove.size === 0) return s;
+
+        const nextGuides = icon.customGuides.filter((_, entryIndex) => !toRemove.has(entryIndex));
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                customGuides: nextGuides.length > 0 ? nextGuides : undefined,
+              },
+            },
+          },
+          selection: {
+            ...s.selection,
+            guideIndexes: [],
+          },
+          selectedIconGuideIndex: null,
+        };
+      });
+    },
+
+    removeSelectedLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId || !s.currentStateId) return s;
+        const selectedLayerIds = Array.from(new Set(s.selection.layerIds));
+        if (selectedLayerIds.length === 0) return s;
+
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[s.currentStateId];
+        if (!icon || !variant || !state) return s;
+
+        const nextLayers = { ...state.layers };
+        let removed = false;
+        for (const layerId of selectedLayerIds) {
+          if (!nextLayers[layerId]) continue;
+          delete nextLayers[layerId];
+          removed = true;
+        }
+        if (!removed) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: {
+                ...replaceVariantState(icon, variant.id, s.currentStateId, {
+                  ...state,
+                  layers: nextLayers,
+                }),
+              },
+            },
+          },
+          selection: {
+            layerIds: [],
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+          activeSnapGuides: [],
+          pointMarquee: null,
+        };
+      });
+    },
+
     pauseHistory() {
       temporalState.pause();
     },
@@ -1010,13 +1436,15 @@ function createActions(): EditorActions {
     async applyBoolean(mode) {
       const snapshot = editorStoreApi.getState();
       const iconId = snapshot.currentIconId;
+      const variantId = snapshot.currentVariantId;
       const stateId = snapshot.currentStateId;
       const selectedLayerIds = Array.from(new Set(snapshot.selection.layerIds));
-      if (!snapshot.project || !iconId || !stateId || selectedLayerIds.length < 2) return;
+      if (!snapshot.project || !iconId || !variantId || !stateId || selectedLayerIds.length < 2) return;
 
       const icon = snapshot.project.icons[iconId];
-      const state = icon?.states[stateId];
-      if (!icon || !state) return;
+      const variant = icon?.variants[variantId];
+      const state = variant?.states[stateId];
+      if (!icon || !variant || !state) return;
 
       const selectedLayers = selectedLayerIds.map((layerId) => ({
         layerId,
@@ -1035,10 +1463,11 @@ function createActions(): EditorActions {
         editorStoreApi.setState((s) => {
           if (!s.project) return s;
           const liveIcon = s.project.icons[iconId];
-          const liveState = liveIcon?.states[stateId];
+          const liveVariant = liveIcon?.variants[variantId];
+          const liveState = liveVariant?.states[stateId];
           const primaryLayerId = selectedLayerIds[0]!;
           const primaryLayer = liveState?.layers[primaryLayerId];
-          if (!liveIcon || !liveState || !primaryLayer?.path) return s;
+          if (!liveIcon || !liveVariant || !liveState || !primaryLayer?.path) return s;
 
           const nextLayers = { ...liveState.layers };
           nextLayers[primaryLayerId] = {
@@ -1059,14 +1488,10 @@ function createActions(): EditorActions {
               icons: {
                 ...s.project.icons,
                 [iconId]: {
-                  ...liveIcon,
-                  states: {
-                    ...liveIcon.states,
-                    [stateId]: {
-                      ...liveState,
-                      layers: nextLayers,
-                    },
-                  },
+                  ...replaceVariantState(liveIcon, variantId, stateId, {
+                    ...liveState,
+                    layers: nextLayers,
+                  }),
                 },
               },
             },

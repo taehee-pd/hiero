@@ -1,29 +1,13 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
-import { IBM_Plex_Mono, Instrument_Sans, Syne } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
+import '@fontsource/work-sans/400.css';
+import '@fontsource/work-sans/500.css';
+import '@fontsource/work-sans/600.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
-
-const sans = Instrument_Sans({
-  subsets: ['latin'],
-  variable: '--font-body-source',
-  display: 'swap',
-});
-
-const display = Syne({
-  subsets: ['latin'],
-  variable: '--font-display-source',
-  weight: ['500', '600', '700', '800'],
-  display: 'swap',
-});
-
-const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono-source',
-  weight: ['400', '500'],
-  display: 'swap',
-});
 
 export const viewport = {
   width: 'device-width',
@@ -65,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
       <body
-        className={`${sans.variable} ${display.variable} ${mono.variable} overflow-hidden font-sans antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} overflow-hidden font-sans antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}

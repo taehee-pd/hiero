@@ -1,18 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import type { GuideItem } from '@/lib/schema/types';
-import { cn } from '@/lib/utils';
 
 const RULER_SIZE = 24;
 const HIT_SIZE = 10;
+const DRAG_THRESHOLD_PX = 4;
 const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
+const DEFAULT_GUIDE_COLOR = 'rgba(34,211,238,0.9)';
+const SELECTED_GUIDE_COLOR = 'rgba(8,145,178,0.98)';
+const DEFAULT_GUIDE_WIDTH = 1;
+const SELECTED_GUIDE_WIDTH = 3;
 
 type DragState = {
   kind: 'hline' | 'vline';
-  mode: 'new' | 'existing';
-  index?: number;
+  source: 'ruler' | 'guide';
+  pointerId: number;
+  guideIndex: number | null;
+  startClientX: number;
+  startClientY: number;
+  dragging: boolean;
+  duplicate: boolean;
   value: number;
 };
 
@@ -24,7 +33,7 @@ export function Rulers({
   guidesVisible,
   guideStyle,
   customGuides,
-  selectedGuideIndex,
+  selectedGuideIndexes,
 }: {
   containerRef: RefObject<HTMLDivElement | null>;
   currentIconId: string | null;
@@ -33,9 +42,13 @@ export function Rulers({
   guidesVisible: boolean;
   guideStyle: 'subtle' | 'strong';
   customGuides: GuideItem[];
-  selectedGuideIndex: number | null;
+  selectedGuideIndexes: number[];
 }) {
-  const { addIconGuide, updateIconGuide, setSelectedIconGuideIndex } = useEditorActions();
+  const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex, setSelection } =
+    useEditorActions();
+  const dragSessionRef = useRef<DragState | null>(null);
+  const pendingDragRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -71,10 +84,8 @@ export function Rulers({
 
     const toScreenX = (value: number) => left + (value - vx) * scale;
     const toScreenY = (value: number) => top + (value - vy) * scale;
-    const toSvgX = (screenX: number) =>
-      clampValue(vx + (screenX - left) / Math.max(scale, 0.0001), vx, vx + vw);
-    const toSvgY = (screenY: number) =>
-      clampValue(vy + (screenY - top) / Math.max(scale, 0.0001), vy, vy + vh);
+    const toSvgX = (screenX: number) => vx + (screenX - left) / Math.max(scale, 0.0001);
+    const toSvgY = (screenY: number) => vy + (screenY - top) / Math.max(scale, 0.0001);
 
     return {
       vx,
@@ -84,6 +95,8 @@ export function Rulers({
       scale,
       left,
       top,
+      right: left + renderWidth,
+      bottom: top + renderHeight,
       toScreenX,
       toScreenY,
       toSvgX,
@@ -91,62 +104,220 @@ export function Rulers({
     };
   }, [containerSize.height, containerSize.width, viewBox, viewport.panX, viewport.panY, viewport.zoom]);
 
-  useEffect(() => {
-    if (!dragState || !currentIconId) return;
+  const getPointerGuideValue = useCallback(
+    (kind: DragState['kind'], clientX: number, clientY: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      return kind === 'vline'
+        ? metrics.toSvgX(clientX - rect.left)
+        : metrics.toSvgY(clientY - rect.top);
+    },
+    [containerRef, metrics],
+  );
 
+  const clearDragSession = useCallback(() => {
+    dragSessionRef.current = null;
+    pendingDragRef.current = null;
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    setDragState(null);
+  }, []);
+
+  const updateDragSession = useCallback(
+    (clientX: number, clientY: number, altKey: boolean) => {
+      const current = dragSessionRef.current;
+      if (!current) return;
+
+      const nextValue = getPointerGuideValue(current.kind, clientX, clientY);
+      if (nextValue === null) return;
+
+      const movedEnough =
+        Math.abs(clientX - current.startClientX) >= DRAG_THRESHOLD_PX ||
+        Math.abs(clientY - current.startClientY) >= DRAG_THRESHOLD_PX;
+
+      const nextState: DragState = {
+        ...current,
+        value: nextValue,
+        dragging: current.dragging || movedEnough,
+        duplicate:
+          current.source === 'guide' && (current.dragging || movedEnough) ? altKey : false,
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+    },
+    [getPointerGuideValue],
+  );
+
+  const flushPendingDrag = useCallback(() => {
+    dragFrameRef.current = null;
+    const pending = pendingDragRef.current;
+    if (!pending) return;
+    pendingDragRef.current = null;
+    updateDragSession(pending.clientX, pending.clientY, pending.altKey);
+  }, [updateDragSession]);
+
+  const queueDragUpdate = useCallback(
+    (clientX: number, clientY: number, altKey: boolean) => {
+      pendingDragRef.current = { clientX, clientY, altKey };
+      if (dragFrameRef.current !== null) return;
+      dragFrameRef.current = requestAnimationFrame(() => {
+        flushPendingDrag();
+      });
+    },
+    [flushPendingDrag],
+  );
+
+  const commitDragSession = useCallback(
+    (session: DragState, event: PointerEvent) => {
+      if (!currentIconId) {
+        clearDragSession();
+        return;
+      }
+
+      const releasedOverRuler = isReleasedOverMatchingRuler(
+        containerRef.current?.getBoundingClientRect() ?? null,
+        session.kind,
+        event,
+      );
+      const releasedOutsideEditableCanvas = isReleasedOutsideEditableCanvas(
+        metrics,
+        session.kind,
+        session.value,
+      );
+
+      if (!session.dragging) {
+        if (session.source === 'guide' && session.guideIndex !== null) {
+          setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
+          setSelectedIconGuideIndex(session.guideIndex);
+        }
+        clearDragSession();
+        return;
+      }
+
+      if (session.source === 'ruler') {
+        if (!releasedOverRuler && !releasedOutsideEditableCanvas) {
+          addIconGuide(
+            currentIconId,
+            session.kind === 'vline'
+              ? { kind: 'vline', x: session.value }
+              : { kind: 'hline', y: session.value },
+          );
+        }
+        clearDragSession();
+        return;
+      }
+
+      if (session.guideIndex === null) {
+        clearDragSession();
+        return;
+      }
+
+      if (session.duplicate) {
+        if (!releasedOverRuler && !releasedOutsideEditableCanvas) {
+          addIconGuide(
+            currentIconId,
+            session.kind === 'vline'
+              ? { kind: 'vline', x: session.value }
+              : { kind: 'hline', y: session.value },
+          );
+        } else {
+          setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
+          setSelectedIconGuideIndex(session.guideIndex);
+        }
+        clearDragSession();
+        return;
+      }
+
+      if (releasedOverRuler) {
+        removeIconGuide(currentIconId, session.guideIndex);
+        clearDragSession();
+        return;
+      }
+
+      if (releasedOutsideEditableCanvas) {
+        removeIconGuide(currentIconId, session.guideIndex);
+        clearDragSession();
+        return;
+      }
+
+      const existingGuide = customGuides[session.guideIndex];
+      if (existingGuide?.kind === 'vline') {
+        updateIconGuide(currentIconId, session.guideIndex, {
+          kind: 'vline',
+          x: session.value,
+        });
+      } else if (existingGuide?.kind === 'hline') {
+        updateIconGuide(currentIconId, session.guideIndex, {
+          kind: 'hline',
+          y: session.value,
+        });
+      }
+      setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
+      setSelectedIconGuideIndex(session.guideIndex);
+      clearDragSession();
+    },
+    [
+      addIconGuide,
+      clearDragSession,
+      containerRef,
+      currentIconId,
+      customGuides,
+      metrics,
+      removeIconGuide,
+      setSelection,
+      setSelectedIconGuideIndex,
+      updateIconGuide,
+    ],
+  );
+
+  useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const nextValue =
-        dragState.kind === 'vline'
-          ? metrics.toSvgX(event.clientX - rect.left)
-          : metrics.toSvgY(event.clientY - rect.top);
-      setDragState((current) => (current ? { ...current, value: nextValue } : current));
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+      queueDragUpdate(event.clientX, event.clientY, event.altKey);
     };
 
-    const handlePointerUp = () => {
-      if (dragState.mode === 'new') {
-        addIconGuide(
-          currentIconId,
-          dragState.kind === 'vline'
-            ? { kind: 'vline', x: dragState.value }
-            : { kind: 'hline', y: dragState.value },
-        );
-      } else if (dragState.index !== undefined) {
-        const existingGuide = customGuides[dragState.index];
-        if (existingGuide?.kind === 'vline') {
-          updateIconGuide(currentIconId, dragState.index, {
-            kind: 'vline',
-            x: dragState.value,
-          });
-        } else if (existingGuide?.kind === 'hline') {
-          updateIconGuide(currentIconId, dragState.index, {
-            kind: 'hline',
-            y: dragState.value,
-          });
-        }
-        setSelectedIconGuideIndex(dragState.index);
-      }
-      setDragState(null);
+    const handlePointerUp = (event: PointerEvent) => {
+      flushPendingDrag();
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+      commitDragSession(current, event);
+    };
+
+    const handlePointerCancel = (event: PointerEvent) => {
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+      clearDragSession();
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      flushPendingDrag();
+      const current = dragSessionRef.current;
+      if (!current) return;
+      commitDragSession(current, event as unknown as PointerEvent);
+    };
+
+    const handleWindowBlur = () => {
+      if (!dragSessionRef.current) return;
+      clearDragSession();
     };
 
     window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp, { once: true });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('blur', handleWindowBlur);
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [
-    addIconGuide,
-    containerRef,
-    currentIconId,
-    customGuides,
-    dragState,
-    metrics,
-    setSelectedIconGuideIndex,
-    updateIconGuide,
-  ]);
+  }, [clearDragSession, commitDragSession, flushPendingDrag, queueDragUpdate]);
 
   const horizontalTicks = useMemo(
     () =>
@@ -173,6 +344,61 @@ export function Rulers({
     guide.kind === 'hline' || guide.kind === 'vline' ? [{ guide, index }] : [],
   );
 
+  const startRulerDrag = useCallback(
+    (kind: 'hline' | 'vline', event: React.PointerEvent<SVGSVGElement>) => {
+      const value = getPointerGuideValue(kind, event.clientX, event.clientY);
+      if (value === null) return;
+
+      const nextState: DragState = {
+        kind,
+        source: 'ruler',
+        pointerId: event.pointerId,
+        guideIndex: null,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        dragging: false,
+        duplicate: false,
+        value,
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    },
+    [getPointerGuideValue],
+  );
+
+  const startGuideDrag = useCallback(
+    (
+      kind: 'hline' | 'vline',
+      index: number,
+      value: number,
+      event: React.PointerEvent<HTMLButtonElement>,
+    ) => {
+      setSelection({ layerIds: [], pointIds: [], guideIndexes: [index] });
+      setSelectedIconGuideIndex(index);
+
+      const nextState: DragState = {
+        kind,
+        source: 'guide',
+        pointerId: event.pointerId,
+        guideIndex: index,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        dragging: false,
+        duplicate: false,
+        value,
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    },
+    [setSelection, setSelectedIconGuideIndex],
+  );
+
   if (!guidesVisible || !currentIconId || containerSize.width <= 0 || containerSize.height <= 0) {
     return null;
   }
@@ -184,14 +410,8 @@ export function Rulers({
       <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
 
       <svg
-        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => {
-          const container = containerRef.current?.getBoundingClientRect();
-          if (!container) return;
-          const value = metrics.toSvgX(event.clientX - container.left);
-          setDragState({ kind: 'vline', mode: 'new', value });
-          event.preventDefault();
-        }}
+        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-row-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {horizontalTicks.map((tick) => (
           <g key={`x-${tick.value}`}>
@@ -209,7 +429,7 @@ export function Rulers({
                 y={10}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="ui-monospace, SFMono-Regular, monospace"
+                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
               >
                 {formatTickValue(tick.value)}
               </text>
@@ -219,14 +439,8 @@ export function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => {
-          const container = containerRef.current?.getBoundingClientRect();
-          if (!container) return;
-          const value = metrics.toSvgY(event.clientY - container.top);
-          setDragState({ kind: 'hline', mode: 'new', value });
-          event.preventDefault();
-        }}
+        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-col-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {verticalTicks.map((tick) => (
           <g key={`y-${tick.value}`}>
@@ -244,7 +458,7 @@ export function Rulers({
                 y={tick.screen - 3}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="ui-monospace, SFMono-Regular, monospace"
+                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
                 transform={`rotate(-90 10 ${tick.screen - 3})`}
               >
                 {formatTickValue(tick.value)}
@@ -255,7 +469,7 @@ export function Rulers({
       </svg>
 
       {draggableGuides.map(({ guide, index }) => {
-        const isSelected = selectedGuideIndex === index;
+        const isSelected = selectedGuideIndexes.includes(index);
         const style = getGuideLineStyle(guideStyle, isSelected);
         if (guide.kind === 'vline') {
           const x = metrics.toScreenX(guide.x);
@@ -263,23 +477,18 @@ export function Rulers({
             <button
               key={`guide-v-${index}`}
               type="button"
-              className="pointer-events-auto absolute bottom-0 top-6"
+              className="pointer-events-auto absolute bottom-0 top-6 cursor-col-resize"
               style={{ left: x - HIT_SIZE / 2, width: HIT_SIZE }}
-              onPointerDown={(event) => {
-                setSelectedIconGuideIndex(index);
-                setDragState({ kind: 'vline', mode: 'existing', index, value: guide.x });
-                event.preventDefault();
-              }}
+              onPointerDown={(event) => startGuideDrag('vline', index, guide.x, event)}
               aria-label={`Vertical guide ${index + 1}`}
             >
               <span
-              className="absolute inset-y-0 left-1/2 -translate-x-1/2"
-              style={{
-                  width: style.solid ? (isSelected ? 2 : 1) : 0,
-                  backgroundColor: style.solid ? style.color : undefined,
-                  borderLeft: style.solid ? undefined : `1px dashed ${style.color}`,
-              }}
-            />
+                className="absolute inset-y-0 left-1/2 -translate-x-1/2"
+                style={{
+                  width: style.width,
+                  backgroundColor: style.color,
+                }}
+              />
             </button>
           );
         }
@@ -289,37 +498,30 @@ export function Rulers({
           <button
             key={`guide-h-${index}`}
             type="button"
-            className="pointer-events-auto absolute left-6 right-0"
+            className="pointer-events-auto absolute left-6 right-0 cursor-row-resize"
             style={{ top: y - HIT_SIZE / 2, height: HIT_SIZE }}
-            onPointerDown={(event) => {
-              setSelectedIconGuideIndex(index);
-              setDragState({ kind: 'hline', mode: 'existing', index, value: guide.y });
-              event.preventDefault();
-            }}
+            onPointerDown={(event) => startGuideDrag('hline', index, guide.y, event)}
             aria-label={`Horizontal guide ${index + 1}`}
           >
             <span
               className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
               style={{
-                height: style.solid ? (isSelected ? 2 : 1) : 0,
-                backgroundColor: style.solid ? style.color : undefined,
-                borderTop: style.solid ? undefined : `1px dashed ${style.color}`,
+                height: style.width,
+                backgroundColor: style.color,
               }}
             />
           </button>
         );
       })}
 
-      {dragState ? (
+      {dragState?.dragging ? (
         dragState.kind === 'vline' ? (
           <div
             className="pointer-events-none absolute bottom-0 top-6"
             style={{
               left: metrics.toScreenX(dragState.value),
               width: 0,
-              borderLeft: previewStyle.solid
-                ? `2px solid ${previewStyle.color}`
-                : `2px dashed ${previewStyle.color}`,
+              borderLeft: `${previewStyle.width}px solid ${previewStyle.color}`,
             }}
           />
         ) : (
@@ -328,9 +530,7 @@ export function Rulers({
             style={{
               top: metrics.toScreenY(dragState.value),
               height: 0,
-              borderTop: previewStyle.solid
-                ? `2px solid ${previewStyle.color}`
-                : `2px dashed ${previewStyle.color}`,
+              borderTop: `${previewStyle.width}px solid ${previewStyle.color}`,
             }}
           />
         )
@@ -373,18 +573,47 @@ function formatTickValue(value: number) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(value < 10 ? 1 : 0);
 }
 
-function clampValue(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function getGuideLineStyle(style: 'subtle' | 'strong', selected: boolean) {
   if (selected) {
-    return { color: 'rgba(14,165,233,0.95)', solid: true };
+    return { color: SELECTED_GUIDE_COLOR, width: SELECTED_GUIDE_WIDTH };
   }
 
   if (style === 'strong') {
-    return { color: 'rgba(148,163,184,0.45)', solid: true };
+    return { color: DEFAULT_GUIDE_COLOR, width: DEFAULT_GUIDE_WIDTH };
   }
 
-  return { color: 'rgba(148,163,184,0.18)', solid: false };
+  return { color: DEFAULT_GUIDE_COLOR, width: DEFAULT_GUIDE_WIDTH };
+}
+
+function isReleasedOverMatchingRuler(
+  containerRect: DOMRect | null,
+  kind: DragState['kind'],
+  event: PointerEvent,
+) {
+  if (!containerRect) return false;
+  if (kind === 'hline') {
+    return event.clientY <= containerRect.top + RULER_SIZE;
+  }
+  return event.clientX <= containerRect.left + RULER_SIZE;
+}
+
+function isReleasedOutsideEditableCanvas(
+  metrics: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    toScreenX: (value: number) => number;
+    toScreenY: (value: number) => number;
+  },
+  kind: DragState['kind'],
+  value: number,
+) {
+  if (kind === 'hline') {
+    const screenY = metrics.toScreenY(value);
+    return screenY < metrics.top || screenY > metrics.bottom;
+  }
+
+  const screenX = metrics.toScreenX(value);
+  return screenX < metrics.left || screenX > metrics.right;
 }

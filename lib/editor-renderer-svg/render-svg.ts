@@ -19,7 +19,7 @@ const MANAGED_DEFS_VALUE = 'render-svg';
 export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
   const { icon, variantId, stateId, tokens } = input;
   const variant = icon.variants[variantId];
-  const state = icon.states[stateId];
+  const state = variant?.states[stateId];
   if (!variant || !state) return;
 
   // Set viewBox

@@ -17,16 +17,18 @@ export type Icon = {
   tags?: string[];
   customGuides?: GuideItem[];
   variants: Record<string, Variant>;
-  states: Record<string, State>;
   transitions: Record<string, Transition>;
   effects?: Record<string, Effect>;
 };
 
 export type Variant = {
   id: string;
+  name?: string;
   size: number;
   viewBox: [number, number, number, number];
+  guideMasterId?: string;
   defaultState: string;
+  states: Record<string, State>;
 };
 
 export type State = {

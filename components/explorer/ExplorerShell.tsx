@@ -212,12 +212,14 @@ export function ExplorerShell() {
               ) : null}
               {visibleIcons.map((icon) => {
                 const iconDef = project?.icons[icon.id];
+                const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
                 const svg =
                   iconDef &&
+                  firstVariantId &&
                   exportSvgString(
                     iconDef,
-                    Object.keys(iconDef.variants)[0],
-                    Object.keys(iconDef.states)[0],
+                    firstVariantId,
+                    Object.keys(iconDef.variants[firstVariantId]?.states ?? {})[0],
                     project?.tokenSet?.colors,
                   );
                 const active = selectionSet.has(icon.id);
@@ -232,11 +234,11 @@ export function ExplorerShell() {
                   >
                     <div className="mb-3 flex items-center justify-between gap-2">
                       {activeCategory === 'all' ? (
-                        <span className="studio-chip truncate border-border/70 bg-background/80 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
+                        <span className="studio-chip truncate border-border/70 bg-background/80 text-muted-foreground">
                           {formatCategoryLabel(icon.category || 'uncategorized')}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">{icon.id}</span>
+                        <span className="text-sm text-muted-foreground">{icon.id}</span>
                       )}
                       <button
                         type="button"
@@ -272,9 +274,9 @@ export function ExplorerShell() {
                       <div className="flex items-end justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">{icon.name}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">{icon.id}</p>
+                          <p className="truncate text-sm text-muted-foreground">{icon.id}</p>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition group-hover:text-foreground">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium uppercase text-muted-foreground transition group-hover:text-foreground">
                           Open
                           <ArrowUpRight className="size-4 shrink-0" />
                         </span>

@@ -114,6 +114,32 @@ export function Rulers({
     setDragState(null);
   }, []);
 
+  const updateDragSession = useCallback(
+    (clientX: number, clientY: number, altKey: boolean) => {
+      const current = dragSessionRef.current;
+      if (!current) return;
+
+      const nextValue = getPointerGuideValue(current.kind, clientX, clientY);
+      if (nextValue === null) return;
+
+      const movedEnough =
+        Math.abs(clientX - current.startClientX) >= DRAG_THRESHOLD_PX ||
+        Math.abs(clientY - current.startClientY) >= DRAG_THRESHOLD_PX;
+
+      const nextState: DragState = {
+        ...current,
+        value: nextValue,
+        dragging: current.dragging || movedEnough,
+        duplicate:
+          current.source === 'guide' && (current.dragging || movedEnough) ? altKey : false,
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+    },
+    [getPointerGuideValue],
+  );
+
   const commitDragSession = useCallback(
     (session: DragState, event: PointerEvent) => {
       if (!currentIconId) {
@@ -205,24 +231,7 @@ export function Rulers({
     const handlePointerMove = (event: PointerEvent) => {
       const current = dragSessionRef.current;
       if (!current || event.pointerId !== current.pointerId) return;
-
-      const nextValue = getPointerGuideValue(current.kind, event.clientX, event.clientY);
-      if (nextValue === null) return;
-
-      const movedEnough =
-        Math.abs(event.clientX - current.startClientX) >= DRAG_THRESHOLD_PX ||
-        Math.abs(event.clientY - current.startClientY) >= DRAG_THRESHOLD_PX;
-
-      const nextState: DragState = {
-        ...current,
-        value: nextValue,
-        dragging: current.dragging || movedEnough,
-        duplicate:
-          current.source === 'guide' && (current.dragging || movedEnough) ? event.altKey : false,
-      };
-
-      dragSessionRef.current = nextState;
-      setDragState(nextState);
+      updateDragSession(event.clientX, event.clientY, event.altKey);
     };
 
     const handlePointerUp = (event: PointerEvent) => {
@@ -237,15 +246,37 @@ export function Rulers({
       clearDragSession();
     };
 
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!dragSessionRef.current) return;
+      updateDragSession(event.clientX, event.clientY, event.altKey);
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      const current = dragSessionRef.current;
+      if (!current) return;
+      commitDragSession(current, event as unknown as PointerEvent);
+    };
+
+    const handleWindowBlur = () => {
+      if (!dragSessionRef.current) return;
+      clearDragSession();
+    };
+
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('blur', handleWindowBlur);
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [clearDragSession, commitDragSession, getPointerGuideValue]);
+  }, [clearDragSession, commitDragSession, updateDragSession]);
 
   const horizontalTicks = useMemo(
     () =>
@@ -337,8 +368,8 @@ export function Rulers({
       <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
 
       <svg
-        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-col-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => startRulerDrag('vline', event)}
+        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-row-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
+        onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {horizontalTicks.map((tick) => (
           <g key={`x-${tick.value}`}>
@@ -366,8 +397,8 @@ export function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-row-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => startRulerDrag('hline', event)}
+        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-col-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
+        onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {verticalTicks.map((tick) => (
           <g key={`y-${tick.value}`}>
@@ -528,7 +559,7 @@ function isReleasedOverMatchingRuler(
   event: PointerEvent,
 ) {
   if (!containerRect) return false;
-  if (kind === 'vline') {
+  if (kind === 'hline') {
     return event.clientY <= containerRect.top + RULER_SIZE;
   }
   return event.clientX <= containerRect.left + RULER_SIZE;

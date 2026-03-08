@@ -57,8 +57,8 @@ Guides are reusable across icons, and the editor highlights the guide overlay th
 When guides are visible:
 
 - the rulers appear around the canvas
-- drag out from the top ruler to create a vertical guide
-- drag out from the left ruler to create a horizontal guide
+- drag out from the top ruler to create a horizontal guide
+- drag out from the left ruler to create a vertical guide
 - click a guide to select it
 - drag an existing guide to reposition it
 - hold `Option` on Mac or `Alt` on Windows while dragging a guide to duplicate it

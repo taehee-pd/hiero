@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
+  LoaderCircle,
   AlignCenterHorizontal,
   AlignCenterVertical,
   AlignHorizontalJustifyCenter,
@@ -17,12 +18,16 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
   Minus,
+  Shapes,
+  SplitSquareHorizontal,
+  Squircle,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
+import { toast } from '@/components/ui/use-toast';
 import {
   alignLayers,
   alignSelectedPoints,
@@ -37,9 +42,22 @@ import {
 } from '@/lib/editor-store/hooks';
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
+import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { Layer, PaintRef } from '@/lib/schema/types';
 import type { NodeType, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
+import { cn } from '@/lib/utils';
+
+const BOOLEAN_ACTIONS: Array<{
+  mode: BooleanMode;
+  label: string;
+  icon: typeof Shapes;
+}> = [
+  { mode: 'unite', label: 'Unite', icon: Shapes },
+  { mode: 'subtract', label: 'Subtract', icon: Minus },
+  { mode: 'intersect', label: 'Intersect', icon: SplitSquareHorizontal },
+  { mode: 'exclude', label: 'Exclude', icon: Squircle },
+];
 
 const ALIGN_ACTIONS = [
   { label: 'Align left', mode: 'left', icon: AlignHorizontalJustifyStart },
@@ -87,11 +105,13 @@ export function InspectorPanel() {
     setShapeSubTool,
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
+  const applyBoolean = useEditorStore((s) => s.applyBoolean);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const colorTokens = useEditorStore(
     (s) => s.project?.tokenSet?.colors ?? {},
   );
+  const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const layer =
@@ -107,6 +127,34 @@ export function InspectorPanel() {
   const canAlignPoints = pointContext.count >= 2;
   const canDistributePoints = pointContext.count >= 3;
   const hasSinglePointSelection = pointContext.count === 1;
+  const hasBooleanableSelection = Boolean(
+    currentState &&
+      multipleLayersSelected &&
+      selection.layerIds.every((layerId) => Boolean(currentState.layers[layerId]?.path?.d)),
+  );
+  const booleanDisabled = !hasBooleanableSelection || pendingBooleanMode !== null;
+  const handleBooleanAction = useCallback(
+    async (mode: BooleanMode) => {
+      if (booleanDisabled) return;
+
+      setPendingBooleanMode(mode);
+      try {
+        await applyBoolean(mode);
+      } catch (error) {
+        console.error('[InspectorPanel] boolean operation failed', error);
+        toast({
+          title: 'Boolean operation failed',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Selected layers could not be combined. Check that each layer has a valid path.',
+        });
+      } finally {
+        setPendingBooleanMode(null);
+      }
+    },
+    [applyBoolean, booleanDisabled],
+  );
 
   if (!layer && !showShapeToolSettings) {
     return (
@@ -181,51 +229,43 @@ export function InspectorPanel() {
           <Separator />
 
           <Section title="Boolean">
-            <div className="grid grid-cols-2 gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'unite')
-                }
-              >
-                Unite
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'subtract')
-                }
-              >
-                Subtract
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'intersect')
-                }
-              >
-                Intersect
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!multipleLayersSelected}
-                onClick={() =>
-                  applyPathfinderCompound(currentIconId, currentStateId, selection.layerIds, 'exclude')
-                }
-              >
-                Exclude
-              </Button>
+            <div className="grid grid-cols-2 gap-2">
+              {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
+                const isPending = pendingBooleanMode === mode;
+                return (
+                  <Button
+                    key={mode}
+                    size="sm"
+                    variant="outline"
+                    disabled={booleanDisabled}
+                    onClick={() => void handleBooleanAction(mode)}
+                    className={cn(
+                      'h-10 rounded-md border-border bg-background px-3 text-left transition hover:bg-accent/40',
+                      isPending && 'border-primary/40 text-primary',
+                    )}
+                  >
+                    <span className="flex w-full items-center gap-2.5">
+                      {isPending ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <Icon className="size-4" />
+                      )}
+                      <span className="flex flex-col items-start leading-none">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                          {label}
+                        </span>
+                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                          {isPending ? 'Applying...' : ''}
+                        </span>
+                      </span>
+                    </span>
+                  </Button>
+                );
+              })}
             </div>
-            {!multipleLayersSelected && (
-              <p className="text-[11px] text-muted-foreground">2+ layers</p>
-            )}
+            {!hasBooleanableSelection ? (
+              <p className="text-[11px] text-muted-foreground">Select at least two path layers.</p>
+            ) : null}
           </Section>
 
           <Separator />
@@ -634,37 +674,6 @@ function patchTransform(
   state.patchLayer(iconId, stateId, layerId, {
     transform: { ...(layer.transform ?? {}), ...transformPatch },
   });
-}
-
-function applyPathfinderCompound(
-  iconId: string | null,
-  stateId: string | null,
-  layerIds: string[],
-  mode: 'unite' | 'subtract' | 'intersect' | 'exclude',
-) {
-  if (!iconId || !stateId || layerIds.length < 2) return;
-  const state = editorStore.getState();
-  const icon = state.project?.icons[iconId];
-  const st = icon?.states[stateId];
-  if (!st) return;
-
-  const pathLayers = layerIds
-    .map((id) => st.layers[id])
-    .filter((l): l is Layer => Boolean(l?.path?.d));
-
-  if (pathLayers.length < 2) return;
-
-  const base = pathLayers[0];
-  const combined = pathLayers.map((layer) => layer.path!.d).join(' ');
-  const fillRule = mode === 'unite' ? 'nonzero' : 'evenodd';
-
-  state.patchLayer(iconId, stateId, base.id, {
-    path: { d: combined, fillRule },
-  });
-
-  for (let i = 1; i < pathLayers.length; i++) {
-    state.setLayerVisibility(iconId, stateId, pathLayers[i].id, false);
-  }
 }
 
 type EditablePoint = {

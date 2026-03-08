@@ -1,87 +1,8 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ViewportState, SelectionState } from '@/lib/editor-store/types';
+import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { Layer, GuideSet, GuideItem } from '@/lib/schema/types';
-
-type PaperGlobal = any;
-type PaperWindow = Window & { paper?: PaperGlobal };
-
-const PAPER_SCRIPT_ID = 'paper-core-runtime';
-const PAPER_SCRIPT_SRC = '/vendor/paper-core.min.js';
-let paperLoadPromise: Promise<PaperGlobal> | null = null;
-
-function getPaperGlobal(): PaperGlobal | null {
-  if (typeof window === 'undefined') return null;
-  return (window as unknown as PaperWindow).paper ?? null;
-}
-
-function loadPaperGlobal(): Promise<PaperGlobal> {
-  const loaded = getPaperGlobal();
-  if (loaded) return Promise.resolve(loaded);
-  if (paperLoadPromise) return paperLoadPromise;
-
-  paperLoadPromise = new Promise<PaperGlobal>((resolve, reject) => {
-    const onLoaded = () => {
-      const runtime = getPaperGlobal();
-      if (!runtime) {
-        paperLoadPromise = null;
-        reject(new Error('Paper.js runtime did not attach to window.'));
-        return;
-      }
-      resolve(runtime);
-    };
-
-    const onError = () => {
-      paperLoadPromise = null;
-      reject(new Error('Failed to load Paper.js runtime script.'));
-    };
-
-    const existing = document.getElementById(PAPER_SCRIPT_ID) as
-      | HTMLScriptElement
-      | null;
-
-    if (existing) {
-      const runtime = getPaperGlobal();
-      if (runtime) {
-        resolve(runtime);
-        return;
-      }
-
-      if (existing.dataset.paperStatus === 'error') {
-        onError();
-        return;
-      }
-
-      existing.addEventListener('load', onLoaded, { once: true });
-      existing.addEventListener('error', onError, { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = PAPER_SCRIPT_ID;
-    script.src = PAPER_SCRIPT_SRC;
-    script.async = true;
-    script.dataset.paperStatus = 'loading';
-    script.addEventListener(
-      'load',
-      () => {
-        script.dataset.paperStatus = 'loaded';
-        onLoaded();
-      },
-      { once: true },
-    );
-    script.addEventListener(
-      'error',
-      () => {
-        script.dataset.paperStatus = 'error';
-        onError();
-      },
-      { once: true },
-    );
-    document.head.appendChild(script);
-  });
-
-  return paperLoadPromise;
-}
+import { loadPaperGlobal, type PaperGlobal } from '@/lib/editor-core/paper-runtime';
 
 export type OverlayOptions = {
   viewport: ViewportState;
@@ -91,6 +12,7 @@ export type OverlayOptions = {
   guideSet?: GuideSet;
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
+  activeSnapGuides?: SnapTarget[];
 };
 
 /**
@@ -130,7 +52,16 @@ export function useCanvasOverlay(
       scope.activate();
       scope.project.clear();
 
-      const { viewport, selection, layers, viewBox, guideSet, pointBBox, pointBBoxLabel } =
+      const {
+        viewport,
+        selection,
+        layers,
+        viewBox,
+        guideSet,
+        pointBBox,
+        pointBBoxLabel,
+        activeSnapGuides,
+      } =
         optionsRef.current;
       const [vx, vy, vw, vh] = viewBox;
       const scale = viewport.zoom;
@@ -170,7 +101,6 @@ export function useCanvasOverlay(
       if (guideSet?.items?.length) {
         drawGuideItems(scope, guideSet.items, viewBox, toScreen);
       }
-
       const boundary = new scope.Path.Rectangle({
         rectangle: new scope.Rectangle(left, top, renderWidth, renderHeight),
         strokeColor: new scope.Color('rgba(255,255,255,0.12)'),
@@ -258,6 +188,10 @@ export function useCanvasOverlay(
 
       if (pointBBox) {
         drawPointSelectionBoundingBox(scope, pointBBox, pointBBoxLabel, toScreen);
+      }
+
+      if (activeSnapGuides?.length) {
+        drawActiveSnapGuides(scope, activeSnapGuides, viewBox, toScreen);
       }
 
       scope.view.update();
@@ -504,5 +438,59 @@ function drawGuideItems(
         break;
       }
     }
+  }
+}
+
+function drawActiveSnapGuides(
+  scope: any,
+  guides: SnapTarget[],
+  viewBox: [number, number, number, number],
+  toScreen: (x: number, y: number) => any,
+) {
+  const [vx, vy, vw, vh] = viewBox;
+  const drawn = new Set<string>();
+
+  for (const guide of guides) {
+    const strokeColor = getSnapGuideColor(scope, guide.type);
+    const dashArray = guide.type === 'center' ? [10, 4] : [7, 5];
+
+    if (guide.x !== undefined) {
+      const key = `x:${guide.type}:${guide.sourceLayerId ?? ''}:${guide.x}`;
+      if (!drawn.has(key)) {
+        drawn.add(key);
+        const a = toScreen(guide.x, vy);
+        const b = toScreen(guide.x, vy + vh);
+        const line = new scope.Path.Line(a, b);
+        line.strokeColor = strokeColor;
+        line.strokeWidth = 1.25;
+        line.dashArray = dashArray;
+      }
+    }
+
+    if (guide.y !== undefined) {
+      const key = `y:${guide.type}:${guide.sourceLayerId ?? ''}:${guide.y}`;
+      if (!drawn.has(key)) {
+        drawn.add(key);
+        const a = toScreen(vx, guide.y);
+        const b = toScreen(vx + vw, guide.y);
+        const line = new scope.Path.Line(a, b);
+        line.strokeColor = strokeColor;
+        line.strokeWidth = 1.25;
+        line.dashArray = dashArray;
+      }
+    }
+  }
+}
+
+function getSnapGuideColor(scope: any, type: SnapTarget['type']) {
+  switch (type) {
+    case 'center':
+      return new scope.Color('rgba(34, 211, 238, 0.72)');
+    case 'edge':
+    case 'guide':
+    case 'spacing':
+    case 'grid':
+    default:
+      return new scope.Color('rgba(236, 72, 153, 0.7)');
   }
 }

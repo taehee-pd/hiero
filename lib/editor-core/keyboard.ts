@@ -3,7 +3,7 @@ import { undo, redo } from '@/lib/editor-store/history';
 import type { Tool } from '@/lib/editor-store/types';
 import { alignLayers } from './layer-arrange';
 import {
-  deleteSelectedPoint,
+  deleteSelectedPoints,
   insertPointAfterSelection,
   nudgeSelectedPointByArrow,
   toggleSelectedPathClosed,
@@ -67,16 +67,28 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
 
   if (mod && e.shiftKey && !e.altKey) {
     const mode = ALIGN_SHORTCUTS[key as keyof typeof ALIGN_SHORTCUTS];
-    const state = editorStore.getState();
-    if (
-      mode &&
-      state.selection.layerIds.length > 1 &&
-      state.currentIconId &&
-      state.currentStateId
-    ) {
-      e.preventDefault();
-      alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentStateId);
-      return;
+    if (mode) {
+      const state = editorStore.getState();
+      if (
+        state.selection.layerIds.length > 1 &&
+        state.currentIconId &&
+        state.currentStateId
+      ) {
+        e.preventDefault();
+        alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentStateId);
+        return;
+      }
+    }
+
+    if (e.code === 'Semicolon' || key === ';' || key === ':') {
+      const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+        toggleSnap?: () => void;
+      };
+      if (typeof state.toggleSnap === 'function') {
+        e.preventDefault();
+        state.toggleSnap();
+        return;
+      }
     }
   }
 
@@ -90,7 +102,7 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   }
 
   if (key === 'delete' || key === 'backspace') {
-    if (deleteSelectedPoint()) {
+    if (deleteSelectedPoints()) {
       e.preventDefault();
     }
     return;

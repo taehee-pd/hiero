@@ -6,6 +6,8 @@ import type {
   ShapeType,
   PointTransformLabelState,
 } from './types';
+import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
+import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 
 export type EditorState = {
   project: Project | null;
@@ -13,6 +15,8 @@ export type EditorState = {
   currentVariantId: string | null;
   currentStateId: string | null;
   selection: SelectionState;
+  activeSnapGuides: SnapTarget[];
+  snapEnabled: boolean;
   viewport: ViewportState;
   tool: Tool;
   shapeSubTool: ShapeType;
@@ -31,6 +35,8 @@ export type EditorActions = {
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
   setSelection(selection: SelectionState): void;
   clearSelection(): void;
+  setActiveSnapGuides(guides: SnapTarget[]): void;
+  toggleSnap(): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
   setShapeSubTool(shapeSubTool: ShapeType): void;
@@ -41,6 +47,7 @@ export type EditorActions = {
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
+  applyBoolean(mode: BooleanMode): Promise<void>;
 };
 
 export type EditorStore = EditorState & EditorActions;
@@ -65,6 +72,8 @@ const initialState: EditorState = {
   currentVariantId: null,
   currentStateId: null,
   selection: { layerIds: [], pointIds: [] },
+  activeSnapGuides: [],
+  snapEnabled: true,
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
   shapeSubTool: 'rectangle',
@@ -97,6 +106,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     ...currentState,
     project: snapshot.project,
     selection: { layerIds: [], pointIds: [] },
+    activeSnapGuides: [],
   };
   emit();
 }
@@ -208,6 +218,8 @@ function createActions(): EditorActions {
         currentVariantId: firstVariantId,
         currentStateId: firstStateId,
         selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+        snapEnabled: true,
         viewport: { zoom: 12, panX: 0, panY: 0 },
         pointTransformLabel: null,
       });
@@ -234,16 +246,21 @@ function createActions(): EditorActions {
           currentVariantId: Object.keys(icon.variants)[0] ?? null,
           currentStateId: Object.keys(icon.states)[0] ?? null,
           selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
         };
       });
     },
 
     setCurrentVariant(id) {
-      editorStoreApi.setState({ currentVariantId: id });
+      editorStoreApi.setState({ currentVariantId: id, activeSnapGuides: [] });
     },
 
     setCurrentState(id) {
-      editorStoreApi.setState({ currentStateId: id, selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        currentStateId: id,
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
     },
 
     patchLayer(iconId, stateId, layerId, patch) {
@@ -315,7 +332,21 @@ function createActions(): EditorActions {
     },
 
     clearSelection() {
-      editorStoreApi.setState({ selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
+    },
+
+    setActiveSnapGuides(guides) {
+      editorStoreApi.setState({ activeSnapGuides: guides });
+    },
+
+    toggleSnap() {
+      editorStoreApi.setState((s) => ({
+        snapEnabled: !s.snapEnabled,
+        activeSnapGuides: s.snapEnabled ? [] : s.activeSnapGuides,
+      }));
     },
 
     setViewport(viewport) {
@@ -323,7 +354,11 @@ function createActions(): EditorActions {
     },
 
     setTool(tool) {
-      editorStoreApi.setState({ tool, selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        tool,
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
     },
 
     setShapeSubTool(shapeSubTool) {
@@ -364,6 +399,81 @@ function createActions(): EditorActions {
 
     commitHistory(label?: string) {
       temporalState.commit(label);
+    },
+
+    async applyBoolean(mode) {
+      const snapshot = editorStoreApi.getState();
+      const iconId = snapshot.currentIconId;
+      const stateId = snapshot.currentStateId;
+      const selectedLayerIds = Array.from(new Set(snapshot.selection.layerIds));
+      if (!snapshot.project || !iconId || !stateId || selectedLayerIds.length < 2) return;
+
+      const icon = snapshot.project.icons[iconId];
+      const state = icon?.states[stateId];
+      if (!icon || !state) return;
+
+      const selectedLayers = selectedLayerIds.map((layerId) => ({
+        layerId,
+        layer: state.layers[layerId],
+      }));
+
+      if (selectedLayers.some(({ layer }) => !layer?.path?.d)) return;
+
+      let result = selectedLayers[0]!.layer.path!.d;
+      for (const { layer } of selectedLayers.slice(1)) {
+        result = await booleanOp(mode, result, layer.path!.d);
+      }
+
+      temporalState.pause();
+      try {
+        editorStoreApi.setState((s) => {
+          if (!s.project) return s;
+          const liveIcon = s.project.icons[iconId];
+          const liveState = liveIcon?.states[stateId];
+          const primaryLayerId = selectedLayerIds[0]!;
+          const primaryLayer = liveState?.layers[primaryLayerId];
+          if (!liveIcon || !liveState || !primaryLayer?.path) return s;
+
+          const nextLayers = { ...liveState.layers };
+          nextLayers[primaryLayerId] = {
+            ...primaryLayer,
+            path: {
+              ...primaryLayer.path,
+              d: result,
+            },
+          };
+
+          for (const layerId of selectedLayerIds.slice(1)) {
+            delete nextLayers[layerId];
+          }
+
+          return {
+            project: {
+              ...s.project,
+              icons: {
+                ...s.project.icons,
+                [iconId]: {
+                  ...liveIcon,
+                  states: {
+                    ...liveIcon.states,
+                    [stateId]: {
+                      ...liveState,
+                      layers: nextLayers,
+                    },
+                  },
+                },
+              },
+            },
+            selection: {
+              layerIds: [primaryLayerId],
+              pointIds: [],
+            },
+          };
+        });
+      } finally {
+        temporalState.resume();
+        temporalState.commit(`boolean:${mode}`);
+      }
     },
   };
 }

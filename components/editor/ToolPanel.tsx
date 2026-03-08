@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   ChevronDown,
   Circle,
+  Magnet,
   Minus,
   MousePointer2,
   Move,
@@ -24,18 +25,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/kibo-ui/tooltip';
-import { useTool, useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { useEditorStore, useTool, useEditorActions } from '@/lib/editor-store/hooks';
 import type { ShapeType, Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
-
-
-const VECTOR_SHORTCUTS = [
-  { key: 'Delete', label: 'Delete selected point' },
-  { key: 'Shift+C', label: 'Toggle corner/smooth point' },
-  { key: 'Shift+I', label: 'Insert midpoint after selection' },
-  { key: 'Shift+O', label: 'Open/close selected path' },
-  { key: 'Arrow', label: 'Nudge selected point (0.5)' },
-];
 
 const TOOLS: Array<{
   id: Tool;
@@ -48,7 +40,7 @@ const TOOLS: Array<{
   { id: 'direct-select', icon: Move, label: 'Direct Select', shortcut: 'A' },
   { id: 'pen', icon: Pen, label: 'Pen', shortcut: 'P' },
   { id: 'shape', icon: Square, label: 'Shape', shortcut: 'U' },
-  { id: 'guide', icon: Ruler, label: 'Guide Preset', shortcut: 'G', disabled: true },
+  { id: 'guide', icon: Ruler, label: 'Guide', shortcut: 'G', disabled: true },
 ];
 
 export const SHAPE_SUB_TOOLS: Array<{
@@ -70,12 +62,16 @@ export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
 export function ToolPanel() {
   const activeTool = useTool();
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
-  const { setShapeSubTool, setTool } = useEditorActions();
+  const snapEnabled = useEditorStore((s) => s.snapEnabled);
+  const { setShapeSubTool, setTool, toggleSnap } = useEditorActions();
   const [shapePickerOpen, setShapePickerOpen] = useState(false);
 
   return (
-    <div className="flex h-full flex-col items-center gap-2 py-1">
-      <div className="flex flex-col gap-2">
+    <div className="flex h-full flex-col gap-2">
+      <div className="px-2 py-1">
+        <p className="text-xs font-medium text-muted-foreground">Tools</p>
+      </div>
+      <div className="grid gap-1">
         {TOOLS.map((tool) => {
           const isActive = activeTool === tool.id;
           const isShapeTool = tool.id === 'shape';
@@ -84,47 +80,48 @@ export function ToolPanel() {
               ? `Shape: ${getShapeSubToolLabel(shapeSubTool)}`
               : tool.label;
 
-          const mainButton = (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                if (!tool.disabled) setTool(tool.id);
-              }}
-              aria-label={tooltipLabel}
-              aria-pressed={isActive}
-              disabled={tool.disabled}
-              className={cn(
-                'size-11 rounded-[1rem] border border-transparent bg-background/58 text-muted-foreground shadow-[0_1px_0_rgba(255,255,255,0.4)]',
-                isActive &&
-                  'border-primary/45 bg-primary/12 text-primary ring-1 ring-primary/20',
-                isShapeTool && isActive && 'rounded-r-[0.5rem]',
-                tool.disabled && 'opacity-50',
-              )}
-            >
-              <tool.icon className="size-4" />
-            </Button>
-          );
-
           return (
             <div
               key={tool.id}
               className={cn('flex items-center', isShapeTool && isActive && 'gap-1')}
             >
               <Tooltip>
-                <TooltipTrigger asChild>{mainButton}</TooltipTrigger>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (!tool.disabled) setTool(tool.id);
+                    }}
+                    disabled={tool.disabled}
+                    aria-label={tooltipLabel}
+                    aria-pressed={isActive}
+                    data-active={isActive ? 'true' : 'false'}
+                    className={cn(
+                      'workspace-nav-button h-10 rounded-md px-3 py-2',
+                      isShapeTool && isActive && 'rounded-r-sm',
+                      tool.disabled && 'opacity-50',
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="workspace-tool-button flex size-7 items-center justify-center rounded-md">
+                        <tool.icon className="size-4" />
+                      </span>
+                      <span className="text-sm font-medium text-foreground">{tool.label}</span>
+                    </span>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                      {tool.shortcut}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
                 <TooltipContent side="right">
                   {tooltipLabel}
-                  <span className="ml-2 rounded-full border border-border/50 bg-background/85 px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.12em]">
-                    {tool.shortcut}
-                  </span>
-                  {tool.disabled && (
+                  {tool.disabled ? (
                     <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
-                  )}
+                  ) : null}
                 </TooltipContent>
               </Tooltip>
 
-              {isShapeTool && isActive && (
+              {isShapeTool && isActive ? (
                 <Popover open={shapePickerOpen} onOpenChange={setShapePickerOpen}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -133,15 +130,13 @@ export function ToolPanel() {
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Choose shape type: ${getShapeSubToolLabel(shapeSubTool)}`}
-                          className="h-11 w-6 rounded-l-[0.5rem] rounded-r-[1rem] border border-primary/35 bg-primary/10 px-1 text-primary ring-1 ring-primary/15"
+                          className="h-10 w-8 rounded-l-sm rounded-r-md border border-border bg-background px-0 hover:bg-accent/40"
                         >
                           <ChevronDown className="size-3.5" />
                         </Button>
                       </PopoverTrigger>
                     </TooltipTrigger>
-                    <TooltipContent side="right">
-                      Choose shape
-                    </TooltipContent>
+                    <TooltipContent side="right">Choose shape</TooltipContent>
                   </Tooltip>
                   <PopoverContent side="right" align="start" className="w-44 p-2">
                     <div className="grid gap-1">
@@ -168,24 +163,37 @@ export function ToolPanel() {
                     </div>
                   </PopoverContent>
                 </Popover>
-              )}
+              ) : null}
             </div>
           );
         })}
       </div>
-
-      <div className="mt-auto flex flex-col gap-2">
-        {VECTOR_SHORTCUTS.slice(0, 3).map((item) => (
-          <div
-            key={item.key}
-            className="flex min-h-8 items-center justify-center rounded-[0.9rem] border border-border/60 bg-background/60 px-2 text-[10px] font-mono text-muted-foreground"
-            aria-label={`${item.label}: ${item.key}`}
-            title={`${item.label}: ${item.key}`}
-          >
-            {item.key}
-          </div>
-        ))}
+      <div className="mt-3 px-2 py-1">
+        <p className="text-xs font-medium text-muted-foreground">Snapping</p>
       </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            onClick={toggleSnap}
+            data-active={snapEnabled ? 'true' : 'false'}
+            className="workspace-nav-button h-10 rounded-md px-3 py-2"
+          >
+            <span className="flex items-center gap-2">
+              <span className="workspace-tool-button flex size-7 items-center justify-center rounded-md">
+                <Magnet className="size-4" />
+              </span>
+              <span className="text-sm font-medium text-foreground">
+                {snapEnabled ? 'Snap On' : 'Snap Off'}
+              </span>
+            </span>
+            <span className="text-[10px] font-mono tracking-[0.08em] text-muted-foreground">
+              Cmd/Ctrl+Shift+;
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Toggle snapping</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

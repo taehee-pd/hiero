@@ -155,7 +155,33 @@ describe('keyboard shortcuts', () => {
 
     expect(editorStore.getState().tool).toBe('select');
   });
+  test('cmd/ctrl+shift+semicolon toggles snapping', () => {
+    bootstrap();
+    const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+      toggleSnap?: () => void;
+    };
+    let toggled = false;
+    state.toggleSnap = () => {
+      toggled = true;
+    };
 
+    let prevented = false;
+    handleEditorKeyDown({
+      key: ':',
+      code: 'Semicolon',
+      target: { tagName: 'DIV' },
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: true,
+      altKey: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+    } as unknown as KeyboardEvent);
+
+    expect(prevented).toBeTrue();
+    expect(toggled).toBeTrue();
+  });
   test('ctrl+shift+l aligns selected layers left', () => {
     bootstrapAlignShortcutSelection();
 

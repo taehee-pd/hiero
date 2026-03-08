@@ -70,6 +70,8 @@ export function useEditorActions() {
       setLayerVisibility: state.setLayerVisibility,
       setSelection: state.setSelection,
       clearSelection: state.clearSelection,
+      setActiveSnapGuides: state.setActiveSnapGuides,
+      toggleSnap: state.toggleSnap,
       setViewport: state.setViewport,
       setTool: state.setTool,
       setShapeSubTool: state.setShapeSubTool,

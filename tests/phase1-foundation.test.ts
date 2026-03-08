@@ -73,15 +73,28 @@ describe('phase 1 deterministic checks', () => {
   });
 
 
-  test('direct path editing guard rejects unsupported arc paths', () => {
-    expect(isPathDirectlyEditable('M4 4 A2 2 0 0 1 8 8')).toBeFalse();
+  test('direct path editing guard accepts arc paths used by the editor', () => {
+    expect(isPathDirectlyEditable('M4 4 A2 2 0 0 1 8 8')).toBeTrue();
     expect(isPathDirectlyEditable('M2 2 L10 2 L10 10 L2 10 Z')).toBeTrue();
+    expect(
+      isPathDirectlyEditable(
+        SAMPLE_PROJECT.icons['icon-play']!.states.default.layers.triangle.path!.d,
+      ),
+    ).toBeTrue();
   });
 
   test('path parse/serialize round-trip stays stable', () => {
     const d = 'M2 2 L10 2 L10 10 L2 10 Z';
     const first = serializePath(parseSvgPath(d));
     const second = serializePath(parseSvgPath(first));
+    expect(second).toBe(first);
+  });
+
+  test('arc path parse/serialize round-trip stays stable', () => {
+    const d = 'M4 4 A2 2 0 0 1 8 8';
+    const first = serializePath(parseSvgPath(d));
+    const second = serializePath(parseSvgPath(first));
+    expect(first).toBe(d);
     expect(second).toBe(first);
   });
 });

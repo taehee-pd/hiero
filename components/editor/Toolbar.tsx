@@ -31,12 +31,9 @@ import {
 
 export function Toolbar() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const projectName = useEditorStore(
-    (s) => s.project?.meta.name ?? 'Icophone',
-  );
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Icophone');
   const zoom = useEditorStore((s) => s.viewport.zoom);
-
-  // ── File actions ──────────────────────────────────────────
+  const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
 
   const handleNew = useCallback(() => {
     editorStore.getState().newProject();
@@ -46,29 +43,25 @@ export function Toolbar() {
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const json = JSON.parse(reader.result as string);
-          if (isProject(json)) {
-            editorStore.getState().loadProject(json);
-          } else {
-            alert('Invalid Icophone project file.');
-          }
-        } catch {
-          alert('Failed to parse JSON file.');
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result as string);
+        if (isProject(json)) {
+          editorStore.getState().loadProject(json);
+        } else {
+          alert('Invalid Icophone project file.');
         }
-      };
-      reader.readAsText(file);
-      // Reset so the same file can be re-opened
-      e.target.value = '';
-    },
-    [],
-  );
+      } catch {
+        alert('Failed to parse JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, []);
 
   const handleSave = useCallback(() => {
     const { project } = editorStore.getState();
@@ -110,8 +103,6 @@ export function Toolbar() {
     URL.revokeObjectURL(url);
   }, []);
 
-  // ── Zoom ──────────────────────────────────────────────────
-
   const handleZoomIn = useCallback(() => {
     const { viewport, setViewport } = editorStore.getState();
     setViewport({ zoom: Math.min(viewport.zoom * 1.25, 32) });
@@ -127,26 +118,20 @@ export function Toolbar() {
   }, []);
 
   return (
-    <header className="studio-panel relative z-10 mx-4 mb-2 mt-3 rounded-[1.35rem] px-3 py-2.5 backdrop-blur-md lg:mx-5">
-      <div className="relative z-10 flex flex-wrap items-center gap-3">
+    <header className="workspace-header mx-3 mb-3 mt-3 rounded-xl px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="mr-auto min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium text-foreground">{projectName}</span>
-            <span className="rounded-[0.8rem] border border-border/70 bg-background/75 px-2.5 py-1.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-              {Math.round(zoom * 100)}%
-            </span>
-          </div>
+          <p className="truncate text-sm font-medium text-foreground">{projectName}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {Math.round(zoom * 100)}% · {selectionCount} selected
+          </p>
         </div>
 
         <ToolbarGroup>
           <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
-          <ToolbarButton icon={FolderOpen} label="Open JSON" onClick={handleOpen} />
-          <ToolbarButton icon={Save} label="Save JSON" onClick={handleSave} />
-          <ToolbarButton
-            icon={Download}
-            label="Export SVG"
-            onClick={handleExportSvg}
-          />
+          <ToolbarButton icon={FolderOpen} label="Open" onClick={handleOpen} />
+          <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
+          <ToolbarButton icon={Download} label="Export SVG" onClick={handleExportSvg} />
         </ToolbarGroup>
 
         <ToolbarGroup>
@@ -157,11 +142,7 @@ export function Toolbar() {
         <ToolbarGroup>
           <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
           <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
-          <ToolbarButton
-            icon={Maximize2}
-            label="Fit to Content"
-            onClick={handleZoomFit}
-          />
+          <ToolbarButton icon={Maximize2} label="Fit" onClick={handleZoomFit} />
         </ToolbarGroup>
       </div>
 
@@ -177,40 +158,28 @@ export function Toolbar() {
   );
 }
 
-function ToolbarGroup({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-1 rounded-[1rem] border border-border/70 bg-toolbar-bg/90 px-1.5 py-1.5">
-      <div className="flex items-center gap-1">{children}</div>
-    </div>
-  );
+function ToolbarGroup({ children }: { children: React.ReactNode }) {
+  return <div className="workspace-toolbar-group">{children}</div>;
 }
-
-// ── Toolbar icon button ──────────────────────────────────────
 
 function ToolbarButton({
   icon: Icon,
   label,
   onClick,
-  active,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
-  active?: boolean;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant={active ? 'secondary' : 'ghost'}
+          variant="ghost"
           size="icon-sm"
           onClick={onClick}
           aria-label={label}
-          className="rounded-[0.8rem] border border-transparent text-muted-foreground hover:border-border/60 hover:bg-background/70 hover:text-foreground"
+          className="workspace-tool-button h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
         >
           <Icon className="size-4" />
         </Button>

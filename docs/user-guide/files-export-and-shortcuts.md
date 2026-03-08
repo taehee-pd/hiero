@@ -81,7 +81,7 @@ With multiple layers selected:
 
 ### Point Editing
 
-- `Delete` or `Backspace`: delete selected points, or remove the selected guide line
+- `Delete` or `Backspace`: delete selected points, remove selected layers, or remove selected guides
 - `Shift + C`: toggle point smoothness
 - `Shift + O`: open or close the selected path
 - `Shift + I`: insert a point after the current one
@@ -92,10 +92,16 @@ With multiple layers selected:
 
 - drag from a ruler to create a guide
 - drag a guide beyond the editable icon area when you need to inspect placement
+- drag a selection box to collect ruler guides together with other selections
 - hold `Option` or `Alt` while dragging a guide to make a copy
 - drag a guide back into its ruler to remove it
 - release a guide outside the editable canvas to discard it
 - use `Delete` or `Backspace` to remove the selected guide
+
+### Navigation Tips
+
+- hold `Space` and drag to pan the canvas
+- drag with the middle mouse button to pan the canvas
 
 ## Recommended Habit
 

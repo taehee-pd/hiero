@@ -98,6 +98,8 @@ export function useEditorActions() {
       addIconGuide: state.addIconGuide,
       updateIconGuide: state.updateIconGuide,
       removeIconGuide: state.removeIconGuide,
+      removeSelectedGuides: state.removeSelectedGuides,
+      removeSelectedLayers: state.removeSelectedLayers,
       pauseHistory: state.pauseHistory,
       resumeHistory: state.resumeHistory,
       commitHistory: state.commitHistory,

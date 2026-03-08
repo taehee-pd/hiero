@@ -10,6 +10,7 @@ Typical tasks:
 
 - pick a layer from the canvas
 - move a layer
+- drag a selection box to collect multiple layers and ruler guides
 - combine or align multiple layers after selecting them
 
 ## Point-Editing Tool
@@ -21,7 +22,7 @@ You can:
 - select anchor points
 - drag anchor points
 - move curve handles
-- box-select multiple points
+- drag a selection box to collect points, layers, and ruler guides
 - align or distribute selected points
 - round corners by adding handle radius
 - switch point behavior between corner and smooth styles

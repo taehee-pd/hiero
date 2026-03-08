@@ -246,6 +246,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const project = useEditorStore((s) => s.project);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
+  const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
   const previousGuidesVisibleRef = useRef(guidesVisible);
@@ -267,7 +268,15 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, []);
 
   useEffect(() => {
-    if (!project || !currentIconId || !currentStateId || selectedLayerIds.length > 0) return;
+    if (
+      !project ||
+      !currentIconId ||
+      !currentStateId ||
+      selectedLayerIds.length > 0 ||
+      selectedGuideIndexes.length > 0
+    ) {
+      return;
+    }
     const layers =
       currentVariantId
         ? project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
@@ -279,7 +288,14 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     if (!nextLayerId) return;
 
     editorStore.getState().setSelection({ layerIds: [nextLayerId], pointIds: [] });
-  }, [currentIconId, currentStateId, currentVariantId, project, selectedLayerIds.length]);
+  }, [
+    currentIconId,
+    currentStateId,
+    currentVariantId,
+    project,
+    selectedGuideIndexes.length,
+    selectedLayerIds.length,
+  ]);
 
   useEffect(() => {
     const previousGuidesVisible = previousGuidesVisibleRef.current;

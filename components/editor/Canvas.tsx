@@ -13,6 +13,7 @@ import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { Rulers } from './Rulers';
 import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
+import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
@@ -46,7 +47,13 @@ export function Canvas() {
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragDepthRef = useRef(0);
+  const spacePanEnabledRef = useRef(false);
+  const panSessionRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
+  const panDeltaRef = useRef({ x: 0, y: 0 });
+  const panFrameRef = useRef<number | null>(null);
   const [isDropActive, setIsDropActive] = useState(false);
+  const [isSpacePanEnabled, setIsSpacePanEnabled] = useState(false);
+  const [isDragPanning, setIsDragPanning] = useState(false);
 
   // Subscribe to relevant state for re-render
   const icon = useEditorStore(selectCurrentIcon);
@@ -78,6 +85,29 @@ export function Canvas() {
     };
   });
   const gestureScaleRef = useRef(1);
+
+  const flushPanDelta = useCallback(() => {
+    panFrameRef.current = null;
+    const { x, y } = panDeltaRef.current;
+    panDeltaRef.current = { x: 0, y: 0 };
+    if (x === 0 && y === 0) return;
+    const state = editorStore.getState();
+    state.setViewport({
+      panX: state.viewport.panX + x,
+      panY: state.viewport.panY + y,
+    });
+  }, []);
+
+  const queuePanDelta = useCallback((deltaX: number, deltaY: number) => {
+    panDeltaRef.current = {
+      x: panDeltaRef.current.x + deltaX,
+      y: panDeltaRef.current.y + deltaY,
+    };
+    if (panFrameRef.current !== null) return;
+    panFrameRef.current = requestAnimationFrame(() => {
+      flushPanDelta();
+    });
+  }, [flushPanDelta]);
 
   const fitCanvasToView = useCallback(() => {
     const container = containerRef.current;
@@ -302,7 +332,15 @@ export function Canvas() {
       const state = editorStore.getState();
       const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
       if (nextZoom === state.viewport.zoom) return;
-      state.setViewport({ zoom: nextZoom });
+      const rect = container.getBoundingClientRect();
+      const cursorX = eventClientRef.current.x - rect.left - rect.width / 2;
+      const cursorY = eventClientRef.current.y - rect.top - rect.height / 2;
+      const scaleFactor = nextZoom / state.viewport.zoom;
+      state.setViewport({
+        zoom: nextZoom,
+        panX: cursorX - scaleFactor * (cursorX - state.viewport.panX),
+        panY: cursorY - scaleFactor * (cursorY - state.viewport.panY),
+      });
     };
 
     const panCanvas = (deltaX: number, deltaY: number) => {
@@ -315,6 +353,7 @@ export function Canvas() {
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
+      eventClientRef.current = { x: event.clientX, y: event.clientY };
 
       if (event.ctrlKey || event.metaKey) {
         zoomCanvas(Math.exp(-event.deltaY * 0.01));
@@ -355,6 +394,94 @@ export function Canvas() {
     };
   }, []);
 
+  const eventClientRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || isEditableEventTarget(event.target)) return;
+      if (!spacePanEnabledRef.current) {
+        spacePanEnabledRef.current = true;
+        setIsSpacePanEnabled(true);
+      }
+      event.preventDefault();
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== ' ') return;
+      spacePanEnabledRef.current = false;
+      setIsSpacePanEnabled(false);
+    };
+
+    const handleBlur = () => {
+      spacePanEnabledRef.current = false;
+      setIsSpacePanEnabled(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = panSessionRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      const deltaX = event.clientX - session.lastX;
+      const deltaY = event.clientY - session.lastY;
+      session.lastX = event.clientX;
+      session.lastY = event.clientY;
+      queuePanDelta(deltaX, deltaY);
+    };
+
+    const endPan = (pointerId?: number) => {
+      if (pointerId !== undefined && panSessionRef.current?.pointerId !== pointerId) return;
+      panSessionRef.current = null;
+      if (panFrameRef.current !== null) {
+        cancelAnimationFrame(panFrameRef.current);
+        panFrameRef.current = null;
+      }
+      flushPanDelta();
+      setIsDragPanning(false);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => endPan(event.pointerId);
+    const handlePointerCancel = (event: PointerEvent) => endPan(event.pointerId);
+    const handleMouseUp = () => endPan();
+    const handleBlur = () => endPan();
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [flushPanDelta, queuePanDelta]);
+
+  const handlePanPointerDownCapture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const wantsPan = spacePanEnabledRef.current || event.button === 1;
+    if (!wantsPan) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panSessionRef.current = {
+      pointerId: event.pointerId,
+      lastX: event.clientX,
+      lastY: event.clientY,
+    };
+    setIsDragPanning(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }, []);
+
   // Compute icon positioning
   const vb = variant?.viewBox ?? [0, 0, 24, 24];
   const iconWidth = vb[2];
@@ -371,10 +498,12 @@ export function Canvas() {
       ref={containerRef}
       className={cn(
         'workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg',
+        isDragPanning ? 'cursor-grabbing' : isSpacePanEnabled ? 'cursor-grab' : undefined,
         isDropActive && 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background',
       )}
       data-canvas-root
       style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      onPointerDownCapture={handlePanPointerDownCapture}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -393,7 +522,7 @@ export function Canvas() {
           guidesVisible={guidesVisible}
           guideStyle={guideStyle}
           customGuides={icon.customGuides ?? []}
-          selectedGuideIndex={selectedIconGuideIndex}
+          selectedGuideIndexes={selection.guideIndexes ?? (selectedIconGuideIndex !== null ? [selectedIconGuideIndex] : [])}
         />
       ) : null}
 

@@ -60,6 +60,7 @@ When guides are visible:
 - drag out from the top ruler to create a horizontal guide
 - drag out from the left ruler to create a vertical guide
 - click a guide to select it
+- drag a selection box across the canvas to select ruler guides together with layers or points
 - drag an existing guide to reposition it
 - guides stay visible even when you drag them outside the editable icon area
 - hold `Option` on Mac or `Alt` on Windows while dragging a guide to duplicate it

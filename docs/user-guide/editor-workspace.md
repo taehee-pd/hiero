@@ -56,11 +56,14 @@ When guides are visible, the left panel can switch into guide management. This i
 The canvas is where you draw and edit. It supports:
 
 - pan and zoom
+- drag-selection boxes for layers, points, and ruler guides
 - direct SVG import by dragging a file onto the canvas
 - ruler-based guide creation by dragging out from a ruler
 - guide previews that can move outside the editable icon area while you drag
 - point boxes and handles when point editing is active
 - snap feedback while moving points
+
+Hold the spacebar to temporarily switch to hand-panning. You can also pan by dragging with the middle mouse button.
 
 ## Right Side
 

@@ -20,6 +20,7 @@ import {
 } from './path-shapes';
 import { getSelectedPointsBoundingBox } from './vector-commands';
 import type { PathPoint } from './path-model';
+import type { GuideItem } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
 
@@ -29,6 +30,7 @@ type DragMode =
   | 'point'
   | 'control'
   | 'point-marquee'
+  | 'select-marquee'
   | 'shape'
   | 'selection-move'
   | 'selection-resize'
@@ -64,12 +66,15 @@ type SelectionTransformPlacement = {
   basePathD: string;
 };
 type PointMarqueePlacement = {
-  layerId: string;
+  layerId: string | null;
   pointerId: number;
   start: { x: number; y: number };
   baseSelection: string[];
+  baseLayerIds: string[];
+  baseGuideIndexes: number[];
   mode: 'replace' | 'toggle';
   clickLayerId: string | null;
+  tool: 'select' | 'direct-select';
 };
 
 const PEN_CLOSE_DIST_SQ = 1;
@@ -195,16 +200,8 @@ export class PathEditor {
         (target as Element).setPointerCapture?.(e.pointerId);
       } else if (this.beginSelectionBoundsDrag(e)) {
         this.svg.setPointerCapture?.(e.pointerId);
-      } else if (this.beginPointMarquee(e, layerId)) {
+      } else if (this.beginPointMarquee(e, layerId, 'direct-select')) {
         this.svg.setPointerCapture?.(e.pointerId);
-      } else if (layerId) {
-        const nearestPointKey = this.findNearestPointKey(layerId, e.clientX, e.clientY);
-        state.setSelection({
-          layerIds: [layerId],
-          pointIds: nearestPointKey ? [nearestPointKey] : [],
-        });
-      } else {
-        state.clearSelection();
       }
       return;
     }
@@ -214,8 +211,8 @@ export class PathEditor {
         state.setSelection({ layerIds: [layerId], pointIds: [] });
         this.startLayerDrag(layerId, e.clientX, e.clientY);
         (target as Element).setPointerCapture?.(e.pointerId);
-      } else {
-        state.clearSelection();
+      } else if (this.beginPointMarquee(e, null, 'select')) {
+        this.svg.setPointerCapture?.(e.pointerId);
       }
     }
   }
@@ -546,15 +543,18 @@ export class PathEditor {
     return true;
   }
 
-  private beginPointMarquee(e: PointerEvent, clickLayerId: string | null): boolean {
+  private beginPointMarquee(
+    e: PointerEvent,
+    clickLayerId: string | null,
+    tool: 'select' | 'direct-select',
+  ): boolean {
     const state = editorStore.getState();
     const layerId = this.resolveMarqueeLayerId(clickLayerId);
-    if (!layerId) return false;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return false;
 
-    this.dragMode = 'point-marquee';
+    this.dragMode = tool === 'select' ? 'select-marquee' : 'point-marquee';
     this.isDragging = true;
     this.dragLayerId = layerId;
     this.dragStartX = e.clientX;
@@ -564,8 +564,11 @@ export class PathEditor {
       pointerId: e.pointerId,
       start: svgPoint,
       baseSelection: uniquePointKeys(state.selection.pointIds),
+      baseLayerIds: [...state.selection.layerIds],
+      baseGuideIndexes: [...(state.selection.guideIndexes ?? [])],
       mode: e.shiftKey ? 'toggle' : 'replace',
       clickLayerId,
+      tool,
     };
     state.setPointMarquee({
       minX: svgPoint.x,
@@ -603,7 +606,21 @@ export class PathEditor {
     const state = editorStore.getState();
     state.setPointMarquee(marquee);
 
-    const matchedPointKeys = this.collectPointsInMarquee(placement.layerId, marquee);
+    const matchedPointKeys =
+      placement.tool === 'direct-select' && placement.layerId
+        ? this.collectPointsInMarquee(placement.layerId, marquee)
+        : [];
+    const matchedLayerIds = this.collectLayerIdsInMarquee(marquee, placement.layerId);
+    const matchedGuideIndexes = this.collectGuideIndexesInMarquee(marquee);
+
+    const directSelectLayerIds =
+      placement.tool === 'direct-select' && placement.layerId
+        ? uniqueStrings([
+            placement.layerId,
+            ...matchedLayerIds.filter((layerId) => layerId !== placement.layerId),
+          ])
+        : matchedLayerIds;
+
     if (placement.mode === 'toggle') {
       const baseSelection = new Set(placement.baseSelection);
       for (const key of matchedPointKeys) {
@@ -613,16 +630,29 @@ export class PathEditor {
           baseSelection.add(key);
         }
       }
+      const nextLayerIds = toggleStringSelection(placement.baseLayerIds, matchedLayerIds);
+      const nextGuideIndexes = toggleNumberSelection(
+        placement.baseGuideIndexes,
+        matchedGuideIndexes,
+      );
       state.setSelection({
-        layerIds: [placement.layerId],
+        layerIds:
+          placement.tool === 'direct-select' && placement.layerId
+            ? uniqueStrings([
+                placement.layerId,
+                ...nextLayerIds.filter((layerId) => layerId !== placement.layerId),
+              ])
+            : nextLayerIds,
         pointIds: [...baseSelection],
+        guideIndexes: nextGuideIndexes,
       });
       return;
     }
 
     state.setSelection({
-      layerIds: [placement.layerId],
+      layerIds: directSelectLayerIds,
       pointIds: matchedPointKeys,
+      guideIndexes: matchedGuideIndexes,
     });
   }
 
@@ -1140,6 +1170,59 @@ export class PathEditor {
     return matches;
   }
 
+  private collectLayerIdsInMarquee(
+    marquee: { minX: number; minY: number; maxX: number; maxY: number },
+    preferredLayerId: string | null,
+  ): string[] {
+    const state = editorStore.getState();
+    const currentState = selectCurrentState(state);
+    if (!currentState) return [];
+
+    const matched = new Set<string>();
+    for (const pathEl of this.svg.querySelectorAll<SVGPathElement>('path[data-layer-id]')) {
+      const layerId = pathEl.getAttribute('data-layer-id');
+      if (!layerId || !currentState.layers[layerId]) continue;
+      try {
+        const bounds = pathEl.getBBox();
+        if (
+          bounds.x + bounds.width >= marquee.minX &&
+          bounds.x <= marquee.maxX &&
+          bounds.y + bounds.height >= marquee.minY &&
+          bounds.y <= marquee.maxY
+        ) {
+          matched.add(layerId);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    const ordered = [...matched];
+    if (preferredLayerId && matched.has(preferredLayerId)) {
+      return [preferredLayerId, ...ordered.filter((layerId) => layerId !== preferredLayerId)];
+    }
+    return ordered;
+  }
+
+  private collectGuideIndexesInMarquee(marquee: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  }): number[] {
+    const state = editorStore.getState();
+    const guides = state.currentIconId ? state.project?.icons[state.currentIconId]?.customGuides ?? [] : [];
+    const matches: number[] = [];
+
+    guides.forEach((guide, index) => {
+      if (guideIntersectsMarquee(guide, marquee)) {
+        matches.push(index);
+      }
+    });
+
+    return matches;
+  }
+
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
@@ -1548,20 +1631,21 @@ export class PathEditor {
     const state = editorStore.getState();
     if (!moved) {
       if (placement.clickLayerId) {
-        const nearestPointKey = this.findNearestPointKey(
-          placement.clickLayerId,
-          e.clientX,
-          e.clientY,
-        );
-        if (nearestPointKey) {
+        const nearestPointKey =
+          placement.tool === 'direct-select'
+            ? this.findNearestPointKey(placement.clickLayerId, e.clientX, e.clientY)
+            : null;
+        if (nearestPointKey && placement.tool === 'direct-select') {
           state.setSelection({
             layerIds: [placement.clickLayerId],
             pointIds: [nearestPointKey],
+            guideIndexes: [],
           });
         } else {
           state.setSelection({
-            layerIds: [placement.layerId],
+            layerIds: [placement.clickLayerId],
             pointIds: [],
+            guideIndexes: [],
           });
         }
       } else {
@@ -1834,6 +1918,64 @@ function uniquePointKeys(pointIds: string[]): string[] {
       pointIds.map((pointId) => pointId.split('@')[0] ?? pointId).filter(Boolean),
     ),
   );
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toggleStringSelection(base: string[], matches: string[]): string[] {
+  const next = new Set(base);
+  for (const match of matches) {
+    if (next.has(match)) {
+      next.delete(match);
+    } else {
+      next.add(match);
+    }
+  }
+  return [...next];
+}
+
+function toggleNumberSelection(base: number[], matches: number[]): number[] {
+  const next = new Set(base);
+  for (const match of matches) {
+    if (next.has(match)) {
+      next.delete(match);
+    } else {
+      next.add(match);
+    }
+  }
+  return [...next].sort((a, b) => a - b);
+}
+
+function guideIntersectsMarquee(
+  guide: GuideItem,
+  marquee: SelectionBounds,
+): boolean {
+  switch (guide.kind) {
+    case 'hline':
+      return guide.y >= marquee.minY && guide.y <= marquee.maxY;
+    case 'vline':
+      return guide.x >= marquee.minX && guide.x <= marquee.maxX;
+    case 'rect':
+      return (
+        guide.x + guide.width >= marquee.minX &&
+        guide.x <= marquee.maxX &&
+        guide.y + guide.height >= marquee.minY &&
+        guide.y <= marquee.maxY
+      );
+    case 'ellipse':
+      return (
+        guide.cx + guide.rx >= marquee.minX &&
+        guide.cx - guide.rx <= marquee.maxX &&
+        guide.cy + guide.ry >= marquee.minY &&
+        guide.cy - guide.ry <= marquee.maxY
+      );
+    case 'drawPoint':
+      return false;
+    default:
+      return false;
+  }
 }
 
 function getSelectionHandlePositions(bounds: SelectionBounds): Record<BBoxHandle, { x: number; y: number }> {

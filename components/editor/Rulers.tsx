@@ -33,7 +33,7 @@ export function Rulers({
   guidesVisible,
   guideStyle,
   customGuides,
-  selectedGuideIndex,
+  selectedGuideIndexes,
 }: {
   containerRef: RefObject<HTMLDivElement | null>;
   currentIconId: string | null;
@@ -42,9 +42,9 @@ export function Rulers({
   guidesVisible: boolean;
   guideStyle: 'subtle' | 'strong';
   customGuides: GuideItem[];
-  selectedGuideIndex: number | null;
+  selectedGuideIndexes: number[];
 }) {
-  const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex } =
+  const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex, setSelection } =
     useEditorActions();
   const dragSessionRef = useRef<DragState | null>(null);
   const pendingDragRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
@@ -190,6 +190,7 @@ export function Rulers({
 
       if (!session.dragging) {
         if (session.source === 'guide' && session.guideIndex !== null) {
+          setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
           setSelectedIconGuideIndex(session.guideIndex);
         }
         clearDragSession();
@@ -223,6 +224,7 @@ export function Rulers({
               : { kind: 'hline', y: session.value },
           );
         } else {
+          setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
           setSelectedIconGuideIndex(session.guideIndex);
         }
         clearDragSession();
@@ -253,6 +255,7 @@ export function Rulers({
           y: session.value,
         });
       }
+      setSelection({ layerIds: [], pointIds: [], guideIndexes: [session.guideIndex] });
       setSelectedIconGuideIndex(session.guideIndex);
       clearDragSession();
     },
@@ -264,6 +267,7 @@ export function Rulers({
       customGuides,
       metrics,
       removeIconGuide,
+      setSelection,
       setSelectedIconGuideIndex,
       updateIconGuide,
     ],
@@ -372,6 +376,7 @@ export function Rulers({
       value: number,
       event: React.PointerEvent<HTMLButtonElement>,
     ) => {
+      setSelection({ layerIds: [], pointIds: [], guideIndexes: [index] });
       setSelectedIconGuideIndex(index);
 
       const nextState: DragState = {
@@ -391,7 +396,7 @@ export function Rulers({
       event.currentTarget.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     },
-    [setSelectedIconGuideIndex],
+    [setSelection, setSelectedIconGuideIndex],
   );
 
   if (!guidesVisible || !currentIconId || containerSize.width <= 0 || containerSize.height <= 0) {
@@ -464,7 +469,7 @@ export function Rulers({
       </svg>
 
       {draggableGuides.map(({ guide, index }) => {
-        const isSelected = selectedGuideIndex === index;
+        const isSelected = selectedGuideIndexes.includes(index);
         const style = getGuideLineStyle(guideStyle, isSelected);
         if (guide.kind === 'vline') {
           const x = metrics.toScreenX(guide.x);

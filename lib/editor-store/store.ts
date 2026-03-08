@@ -88,6 +88,8 @@ export type EditorActions = {
   addIconGuide(iconId: string, item: GuideItem): void;
   updateIconGuide(iconId: string, index: number, item: GuideItem): void;
   removeIconGuide(iconId: string, index: number): void;
+  removeSelectedGuides(iconId: string, indexes: number[]): void;
+  removeSelectedLayers(): void;
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
@@ -157,6 +159,14 @@ const futureStates: TemporalSnapshot[] = [];
 
 function emit() {
   for (const l of listeners) l();
+}
+
+function normalizeSelection(selection: SelectionState): Required<SelectionState> {
+  return {
+    layerIds: Array.from(new Set(selection.layerIds)),
+    pointIds: Array.from(new Set(selection.pointIds)),
+    guideIndexes: Array.from(new Set(selection.guideIndexes ?? [])).sort((a, b) => a - b),
+  };
 }
 
 function pushHistorySnapshot(project: Project | null) {
@@ -846,7 +856,7 @@ function createActions(): EditorActions {
     setSelectedIconGuideIndex(index) {
       editorStoreApi.setState({
         selectedIconGuideIndex: index,
-        selection: { layerIds: [], pointIds: [] },
+        selection: { layerIds: [], pointIds: [], guideIndexes: index === null ? [] : [index] },
       });
     },
 
@@ -1036,12 +1046,16 @@ function createActions(): EditorActions {
     },
 
     setSelection(selection) {
-      editorStoreApi.setState({ selection });
+      const nextSelection = normalizeSelection(selection);
+      editorStoreApi.setState({
+        selection: nextSelection,
+        selectedIconGuideIndex: nextSelection.guideIndexes[0] ?? null,
+      });
     },
 
     clearSelection() {
       editorStoreApi.setState({
-        selection: { layerIds: [], pointIds: [] },
+        selection: { layerIds: [], pointIds: [], guideIndexes: [] },
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
@@ -1327,6 +1341,82 @@ function createActions(): EditorActions {
             },
           },
           selectedIconGuideIndex: nextSelectedIndex,
+        };
+      });
+    },
+
+    removeSelectedGuides(iconId, indexes) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || indexes.length === 0) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.customGuides?.length) return s;
+
+        const toRemove = new Set(indexes.filter((index) => index >= 0 && index < icon.customGuides!.length));
+        if (toRemove.size === 0) return s;
+
+        const nextGuides = icon.customGuides.filter((_, entryIndex) => !toRemove.has(entryIndex));
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                customGuides: nextGuides.length > 0 ? nextGuides : undefined,
+              },
+            },
+          },
+          selection: {
+            ...s.selection,
+            guideIndexes: [],
+          },
+          selectedIconGuideIndex: null,
+        };
+      });
+    },
+
+    removeSelectedLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId || !s.currentStateId) return s;
+        const selectedLayerIds = Array.from(new Set(s.selection.layerIds));
+        if (selectedLayerIds.length === 0) return s;
+
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[s.currentStateId];
+        if (!icon || !variant || !state) return s;
+
+        const nextLayers = { ...state.layers };
+        let removed = false;
+        for (const layerId of selectedLayerIds) {
+          if (!nextLayers[layerId]) continue;
+          delete nextLayers[layerId];
+          removed = true;
+        }
+        if (!removed) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: {
+                ...replaceVariantState(icon, variant.id, s.currentStateId, {
+                  ...state,
+                  layers: nextLayers,
+                }),
+              },
+            },
+          },
+          selection: {
+            layerIds: [],
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+          activeSnapGuides: [],
+          pointMarquee: null,
         };
       });
     },

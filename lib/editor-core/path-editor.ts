@@ -107,7 +107,7 @@ export class PathEditor {
 
     if (tool === 'direct-select') {
       if (layerId && pointKey && controlDirection) {
-        state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+        state.setSelection({ layerIds: [layerId], pointIds: [`${pointKey}@${controlDirection}`] });
         this.startControlDrag(layerId, pointKey, controlDirection, e.clientX, e.clientY);
         (target as Element).setPointerCapture?.(e.pointerId);
       } else if (layerId && pointKey) {

@@ -93,7 +93,7 @@ export function Canvas() {
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
     const controlSize = CONTROL_HANDLE_SIZE_PX / zoom;
     const controlHitRadius = (HANDLE_HIT_RADIUS_PX * 0.8) / zoom;
-    const selectedPointKey = selection.pointIds[0] ?? null;
+    const selectedPointKey = selection.pointIds[0]?.split('@')[0] ?? null;
 
     const editable = parseSvgPath(d);
     editable.subPaths.forEach((subPath, spIndex) => {

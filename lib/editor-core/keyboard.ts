@@ -1,6 +1,7 @@
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import type { Tool } from '@/lib/editor-store/types';
+import { alignLayers } from './layer-arrange';
 import {
   deleteSelectedPoint,
   insertPointAfterSelection,
@@ -15,6 +16,15 @@ const TOOL_SHORTCUTS: Record<string, Tool> = {
   p: 'pen',
   u: 'shape',
 };
+
+const ALIGN_SHORTCUTS = {
+  l: 'left',
+  c: 'center-h',
+  r: 'right',
+  t: 'top',
+  m: 'center-v',
+  b: 'bottom',
+} as const;
 
 /**
  * Global keyboard event handler for the editor.
@@ -55,10 +65,31 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  if (mod && e.shiftKey && (e.code === 'Semicolon' || key === ';' || key === ':')) {
-    e.preventDefault();
-    editorStore.getState().toggleSnap();
-    return;
+  if (mod && e.shiftKey && !e.altKey) {
+    const mode = ALIGN_SHORTCUTS[key as keyof typeof ALIGN_SHORTCUTS];
+    if (mode) {
+      const state = editorStore.getState();
+      if (
+        state.selection.layerIds.length > 1 &&
+        state.currentIconId &&
+        state.currentStateId
+      ) {
+        e.preventDefault();
+        alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentStateId);
+        return;
+      }
+    }
+
+    if (e.code === 'Semicolon' || key === ';' || key === ':') {
+      const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+        toggleSnap?: () => void;
+      };
+      if (typeof state.toggleSnap === 'function') {
+        e.preventDefault();
+        state.toggleSnap();
+        return;
+      }
+    }
   }
 
   // Tool shortcuts (single key, no modifier)

@@ -1,6 +1,7 @@
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import type { Tool } from '@/lib/editor-store/types';
+import { alignLayers } from './layer-arrange';
 import {
   deleteSelectedPoint,
   insertPointAfterSelection,
@@ -15,6 +16,15 @@ const TOOL_SHORTCUTS: Record<string, Tool> = {
   p: 'pen',
   u: 'shape',
 };
+
+const ALIGN_SHORTCUTS = {
+  l: 'left',
+  c: 'center-h',
+  r: 'right',
+  t: 'top',
+  m: 'center-v',
+  b: 'bottom',
+} as const;
 
 /**
  * Global keyboard event handler for the editor.
@@ -53,6 +63,21 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     e.preventDefault();
     redo();
     return;
+  }
+
+  if (mod && e.shiftKey && !e.altKey) {
+    const mode = ALIGN_SHORTCUTS[key as keyof typeof ALIGN_SHORTCUTS];
+    const state = editorStore.getState();
+    if (
+      mode &&
+      state.selection.layerIds.length > 1 &&
+      state.currentIconId &&
+      state.currentStateId
+    ) {
+      e.preventDefault();
+      alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentStateId);
+      return;
+    }
   }
 
   // Tool shortcuts (single key, no modifier)

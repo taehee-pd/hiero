@@ -1,11 +1,22 @@
 'use client';
 
 import { useCallback } from 'react';
+import {
+  AlignHorizontalJustifyCenter,
+  AlignHorizontalJustifyEnd,
+  AlignHorizontalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
+  BetweenHorizontalStart,
+  BetweenVerticalStart,
+} from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
+import { alignLayers, distributeLayers } from '@/lib/editor-core';
 import {
   useEditorStore,
   useSelection,
@@ -14,6 +25,20 @@ import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
 import type { Layer, PaintRef } from '@/lib/schema/types';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
+
+const ALIGN_ACTIONS = [
+  { label: 'Align left', mode: 'left', icon: AlignHorizontalJustifyStart },
+  { label: 'Align center horizontally', mode: 'center-h', icon: AlignHorizontalJustifyCenter },
+  { label: 'Align right', mode: 'right', icon: AlignHorizontalJustifyEnd },
+  { label: 'Align top', mode: 'top', icon: AlignVerticalJustifyStart },
+  { label: 'Align center vertically', mode: 'center-v', icon: AlignVerticalJustifyCenter },
+  { label: 'Align bottom', mode: 'bottom', icon: AlignVerticalJustifyEnd },
+] as const;
+
+const DISTRIBUTE_ACTIONS = [
+  { label: 'Distribute horizontally', mode: 'horizontal', icon: BetweenHorizontalStart },
+  { label: 'Distribute vertically', mode: 'vertical', icon: BetweenVerticalStart },
+] as const;
 
 export function InspectorPanel() {
   const selection = useSelection();
@@ -45,6 +70,7 @@ export function InspectorPanel() {
 
   const pointContext = getSelectedPointContext(layer, selection.pointIds);
   const multipleLayersSelected = selection.layerIds.length > 1;
+  const enoughLayersToDistribute = selection.layerIds.length > 2;
 
   return (
     <div className="flex h-full flex-col bg-transparent">
@@ -109,6 +135,44 @@ export function InspectorPanel() {
           </Section>
 
           <Separator />
+
+          {multipleLayersSelected && (
+            <>
+              <Section title="Align">
+                <div className="grid grid-cols-3 gap-1">
+                  {ALIGN_ACTIONS.map((action) => (
+                    <IconActionButton
+                      key={action.mode}
+                      label={action.label}
+                      onClick={() =>
+                        alignLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                      }
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {DISTRIBUTE_ACTIONS.map((action) => (
+                    <IconActionButton
+                      key={action.mode}
+                      label={action.label}
+                      disabled={!enoughLayersToDistribute}
+                      onClick={() =>
+                        distributeLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                      }
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                </div>
+                {!enoughLayersToDistribute && (
+                  <p className="text-[11px] text-muted-foreground">Distribute requires 3+ layers</p>
+                )}
+              </Section>
+              <Separator />
+            </>
+          )}
 
           {layer.path && (
             <>
@@ -557,6 +621,32 @@ function Section({
       </span>
       {children}
     </div>
+  );
+}
+
+function IconActionButton({
+  label,
+  children,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      size="icon-sm"
+      variant="outline"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      {children}
+    </Button>
   );
 }
 

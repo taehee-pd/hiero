@@ -63,7 +63,15 @@ function pointerEvent(init: {
   pointerId?: number;
   shiftKey?: boolean;
   altKey?: boolean;
+  layerId?: string | null;
+  pointKey?: string | null;
+  controlDirection?: 'in' | 'out' | null;
 }) {
+  const attrs = new Map<string, string>();
+  if (init.layerId) attrs.set('data-layer-id', init.layerId);
+  if (init.pointKey) attrs.set('data-point-key', init.pointKey);
+  if (init.controlDirection) attrs.set('data-control-direction', init.controlDirection);
+
   return {
     clientX: init.clientX,
     clientY: init.clientY,
@@ -71,8 +79,8 @@ function pointerEvent(init: {
     shiftKey: init.shiftKey ?? false,
     altKey: init.altKey ?? false,
     target: {
-      getAttribute() {
-        return null;
+      getAttribute(name: string) {
+        return attrs.get(name) ?? null;
       },
       setPointerCapture() {},
     },
@@ -181,6 +189,86 @@ describe('shape tool drag interactions', () => {
     ).toBeUndefined();
     expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
     expect(canUndo()).toBeFalse();
+
+    editor.destroy();
+  });
+});
+
+describe('direct-select marquee interactions', () => {
+  test('selects a nearby point when clicking within the expanded hit radius', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    state.setTool('direct-select');
+    state.setSelection({ layerIds: ['chevron'], pointIds: [] });
+
+    const editor = new PathEditor(createMockSvg());
+
+    (editor as any).onPointerDown(
+      pointerEvent({ clientX: 112, clientY: 70, layerId: 'chevron' }),
+    );
+    (editor as any).onPointerUp(
+      pointerEvent({ clientX: 112, clientY: 70, layerId: 'chevron' }),
+    );
+
+    expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
+    expect(editorStore.getState().selection.pointIds).toEqual(['0:0']);
+
+    editor.destroy();
+  });
+
+  test('marquee drag replaces the current point selection with touched points', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    state.setTool('direct-select');
+    state.setSelection({ layerIds: ['chevron'], pointIds: ['0:2'] });
+
+    const editor = new PathEditor(createMockSvg());
+
+    (editor as any).onPointerDown(
+      pointerEvent({ clientX: 80, clientY: 55, layerId: 'chevron' }),
+    );
+    (editor as any).onPointerMove(
+      pointerEvent({ clientX: 155, clientY: 135, layerId: 'chevron' }),
+    );
+
+    expect(editorStore.getState().pointMarquee).toEqual({
+      minX: 8,
+      minY: 5.5,
+      maxX: 15.5,
+      maxY: 13.5,
+    });
+    expect(editorStore.getState().selection.pointIds).toEqual(['0:0', '0:1']);
+
+    (editor as any).onPointerUp(
+      pointerEvent({ clientX: 155, clientY: 135, layerId: 'chevron' }),
+    );
+
+    expect(editorStore.getState().pointMarquee).toBeNull();
+    expect(editorStore.getState().selection.pointIds).toEqual(['0:0', '0:1']);
+
+    editor.destroy();
+  });
+
+  test('shift marquee toggles touched points against the starting selection', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    state.setTool('direct-select');
+    state.setSelection({ layerIds: ['chevron'], pointIds: ['0:0', '0:2'] });
+
+    const editor = new PathEditor(createMockSvg());
+
+    (editor as any).onPointerDown(
+      pointerEvent({ clientX: 80, clientY: 105, layerId: 'chevron', shiftKey: true }),
+    );
+    (editor as any).onPointerMove(
+      pointerEvent({ clientX: 155, clientY: 185, layerId: 'chevron', shiftKey: true }),
+    );
+    (editor as any).onPointerUp(
+      pointerEvent({ clientX: 155, clientY: 185, layerId: 'chevron', shiftKey: true }),
+    );
+
+    expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
+    expect(editorStore.getState().selection.pointIds).toEqual(['0:0', '0:1']);
 
     editor.destroy();
   });

@@ -27,6 +27,7 @@ type DragMode =
   | 'layer'
   | 'point'
   | 'control'
+  | 'point-marquee'
   | 'shape'
   | 'selection-move'
   | 'selection-resize'
@@ -61,10 +62,20 @@ type SelectionTransformPlacement = {
   handle: BBoxHandle | null;
   basePathD: string;
 };
+type PointMarqueePlacement = {
+  layerId: string;
+  pointerId: number;
+  start: { x: number; y: number };
+  baseSelection: string[];
+  mode: 'replace' | 'toggle';
+  clickLayerId: string | null;
+};
 
 const PEN_CLOSE_DIST_SQ = 1;
 const SHAPE_EMPTY_EPSILON = 0.001;
-const BBOX_HIT_PADDING_PX = 8;
+const BBOX_HIT_PADDING_PX = 12;
+const POINT_HIT_RADIUS_PX = 18;
+const MARQUEE_DRAG_THRESHOLD_PX = 4;
 
 /**
  * PathEditor: imperative interaction engine for the canvas.
@@ -85,6 +96,7 @@ export class PathEditor {
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private shapePlacement: ShapePlacement | null = null;
+  private pointMarqueePlacement: PointMarqueePlacement | null = null;
   private selectionTransformPlacement: SelectionTransformPlacement | null = null;
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
@@ -172,6 +184,8 @@ export class PathEditor {
         this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
         (target as Element).setPointerCapture?.(e.pointerId);
       } else if (this.beginSelectionBoundsDrag(e)) {
+        this.svg.setPointerCapture?.(e.pointerId);
+      } else if (this.beginPointMarquee(e, layerId)) {
         this.svg.setPointerCapture?.(e.pointerId);
       } else if (layerId) {
         const nearestPointKey = this.findNearestPointKey(layerId, e.clientX, e.clientY);
@@ -443,6 +457,11 @@ export class PathEditor {
       return;
     }
 
+    if (this.pointMarqueePlacement && e.pointerId === this.pointMarqueePlacement.pointerId) {
+      this.updatePointMarquee(e);
+      return;
+    }
+
     if (!this.isDragging || !this.dragLayerId) return;
 
     if (this.dragMode === 'layer') {
@@ -510,6 +529,86 @@ export class PathEditor {
     });
     pauseHistory();
     return true;
+  }
+
+  private beginPointMarquee(e: PointerEvent, clickLayerId: string | null): boolean {
+    const state = editorStore.getState();
+    const layerId = this.resolveMarqueeLayerId(clickLayerId);
+    if (!layerId) return false;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return false;
+
+    this.dragMode = 'point-marquee';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.pointMarqueePlacement = {
+      layerId,
+      pointerId: e.pointerId,
+      start: svgPoint,
+      baseSelection: uniquePointKeys(state.selection.pointIds),
+      mode: e.shiftKey ? 'toggle' : 'replace',
+      clickLayerId,
+    };
+    state.setPointMarquee({
+      minX: svgPoint.x,
+      minY: svgPoint.y,
+      maxX: svgPoint.x,
+      maxY: svgPoint.y,
+    });
+    return true;
+  }
+
+  private resolveMarqueeLayerId(clickLayerId: string | null): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const candidates = [clickLayerId, state.selection.layerIds[0] ?? null];
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const d = state.project?.icons[iconId].states[stateId].layers[candidate]?.path?.d;
+      if (d && isPathDirectlyEditable(d)) return candidate;
+    }
+
+    return null;
+  }
+
+  private updatePointMarquee(e: PointerEvent) {
+    const placement = this.pointMarqueePlacement;
+    if (!placement) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const marquee = normalizeBounds(placement.start, svgPoint);
+    const state = editorStore.getState();
+    state.setPointMarquee(marquee);
+
+    const matchedPointKeys = this.collectPointsInMarquee(placement.layerId, marquee);
+    if (placement.mode === 'toggle') {
+      const baseSelection = new Set(placement.baseSelection);
+      for (const key of matchedPointKeys) {
+        if (baseSelection.has(key)) {
+          baseSelection.delete(key);
+        } else {
+          baseSelection.add(key);
+        }
+      }
+      state.setSelection({
+        layerIds: [placement.layerId],
+        pointIds: [...baseSelection],
+      });
+      return;
+    }
+
+    state.setSelection({
+      layerIds: [placement.layerId],
+      pointIds: matchedPointKeys,
+    });
   }
 
   private updateSelectionTransformPreview(e: PointerEvent) {
@@ -726,6 +825,12 @@ export class PathEditor {
       return;
     }
 
+    if (this.pointMarqueePlacement) {
+      editorStore.getState().setPointMarquee(null);
+      this.resetDrag();
+      return;
+    }
+
     if (!this.isDragging) return;
     resumeHistory();
     this.resetDrag();
@@ -749,6 +854,12 @@ export class PathEditor {
     if (this.selectionTransformPlacement) {
       discardHistory();
       editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    if (this.pointMarqueePlacement) {
+      editorStore.getState().setPointMarquee(null);
       this.resetDrag();
       return;
     }
@@ -778,6 +889,11 @@ export class PathEditor {
       e.pointerId === this.selectionTransformPlacement.pointerId
     ) {
       this.commitSelectionTransform(e);
+      return;
+    }
+
+    if (this.pointMarqueePlacement && e.pointerId === this.pointMarqueePlacement.pointerId) {
+      this.commitPointMarquee(e);
       return;
     }
 
@@ -971,10 +1087,42 @@ export class PathEditor {
       });
     });
 
-    // Avoid selecting a far-away point when user clicks empty area on the path fill.
+    const hitRadius = this.svgUnitsPerScreenPx() * POINT_HIT_RADIUS_PX;
     const nearestPoint = nearest;
-    if (!nearestPoint || nearestPoint.distSq > 2.25) return null;
+    if (!nearestPoint || nearestPoint.distSq > hitRadius * hitRadius) return null;
     return nearestPoint.key;
+  }
+
+  private collectPointsInMarquee(
+    layerId: string,
+    marquee: { minX: number; minY: number; maxX: number; maxY: number },
+  ): string[] {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return [];
+
+    const d = state.project?.icons[iconId].states[stateId].layers[layerId]?.path?.d;
+    if (!d || !isPathDirectlyEditable(d)) return [];
+
+    const editable = parseSvgPath(d);
+    const hitRadius = this.svgUnitsPerScreenPx() * POINT_HIT_RADIUS_PX;
+    const matches: string[] = [];
+
+    editable.subPaths.forEach((subPath, subPathIndex) => {
+      subPath.points.forEach((point, pointIndex) => {
+        if (
+          point.position.x + hitRadius >= marquee.minX &&
+          point.position.x - hitRadius <= marquee.maxX &&
+          point.position.y + hitRadius >= marquee.minY &&
+          point.position.y - hitRadius <= marquee.maxY
+        ) {
+          matches.push(`${subPathIndex}:${pointIndex}`);
+        }
+      });
+    });
+
+    return matches;
   }
 
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
@@ -1188,6 +1336,7 @@ export class PathEditor {
 
   private resetDrag() {
     this.clearActiveSnapGuides();
+    editorStore.getState().setPointMarquee(null);
     this.isDragging = false;
     this.dragMode = null;
     this.dragLayerId = null;
@@ -1196,6 +1345,7 @@ export class PathEditor {
     this.originalTransform = null;
     this.originalPathD = null;
     this.shapePlacement = null;
+    this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
   }
 
@@ -1363,6 +1513,41 @@ export class PathEditor {
         ? 'point-group-move'
         : 'point-group-resize',
     );
+    this.resetDrag();
+  }
+
+  private commitPointMarquee(e: PointerEvent) {
+    const placement = this.pointMarqueePlacement;
+    if (!placement) return;
+
+    const moved =
+      Math.abs(e.clientX - this.dragStartX) > MARQUEE_DRAG_THRESHOLD_PX ||
+      Math.abs(e.clientY - this.dragStartY) > MARQUEE_DRAG_THRESHOLD_PX;
+
+    const state = editorStore.getState();
+    if (!moved) {
+      if (placement.clickLayerId) {
+        const nearestPointKey = this.findNearestPointKey(
+          placement.clickLayerId,
+          e.clientX,
+          e.clientY,
+        );
+        if (nearestPointKey) {
+          state.setSelection({
+            layerIds: [placement.clickLayerId],
+            pointIds: [nearestPointKey],
+          });
+        } else {
+          state.setSelection({
+            layerIds: [placement.layerId],
+            pointIds: [],
+          });
+        }
+      } else {
+        state.clearSelection();
+      }
+    }
+
     this.resetDrag();
   }
 
@@ -1608,6 +1793,26 @@ function translatePathPoint(point: PathPoint, dx: number, dy: number): void {
     point.handleOut.x += dx;
     point.handleOut.y += dy;
   }
+}
+
+function normalizeBounds(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): SelectionBounds {
+  return {
+    minX: Math.min(a.x, b.x),
+    minY: Math.min(a.y, b.y),
+    maxX: Math.max(a.x, b.x),
+    maxY: Math.max(a.y, b.y),
+  };
+}
+
+function uniquePointKeys(pointIds: string[]): string[] {
+  return Array.from(
+    new Set(
+      pointIds.map((pointId) => pointId.split('@')[0] ?? pointId).filter(Boolean),
+    ),
+  );
 }
 
 function getSelectionHandlePositions(bounds: SelectionBounds): Record<BBoxHandle, { x: number; y: number }> {

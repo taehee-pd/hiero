@@ -11,6 +11,7 @@ export type OverlayOptions = {
   viewBox: [number, number, number, number];
   guideSet?: GuideSet;
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
+  pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
   activeSnapGuides?: SnapTarget[];
 };
@@ -59,6 +60,7 @@ export function useCanvasOverlay(
         viewBox,
         guideSet,
         pointBBox,
+        pointMarquee,
         pointBBoxLabel,
         activeSnapGuides,
       } =
@@ -188,6 +190,10 @@ export function useCanvasOverlay(
 
       if (pointBBox) {
         drawPointSelectionBoundingBox(scope, pointBBox, pointBBoxLabel, toScreen);
+      }
+
+      if (pointMarquee) {
+        drawPointMarquee(scope, pointMarquee, toScreen);
       }
 
       if (activeSnapGuides?.length) {
@@ -322,6 +328,27 @@ function drawPointSelectionBoundingBox(
     background.sendToBack();
     text.bringToFront();
   }
+}
+
+function drawPointMarquee(
+  scope: any,
+  marquee: { minX: number; minY: number; maxX: number; maxY: number },
+  toScreen: (x: number, y: number) => any,
+) {
+  const topLeft = toScreen(marquee.minX, marquee.minY);
+  const bottomRight = toScreen(marquee.maxX, marquee.maxY);
+  const rect = new scope.Rectangle(topLeft, bottomRight);
+  const fill = new scope.Color('rgba(96,165,250,0.14)');
+  const stroke = new scope.Color('rgba(96,165,250,0.72)');
+
+  const outline = new scope.Path.Rectangle({
+    rectangle: rect,
+    strokeColor: stroke,
+    strokeWidth: 1,
+    dashArray: [5, 4],
+    fillColor: fill,
+  });
+  outline.fillColor = fill;
 }
 
 function formatMeasure(value: number): string {

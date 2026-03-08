@@ -16,3 +16,10 @@ export type PointTransformLabelState = {
   width: number;
   height: number;
 };
+
+export type PointMarqueeState = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};

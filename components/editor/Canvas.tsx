@@ -17,8 +17,9 @@ import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const HANDLE_RADIUS_PX = 3;
 const HANDLE_STROKE_PX = 1;
-const HANDLE_HIT_RADIUS_PX = 9;
+const HANDLE_HIT_RADIUS_PX = 18;
 const CONTROL_HANDLE_SIZE_PX = 6;
+const CONTROL_HIT_RADIUS_PX = 14;
 const ANCHOR_STROKE = '#0ea5e9';
 const ANCHOR_FILL = '#ffffff';
 const ACTIVE_ANCHOR_STROKE = '#ffffff';
@@ -42,13 +43,14 @@ export function Canvas() {
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
   const tool = useEditorStore((s) => s.tool);
+  const pointMarquee = useEditorStore((s) => s.pointMarquee);
   const pointTransformLabel = useEditorStore((s) => s.pointTransformLabel);
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
 
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
   const pointBBox = useEditorStore(() => {
-    if (tool !== 'direct-select') return null;
+    if (tool !== 'direct-select' || pointMarquee) return null;
     const bbox = getSelectedPointsBoundingBox();
     if (!bbox) return null;
     return {
@@ -104,7 +106,7 @@ export function Canvas() {
     const handleStroke = HANDLE_STROKE_PX / zoom;
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
     const controlSize = CONTROL_HANDLE_SIZE_PX / zoom;
-    const controlHitRadius = (HANDLE_HIT_RADIUS_PX * 0.8) / zoom;
+    const controlHitRadius = CONTROL_HIT_RADIUS_PX / zoom;
     const selectedPointKey = selection.pointIds[0]?.split('@')[0] ?? null;
 
     const editable = parseSvgPath(d);
@@ -187,6 +189,7 @@ export function Canvas() {
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
     guideSet: activeGuideSet,
     pointBBox,
+    pointMarquee,
     pointBBoxLabel: pointTransformLabel,
     activeSnapGuides,
   });

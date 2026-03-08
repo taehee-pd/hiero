@@ -77,6 +77,7 @@ export function useEditorActions() {
       setShapeSubTool: state.setShapeSubTool,
       setShapePolygonSides: state.setShapePolygonSides,
       setShapeStarPoints: state.setShapeStarPoints,
+      setPointMarquee: state.setPointMarquee,
       setPointTransformLabel: state.setPointTransformLabel,
       updateProjectMeta: state.updateProjectMeta,
       pauseHistory: state.pauseHistory,

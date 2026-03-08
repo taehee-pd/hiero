@@ -425,12 +425,7 @@ function computePathBounds(d: string, transform?: Layer['transform']): Bounds | 
     }
   }
 
-  if (
-    !Number.isFinite(minX) ||
-    !Number.isFinite(minY) ||
-    !Number.isFinite(maxX) ||
-    !Number.isFinite(maxY)
-  ) {
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
     return null;
   }
 
@@ -449,10 +444,7 @@ function computePathBounds(d: string, transform?: Layer['transform']): Bounds | 
 }
 
 function tokenizePath(d: string): string[] {
-  return Array.from(
-    d.matchAll(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g),
-    (match) => match[0],
-  );
+  return Array.from(d.matchAll(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g), (match) => match[0]);
 }
 
 function isCommandToken(token: string | undefined): token is string {

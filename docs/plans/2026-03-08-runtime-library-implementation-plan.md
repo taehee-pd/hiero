@@ -2,12 +2,12 @@
 
 ## Goal
 
-Turn the current editor-first repo into the source of truth for an animated icon system that can be exported directly into a target application codebase:
+Turn the current editor-first repo into the source of truth for a multi-platform icon export and sync platform:
 
 - editor authors icon states, transitions, and effects
-- exporter materializes deterministic `runtime-json`
-- target adapters generate host-ready files inside Storybook, Sanity, or other React repos
-- optional package publishing remains available later, but is not the primary path
+- exporter materializes deterministic canonical `runtime-json`
+- platform adapters generate host-ready outputs for React first, then Swift and Flutter
+- sync connectors deliver those outputs into repos, packages, or asset bundles
 
 This plan reflects the external runtime-library architecture document, adjusted to match decisions already made in this repo:
 
@@ -15,7 +15,7 @@ This plan reflects the external runtime-library architecture document, adjusted 
 - icon-level transitions and effects remain editor-authored, then are validated and materialized per variant at export time
 - the current repo is a single Next.js application, so package extraction must be staged rather than assumed
 - SF Symbols-style export semantics are prioritized ahead of a generic effects library
-- target-codebase export is prioritized ahead of standalone package publishing
+- target-codebase export is only one delivery mode within a broader multi-platform platform
 
 ## Constraints From Current Repo
 
@@ -51,18 +51,17 @@ Follow the direction captured in [2026-03-08-sf-symbols-style-export-plan.md](/U
 - Magic Replace begins as enclosure-preserving continuity metadata, not as arbitrary global morphing
 - gradients stay in runtime payloads rather than being flattened away
 
-### Delivery Strategy
+### Platform Strategy
 
-Do not optimize first for a standalone icon package.
+Do not optimize first for one host shape such as a package repo or a Storybook repo.
 
-Stage delivery like this:
+Stage the platform like this:
 
-1. implement the exporter and runtime modules inside the existing repo
-2. generate files directly into a target codebase
-3. prove the adapter flow against Storybook and Sanity-style targets
-4. add standalone package generation only as an optional later output mode
-
-This keeps the first production path aligned with how consuming teams actually review and ship code.
+1. implement the canonical exporter and runtime modules inside the existing repo
+2. define platform capabilities and delivery modes explicitly
+3. prove the platform through one generic React adapter family
+4. layer host-specific integrations such as Storybook or CMS previews on top
+5. add Swift and Flutter adapters after the canonical export and capability model are stable
 
 ### Runtime Scope for MVP
 
@@ -129,21 +128,24 @@ Near-term in-repo boundaries can begin as:
 
 The runtime must consume exported files only, never raw editor project JSON.
 
-### Layer 4: Target Adapters and Sync
+### Layer 4: Platform Adapters
 
 Primary later-stage modules:
 
-- `lib/export/generate-target-codebase.ts`
-- `lib/export/targets/storybook-react.ts`
-- `lib/export/targets/sanity-studio.ts`
-- repo write/sync helpers
+- generic React adapter
+- React host integrations
+- Swift adapter
+- Flutter adapter
 
-Optional later-stage modules:
+### Layer 5: Sync Connectors
 
-- `packages/cli`
-- generated npm package output
+Primary later-stage modules:
 
-This is intentionally different from the earlier package-first framing because the target host repo is now the primary delivery artifact.
+- local filesystem writer
+- git repo sync helpers
+- optional package/registry connectors
+
+This separates target transformation from transport.
 
 ## Implementation Phases
 
@@ -281,60 +283,75 @@ Exit criteria:
 
 - the editor app or a demo page can render exported icons through the same React surface intended for target-codebase generation
 
-### Phase R5 - Target Codebase Generation
+### Phase R5 - Platform Capability Layer
 
 Objective:
 
-- generate host-ready source files directly into target repositories from exported runtime-json
+- formalize target capability, downgrade, and export-outcome handling for multi-platform delivery
 
 Tasks:
 
-- add target adapter generation entrypoints
-- generate vendored runtime helpers for host repos
-- generate typed icon data files and React wrappers
-- generate Storybook stories where applicable
-- generate Sanity preview/registry helpers where applicable
-- add stale-file cleanup and deterministic file manifesting
+- define `TargetPlatform`, `DeliveryMode`, `ExportCapability`, and `ExportOutcome`
+- add explicit downgrade reporting to export flows
+- separate adapter transforms from sync connectors
 
 Exit criteria:
 
-- sample exported icons can be written into a local Storybook or Sanity-style repo with runnable generated files
+- export results can describe cross-platform support and downgrade behavior explicitly
 
-### Phase R6 - Repo Sync and Host Integration
+### Phase R6 - React Adapter Family
 
 Objective:
 
-- connect target-codebase generation to real repo write and review flows
+- prove the platform through a generic React adapter family
+
+Tasks:
+
+- generate icons into generic React repos
+- vendor or import runtime helpers for React hosts
+- add optional host integrations like Storybook and CMS previews on top of the generic React adapter
+- add deterministic file manifests and stale-file cleanup
+
+Exit criteria:
+
+- sample exported icons can land in a generic React repo with stable generated outputs
+
+### Phase R7 - Sync Connectors
+
+Objective:
+
+- deliver generated outputs into downstream repos safely and repeatably
 
 Tasks:
 
 - add target export config to the project schema
-- add local directory export flow
-- add branch/commit automation against the target repo
-- add host-repo validation hooks and generated-file summaries
+- add local filesystem sync
+- add branch/commit automation
+- add PR-friendly generated diff summaries
+- add optional registry/package connectors later
 
 Exit criteria:
 
-- exporting from the editor can update a checked-out target repo in a reviewable way
+- exporting from the editor can update a downstream repo in a reviewable way
 
-### Phase R7 - Optional Package Mode
+### Phase R8 - Swift and Flutter Adapter Design Spikes
 
 Objective:
 
-- add standalone package generation for teams that want a reusable library after the direct-export flow is already working
+- define realistic adapter boundaries before full non-React implementation
 
 Tasks:
 
-- extract stable runtime pieces into package boundaries if useful
-- add generator CLI packaging mode
-- add package export maps and publish metadata
-- optionally add registry publish flow
+- map canonical features to SwiftUI/UIKit capabilities
+- map canonical features to Flutter capabilities
+- decide where native APIs are sufficient vs where generated runtimes are required
+- identify v1 downgrades explicitly
 
 Exit criteria:
 
-- the same runtime-json source can produce either direct target-codebase output or package output
+- Swift and Flutter implementation can start from explicit capability contracts instead of assumptions
 
-### Phase R8 - Morphing and Advanced Animation
+### Phase R9 - Morphing and Advanced Animation
 
 Objective:
 
@@ -360,12 +377,13 @@ Build in this order:
 3. R2 runtime-core
 4. R3 runtime-dom
 5. R4 runtime-react
-6. R5 target-codebase generation
-7. R6 repo sync and host integration
-8. R7 optional package mode
-9. R8 morphing
+6. R5 platform capability layer
+7. R6 React adapter family
+8. R7 sync connectors
+9. R8 Swift and Flutter adapter design spikes
+10. R9 morphing
 
-This differs from the earlier package-first framing by moving direct target-codebase output ahead of package generation. That is deliberate and matches the requested delivery model.
+This now differs from both the earlier package-first and target-codebase-only framings by treating delivery as a platform problem with multiple adapter families and sync modes.
 
 ## First Concrete Milestone
 

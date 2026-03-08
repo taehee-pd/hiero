@@ -57,7 +57,7 @@ The canvas is where you draw and edit. It supports:
 
 - pan and zoom
 - direct SVG import by dragging a file onto the canvas
-- ruler-based guide creation
+- ruler-based guide creation by dragging out from a ruler
 - point boxes and handles when point editing is active
 - snap feedback while moving points
 

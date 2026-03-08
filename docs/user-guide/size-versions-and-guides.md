@@ -57,9 +57,15 @@ Guides are reusable across icons, and the editor highlights the guide overlay th
 When guides are visible:
 
 - the rulers appear around the canvas
-- dragging from a ruler creates a new guide line
-- existing guide lines can be repositioned
+- drag out from the top ruler to create a vertical guide
+- drag out from the left ruler to create a horizontal guide
+- click a guide to select it
+- drag an existing guide to reposition it
+- hold `Option` on Mac or `Alt` on Windows while dragging a guide to duplicate it
+- drag a guide back into its ruler to remove it
 - snapping can use guide positions as alignment targets
+
+Simple clicks on a ruler no longer create a guide. A guide is only created after an intentional drag, which makes the interaction much closer to Figma.
 
 ## Managing Guide Sets
 

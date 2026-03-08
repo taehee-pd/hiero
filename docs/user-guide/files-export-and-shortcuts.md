@@ -88,6 +88,13 @@ With multiple layers selected:
 - arrow keys: nudge selected points
 - `Escape`: step back from point editing, then clear the selection
 
+### Guide Tips
+
+- drag from a ruler to create a guide
+- hold `Option` or `Alt` while dragging a guide to make a copy
+- drag a guide back into its ruler to remove it
+- use `Delete` or `Backspace` to remove the selected guide
+
 ## Recommended Habit
 
 For the smoothest workflow:

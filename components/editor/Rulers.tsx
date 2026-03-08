@@ -3,16 +3,21 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import type { GuideItem } from '@/lib/schema/types';
-import { cn } from '@/lib/utils';
 
 const RULER_SIZE = 24;
 const HIT_SIZE = 10;
+const DRAG_THRESHOLD_PX = 4;
 const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
 
 type DragState = {
   kind: 'hline' | 'vline';
-  mode: 'new' | 'existing';
-  index?: number;
+  source: 'ruler' | 'guide';
+  pointerId: number;
+  guideIndex: number | null;
+  startClientX: number;
+  startClientY: number;
+  dragging: boolean;
+  duplicate: boolean;
   value: number;
 };
 
@@ -35,7 +40,8 @@ export function Rulers({
   customGuides: GuideItem[];
   selectedGuideIndex: number | null;
 }) {
-  const { addIconGuide, updateIconGuide, setSelectedIconGuideIndex } = useEditorActions();
+  const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex } =
+    useEditorActions();
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -91,48 +97,106 @@ export function Rulers({
     };
   }, [containerSize.height, containerSize.width, viewBox, viewport.panX, viewport.panY, viewport.zoom]);
 
+  const getPointerGuideValue = useCallback(
+    (kind: DragState['kind'], clientX: number, clientY: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return null;
+      return kind === 'vline'
+        ? metrics.toSvgX(clientX - rect.left)
+        : metrics.toSvgY(clientY - rect.top);
+    },
+    [containerRef, metrics],
+  );
+
   useEffect(() => {
     if (!dragState || !currentIconId) return;
 
     const handlePointerMove = (event: PointerEvent) => {
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const nextValue =
-        dragState.kind === 'vline'
-          ? metrics.toSvgX(event.clientX - rect.left)
-          : metrics.toSvgY(event.clientY - rect.top);
-      setDragState((current) => (current ? { ...current, value: nextValue } : current));
+      if (event.pointerId !== dragState.pointerId) return;
+      const nextValue = getPointerGuideValue(dragState.kind, event.clientX, event.clientY);
+      if (nextValue === null) return;
+
+      const movedEnough =
+        Math.abs(event.clientX - dragState.startClientX) >= DRAG_THRESHOLD_PX ||
+        Math.abs(event.clientY - dragState.startClientY) >= DRAG_THRESHOLD_PX;
+
+      setDragState((current) =>
+        current
+          ? {
+              ...current,
+              value: nextValue,
+              dragging: current.dragging || movedEnough,
+              duplicate:
+                current.source === 'guide' && (current.dragging || movedEnough)
+                  ? event.altKey
+                  : false,
+            }
+          : current,
+      );
     };
 
-    const handlePointerUp = () => {
-      if (dragState.mode === 'new') {
-        addIconGuide(
-          currentIconId,
-          dragState.kind === 'vline'
-            ? { kind: 'vline', x: dragState.value }
-            : { kind: 'hline', y: dragState.value },
-        );
-      } else if (dragState.index !== undefined) {
-        const existingGuide = customGuides[dragState.index];
-        if (existingGuide?.kind === 'vline') {
-          updateIconGuide(currentIconId, dragState.index, {
-            kind: 'vline',
-            x: dragState.value,
-          });
-        } else if (existingGuide?.kind === 'hline') {
-          updateIconGuide(currentIconId, dragState.index, {
-            kind: 'hline',
-            y: dragState.value,
-          });
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== dragState.pointerId) return;
+
+      const releasedOverRuler = isReleasedOverMatchingRuler(
+        containerRef.current?.getBoundingClientRect() ?? null,
+        dragState.kind,
+        event,
+      );
+
+      if (!dragState.dragging) {
+        if (dragState.source === 'guide' && dragState.guideIndex !== null) {
+          setSelectedIconGuideIndex(dragState.guideIndex);
         }
-        setSelectedIconGuideIndex(dragState.index);
+        setDragState(null);
+        return;
       }
+
+      if (dragState.source === 'ruler') {
+        if (!releasedOverRuler) {
+          addIconGuide(
+            currentIconId,
+            dragState.kind === 'vline'
+              ? { kind: 'vline', x: dragState.value }
+              : { kind: 'hline', y: dragState.value },
+          );
+        }
+      } else if (dragState.guideIndex !== null) {
+        if (dragState.duplicate) {
+          if (!releasedOverRuler) {
+            addIconGuide(
+              currentIconId,
+              dragState.kind === 'vline'
+                ? { kind: 'vline', x: dragState.value }
+                : { kind: 'hline', y: dragState.value },
+            );
+          } else {
+            setSelectedIconGuideIndex(dragState.guideIndex);
+          }
+        } else if (releasedOverRuler) {
+          removeIconGuide(currentIconId, dragState.guideIndex);
+        } else {
+          const existingGuide = customGuides[dragState.guideIndex];
+          if (existingGuide?.kind === 'vline') {
+            updateIconGuide(currentIconId, dragState.guideIndex, {
+              kind: 'vline',
+              x: dragState.value,
+            });
+          } else if (existingGuide?.kind === 'hline') {
+            updateIconGuide(currentIconId, dragState.guideIndex, {
+              kind: 'hline',
+              y: dragState.value,
+            });
+          }
+          setSelectedIconGuideIndex(dragState.guideIndex);
+        }
+      }
+
       setDragState(null);
     };
 
     window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp, { once: true });
+    window.addEventListener('pointerup', handlePointerUp);
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -143,7 +207,8 @@ export function Rulers({
     currentIconId,
     customGuides,
     dragState,
-    metrics,
+    getPointerGuideValue,
+    removeIconGuide,
     setSelectedIconGuideIndex,
     updateIconGuide,
   ]);
@@ -173,6 +238,51 @@ export function Rulers({
     guide.kind === 'hline' || guide.kind === 'vline' ? [{ guide, index }] : [],
   );
 
+  const startRulerDrag = useCallback(
+    (kind: 'hline' | 'vline', event: React.PointerEvent<SVGSVGElement>) => {
+      const value = getPointerGuideValue(kind, event.clientX, event.clientY);
+      if (value === null) return;
+
+      setDragState({
+        kind,
+        source: 'ruler',
+        pointerId: event.pointerId,
+        guideIndex: null,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        dragging: false,
+        duplicate: false,
+        value,
+      });
+      event.preventDefault();
+    },
+    [getPointerGuideValue],
+  );
+
+  const startGuideDrag = useCallback(
+    (
+      kind: 'hline' | 'vline',
+      index: number,
+      value: number,
+      event: React.PointerEvent<HTMLButtonElement>,
+    ) => {
+      setSelectedIconGuideIndex(index);
+      setDragState({
+        kind,
+        source: 'guide',
+        pointerId: event.pointerId,
+        guideIndex: index,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        dragging: false,
+        duplicate: false,
+        value,
+      });
+      event.preventDefault();
+    },
+    [setSelectedIconGuideIndex],
+  );
+
   if (!guidesVisible || !currentIconId || containerSize.width <= 0 || containerSize.height <= 0) {
     return null;
   }
@@ -184,14 +294,8 @@ export function Rulers({
       <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
 
       <svg
-        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => {
-          const container = containerRef.current?.getBoundingClientRect();
-          if (!container) return;
-          const value = metrics.toSvgX(event.clientX - container.left);
-          setDragState({ kind: 'vline', mode: 'new', value });
-          event.preventDefault();
-        }}
+        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-col-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
+        onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {horizontalTicks.map((tick) => (
           <g key={`x-${tick.value}`}>
@@ -219,14 +323,8 @@ export function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
-        onPointerDown={(event) => {
-          const container = containerRef.current?.getBoundingClientRect();
-          if (!container) return;
-          const value = metrics.toSvgY(event.clientY - container.top);
-          setDragState({ kind: 'hline', mode: 'new', value });
-          event.preventDefault();
-        }}
+        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-row-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
+        onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {verticalTicks.map((tick) => (
           <g key={`y-${tick.value}`}>
@@ -263,23 +361,19 @@ export function Rulers({
             <button
               key={`guide-v-${index}`}
               type="button"
-              className="pointer-events-auto absolute bottom-0 top-6"
+              className="pointer-events-auto absolute bottom-0 top-6 cursor-col-resize"
               style={{ left: x - HIT_SIZE / 2, width: HIT_SIZE }}
-              onPointerDown={(event) => {
-                setSelectedIconGuideIndex(index);
-                setDragState({ kind: 'vline', mode: 'existing', index, value: guide.x });
-                event.preventDefault();
-              }}
+              onPointerDown={(event) => startGuideDrag('vline', index, guide.x, event)}
               aria-label={`Vertical guide ${index + 1}`}
             >
               <span
-              className="absolute inset-y-0 left-1/2 -translate-x-1/2"
-              style={{
+                className="absolute inset-y-0 left-1/2 -translate-x-1/2"
+                style={{
                   width: style.solid ? (isSelected ? 2 : 1) : 0,
                   backgroundColor: style.solid ? style.color : undefined,
                   borderLeft: style.solid ? undefined : `1px dashed ${style.color}`,
-              }}
-            />
+                }}
+              />
             </button>
           );
         }
@@ -289,13 +383,9 @@ export function Rulers({
           <button
             key={`guide-h-${index}`}
             type="button"
-            className="pointer-events-auto absolute left-6 right-0"
+            className="pointer-events-auto absolute left-6 right-0 cursor-row-resize"
             style={{ top: y - HIT_SIZE / 2, height: HIT_SIZE }}
-            onPointerDown={(event) => {
-              setSelectedIconGuideIndex(index);
-              setDragState({ kind: 'hline', mode: 'existing', index, value: guide.y });
-              event.preventDefault();
-            }}
+            onPointerDown={(event) => startGuideDrag('hline', index, guide.y, event)}
             aria-label={`Horizontal guide ${index + 1}`}
           >
             <span
@@ -310,7 +400,7 @@ export function Rulers({
         );
       })}
 
-      {dragState ? (
+      {dragState?.dragging ? (
         dragState.kind === 'vline' ? (
           <div
             className="pointer-events-none absolute bottom-0 top-6"
@@ -387,4 +477,16 @@ function getGuideLineStyle(style: 'subtle' | 'strong', selected: boolean) {
   }
 
   return { color: 'rgba(148,163,184,0.18)', solid: false };
+}
+
+function isReleasedOverMatchingRuler(
+  containerRect: DOMRect | null,
+  kind: DragState['kind'],
+  event: PointerEvent,
+) {
+  if (!containerRect) return false;
+  if (kind === 'vline') {
+    return event.clientY <= containerRect.top + RULER_SIZE;
+  }
+  return event.clientX <= containerRect.left + RULER_SIZE;
 }

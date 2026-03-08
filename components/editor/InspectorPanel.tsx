@@ -2,28 +2,43 @@
 
 import { useCallback } from 'react';
 import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
   AlignHorizontalJustifyCenter,
   AlignHorizontalJustifyEnd,
   AlignHorizontalJustifyStart,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignStartVertical,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
   AlignVerticalJustifyStart,
   BetweenHorizontalStart,
   BetweenVerticalStart,
+  Minus,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
-import { alignLayers, distributeLayers } from '@/lib/editor-core';
 import {
+  alignLayers,
+  alignSelectedPoints,
+  distributeLayers,
+  distributeSelectedPoints,
+  setSelectedPointType,
+} from '@/lib/editor-core';
+import {
+  useEditorActions,
   useEditorStore,
   useSelection,
 } from '@/lib/editor-store/hooks';
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
 import type { Layer, PaintRef } from '@/lib/schema/types';
+import type { NodeType, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 
 const ALIGN_ACTIONS = [
@@ -40,8 +55,37 @@ const DISTRIBUTE_ACTIONS = [
   { label: 'Distribute vertically', mode: 'vertical', icon: BetweenVerticalStart },
 ] as const;
 
+const POINT_ALIGN_ACTIONS = [
+  { label: 'Align points left', axis: 'x', anchor: 'min', icon: AlignStartVertical },
+  { label: 'Align points center horizontally', axis: 'x', anchor: 'center', icon: AlignCenterVertical },
+  { label: 'Align points right', axis: 'x', anchor: 'max', icon: AlignEndVertical },
+  { label: 'Align points top', axis: 'y', anchor: 'min', icon: AlignStartHorizontal },
+  { label: 'Align points center vertically', axis: 'y', anchor: 'center', icon: AlignCenterHorizontal },
+  { label: 'Align points bottom', axis: 'y', anchor: 'max', icon: AlignEndHorizontal },
+] as const;
+
+const POINT_DISTRIBUTE_ACTIONS = [
+  { label: 'Distribute points horizontally', axis: 'x', rotate: '' },
+  { label: 'Distribute points vertically', axis: 'y', rotate: 'rotate-90' },
+] as const;
+
+const NODE_TYPE_OPTIONS = [
+  { value: 'corner', label: 'Corner', glyph: '∟' },
+  { value: 'smooth', label: 'Smooth', glyph: '∿' },
+  { value: 'symmetric', label: 'Symmetric', glyph: '⇄' },
+] as const;
+
 export function InspectorPanel() {
+  const tool = useEditorStore((s) => s.tool);
+  const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
+  const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
+  const shapeStarPoints = useEditorStore((s) => s.shapeStarPoints);
   const selection = useSelection();
+  const {
+    setShapePolygonSides,
+    setShapeStarPoints,
+    setShapeSubTool,
+  } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
@@ -54,8 +98,17 @@ export function InspectorPanel() {
     currentState && selectedLayerId
       ? currentState.layers[selectedLayerId] ?? null
       : null;
+  const pointContext = layer
+    ? getSelectedPointContext(layer, selection.pointIds)
+    : getSelectedPointContext(null, []);
+  const multipleLayersSelected = selection.layerIds.length > 1;
+  const enoughLayersToDistribute = selection.layerIds.length > 2;
+  const showShapeToolSettings = tool === 'shape';
+  const canAlignPoints = pointContext.count >= 2;
+  const canDistributePoints = pointContext.count >= 3;
+  const hasSinglePointSelection = pointContext.count === 1;
 
-  if (!layer) {
+  if (!layer && !showShapeToolSettings) {
     return (
       <div className="flex h-full flex-col bg-transparent">
         <div className="px-4 pt-3 pb-2">
@@ -68,10 +121,6 @@ export function InspectorPanel() {
     );
   }
 
-  const pointContext = getSelectedPointContext(layer, selection.pointIds);
-  const multipleLayersSelected = selection.layerIds.length > 1;
-  const enoughLayersToDistribute = selection.layerIds.length > 2;
-
   return (
     <div className="flex h-full flex-col bg-transparent">
       <div className="px-4 pt-3 pb-2">
@@ -79,6 +128,51 @@ export function InspectorPanel() {
       </div>
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 px-4 pb-4">
+          {showShapeToolSettings && (
+            <>
+              <Section title="Shape Tool">
+                <SelectField
+                  label="Type"
+                  value={shapeSubTool}
+                  options={[
+                    ['rectangle', 'Rectangle'],
+                    ['ellipse', 'Ellipse'],
+                    ['polygon', 'Polygon'],
+                    ['star', 'Star'],
+                    ['line', 'Line'],
+                  ]}
+                  onChange={(value) => setShapeSubTool(value as typeof shapeSubTool)}
+                />
+                {shapeSubTool === 'polygon' && (
+                  <NumberField
+                    label="Sides"
+                    value={shapePolygonSides}
+                    min={3}
+                    step={1}
+                    onChange={setShapePolygonSides}
+                  />
+                )}
+                {shapeSubTool === 'star' && (
+                  <NumberField
+                    label="Points"
+                    value={shapeStarPoints}
+                    min={2}
+                    step={1}
+                    onChange={setShapeStarPoints}
+                  />
+                )}
+                {!layer && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Drag on the canvas to place a new {shapeSubTool}.
+                  </p>
+                )}
+              </Section>
+              {layer && <Separator />}
+            </>
+          )}
+
+          {!layer ? null : (
+            <>
           <Section title="Layer">
             <ReadOnlyField label="ID" value={layer.id} />
             <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
@@ -281,30 +375,89 @@ export function InspectorPanel() {
 
           <Separator />
 
-          <Section title="Points">
-            <ReadOnlyField label="Selected" value={String(pointContext.count)} />
-            <NumberField
-              label="X"
-              value={pointContext.x}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.position.x = v;
-                })
-              }
-            />
-            <NumberField
-              label="Y"
-              value={pointContext.y}
-              disabled={pointContext.count === 0}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.position.y = v;
-                })
-              }
-            />
-            <NumberField
+          <Section title="Vector">
+            <div className="flex items-center gap-1">
+              {POINT_ALIGN_ACTIONS.slice(0, 3).map((action) => (
+                <IconActionButton
+                  key={`${action.axis}-${action.anchor}`}
+                  label={action.label}
+                  disabled={!canAlignPoints}
+                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                >
+                  <action.icon className="size-4" />
+                </IconActionButton>
+              ))}
+              <div className="mx-1 h-6 w-px bg-border/70" />
+              {POINT_ALIGN_ACTIONS.slice(3).map((action) => (
+                <IconActionButton
+                  key={`${action.axis}-${action.anchor}`}
+                  label={action.label}
+                  disabled={!canAlignPoints}
+                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                >
+                  <action.icon className="size-4" />
+                </IconActionButton>
+              ))}
+              <div className="mx-1 h-6 w-px bg-border/70" />
+              {POINT_DISTRIBUTE_ACTIONS.map((action) => (
+                <IconActionButton
+                  key={action.axis}
+                  label={action.label}
+                  disabled={!canDistributePoints}
+                  onClick={() => distributeSelectedPoints(action.axis)}
+                >
+                  <Minus className={`size-4 ${action.rotate}`} />
+                </IconActionButton>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <AxisField
+                label="X"
+                value={pointContext.xMixed ? undefined : pointContext.x}
+                placeholder={pointContext.xMixed ? 'Mixed' : undefined}
+                disabled={pointContext.count === 0}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    translatePointPosition(pt, v - pt.position.x, 0);
+                  })
+                }
+              />
+              <AxisField
+                label="Y"
+                value={pointContext.yMixed ? undefined : pointContext.y}
+                placeholder={pointContext.yMixed ? 'Mixed' : undefined}
+                disabled={pointContext.count === 0}
+                onChange={(v) =>
+                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                    translatePointPosition(pt, 0, v - pt.position.y);
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+                Type
+              </Label>
+              <div className="flex flex-1 items-center gap-1">
+                {NODE_TYPE_OPTIONS.map((option) => (
+                  <NodeTypeButton
+                    key={option.value}
+                    label={option.label}
+                    active={pointContext.nodeType === option.value}
+                    disabled={pointContext.count === 0}
+                    onClick={() => setSelectedPointType(option.value)}
+                  >
+                    {option.glyph}
+                  </NodeTypeButton>
+                ))}
+              </div>
+            </div>
+
+            <IconNumberField
               label="Radius"
+              icon="⌒"
               value={pointContext.radius}
               min={0}
               step={0.25}
@@ -313,66 +466,79 @@ export function InspectorPanel() {
                 applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
               }
             />
-            <SelectField
-              label="Point Type"
-              value={pointContext.nodeType}
-              disabled={pointContext.count === 0}
-              options={[
-                ['corner', 'Corner'],
-                ['smooth', 'Smooth'],
-                ['symmetric', 'Symmetric'],
-              ]}
-              onChange={(value) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.nodeType = value as typeof pt.nodeType;
-                  if (value === 'corner') {
-                    pt.handleIn = null;
-                    pt.handleOut = null;
-                  }
-                })
-              }
-            />
 
-            <NumberField
-              label="In X"
-              value={pointContext.handleInX}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleIn = { x: v, y: pt.handleIn?.y ?? pt.position.y };
-                })
-              }
-            />
-            <NumberField
-              label="In Y"
-              value={pointContext.handleInY}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleIn = { x: pt.handleIn?.x ?? pt.position.x, y: v };
-                })
-              }
-            />
-            <NumberField
-              label="Out X"
-              value={pointContext.handleOutX}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleOut = { x: v, y: pt.handleOut?.y ?? pt.position.y };
-                })
-              }
-            />
-            <NumberField
-              label="Out Y"
-              value={pointContext.handleOutY}
-              disabled={pointContext.count !== 1}
-              onChange={(v) =>
-                patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                  pt.handleOut = { x: pt.handleOut?.x ?? pt.position.x, y: v };
-                })
-              }
-            />
+            {hasSinglePointSelection && (
+              <div className="grid grid-cols-2 gap-2">
+                <AxisField
+                  label="In X"
+                  value={pointContext.handleInX}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'in',
+                      'x',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="In Y"
+                  value={pointContext.handleInY}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'in',
+                      'y',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="Out X"
+                  value={pointContext.handleOutX}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'out',
+                      'x',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="Out Y"
+                  value={pointContext.handleOutY}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'out',
+                      'y',
+                      v,
+                    )
+                  }
+                />
+              </div>
+            )}
           </Section>
 
           <Separator />
@@ -426,6 +592,8 @@ export function InspectorPanel() {
               }
             />
           </Section>
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>
@@ -503,7 +671,13 @@ type EditablePoint = {
   position: { x: number; y: number };
   handleIn: { x: number; y: number } | null;
   handleOut: { x: number; y: number } | null;
-  nodeType: 'smooth' | 'corner' | 'symmetric';
+  nodeType: NodeType;
+};
+
+type ResolvedEditablePoint = {
+  point: EditablePoint;
+  subPath: SubPath;
+  pointIndex: number;
 };
 
 function patchSelectedPoints(
@@ -511,7 +685,7 @@ function patchSelectedPoints(
   stateId: string | null,
   layerId: string,
   pointIds: string[],
-  updater: (point: EditablePoint) => void,
+  updater: (point: EditablePoint, resolved: ResolvedEditablePoint) => void,
 ) {
   if (!iconId || !stateId || pointIds.length === 0) return;
   const state = editorStore.getState();
@@ -523,8 +697,8 @@ function patchSelectedPoints(
 
   const path = parseSvgPath(d);
   for (const pointId of pointIds) {
-    const point = findPointByKey(path, pointId);
-    if (point) updater(point as EditablePoint);
+    const resolved = findPointByKey(path, pointId);
+    if (resolved) updater(resolved.point as EditablePoint, resolved);
   }
 
   state.patchLayer(iconId, stateId, layerId, {
@@ -539,7 +713,7 @@ function applyPointRadius(
   pointIds: string[],
   radius: number,
 ) {
-  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt) => {
+  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt, resolved) => {
     if (radius <= 0) {
       pt.handleIn = null;
       pt.handleOut = null;
@@ -548,23 +722,36 @@ function applyPointRadius(
     }
 
     pt.nodeType = 'smooth';
-    pt.handleIn = { x: pt.position.x - radius, y: pt.position.y };
-    pt.handleOut = { x: pt.position.x + radius, y: pt.position.y };
+    const direction = getPointBisectorDirection(resolved.subPath, resolved.pointIndex);
+    pt.handleIn = {
+      x: pt.position.x - direction.x * radius,
+      y: pt.position.y - direction.y * radius,
+    };
+    pt.handleOut = {
+      x: pt.position.x + direction.x * radius,
+      y: pt.position.y + direction.y * radius,
+    };
   });
 }
 
-function getSelectedPointContext(layer: Layer, pointIds: string[]) {
+function getSelectedPointContext(layer: Layer | null, pointIds: string[]) {
   const base = {
     count: 0,
     x: undefined as number | undefined,
     y: undefined as number | undefined,
+    xMixed: false,
+    yMixed: false,
     radius: undefined as number | undefined,
-    nodeType: 'corner',
+    nodeType: null as NodeType | null,
     handleInX: undefined as number | undefined,
     handleInY: undefined as number | undefined,
     handleOutX: undefined as number | undefined,
     handleOutY: undefined as number | undefined,
+    hasHandleIn: false,
+    hasHandleOut: false,
   };
+
+  if (!layer) return base;
 
   const d = layer.path?.d;
   if (!d || !isPathDirectlyEditable(d) || pointIds.length === 0) return base;
@@ -572,28 +759,44 @@ function getSelectedPointContext(layer: Layer, pointIds: string[]) {
   const path = parseSvgPath(d);
   const points = pointIds
     .map((pointId) => findPointByKey(path, pointId))
-    .filter((pt): pt is NonNullable<typeof pt> => Boolean(pt));
+    .filter((pt): pt is NonNullable<typeof pt> => Boolean(pt))
+    .map((resolved) => resolved.point);
 
   if (points.length === 0) return base;
 
   const first = points[0];
-  const radius =
+  const xMixed = points.some((point) => point.position.x !== first.position.x);
+  const yMixed = points.some((point) => point.position.y !== first.position.y);
+  const inferredTypes = points.map((point) => inferPointNodeType(point as EditablePoint));
+  const nodeType = inferredTypes.every((type) => type === inferredTypes[0])
+    ? inferredTypes[0]
+    : null;
+  const firstRadius =
     first.handleOut && first.handleIn
-      ? (Math.abs(first.handleOut.x - first.position.x) +
-          Math.abs(first.position.x - first.handleIn.x)) /
-        2
-      : undefined;
+      ? (distance(first.handleOut, first.position) + distance(first.handleIn, first.position)) / 2
+      : first.handleOut
+        ? distance(first.handleOut, first.position)
+        : first.handleIn
+          ? distance(first.handleIn, first.position)
+          : undefined;
+  const radius = points.every((point) => getPointRadius(point) === firstRadius)
+    ? firstRadius
+    : undefined;
 
   return {
     count: points.length,
-    x: first.position.x,
-    y: first.position.y,
+    x: xMixed ? undefined : first.position.x,
+    y: yMixed ? undefined : first.position.y,
+    xMixed,
+    yMixed,
     radius,
-    nodeType: first.nodeType,
+    nodeType,
     handleInX: first.handleIn?.x,
     handleInY: first.handleIn?.y,
     handleOutX: first.handleOut?.x,
     handleOutY: first.handleOut?.y,
+    hasHandleIn: Boolean(first.handleIn),
+    hasHandleOut: Boolean(first.handleOut),
   };
 }
 
@@ -604,7 +807,127 @@ function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
   if (!Number.isInteger(subPathIndex) || !Number.isInteger(pointIndex)) return null;
 
   const subPath = path.subPaths[subPathIndex];
-  return subPath?.points[pointIndex] ?? null;
+  const point = subPath?.points[pointIndex];
+  if (!subPath || !point) return null;
+  return { point, subPath, pointIndex };
+}
+
+function updateSelectedHandle(
+  iconId: string | null,
+  stateId: string | null,
+  layerId: string,
+  pointIds: string[],
+  nodeType: NodeType | null,
+  handle: 'in' | 'out',
+  axis: 'x' | 'y',
+  value: number,
+) {
+  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt) => {
+    const targetKey = handle === 'in' ? 'handleIn' : 'handleOut';
+    const oppositeKey = handle === 'in' ? 'handleOut' : 'handleIn';
+    const targetHandle = pt[targetKey] ?? { x: pt.position.x, y: pt.position.y };
+    pt[targetKey] = { ...targetHandle, [axis]: value };
+
+    if (nodeType === 'symmetric' && pt[targetKey]) {
+      const dx = pt[targetKey]!.x - pt.position.x;
+      const dy = pt[targetKey]!.y - pt.position.y;
+      pt[oppositeKey] = {
+        x: pt.position.x - dx,
+        y: pt.position.y - dy,
+      };
+      pt.nodeType = 'symmetric';
+    }
+  });
+}
+
+function translatePointPosition(point: EditablePoint, dx: number, dy: number) {
+  point.position.x += dx;
+  point.position.y += dy;
+  if (point.handleIn) {
+    point.handleIn.x += dx;
+    point.handleIn.y += dy;
+  }
+  if (point.handleOut) {
+    point.handleOut.x += dx;
+    point.handleOut.y += dy;
+  }
+}
+
+function getPointBisectorDirection(subPath: SubPath, pointIndex: number) {
+  const point = subPath.points[pointIndex];
+  const prev = getNeighborPoint(subPath, pointIndex, -1);
+  const next = getNeighborPoint(subPath, pointIndex, 1);
+
+  const incoming = prev
+    ? normalize({
+        x: point.position.x - prev.position.x,
+        y: point.position.y - prev.position.y,
+      })
+    : null;
+  const outgoing = next
+    ? normalize({
+        x: next.position.x - point.position.x,
+        y: next.position.y - point.position.y,
+      })
+    : null;
+
+  if (incoming && outgoing) {
+    const bisector = normalize({
+      x: incoming.x + outgoing.x,
+      y: incoming.y + outgoing.y,
+    });
+    if (bisector) return bisector;
+  }
+
+  return outgoing ?? incoming ?? { x: 1, y: 0 };
+}
+
+function getNeighborPoint(subPath: SubPath, pointIndex: number, direction: -1 | 1) {
+  const nextIndex = pointIndex + direction;
+  if (nextIndex >= 0 && nextIndex < subPath.points.length) {
+    return subPath.points[nextIndex];
+  }
+
+  if (!subPath.closed || subPath.points.length === 0) return null;
+  return direction === -1
+    ? subPath.points[subPath.points.length - 1]
+    : subPath.points[0];
+}
+
+function normalize(vector: { x: number; y: number }) {
+  const length = Math.hypot(vector.x, vector.y);
+  if (length <= Number.EPSILON) return null;
+  return { x: vector.x / length, y: vector.y / length };
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getPointRadius(point: EditablePoint) {
+  if (point.handleIn && point.handleOut) {
+    return (distance(point.handleIn, point.position) + distance(point.handleOut, point.position)) / 2;
+  }
+  if (point.handleIn) return distance(point.handleIn, point.position);
+  if (point.handleOut) return distance(point.handleOut, point.position);
+  return undefined;
+}
+
+function inferPointNodeType(point: EditablePoint): NodeType {
+  if (!point.handleIn && !point.handleOut) return 'corner';
+  if (point.handleIn && point.handleOut) {
+    const inDx = point.handleIn.x - point.position.x;
+    const inDy = point.handleIn.y - point.position.y;
+    const outDx = point.handleOut.x - point.position.x;
+    const outDy = point.handleOut.y - point.position.y;
+    const mirrored =
+      Math.abs(inDx + outDx) <= 0.001 &&
+      Math.abs(inDy + outDy) <= 0.001;
+    const equalLength =
+      Math.abs(Math.hypot(inDx, inDy) - Math.hypot(outDx, outDy)) <= 0.001;
+    if (mirrored && equalLength) return 'symmetric';
+  }
+  return 'smooth';
 }
 
 function Section({
@@ -714,6 +1037,111 @@ function NumberField({
         className="h-7 bg-input text-xs"
       />
     </div>
+  );
+}
+
+function AxisField({
+  label,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const num = parseFloat(e.target.value);
+      if (!Number.isNaN(num)) onChange(num);
+    },
+    [onChange],
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input
+        type="text"
+        inputMode="decimal"
+        value={value ?? ''}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={handleChange}
+        className="h-8 bg-input text-xs"
+      />
+    </div>
+  );
+}
+
+function IconNumberField({
+  label,
+  icon,
+  value,
+  onChange,
+  min,
+  step,
+  disabled,
+}: {
+  label: string;
+  icon: string;
+  value: number | undefined;
+  onChange: (v: number) => void;
+  min?: number;
+  step?: number;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Label className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className="font-mono text-sm leading-none">{icon}</span>
+        <span>{label}</span>
+      </Label>
+      <Input
+        type="number"
+        value={value ?? ''}
+        min={min}
+        step={step}
+        disabled={disabled}
+        onChange={(e) => {
+          const num = parseFloat(e.target.value);
+          if (!Number.isNaN(num)) onChange(num);
+        }}
+        className="h-7 bg-input text-xs"
+      />
+    </div>
+  );
+}
+
+function NodeTypeButton({
+  label,
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button
+      type="button"
+      size="icon-sm"
+      variant={active ? 'secondary' : 'outline'}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="font-mono text-base"
+    >
+      {children}
+    </Button>
   );
 }
 

@@ -1,5 +1,11 @@
 import type { Project, Layer } from '@/lib/schema/types';
-import type { Tool, SelectionState, ViewportState } from './types';
+import type {
+  Tool,
+  SelectionState,
+  ViewportState,
+  ShapeType,
+  PointTransformLabelState,
+} from './types';
 
 export type EditorState = {
   project: Project | null;
@@ -9,6 +15,10 @@ export type EditorState = {
   selection: SelectionState;
   viewport: ViewportState;
   tool: Tool;
+  shapeSubTool: ShapeType;
+  shapePolygonSides: number;
+  shapeStarPoints: number;
+  pointTransformLabel: PointTransformLabelState | null;
 };
 
 export type EditorActions = {
@@ -23,6 +33,10 @@ export type EditorActions = {
   clearSelection(): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
+  setShapeSubTool(shapeSubTool: ShapeType): void;
+  setShapePolygonSides(sides: number): void;
+  setShapeStarPoints(points: number): void;
+  setPointTransformLabel(label: PointTransformLabelState | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
   pauseHistory(): void;
   resumeHistory(): void;
@@ -41,6 +55,7 @@ type TemporalState = {
   clear(): void;
   pause(): void;
   resume(): void;
+  discard(): void;
   commit(_label?: string): void;
 };
 
@@ -52,6 +67,10 @@ const initialState: EditorState = {
   selection: { layerIds: [], pointIds: [] },
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
+  shapeSubTool: 'rectangle',
+  shapePolygonSides: 5,
+  shapeStarPoints: 5,
+  pointTransformLabel: null,
 };
 
 let currentState: EditorStore;
@@ -117,6 +136,17 @@ const temporalState: TemporalState = {
     tracking = true;
   },
 
+  discard() {
+    if (transactionBase === undefined) return;
+    currentState = {
+      ...currentState,
+      project: transactionBase,
+    };
+    tracking = true;
+    transactionBase = undefined;
+    emit();
+  },
+
   commit(_label?: string) {
     if (transactionBase === undefined) return;
     if (transactionBase !== currentState.project) {
@@ -179,6 +209,7 @@ function createActions(): EditorActions {
         currentStateId: firstStateId,
         selection: { layerIds: [], pointIds: [] },
         viewport: { zoom: 12, panX: 0, panY: 0 },
+        pointTransformLabel: null,
       });
       resetHistoryForLoadedDocument();
     },
@@ -295,6 +326,22 @@ function createActions(): EditorActions {
       editorStoreApi.setState({ tool, selection: { layerIds: [], pointIds: [] } });
     },
 
+    setShapeSubTool(shapeSubTool) {
+      editorStoreApi.setState({ shapeSubTool });
+    },
+
+    setShapePolygonSides(sides) {
+      editorStoreApi.setState({ shapePolygonSides: clampInteger(sides, 3) });
+    },
+
+    setShapeStarPoints(points) {
+      editorStoreApi.setState({ shapeStarPoints: clampInteger(points, 2) });
+    },
+
+    setPointTransformLabel(label) {
+      editorStoreApi.setState({ pointTransformLabel: label });
+    },
+
     updateProjectMeta(patch) {
       editorStoreApi.setState((s) => {
         if (!s.project) return s;
@@ -327,3 +374,8 @@ currentState = {
 };
 
 export const editorStore = editorStoreApi;
+
+function clampInteger(value: number, minimum: number): number {
+  if (!Number.isFinite(value)) return minimum;
+  return Math.max(minimum, Math.round(value));
+}

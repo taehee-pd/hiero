@@ -10,7 +10,7 @@ import {
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
-import { PathEditor } from '@/lib/editor-core';
+import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -31,9 +31,21 @@ export function Canvas() {
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
   const tool = useEditorStore((s) => s.tool);
+  const pointTransformLabel = useEditorStore((s) => s.pointTransformLabel);
 
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
+  const pointBBox = useEditorStore(() => {
+    if (tool !== 'direct-select') return null;
+    const bbox = getSelectedPointsBoundingBox();
+    if (!bbox) return null;
+    return {
+      minX: bbox.minX,
+      minY: bbox.minY,
+      maxX: bbox.maxX,
+      maxY: bbox.maxY,
+    };
+  });
 
   // Render SVG geometry when state changes.
   // Always clear stale geometry if the active icon/variant/state becomes unavailable.
@@ -133,6 +145,8 @@ export function Canvas() {
     layers: currentState?.layers ?? {},
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
     guideSet: activeGuideSet,
+    pointBBox,
+    pointBBoxLabel: pointTransformLabel,
   });
 
   // ── Zoom via wheel ──────────────────────────────────────

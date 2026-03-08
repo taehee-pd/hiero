@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ViewportState, SelectionState } from '@/lib/editor-store/types';
+import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { Layer, GuideSet, GuideItem } from '@/lib/schema/types';
 import { loadPaperGlobal, type PaperGlobal } from '@/lib/editor-core/paper-runtime';
 
@@ -9,6 +10,7 @@ export type OverlayOptions = {
   layers: Record<string, Layer>;
   viewBox: [number, number, number, number];
   guideSet?: GuideSet;
+  activeSnapGuides?: SnapTarget[];
 };
 
 /**
@@ -48,7 +50,8 @@ export function useCanvasOverlay(
       scope.activate();
       scope.project.clear();
 
-      const { viewport, selection, layers, viewBox, guideSet } = optionsRef.current;
+      const { viewport, selection, layers, viewBox, guideSet, activeSnapGuides } =
+        optionsRef.current;
       const [vx, vy, vw, vh] = viewBox;
       const scale = viewport.zoom;
       const renderWidth = vw * scale;
@@ -87,7 +90,6 @@ export function useCanvasOverlay(
       if (guideSet?.items?.length) {
         drawGuideItems(scope, guideSet.items, viewBox, toScreen);
       }
-
       const boundary = new scope.Path.Rectangle({
         rectangle: new scope.Rectangle(left, top, renderWidth, renderHeight),
         strokeColor: new scope.Color('rgba(255,255,255,0.12)'),
@@ -171,6 +173,10 @@ export function useCanvasOverlay(
         );
         horizontal.strokeColor = new scope.Color('rgba(96,165,250,0.3)');
         horizontal.strokeWidth = 0.5;
+      }
+
+      if (activeSnapGuides?.length) {
+        drawActiveSnapGuides(scope, activeSnapGuides, viewBox, toScreen);
       }
 
       scope.view.update();
@@ -351,5 +357,59 @@ function drawGuideItems(
         break;
       }
     }
+  }
+}
+
+function drawActiveSnapGuides(
+  scope: any,
+  guides: SnapTarget[],
+  viewBox: [number, number, number, number],
+  toScreen: (x: number, y: number) => any,
+) {
+  const [vx, vy, vw, vh] = viewBox;
+  const drawn = new Set<string>();
+
+  for (const guide of guides) {
+    const strokeColor = getSnapGuideColor(scope, guide.type);
+    const dashArray = guide.type === 'center' ? [10, 4] : [7, 5];
+
+    if (guide.x !== undefined) {
+      const key = `x:${guide.type}:${guide.sourceLayerId ?? ''}:${guide.x}`;
+      if (!drawn.has(key)) {
+        drawn.add(key);
+        const a = toScreen(guide.x, vy);
+        const b = toScreen(guide.x, vy + vh);
+        const line = new scope.Path.Line(a, b);
+        line.strokeColor = strokeColor;
+        line.strokeWidth = 1.25;
+        line.dashArray = dashArray;
+      }
+    }
+
+    if (guide.y !== undefined) {
+      const key = `y:${guide.type}:${guide.sourceLayerId ?? ''}:${guide.y}`;
+      if (!drawn.has(key)) {
+        drawn.add(key);
+        const a = toScreen(vx, guide.y);
+        const b = toScreen(vx + vw, guide.y);
+        const line = new scope.Path.Line(a, b);
+        line.strokeColor = strokeColor;
+        line.strokeWidth = 1.25;
+        line.dashArray = dashArray;
+      }
+    }
+  }
+}
+
+function getSnapGuideColor(scope: any, type: SnapTarget['type']) {
+  switch (type) {
+    case 'center':
+      return new scope.Color('rgba(34, 211, 238, 0.72)');
+    case 'edge':
+    case 'guide':
+    case 'spacing':
+    case 'grid':
+    default:
+      return new scope.Color('rgba(236, 72, 153, 0.7)');
   }
 }

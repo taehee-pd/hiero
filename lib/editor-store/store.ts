@@ -1,5 +1,6 @@
 import type { Project, Layer } from '@/lib/schema/types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
+import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { Tool, SelectionState, ViewportState } from './types';
 
 export type EditorState = {
@@ -8,6 +9,8 @@ export type EditorState = {
   currentVariantId: string | null;
   currentStateId: string | null;
   selection: SelectionState;
+  activeSnapGuides: SnapTarget[];
+  snapEnabled: boolean;
   viewport: ViewportState;
   tool: Tool;
 };
@@ -22,6 +25,8 @@ export type EditorActions = {
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
   setSelection(selection: SelectionState): void;
   clearSelection(): void;
+  setActiveSnapGuides(guides: SnapTarget[]): void;
+  toggleSnap(): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
@@ -52,6 +57,8 @@ const initialState: EditorState = {
   currentVariantId: null,
   currentStateId: null,
   selection: { layerIds: [], pointIds: [] },
+  activeSnapGuides: [],
+  snapEnabled: true,
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
 };
@@ -80,6 +87,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     ...currentState,
     project: snapshot.project,
     selection: { layerIds: [], pointIds: [] },
+    activeSnapGuides: [],
   };
   emit();
 }
@@ -180,6 +188,8 @@ function createActions(): EditorActions {
         currentVariantId: firstVariantId,
         currentStateId: firstStateId,
         selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+        snapEnabled: true,
         viewport: { zoom: 12, panX: 0, panY: 0 },
       });
       resetHistoryForLoadedDocument();
@@ -205,16 +215,21 @@ function createActions(): EditorActions {
           currentVariantId: Object.keys(icon.variants)[0] ?? null,
           currentStateId: Object.keys(icon.states)[0] ?? null,
           selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
         };
       });
     },
 
     setCurrentVariant(id) {
-      editorStoreApi.setState({ currentVariantId: id });
+      editorStoreApi.setState({ currentVariantId: id, activeSnapGuides: [] });
     },
 
     setCurrentState(id) {
-      editorStoreApi.setState({ currentStateId: id, selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        currentStateId: id,
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
     },
 
     patchLayer(iconId, stateId, layerId, patch) {
@@ -286,7 +301,21 @@ function createActions(): EditorActions {
     },
 
     clearSelection() {
-      editorStoreApi.setState({ selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
+    },
+
+    setActiveSnapGuides(guides) {
+      editorStoreApi.setState({ activeSnapGuides: guides });
+    },
+
+    toggleSnap() {
+      editorStoreApi.setState((s) => ({
+        snapEnabled: !s.snapEnabled,
+        activeSnapGuides: s.snapEnabled ? [] : s.activeSnapGuides,
+      }));
     },
 
     setViewport(viewport) {
@@ -294,7 +323,11 @@ function createActions(): EditorActions {
     },
 
     setTool(tool) {
-      editorStoreApi.setState({ tool, selection: { layerIds: [], pointIds: [] } });
+      editorStoreApi.setState({
+        tool,
+        selection: { layerIds: [], pointIds: [] },
+        activeSnapGuides: [],
+      });
     },
 
     updateProjectMeta(patch) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -11,12 +11,23 @@ import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { PathEditor } from '@/lib/editor-core';
+import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const HANDLE_RADIUS_PX = 3;
 const HANDLE_STROKE_PX = 1;
 const HANDLE_HIT_RADIUS_PX = 9;
+const CONTROL_HANDLE_SIZE_PX = 6;
+const ANCHOR_STROKE = '#0ea5e9';
+const ANCHOR_FILL = '#ffffff';
+const ACTIVE_ANCHOR_STROKE = '#ffffff';
+const ACTIVE_ANCHOR_FILL = '#0ea5e9';
+const CONTROL_STROKE = '#ffffff';
+const CONTROL_FILL = '#0ea5e9';
+const CONTROL_LINE = 'rgba(226,232,240,0.9)';
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 32;
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -31,9 +42,11 @@ export function Canvas() {
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
   const tool = useEditorStore((s) => s.tool);
+  const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
 
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
+  const gestureScaleRef = useRef(1);
 
   // Render SVG geometry when state changes.
   // Always clear stale geometry if the active icon/variant/state becomes unavailable.
@@ -78,6 +91,8 @@ export function Canvas() {
     const handleRadius = HANDLE_RADIUS_PX / zoom;
     const handleStroke = HANDLE_STROKE_PX / zoom;
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
+    const controlSize = CONTROL_HANDLE_SIZE_PX / zoom;
+    const controlHitRadius = (HANDLE_HIT_RADIUS_PX * 0.8) / zoom;
     const selectedPointKey = selection.pointIds[0] ?? null;
 
     const editable = parseSvgPath(d);
@@ -85,6 +100,8 @@ export function Canvas() {
       subPath.points.forEach((point, pointIndex) => {
         const pointKey = `${spIndex}:${pointIndex}`;
         const isActive = selectedPointKey === pointKey;
+        const handleIn = getControlHandlePosition(subPath, pointIndex, 'in');
+        const handleOut = getControlHandlePosition(subPath, pointIndex, 'out');
 
         const hitTarget = document.createElementNS(SVG_NS, 'circle');
         hitTarget.setAttribute('cx', `${point.position.x}`);
@@ -92,6 +109,7 @@ export function Canvas() {
         hitTarget.setAttribute('r', `${hitRadius}`);
         hitTarget.setAttribute('fill', 'rgba(0, 0, 0, 0)');
         hitTarget.setAttribute('data-editor-handle', 'true');
+        hitTarget.setAttribute('data-handle-type', 'anchor');
         hitTarget.setAttribute('data-layer-id', activeLayerId);
         hitTarget.setAttribute('data-point-key', pointKey);
         hitTarget.setAttribute('data-handle-role', 'hit');
@@ -103,16 +121,39 @@ export function Canvas() {
         handleOuter.setAttribute('cx', `${point.position.x}`);
         handleOuter.setAttribute('cy', `${point.position.y}`);
         handleOuter.setAttribute('r', `${handleRadius}`);
-        handleOuter.setAttribute('fill', '#ffffff');
-        handleOuter.setAttribute('stroke', isActive ? '#10b981' : '#9ca3af');
+        handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+        handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
         handleOuter.setAttribute('stroke-width', `${handleStroke}`);
         handleOuter.setAttribute('data-editor-handle', 'true');
+        handleOuter.setAttribute('data-handle-type', 'anchor');
         handleOuter.setAttribute('data-layer-id', activeLayerId);
         handleOuter.setAttribute('data-point-key', pointKey);
         handleOuter.setAttribute('data-handle-role', 'visible');
         handleOuter.style.pointerEvents = 'none';
         svg.appendChild(handleOuter);
 
+        renderControlHandle(
+          svg,
+          activeLayerId,
+          pointKey,
+          point.position,
+          handleIn,
+          'in',
+          controlSize,
+          controlHitRadius,
+          handleStroke,
+        );
+        renderControlHandle(
+          svg,
+          activeLayerId,
+          pointKey,
+          point.position,
+          handleOut,
+          'out',
+          controlSize,
+          controlHitRadius,
+          handleStroke,
+        );
       });
     });
   }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom]);
@@ -133,27 +174,69 @@ export function Canvas() {
     layers: currentState?.layers ?? {},
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
     guideSet: activeGuideSet,
+    activeSnapGuides,
   });
 
-  // ── Zoom via wheel ──────────────────────────────────────
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const state = editorStore.getState();
-    const { viewport, setViewport } = state;
+    const zoomCanvas = (factor: number) => {
+      if (!Number.isFinite(factor) || factor <= 0) return;
+      const state = editorStore.getState();
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
+      if (nextZoom === state.viewport.zoom) return;
+      state.setViewport({ zoom: nextZoom });
+    };
 
-    if (e.ctrlKey || e.metaKey) {
-      // Pinch-to-zoom
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(32, viewport.zoom * delta));
-      setViewport({ zoom: newZoom });
-    } else {
-      // Pan
-      setViewport({
-        panX: viewport.panX - e.deltaX,
-        panY: viewport.panY - e.deltaY,
+    const panCanvas = (deltaX: number, deltaY: number) => {
+      const state = editorStore.getState();
+      state.setViewport({
+        panX: state.viewport.panX - deltaX,
+        panY: state.viewport.panY - deltaY,
       });
-    }
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+
+      if (event.ctrlKey || event.metaKey) {
+        zoomCanvas(Math.exp(-event.deltaY * 0.01));
+        return;
+      }
+
+      panCanvas(event.deltaX, event.deltaY);
+    };
+
+    const handleGestureStart = (event: Event) => {
+      event.preventDefault();
+      gestureScaleRef.current = (event as Event & { scale?: number }).scale ?? 1;
+    };
+
+    const handleGestureChange = (event: Event) => {
+      event.preventDefault();
+      const scale = (event as Event & { scale?: number }).scale ?? gestureScaleRef.current;
+      const delta = scale / Math.max(gestureScaleRef.current, 0.0001);
+      gestureScaleRef.current = scale;
+      zoomCanvas(delta);
+    };
+
+    const handleGestureEnd = (event: Event) => {
+      event.preventDefault();
+      gestureScaleRef.current = 1;
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('gesturestart', handleGestureStart as EventListener);
+    container.addEventListener('gesturechange', handleGestureChange as EventListener);
+    container.addEventListener('gestureend', handleGestureEnd as EventListener);
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('gesturestart', handleGestureStart as EventListener);
+      container.removeEventListener('gesturechange', handleGestureChange as EventListener);
+      container.removeEventListener('gestureend', handleGestureEnd as EventListener);
+    };
   }, []);
 
   // Compute icon positioning
@@ -171,8 +254,8 @@ export function Canvas() {
     <div
       ref={containerRef}
       className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg"
-      onWheel={handleWheel}
       data-canvas-root
+      style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
     >
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
@@ -222,4 +305,93 @@ export function Canvas() {
       )}
     </div>
   );
+}
+
+function getControlHandlePosition(
+  subPath: SubPath,
+  pointIndex: number,
+  direction: 'in' | 'out',
+): { x: number; y: number } | null {
+  const point = subPath.points[pointIndex];
+  if (!point) return null;
+
+  if (direction === 'in') {
+    if (point.handleIn) return point.handleIn;
+    const prev = subPath.points[pointIndex - 1];
+    if (!prev) return null;
+    return interpolatePoint(point.position, prev.position, 1 / 3);
+  }
+
+  if (point.handleOut) return point.handleOut;
+  const next = subPath.points[pointIndex + 1];
+  if (!next) return null;
+  return interpolatePoint(point.position, next.position, 1 / 3);
+}
+
+function interpolatePoint(a: { x: number; y: number }, b: { x: number; y: number }, t: number) {
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  };
+}
+
+function renderControlHandle(
+  svg: SVGSVGElement,
+  layerId: string,
+  pointKey: string,
+  anchor: { x: number; y: number },
+  control: { x: number; y: number } | null,
+  direction: 'in' | 'out',
+  controlSize: number,
+  controlHitRadius: number,
+  strokeWidth: number,
+) {
+  if (!control) return;
+
+  const line = document.createElementNS(SVG_NS, 'line');
+  line.setAttribute('x1', `${anchor.x}`);
+  line.setAttribute('y1', `${anchor.y}`);
+  line.setAttribute('x2', `${control.x}`);
+  line.setAttribute('y2', `${control.y}`);
+  line.setAttribute('stroke', CONTROL_LINE);
+  line.setAttribute('stroke-width', `${strokeWidth}`);
+  line.setAttribute('data-editor-handle', 'true');
+  line.setAttribute('data-handle-type', 'control-line');
+  line.setAttribute('data-layer-id', layerId);
+  line.setAttribute('data-point-key', pointKey);
+  line.setAttribute('data-control-direction', direction);
+  line.style.pointerEvents = 'none';
+  svg.appendChild(line);
+
+  const hitTarget = document.createElementNS(SVG_NS, 'circle');
+  hitTarget.setAttribute('cx', `${control.x}`);
+  hitTarget.setAttribute('cy', `${control.y}`);
+  hitTarget.setAttribute('r', `${controlHitRadius}`);
+  hitTarget.setAttribute('fill', 'rgba(0, 0, 0, 0)');
+  hitTarget.setAttribute('data-editor-handle', 'true');
+  hitTarget.setAttribute('data-handle-type', 'control');
+  hitTarget.setAttribute('data-layer-id', layerId);
+  hitTarget.setAttribute('data-point-key', pointKey);
+  hitTarget.setAttribute('data-control-direction', direction);
+  hitTarget.setAttribute('data-handle-role', 'control-hit');
+  hitTarget.style.pointerEvents = 'all';
+  svg.appendChild(hitTarget);
+
+  const visible = document.createElementNS(SVG_NS, 'rect');
+  visible.setAttribute('x', `${-controlSize / 2}`);
+  visible.setAttribute('y', `${-controlSize / 2}`);
+  visible.setAttribute('width', `${controlSize}`);
+  visible.setAttribute('height', `${controlSize}`);
+  visible.setAttribute('fill', CONTROL_FILL);
+  visible.setAttribute('stroke', CONTROL_STROKE);
+  visible.setAttribute('stroke-width', `${strokeWidth}`);
+  visible.setAttribute('transform', `translate(${control.x} ${control.y}) rotate(45)`);
+  visible.setAttribute('data-editor-handle', 'true');
+  visible.setAttribute('data-handle-type', 'control');
+  visible.setAttribute('data-layer-id', layerId);
+  visible.setAttribute('data-point-key', pointKey);
+  visible.setAttribute('data-control-direction', direction);
+  visible.setAttribute('data-handle-role', 'control-visible');
+  visible.style.pointerEvents = 'none';
+  svg.appendChild(visible);
 }

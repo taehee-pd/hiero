@@ -1,4 +1,4 @@
-import type { EditablePath, SubPath, PathPoint } from './path-model';
+import type { EditablePath, SubPath, PathPoint, PathSegment } from './path-model';
 
 let _idCounter = 0;
 function nextId(prefix: string): string {
@@ -6,7 +6,7 @@ function nextId(prefix: string): string {
 }
 
 
-const EDITABLE_COMMANDS = new Set(['M', 'L', 'H', 'V', 'C', 'Q', 'Z']);
+const EDITABLE_COMMANDS = new Set(['M', 'L', 'H', 'V', 'C', 'Q', 'A', 'Z']);
 
 export function isPathDirectlyEditable(d: string): boolean {
   const tokens = tokenize(d);
@@ -58,7 +58,7 @@ export function parseSvgPath(d: string): EditablePath {
           const ly = num() + (isRel ? cy : 0);
           cx = lx;
           cy = ly;
-          currentSubPath.points.push(makePoint(lx, ly));
+          currentSubPath.points.push(makePoint(lx, ly, { type: 'line' }));
         }
         break;
       }
@@ -71,7 +71,7 @@ export function parseSvgPath(d: string): EditablePath {
           const y = num() + (isRel ? cy : 0);
           cx = x;
           cy = y;
-          currentSubPath?.points.push(makePoint(x, y));
+          currentSubPath?.points.push(makePoint(x, y, { type: 'line' }));
         }
         break;
       }
@@ -82,7 +82,7 @@ export function parseSvgPath(d: string): EditablePath {
         while (i < tokens.length && isNumber(tokens[i])) {
           const x = num() + (isRel ? cx : 0);
           cx = x;
-          currentSubPath?.points.push(makePoint(x, cy));
+          currentSubPath?.points.push(makePoint(x, cy, { type: 'line' }));
         }
         break;
       }
@@ -93,7 +93,7 @@ export function parseSvgPath(d: string): EditablePath {
         while (i < tokens.length && isNumber(tokens[i])) {
           const y = num() + (isRel ? cy : 0);
           cy = y;
-          currentSubPath?.points.push(makePoint(cx, y));
+          currentSubPath?.points.push(makePoint(cx, y, { type: 'line' }));
         }
         break;
       }
@@ -117,7 +117,7 @@ export function parseSvgPath(d: string): EditablePath {
             prev.nodeType = 'smooth';
           }
 
-          const pt = makePoint(x, y);
+          const pt = makePoint(x, y, { type: 'cubic' });
           pt.handleIn = { x: x2, y: y2 };
           pt.nodeType = 'smooth';
           currentSubPath?.points.push(pt);
@@ -143,7 +143,10 @@ export function parseSvgPath(d: string): EditablePath {
             prev.handleOut = { x: cpx, y: cpy };
           }
 
-          const pt = makePoint(x, y);
+          const pt = makePoint(x, y, {
+            type: 'quadratic',
+            control: { x: cpx, y: cpy },
+          });
           pt.handleIn = { x: cpx, y: cpy };
           currentSubPath?.points.push(pt);
 
@@ -155,19 +158,27 @@ export function parseSvgPath(d: string): EditablePath {
 
       case 'A':
       case 'a': {
-        // Simplified arc handling: just record the end point
         const isRel = cmd === 'a';
         while (i < tokens.length && isNumber(tokens[i])) {
-          num(); // rx
-          num(); // ry
-          num(); // rotation
-          num(); // large-arc
-          num(); // sweep
+          const rx = num();
+          const ry = num();
+          const xAxisRotation = num();
+          const largeArc = toFlag(num());
+          const sweep = toFlag(num());
           const x = num() + (isRel ? cx : 0);
           const y = num() + (isRel ? cy : 0);
           cx = x;
           cy = y;
-          currentSubPath?.points.push(makePoint(x, y));
+          currentSubPath?.points.push(
+            makePoint(x, y, {
+              type: 'arc',
+              rx,
+              ry,
+              xAxisRotation,
+              largeArc,
+              sweep,
+            }),
+          );
         }
         break;
       }
@@ -207,16 +218,30 @@ export function serializePath(path: EditablePath): string {
       }
 
       const prev = sp.points[i - 1];
-      const hasHandles = prev.handleOut || pt.handleIn;
-
-      if (hasHandles) {
-        const ho = prev.handleOut ?? prev.position;
-        const hi = pt.handleIn ?? pt.position;
-        parts.push(
-          `C${r(ho.x)} ${r(ho.y)} ${r(hi.x)} ${r(hi.y)} ${r(pt.position.x)} ${r(pt.position.y)}`,
-        );
-      } else {
-        parts.push(`L${r(pt.position.x)} ${r(pt.position.y)}`);
+      const segment = inferSegment(prev, pt);
+      switch (segment.type) {
+        case 'cubic': {
+          const ho = prev.handleOut ?? prev.position;
+          const hi = pt.handleIn ?? pt.position;
+          parts.push(
+            `C${r(ho.x)} ${r(ho.y)} ${r(hi.x)} ${r(hi.y)} ${r(pt.position.x)} ${r(pt.position.y)}`,
+          );
+          break;
+        }
+        case 'quadratic': {
+          const control = pt.handleIn ?? prev.handleOut ?? segment.control;
+          parts.push(`Q${r(control.x)} ${r(control.y)} ${r(pt.position.x)} ${r(pt.position.y)}`);
+          break;
+        }
+        case 'arc':
+          parts.push(
+            `A${r(segment.rx)} ${r(segment.ry)} ${r(segment.xAxisRotation)} ${segment.largeArc} ${segment.sweep} ${r(pt.position.x)} ${r(pt.position.y)}`,
+          );
+          break;
+        case 'line':
+        default:
+          parts.push(`L${r(pt.position.x)} ${r(pt.position.y)}`);
+          break;
       }
     }
 
@@ -230,14 +255,25 @@ export function serializePath(path: EditablePath): string {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-function makePoint(x: number, y: number): PathPoint {
+function makePoint(x: number, y: number, segment: PathSegment | null = null): PathPoint {
   return {
     id: nextId('pt'),
     position: { x, y },
     handleIn: null,
     handleOut: null,
     nodeType: 'corner',
+    segment,
   };
+}
+
+function inferSegment(prev: PathPoint, pt: PathPoint): PathSegment {
+  if (pt.segment) return pt.segment;
+  if (prev.handleOut || pt.handleIn) return { type: 'cubic' };
+  return { type: 'line' };
+}
+
+function toFlag(value: number): 0 | 1 {
+  return value >= 1 ? 1 : 0;
 }
 
 function isNumber(token: string): boolean {

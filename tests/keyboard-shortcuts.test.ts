@@ -97,4 +97,30 @@ describe('keyboard shortcuts', () => {
 
     expect(editorStore.getState().tool).toBe('select');
   });
+
+  test('cmd/ctrl+shift+semicolon toggles snapping', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    state.setActiveSnapGuides([{ x: 12, type: 'center' }]);
+    expect(state.snapEnabled).toBeTrue();
+
+    let prevented = false;
+    handleEditorKeyDown({
+      key: ':',
+      code: 'Semicolon',
+      target: { tagName: 'DIV' },
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: true,
+      altKey: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+    } as unknown as KeyboardEvent);
+
+    const next = editorStore.getState();
+    expect(prevented).toBeTrue();
+    expect(next.snapEnabled).toBeFalse();
+    expect(next.activeSnapGuides).toEqual([]);
+  });
 });

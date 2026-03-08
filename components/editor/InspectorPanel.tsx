@@ -77,7 +77,7 @@ export function InspectorPanel() {
 
   if (!layer) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <div className="workspace-panel-header px-4 py-3">
           <p className="text-sm font-medium text-foreground">Inspector</p>
         </div>
@@ -99,7 +99,7 @@ export function InspectorPanel() {
     : 'No path';
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="workspace-panel-header px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -114,7 +114,7 @@ export function InspectorPanel() {
           <InspectorStat label="Mode" value={hasEditablePath ? 'Edit' : 'Mixed'} />
         </div>
       </div>
-      <ScrollArea className="workspace-scroll flex-1">
+      <ScrollArea className="workspace-scroll min-h-0 flex-1">
         <div className="flex flex-col gap-3 px-4 py-4">
           <Section title="Boolean">
             <div className="grid grid-cols-2 gap-2">

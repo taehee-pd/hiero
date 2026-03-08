@@ -135,6 +135,7 @@ export function insertPointAfterSelection(): boolean {
     handleIn: null,
     handleOut: null,
     nodeType: 'corner' as const,
+    segment: { type: 'line' as const },
   };
 
   subPath.points.splice(pointIdx + 1, 0, inserted);

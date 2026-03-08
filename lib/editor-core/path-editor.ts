@@ -8,7 +8,8 @@ import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
 import { SnapEngine, type SnapResult } from './snap-engine';
 import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
 
-type DragMode = 'layer' | 'point' | null;
+type ControlDirection = 'in' | 'out';
+type DragMode = 'layer' | 'point' | 'control' | null;
 type PenPlacement = {
   layerId: string;
   pointKey: string;
@@ -32,6 +33,7 @@ export class PathEditor {
   private dragStartY = 0;
   private dragLayerId: string | null = null;
   private dragPointKey: string | null = null;
+  private dragControlDirection: ControlDirection | null = null;
   private originalTransform: { x: number; y: number } | null = null;
   private originalPathD: string | null = null;
   private animFrameId = 0;
@@ -77,6 +79,7 @@ export class PathEditor {
     const target = e.target as Element;
     const layerId = target.getAttribute?.('data-layer-id');
     const pointKey = target.getAttribute?.('data-point-key');
+    const controlDirection = target.getAttribute?.('data-control-direction') as ControlDirection | null;
 
     if (tool === 'pen') {
       const activeLayerId = layerId ?? this.resolvePenLayerAtPointer();
@@ -103,7 +106,11 @@ export class PathEditor {
     }
 
     if (tool === 'direct-select') {
-      if (layerId && pointKey) {
+      if (layerId && pointKey && controlDirection) {
+        state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+        this.startControlDrag(layerId, pointKey, controlDirection, e.clientX, e.clientY);
+        (target as Element).setPointerCapture?.(e.pointerId);
+      } else if (layerId && pointKey) {
         state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
         this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
         (target as Element).setPointerCapture?.(e.pointerId);
@@ -335,6 +342,29 @@ export class PathEditor {
     pauseHistory();
   }
 
+  private startControlDrag(
+    layerId: string,
+    pointKey: string,
+    direction: ControlDirection,
+    clientX: number,
+    clientY: number,
+  ) {
+    const state = editorStore.getState();
+    const currentState = selectCurrentState(state);
+    const pathD = currentState?.layers[layerId]?.path?.d;
+    if (!pathD || !isPathDirectlyEditable(pathD)) return;
+
+    this.dragMode = 'control';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragPointKey = pointKey;
+    this.dragControlDirection = direction;
+    this.dragStartX = clientX;
+    this.dragStartY = clientY;
+    this.originalPathD = pathD;
+    pauseHistory();
+  }
+
   private onPointerMove(e: PointerEvent) {
     if (this.penPlacement && e.pointerId === this.penPlacement.pointerId) {
       this.updatePenCurvePreview(e);
@@ -350,6 +380,16 @@ export class PathEditor {
 
     if (this.dragMode === 'point' && this.dragPointKey && this.originalPathD) {
       this.dragPoint(e);
+      return;
+    }
+
+    if (
+      this.dragMode === 'control' &&
+      this.dragPointKey &&
+      this.dragControlDirection &&
+      this.originalPathD
+    ) {
+      this.dragControl(e);
     }
   }
 
@@ -381,11 +421,12 @@ export class PathEditor {
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId, true);
 
     const editable = parseSvgPath(this.originalPathD);
-    const point = this.resolvePoint(editable, this.dragPointKey);
-    if (!point) return;
+    const context = this.resolvePointContext(editable, this.dragPointKey);
+    if (!context) return;
 
-    point.position.x = snappedPoint.x;
-    point.position.y = snappedPoint.y;
+    const dx = snappedPoint.x - context.point.position.x;
+    const dy = snappedPoint.y - context.point.position.y;
+    this.translatePoint(context.subPath, context.pointIdx, dx, dy);
 
     const nextD = serializePath(editable);
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
@@ -396,6 +437,44 @@ export class PathEditor {
       if (!pathEl) return;
       pathEl.setAttribute('d', nextD);
       this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
+    });
+  }
+
+  private dragControl(e: PointerEvent) {
+    if (!this.dragPointKey || !this.dragLayerId || !this.dragControlDirection || !this.originalPathD) {
+      return;
+    }
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const editable = parseSvgPath(this.originalPathD);
+    const context = this.resolvePointContext(editable, this.dragPointKey);
+    if (!context) return;
+
+    const controlPosition = this.applyControlPosition(
+      context.subPath,
+      context.pointIdx,
+      this.dragControlDirection,
+      svgPoint,
+    );
+    if (!controlPosition) return;
+
+    const nextD = serializePath(editable);
+    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+    this.animFrameId = requestAnimationFrame(() => {
+      const pathEl = this.svg.querySelector(
+        `[data-layer-id="${this.dragLayerId}"]`,
+      ) as SVGPathElement | null;
+      if (!pathEl) return;
+      pathEl.setAttribute('d', nextD);
+      this.updateDraggedControlHandle(
+        this.dragLayerId!,
+        this.dragPointKey!,
+        this.dragControlDirection!,
+        controlPosition,
+        context.point.position,
+      );
     });
   }
 
@@ -498,6 +577,8 @@ export class PathEditor {
       this.commitLayerDrag(e);
     } else if (this.dragMode === 'point') {
       this.commitPointDrag(e);
+    } else if (this.dragMode === 'control') {
+      this.commitControlDrag(e);
     }
 
     resumeHistory();
@@ -599,16 +680,52 @@ export class PathEditor {
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId);
 
     const editable = parseSvgPath(this.originalPathD);
-    const point = this.resolvePoint(editable, this.dragPointKey);
-    if (!point) return;
+    const context = this.resolvePointContext(editable, this.dragPointKey);
+    if (!context) return;
 
-    point.position.x = snappedPoint.x;
-    point.position.y = snappedPoint.y;
+    const dx = snappedPoint.x - context.point.position.x;
+    const dy = snappedPoint.y - context.point.position.y;
+    this.translatePoint(context.subPath, context.pointIdx, dx, dy);
 
     state.patchLayer(iconId, stateId, this.dragLayerId, {
       path: {
         ...(state.project?.icons[iconId].states[stateId].layers[this.dragLayerId]
           .path ?? { d: '' }),
+        d: serializePath(editable),
+      },
+    });
+  }
+
+  private commitControlDrag(e: PointerEvent) {
+    if (!this.dragLayerId || !this.dragPointKey || !this.dragControlDirection || !this.originalPathD) {
+      return;
+    }
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const editable = parseSvgPath(this.originalPathD);
+    const context = this.resolvePointContext(editable, this.dragPointKey);
+    if (!context) return;
+
+    const controlPosition = this.applyControlPosition(
+      context.subPath,
+      context.pointIdx,
+      this.dragControlDirection,
+      svgPoint,
+    );
+    if (!controlPosition) return;
+
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      path: {
+        ...(state.project?.icons[iconId].states[stateId].layers[this.dragLayerId].path ?? {
+          d: '',
+        }),
         d: serializePath(editable),
       },
     });
@@ -678,16 +795,19 @@ export class PathEditor {
     return `0:${subPath.points.length - 1}`;
   }
 
-  private resolvePoint(
-    editable: ReturnType<typeof parseSvgPath>,
-    pointKey: string,
-  ) {
+  private resolvePointContext(editable: ReturnType<typeof parseSvgPath>, pointKey: string) {
     const [subPathIdxRaw, pointIdxRaw] = pointKey.split(':');
     const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
     const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
     const subPath = editable.subPaths[subPathIdx];
     if (!subPath) return null;
-    return subPath.points[pointIdx] ?? null;
+    const point = subPath.points[pointIdx] ?? null;
+    if (!point) return null;
+    return { point, subPath, pointIdx };
+  }
+
+  private resolvePoint(editable: ReturnType<typeof parseSvgPath>, pointKey: string) {
+    return this.resolvePointContext(editable, pointKey)?.point ?? null;
   }
 
   private svgUnitsPerScreenPx(): number {
@@ -733,7 +853,7 @@ export class PathEditor {
   private updateDraggedPointHandles(x: number, y: number) {
     if (!this.dragLayerId || !this.dragPointKey) return;
     const handles = this.svg.querySelectorAll<SVGCircleElement>(
-      `[data-editor-handle="true"][data-layer-id="${this.dragLayerId}"][data-point-key="${this.dragPointKey}"]`,
+      `[data-editor-handle="true"][data-handle-type="anchor"][data-layer-id="${this.dragLayerId}"][data-point-key="${this.dragPointKey}"]`,
     );
 
     handles.forEach((handle) => {
@@ -742,12 +862,118 @@ export class PathEditor {
     });
   }
 
+  private updateDraggedControlHandle(
+    layerId: string,
+    pointKey: string,
+    direction: ControlDirection,
+    control: { x: number; y: number },
+    anchor: { x: number; y: number },
+  ) {
+    const hitTargets = this.svg.querySelectorAll<SVGCircleElement>(
+      `[data-editor-handle="true"][data-handle-type="control"][data-handle-role="control-hit"][data-layer-id="${layerId}"][data-point-key="${pointKey}"][data-control-direction="${direction}"]`,
+    );
+    hitTargets.forEach((handle) => {
+      handle.setAttribute('cx', `${control.x}`);
+      handle.setAttribute('cy', `${control.y}`);
+    });
+
+    const visibleTargets = this.svg.querySelectorAll<SVGRectElement>(
+      `[data-editor-handle="true"][data-handle-type="control"][data-handle-role="control-visible"][data-layer-id="${layerId}"][data-point-key="${pointKey}"][data-control-direction="${direction}"]`,
+    );
+    visibleTargets.forEach((handle) => {
+      handle.setAttribute('transform', `translate(${control.x} ${control.y}) rotate(45)`);
+    });
+
+    const lines = this.svg.querySelectorAll<SVGLineElement>(
+      `[data-editor-handle="true"][data-handle-type="control-line"][data-layer-id="${layerId}"][data-point-key="${pointKey}"][data-control-direction="${direction}"]`,
+    );
+    lines.forEach((line) => {
+      line.setAttribute('x1', `${anchor.x}`);
+      line.setAttribute('y1', `${anchor.y}`);
+      line.setAttribute('x2', `${control.x}`);
+      line.setAttribute('y2', `${control.y}`);
+    });
+  }
+
+  private applyControlPosition(
+    subPath: ReturnType<typeof parseSvgPath>['subPaths'][number],
+    pointIdx: number,
+    direction: ControlDirection,
+    position: { x: number; y: number },
+  ) {
+    const point = subPath.points[pointIdx];
+    if (!point) return null;
+
+    if (direction === 'in') {
+      const prev = subPath.points[pointIdx - 1];
+      if (!prev) return null;
+      if (point.segment?.type !== 'cubic') {
+        prev.handleOut ??= this.defaultControlPoint(prev.position, point.position);
+        point.segment = { type: 'cubic' };
+      }
+      point.handleIn = { x: position.x, y: position.y };
+      point.nodeType = 'smooth';
+      return point.handleIn;
+    }
+
+    const next = subPath.points[pointIdx + 1];
+    if (!next) return null;
+    if (next.segment?.type !== 'cubic') {
+      next.handleIn ??= this.defaultControlPoint(next.position, point.position);
+      next.segment = { type: 'cubic' };
+    }
+    point.handleOut = { x: position.x, y: position.y };
+    point.nodeType = 'smooth';
+    return point.handleOut;
+  }
+
+  private defaultControlPoint(from: { x: number; y: number }, toward: { x: number; y: number }) {
+    return {
+      x: from.x + (toward.x - from.x) / 3,
+      y: from.y + (toward.y - from.y) / 3,
+    };
+  }
+
+  private translatePoint(
+    subPath: ReturnType<typeof parseSvgPath>['subPaths'][number],
+    pointIdx: number,
+    dx: number,
+    dy: number,
+  ) {
+    const point = subPath.points[pointIdx];
+    if (!point) return;
+
+    point.position.x += dx;
+    point.position.y += dy;
+    if (point.handleIn) {
+      point.handleIn.x += dx;
+      point.handleIn.y += dy;
+    }
+    if (point.handleOut) {
+      point.handleOut.x += dx;
+      point.handleOut.y += dy;
+    }
+
+    const prev = subPath.points[pointIdx - 1];
+    if (point.segment?.type === 'quadratic' && prev?.handleOut) {
+      prev.handleOut.x += dx;
+      prev.handleOut.y += dy;
+    }
+
+    const next = subPath.points[pointIdx + 1];
+    if (next?.segment?.type === 'quadratic' && next.handleIn) {
+      next.handleIn.x += dx;
+      next.handleIn.y += dy;
+    }
+  }
+
   private resetDrag() {
     this.clearActiveSnapGuides();
     this.isDragging = false;
     this.dragMode = null;
     this.dragLayerId = null;
     this.dragPointKey = null;
+    this.dragControlDirection = null;
     this.originalTransform = null;
     this.originalPathD = null;
   }

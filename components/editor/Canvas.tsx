@@ -73,6 +73,32 @@ export function Canvas() {
   });
   const gestureScaleRef = useRef(1);
 
+  const fitCanvasToView = useCallback(() => {
+    const container = containerRef.current;
+    if (!container || !variant) return;
+
+    const [_, __, width, height] = variant.viewBox;
+    if (width <= 0 || height <= 0) return;
+
+    const horizontalPadding = 112;
+    const verticalPadding = 120;
+    const nextZoom = Math.max(
+      MIN_ZOOM,
+      Math.min(
+        MAX_ZOOM,
+        Math.min(
+          (container.clientWidth - horizontalPadding) / width,
+          (container.clientHeight - verticalPadding) / height,
+        ),
+      ),
+    );
+    if (!Number.isFinite(nextZoom)) return;
+
+    const state = editorStore.getState();
+    const roundedZoom = Math.round(nextZoom * 100) / 100;
+    state.setViewport({ zoom: roundedZoom, panX: 0, panY: 0 });
+  }, [variant]);
+
   const handleSvgDrop = useCallback(async (file: File) => {
     try {
       await importSvgFileIntoEditor(file);
@@ -140,6 +166,16 @@ export function Canvas() {
   }, [icon, variant, currentState, project?.tokenSet?.colors]);
 
   // Draw editable handles on the active layer for direct-select and pen workflows.
+  useEffect(() => {
+    fitCanvasToView();
+  }, [fitCanvasToView]);
+
+  useEffect(() => {
+    const handleFitRequest = () => fitCanvasToView();
+    window.addEventListener('editor:fit-canvas', handleFitRequest);
+    return () => window.removeEventListener('editor:fit-canvas', handleFitRequest);
+  }, [fitCanvasToView]);
+
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;

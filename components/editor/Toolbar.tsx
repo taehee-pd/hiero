@@ -43,6 +43,9 @@ export function Toolbar() {
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Icophone');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
+  const currentIconName = useEditorStore((s) =>
+    s.currentIconId ? s.project?.icons[s.currentIconId]?.name ?? null : null,
+  );
 
   const handleNew = useCallback(() => {
     editorStore.getState().newProject();
@@ -139,16 +142,17 @@ export function Toolbar() {
   }, []);
 
   const handleZoomFit = useCallback(() => {
-    editorStore.getState().setViewport({ zoom: 1, panX: 0, panY: 0 });
+    window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
   return (
-    <header className="workspace-header mx-3 mb-3 mt-3 rounded-xl px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="mr-auto min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{projectName}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {Math.round(zoom * 100)}% · {selectionCount} selected
+    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="mr-auto min-w-0 space-y-1">
+          <p className="workspace-kicker">Editor</p>
+          <p className="truncate text-lg font-semibold text-foreground">{projectName}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {currentIconName ?? 'No icon selected'} · {selectionCount} selected
           </p>
         </div>
 
@@ -158,11 +162,12 @@ export function Toolbar() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="sm"
                 aria-label="Open"
-                className="workspace-tool-button h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
+                className="workspace-tool-button h-9 rounded-xl px-3 text-foreground"
               >
                 <FolderOpen className="size-4" />
+                <span>Open</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -181,14 +186,17 @@ export function Toolbar() {
         </ToolbarGroup>
 
         <ToolbarGroup>
-          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} />
-          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} />
+          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact />
+          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact />
         </ToolbarGroup>
 
         <ToolbarGroup>
-          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} />
-          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} />
-          <ToolbarButton icon={Maximize2} label="Fit" onClick={handleZoomFit} />
+          <span className="workspace-badge min-w-[4.25rem] justify-center">
+            {Math.round(zoom * 100)}%
+          </span>
+          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact />
+          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact />
+          <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact />
         </ToolbarGroup>
       </div>
 
@@ -220,22 +228,29 @@ function ToolbarButton({
   icon: Icon,
   label,
   onClick,
+  compact,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void;
+  compact?: boolean;
 }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="icon-sm"
+          size={compact ? 'icon-sm' : 'sm'}
           onClick={onClick}
           aria-label={label}
-          className="workspace-tool-button h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
+          className={
+            compact
+              ? 'workspace-tool-button h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground'
+              : 'workspace-tool-button h-9 rounded-xl px-3 text-foreground'
+          }
         >
           <Icon className="size-4" />
+          {!compact ? <span>{label}</span> : null}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>

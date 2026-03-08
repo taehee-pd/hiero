@@ -1,13 +1,13 @@
 'use client';
 
-import { MousePointer2, Move, Pen, Square, Ruler } from 'lucide-react';
+import { Magnet, MousePointer2, Move, Pen, Square, Ruler } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/kibo-ui/tooltip';
-import { useTool, useEditorActions } from '@/lib/editor-store/hooks';
+import { useEditorStore, useTool, useEditorActions } from '@/lib/editor-store/hooks';
 import type { Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +27,8 @@ const TOOLS: Array<{
 
 export function ToolPanel() {
   const activeTool = useTool();
-  const { setTool } = useEditorActions();
+  const snapEnabled = useEditorStore((s) => s.snapEnabled);
+  const { setTool, toggleSnap } = useEditorActions();
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -69,6 +70,32 @@ export function ToolPanel() {
           );
         })}
       </div>
+      <div className="mt-3 px-2 py-1">
+        <p className="text-xs font-medium text-muted-foreground">Snapping</p>
+      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            onClick={toggleSnap}
+            data-active={snapEnabled ? 'true' : 'false'}
+            className="workspace-nav-button h-10 rounded-md px-3 py-2"
+          >
+            <span className="flex items-center gap-2">
+              <span className="workspace-tool-button flex size-7 items-center justify-center rounded-md">
+                <Magnet className="size-4" />
+              </span>
+              <span className="text-sm font-medium text-foreground">
+                {snapEnabled ? 'Snap On' : 'Snap Off'}
+              </span>
+            </span>
+            <span className="text-[10px] font-mono tracking-[0.08em] text-muted-foreground">
+              Cmd/Ctrl+Shift+;
+            </span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">Toggle snapping</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

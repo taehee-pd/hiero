@@ -55,6 +55,12 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     return;
   }
 
+  if (mod && e.shiftKey && (e.code === 'Semicolon' || key === ';' || key === ':')) {
+    e.preventDefault();
+    editorStore.getState().toggleSnap();
+    return;
+  }
+
   // Tool shortcuts (single key, no modifier)
   if (!mod && !e.shiftKey && !e.altKey) {
     const tool = TOOL_SHORTCUTS[key];

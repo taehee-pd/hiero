@@ -31,6 +31,7 @@ export function Canvas() {
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
   const tool = useEditorStore((s) => s.tool);
+  const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
 
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
@@ -133,6 +134,7 @@ export function Canvas() {
     layers: currentState?.layers ?? {},
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
     guideSet: activeGuideSet,
+    activeSnapGuides,
   });
 
   // ── Zoom via wheel ──────────────────────────────────────

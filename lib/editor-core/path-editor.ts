@@ -5,6 +5,7 @@ import {
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
+import { SnapEngine, type SnapResult } from './snap-engine';
 import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
 
 type DragMode = 'layer' | 'point' | null;
@@ -16,7 +17,6 @@ type PenPlacement = {
   basePathD: string;
 };
 
-const HALF_PIXEL_STEP = 0.5;
 const PEN_CLOSE_DIST_SQ = 1;
 
 /**
@@ -37,6 +37,7 @@ export class PathEditor {
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private cleanup: (() => void) | null = null;
+  private snapEngine = new SnapEngine(editorStore);
 
   constructor(svg: SVGSVGElement) {
     this.svg = svg;
@@ -66,6 +67,7 @@ export class PathEditor {
       window.removeEventListener('pointercancel', onCancel);
       window.removeEventListener('keydown', onKeyDown);
       if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
+      this.snapEngine.destroy();
     };
   }
 
@@ -88,6 +90,7 @@ export class PathEditor {
 
       const result = this.beginPenPlacement(activeLayerId, e.clientX, e.clientY, e.pointerId);
       if (result === 'closed') {
+        this.clearActiveSnapGuides();
         state.setSelection({ layerIds: [activeLayerId], pointIds: [] });
         return;
       }
@@ -170,7 +173,7 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint);
 
     const icon = state.project.icons[iconId];
     const currentState = icon?.states[stateId];
@@ -244,12 +247,11 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, layerId, true);
 
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
     if (!subPath) return null;
-
 
     const firstPoint = subPath.points[0]?.position;
     const canClose = !!firstPoint && subPath.points.length >= 3 && !subPath.closed;
@@ -375,7 +377,7 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId, true);
 
     const editable = parseSvgPath(this.originalPathD);
     const point = this.resolvePoint(editable, this.dragPointKey);
@@ -402,7 +404,7 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.penPlacement.layerId, true);
     const editable = parseSvgPath(this.penPlacement.basePathD);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
@@ -449,6 +451,7 @@ export class PathEditor {
   }
 
   private onPointerCancel() {
+    this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
       this.penPlacement = null;
@@ -462,6 +465,7 @@ export class PathEditor {
   private onKeyDown(e: KeyboardEvent) {
     if (e.key !== 'Escape') return;
 
+    this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
       this.penPlacement = null;
@@ -479,10 +483,12 @@ export class PathEditor {
       resumeHistory();
       commitHistory('pen-point');
       this.penPlacement = null;
+      this.clearActiveSnapGuides();
       return;
     }
 
     if (!this.isDragging || !this.dragLayerId) {
+      this.clearActiveSnapGuides();
       this.resetDrag();
       return;
     }
@@ -495,6 +501,7 @@ export class PathEditor {
 
     resumeHistory();
     commitHistory('pointer-up');
+    this.clearActiveSnapGuides();
     this.resetDrag();
   }
 
@@ -512,7 +519,7 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.penPlacement.layerId);
     const editable = parseSvgPath(this.penPlacement.basePathD);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
@@ -588,7 +595,7 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId);
 
     const editable = parseSvgPath(this.originalPathD);
     const point = this.resolvePoint(editable, this.dragPointKey);
@@ -619,7 +626,7 @@ export class PathEditor {
     if (!pointer) return null;
 
     const editable = parseSvgPath(d);
-    let nearest: { key: string; distSq: number } | null = null;
+    let nearest: { key: string; distSq: number } | undefined;
 
     editable.subPaths.forEach((subPath, subPathIndex) => {
       subPath.points.forEach((point, pointIndex) => {
@@ -648,7 +655,7 @@ export class PathEditor {
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
-    const snappedPoint = this.snapPointToGrid(svgPoint);
+    const snappedPoint = this.computeSnappedPoint(svgPoint, layerId);
 
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
@@ -705,15 +712,20 @@ export class PathEditor {
     };
   }
 
-  private snapPointToGrid(point: { x: number; y: number }): { x: number; y: number } {
-    return {
-      x: this.snapToStep(point.x, HALF_PIXEL_STEP),
-      y: this.snapToStep(point.y, HALF_PIXEL_STEP),
-    };
+  private computeSnappedPoint(
+    point: { x: number; y: number },
+    sourceLayerId?: string,
+    publishGuides = false,
+  ): SnapResult {
+    const result = this.snapEngine.computeSnap(point, { sourceLayerId });
+    if (publishGuides) {
+      editorStore.getState().setActiveSnapGuides(result.guides);
+    }
+    return result;
   }
 
-  private snapToStep(value: number, step: number): number {
-    return Math.round(value / step) * step;
+  private clearActiveSnapGuides() {
+    editorStore.getState().setActiveSnapGuides([]);
   }
 
   private updateDraggedPointHandles(x: number, y: number) {
@@ -729,6 +741,7 @@ export class PathEditor {
   }
 
   private resetDrag() {
+    this.clearActiveSnapGuides();
     this.isDragging = false;
     this.dragMode = null;
     this.dragLayerId = null;
@@ -738,6 +751,7 @@ export class PathEditor {
   }
 
   destroy() {
+    this.clearActiveSnapGuides();
     this.cleanup?.();
   }
 }

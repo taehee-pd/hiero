@@ -8,6 +8,10 @@ const RULER_SIZE = 24;
 const HIT_SIZE = 10;
 const DRAG_THRESHOLD_PX = 4;
 const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
+const DEFAULT_GUIDE_COLOR = 'rgba(34,211,238,0.9)';
+const SELECTED_GUIDE_COLOR = 'rgba(8,145,178,0.98)';
+const DEFAULT_GUIDE_WIDTH = 2;
+const SELECTED_GUIDE_WIDTH = 3;
 
 type DragState = {
   kind: 'hline' | 'vline';
@@ -43,6 +47,8 @@ export function Rulers({
   const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex } =
     useEditorActions();
   const dragSessionRef = useRef<DragState | null>(null);
+  const pendingDragRef = useRef<{ clientX: number; clientY: number; altKey: boolean } | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -78,10 +84,8 @@ export function Rulers({
 
     const toScreenX = (value: number) => left + (value - vx) * scale;
     const toScreenY = (value: number) => top + (value - vy) * scale;
-    const toSvgX = (screenX: number) =>
-      clampValue(vx + (screenX - left) / Math.max(scale, 0.0001), vx, vx + vw);
-    const toSvgY = (screenY: number) =>
-      clampValue(vy + (screenY - top) / Math.max(scale, 0.0001), vy, vy + vh);
+    const toSvgX = (screenX: number) => vx + (screenX - left) / Math.max(scale, 0.0001);
+    const toSvgY = (screenY: number) => vy + (screenY - top) / Math.max(scale, 0.0001);
 
     return {
       vx,
@@ -91,6 +95,8 @@ export function Rulers({
       scale,
       left,
       top,
+      right: left + renderWidth,
+      bottom: top + renderHeight,
       toScreenX,
       toScreenY,
       toSvgX,
@@ -111,6 +117,11 @@ export function Rulers({
 
   const clearDragSession = useCallback(() => {
     dragSessionRef.current = null;
+    pendingDragRef.current = null;
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
     setDragState(null);
   }, []);
 
@@ -140,6 +151,25 @@ export function Rulers({
     [getPointerGuideValue],
   );
 
+  const flushPendingDrag = useCallback(() => {
+    dragFrameRef.current = null;
+    const pending = pendingDragRef.current;
+    if (!pending) return;
+    pendingDragRef.current = null;
+    updateDragSession(pending.clientX, pending.clientY, pending.altKey);
+  }, [updateDragSession]);
+
+  const queueDragUpdate = useCallback(
+    (clientX: number, clientY: number, altKey: boolean) => {
+      pendingDragRef.current = { clientX, clientY, altKey };
+      if (dragFrameRef.current !== null) return;
+      dragFrameRef.current = requestAnimationFrame(() => {
+        flushPendingDrag();
+      });
+    },
+    [flushPendingDrag],
+  );
+
   const commitDragSession = useCallback(
     (session: DragState, event: PointerEvent) => {
       if (!currentIconId) {
@@ -152,6 +182,11 @@ export function Rulers({
         session.kind,
         event,
       );
+      const releasedOutsideEditableCanvas = isReleasedOutsideEditableCanvas(
+        metrics,
+        session.kind,
+        session.value,
+      );
 
       if (!session.dragging) {
         if (session.source === 'guide' && session.guideIndex !== null) {
@@ -162,7 +197,7 @@ export function Rulers({
       }
 
       if (session.source === 'ruler') {
-        if (!releasedOverRuler) {
+        if (!releasedOverRuler && !releasedOutsideEditableCanvas) {
           addIconGuide(
             currentIconId,
             session.kind === 'vline'
@@ -180,7 +215,7 @@ export function Rulers({
       }
 
       if (session.duplicate) {
-        if (!releasedOverRuler) {
+        if (!releasedOverRuler && !releasedOutsideEditableCanvas) {
           addIconGuide(
             currentIconId,
             session.kind === 'vline'
@@ -195,6 +230,12 @@ export function Rulers({
       }
 
       if (releasedOverRuler) {
+        removeIconGuide(currentIconId, session.guideIndex);
+        clearDragSession();
+        return;
+      }
+
+      if (releasedOutsideEditableCanvas) {
         removeIconGuide(currentIconId, session.guideIndex);
         clearDragSession();
         return;
@@ -221,6 +262,7 @@ export function Rulers({
       containerRef,
       currentIconId,
       customGuides,
+      metrics,
       removeIconGuide,
       setSelectedIconGuideIndex,
       updateIconGuide,
@@ -231,10 +273,11 @@ export function Rulers({
     const handlePointerMove = (event: PointerEvent) => {
       const current = dragSessionRef.current;
       if (!current || event.pointerId !== current.pointerId) return;
-      updateDragSession(event.clientX, event.clientY, event.altKey);
+      queueDragUpdate(event.clientX, event.clientY, event.altKey);
     };
 
     const handlePointerUp = (event: PointerEvent) => {
+      flushPendingDrag();
       const current = dragSessionRef.current;
       if (!current || event.pointerId !== current.pointerId) return;
       commitDragSession(current, event);
@@ -246,12 +289,8 @@ export function Rulers({
       clearDragSession();
     };
 
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!dragSessionRef.current) return;
-      updateDragSession(event.clientX, event.clientY, event.altKey);
-    };
-
     const handleMouseUp = (event: MouseEvent) => {
+      flushPendingDrag();
       const current = dragSessionRef.current;
       if (!current) return;
       commitDragSession(current, event as unknown as PointerEvent);
@@ -265,18 +304,16 @@ export function Rulers({
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerCancel);
-    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('blur', handleWindowBlur);
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
-      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('blur', handleWindowBlur);
     };
-  }, [clearDragSession, commitDragSession, updateDragSession]);
+  }, [clearDragSession, commitDragSession, flushPendingDrag, queueDragUpdate]);
 
   const horizontalTicks = useMemo(
     () =>
@@ -368,7 +405,7 @@ export function Rulers({
       <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
 
       <svg
-        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-row-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm"
+        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-row-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm touch-none"
         onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {horizontalTicks.map((tick) => (
@@ -397,7 +434,7 @@ export function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-col-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm"
+        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-col-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm touch-none"
         onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {verticalTicks.map((tick) => (
@@ -443,9 +480,8 @@ export function Rulers({
               <span
                 className="absolute inset-y-0 left-1/2 -translate-x-1/2"
                 style={{
-                  width: style.solid ? (isSelected ? 2 : 1) : 0,
-                  backgroundColor: style.solid ? style.color : undefined,
-                  borderLeft: style.solid ? undefined : `1px dashed ${style.color}`,
+                  width: style.width,
+                  backgroundColor: style.color,
                 }}
               />
             </button>
@@ -465,9 +501,8 @@ export function Rulers({
             <span
               className="absolute left-0 right-0 top-1/2 -translate-y-1/2"
               style={{
-                height: style.solid ? (isSelected ? 2 : 1) : 0,
-                backgroundColor: style.solid ? style.color : undefined,
-                borderTop: style.solid ? undefined : `1px dashed ${style.color}`,
+                height: style.width,
+                backgroundColor: style.color,
               }}
             />
           </button>
@@ -481,9 +516,7 @@ export function Rulers({
             style={{
               left: metrics.toScreenX(dragState.value),
               width: 0,
-              borderLeft: previewStyle.solid
-                ? `2px solid ${previewStyle.color}`
-                : `2px dashed ${previewStyle.color}`,
+              borderLeft: `${previewStyle.width}px solid ${previewStyle.color}`,
             }}
           />
         ) : (
@@ -492,9 +525,7 @@ export function Rulers({
             style={{
               top: metrics.toScreenY(dragState.value),
               height: 0,
-              borderTop: previewStyle.solid
-                ? `2px solid ${previewStyle.color}`
-                : `2px dashed ${previewStyle.color}`,
+              borderTop: `${previewStyle.width}px solid ${previewStyle.color}`,
             }}
           />
         )
@@ -537,20 +568,16 @@ function formatTickValue(value: number) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(value < 10 ? 1 : 0);
 }
 
-function clampValue(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function getGuideLineStyle(style: 'subtle' | 'strong', selected: boolean) {
   if (selected) {
-    return { color: 'rgba(14,165,233,0.95)', solid: true };
+    return { color: SELECTED_GUIDE_COLOR, width: SELECTED_GUIDE_WIDTH };
   }
 
   if (style === 'strong') {
-    return { color: 'rgba(148,163,184,0.45)', solid: true };
+    return { color: DEFAULT_GUIDE_COLOR, width: DEFAULT_GUIDE_WIDTH };
   }
 
-  return { color: 'rgba(148,163,184,0.18)', solid: false };
+  return { color: DEFAULT_GUIDE_COLOR, width: DEFAULT_GUIDE_WIDTH };
 }
 
 function isReleasedOverMatchingRuler(
@@ -563,4 +590,25 @@ function isReleasedOverMatchingRuler(
     return event.clientY <= containerRect.top + RULER_SIZE;
   }
   return event.clientX <= containerRect.left + RULER_SIZE;
+}
+
+function isReleasedOutsideEditableCanvas(
+  metrics: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+    toScreenX: (value: number) => number;
+    toScreenY: (value: number) => number;
+  },
+  kind: DragState['kind'],
+  value: number,
+) {
+  if (kind === 'hline') {
+    const screenY = metrics.toScreenY(value);
+    return screenY < metrics.top || screenY > metrics.bottom;
+  }
+
+  const screenX = metrics.toScreenX(value);
+  return screenX < metrics.left || screenX > metrics.right;
 }

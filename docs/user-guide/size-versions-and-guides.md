@@ -61,11 +61,13 @@ When guides are visible:
 - drag out from the left ruler to create a vertical guide
 - click a guide to select it
 - drag an existing guide to reposition it
+- guides stay visible even when you drag them outside the editable icon area
 - hold `Option` on Mac or `Alt` on Windows while dragging a guide to duplicate it
 - drag a guide back into its ruler to remove it
+- release a guide outside the editable canvas to discard it
 - snapping can use guide positions as alignment targets
 
-Simple clicks on a ruler no longer create a guide. A guide is only created after an intentional drag, which makes the interaction much closer to Figma.
+Simple clicks on a ruler no longer create a guide. A guide is only created after an intentional drag, which makes the interaction much closer to Figma. Guides are shown in cyan, and the selected guide becomes a darker, thicker cyan line so it stays easy to track.
 
 ## Managing Guide Sets
 

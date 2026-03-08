@@ -91,8 +91,10 @@ With multiple layers selected:
 ### Guide Tips
 
 - drag from a ruler to create a guide
+- drag a guide beyond the editable icon area when you need to inspect placement
 - hold `Option` or `Alt` while dragging a guide to make a copy
 - drag a guide back into its ruler to remove it
+- release a guide outside the editable canvas to discard it
 - use `Delete` or `Backspace` to remove the selected guide
 
 ## Recommended Habit

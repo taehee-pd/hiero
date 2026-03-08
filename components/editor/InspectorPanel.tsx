@@ -1,12 +1,28 @@
 'use client';
 
-import { LoaderCircle, Minus, Shapes, SplitSquareHorizontal, Squircle } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
+import {
+  LoaderCircle,
+  Minus,
+  Shapes,
+  SplitSquareHorizontal,
+  Squircle,
+  AlignHorizontalJustifyCenter,
+  AlignHorizontalJustifyEnd,
+  AlignHorizontalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
+  BetweenHorizontalStart,
+  BetweenVerticalStart,
+} from 'lucide-react';
+import { useState } from 'react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Button } from '@/components/kibo-ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { alignLayers, distributeLayers } from '@/lib/editor-core';
 import {
   useEditorStore,
   useSelection,
@@ -28,6 +44,20 @@ const BOOLEAN_ACTIONS: Array<{
   { mode: 'intersect', label: 'Intersect', icon: SplitSquareHorizontal },
   { mode: 'exclude', label: 'Exclude', icon: Squircle },
 ];
+
+const ALIGN_ACTIONS = [
+  { label: 'Align left', mode: 'left', icon: AlignHorizontalJustifyStart },
+  { label: 'Align center horizontally', mode: 'center-h', icon: AlignHorizontalJustifyCenter },
+  { label: 'Align right', mode: 'right', icon: AlignHorizontalJustifyEnd },
+  { label: 'Align top', mode: 'top', icon: AlignVerticalJustifyStart },
+  { label: 'Align center vertically', mode: 'center-v', icon: AlignVerticalJustifyCenter },
+  { label: 'Align bottom', mode: 'bottom', icon: AlignVerticalJustifyEnd },
+] as const;
+
+const DISTRIBUTE_ACTIONS = [
+  { label: 'Distribute horizontally', mode: 'horizontal', icon: BetweenHorizontalStart },
+  { label: 'Distribute vertically', mode: 'vertical', icon: BetweenVerticalStart },
+] as const;
 
 export function InspectorPanel() {
   const selection = useSelection();
@@ -97,6 +127,7 @@ export function InspectorPanel() {
       ? `${layer.path.d.slice(0, 84)}...`
       : layer.path.d
     : 'No path';
+  const enoughLayersToDistribute = selection.layerIds.length > 2;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -158,6 +189,41 @@ export function InspectorPanel() {
               <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
             </div>
           </Section>
+
+          {multipleLayersSelected ? (
+            <Section title="Align">
+              <div className="grid grid-cols-3 gap-2">
+                {ALIGN_ACTIONS.map((action) => (
+                  <IconActionButton
+                    key={action.mode}
+                    label={action.label}
+                    onClick={() =>
+                      alignLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                    }
+                  >
+                    <action.icon className="size-4" />
+                  </IconActionButton>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {DISTRIBUTE_ACTIONS.map((action) => (
+                  <IconActionButton
+                    key={action.mode}
+                    label={action.label}
+                    disabled={!enoughLayersToDistribute}
+                    onClick={() =>
+                      distributeLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                    }
+                  >
+                    <action.icon className="size-4" />
+                  </IconActionButton>
+                ))}
+              </div>
+              {!enoughLayersToDistribute ? (
+                <p className="text-[11px] text-muted-foreground">Distribute requires 3+ layers.</p>
+              ) : null}
+            </Section>
+          ) : null}
 
           {layer.path && (
             <Section title="Path">
@@ -584,6 +650,33 @@ function InspectorStat({
       <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
     </div>
+  );
+}
+
+function IconActionButton({
+  label,
+  children,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="h-10 rounded-md border-border bg-background px-0 transition hover:bg-accent/40"
+    >
+      {children}
+    </Button>
   );
 }
 

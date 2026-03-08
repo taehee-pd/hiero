@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -13,6 +13,8 @@ import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
+import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
+import { cn } from '@/lib/utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const HANDLE_RADIUS_PX = 3;
@@ -30,10 +32,19 @@ const CONTROL_LINE = 'rgba(226,232,240,0.9)';
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 32;
 
+function hasSvgDragData(dataTransfer: DataTransfer): boolean {
+  if (Array.from(dataTransfer.files).some(isSvgFile)) return true;
+  return Array.from(dataTransfer.items).some(
+    (item) => item.kind === 'file' && (item.type === 'image/svg+xml' || /\.svg$/i.test(item.getAsFile()?.name ?? '')),
+  );
+}
+
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragDepthRef = useRef(0);
+  const [isDropActive, setIsDropActive] = useState(false);
 
   // Subscribe to relevant state for re-render
   const icon = useEditorStore(selectCurrentIcon);
@@ -61,6 +72,50 @@ export function Canvas() {
     };
   });
   const gestureScaleRef = useRef(1);
+
+  const handleSvgDrop = useCallback(async (file: File) => {
+    try {
+      await importSvgFileIntoEditor(file);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to import SVG file.');
+    }
+  }, []);
+
+  const handleDragEnter = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasSvgDragData(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDropActive(true);
+  }, []);
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasSvgDragData(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!isDropActive) return;
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDropActive(false);
+    }
+  }, [isDropActive]);
+
+  const handleDrop = useCallback(
+    async (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      dragDepthRef.current = 0;
+      setIsDropActive(false);
+      const file = Array.from(event.dataTransfer.files).find(isSvgFile);
+      if (!file) return;
+      await handleSvgDrop(file);
+    },
+    [handleSvgDrop],
+  );
 
   // Render SVG geometry when state changes.
   // Always clear stale geometry if the active icon/variant/state becomes unavailable.
@@ -270,9 +325,16 @@ export function Canvas() {
   return (
     <div
       ref={containerRef}
-      className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg"
+      className={cn(
+        'workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg',
+        isDropActive && 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background',
+      )}
       data-canvas-root
       style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
@@ -320,6 +382,12 @@ export function Canvas() {
           No icon selected
         </div>
       )}
+
+      {isDropActive ? (
+        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100 backdrop-blur-sm">
+          Drop SVG to import
+        </div>
+      ) : null}
     </div>
   );
 }

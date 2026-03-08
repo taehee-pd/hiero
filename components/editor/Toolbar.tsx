@@ -11,6 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Import,
 } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import {
@@ -23,14 +24,22 @@ import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { isProject } from '@/lib/schema/guards';
 import { exportSvgString } from '@/lib/export/export-svg';
+import { importSvgFileIntoEditor } from '@/lib/import';
 import {
   selectCurrentIcon,
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Toolbar() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
+  const svgFileInputRef = useRef<HTMLInputElement>(null);
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Icophone');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
@@ -39,11 +48,15 @@ export function Toolbar() {
     editorStore.getState().newProject();
   }, []);
 
-  const handleOpen = useCallback(() => {
-    fileInputRef.current?.click();
+  const handleOpenProject = useCallback(() => {
+    projectFileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportSvg = useCallback(() => {
+    svgFileInputRef.current?.click();
+  }, []);
+
+  const handleProjectFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -61,6 +74,18 @@ export function Toolbar() {
     };
     reader.readAsText(file);
     e.target.value = '';
+  }, []);
+
+  const handleSvgFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await importSvgFileIntoEditor(file);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to import SVG file.');
+    } finally {
+      e.target.value = '';
+    }
   }, []);
 
   const handleSave = useCallback(() => {
@@ -129,7 +154,28 @@ export function Toolbar() {
 
         <ToolbarGroup>
           <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
-          <ToolbarButton icon={FolderOpen} label="Open" onClick={handleOpen} />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Open"
+                className="workspace-tool-button h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
+              >
+                <FolderOpen className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleOpenProject}>
+                <FolderOpen className="size-4" />
+                Open Project
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleImportSvg}>
+                <Import className="size-4" />
+                Import SVG
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
           <ToolbarButton icon={Download} label="Export SVG" onClick={handleExportSvg} />
         </ToolbarGroup>
@@ -147,12 +193,20 @@ export function Toolbar() {
       </div>
 
       <input
-        ref={fileInputRef}
+        ref={projectFileInputRef}
         type="file"
         accept=".json"
         className="sr-only"
-        onChange={handleFileChange}
+        onChange={handleProjectFileChange}
         aria-label="Open project file"
+      />
+      <input
+        ref={svgFileInputRef}
+        type="file"
+        accept=".svg,image/svg+xml"
+        className="sr-only"
+        onChange={handleSvgFileChange}
+        aria-label="Import SVG file"
       />
     </header>
   );

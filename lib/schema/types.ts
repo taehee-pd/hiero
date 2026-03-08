@@ -56,6 +56,44 @@ export type Layer = {
     scaleX?: number;
     scaleY?: number;
   };
+  importMeta?: SvgImportLayerMeta;
+};
+
+export type SvgImportLayerMeta = {
+  sourceTag:
+    | 'path'
+    | 'rect'
+    | 'circle'
+    | 'ellipse'
+    | 'line'
+    | 'polygon'
+    | 'polyline';
+  sourceNodeId?: string;
+  sourceClassName?: string;
+  originalTransform?: string;
+  unsupported?: SvgUnsupportedFeature[];
+};
+
+export type SvgUnsupportedFeature = {
+  kind:
+    | 'clipPath'
+    | 'mask'
+    | 'pattern'
+    | 'filter'
+    | 'cssClass'
+    | 'styleElement'
+    | 'gradientTransform'
+    | 'gradientUnits'
+    | 'gradientSpreadMethod'
+    | 'gradientHref'
+    | 'radialGradientFocus'
+    | 'unsupportedPaintReference'
+    | 'unsupportedAttribute'
+    | string;
+  value?: string;
+  refId?: string;
+  raw?: string;
+  attributes?: Record<string, string>;
 };
 
 export type PaintRef =

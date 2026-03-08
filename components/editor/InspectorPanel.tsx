@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
 import {
   LoaderCircle,
   Minus,
@@ -16,7 +15,7 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
@@ -183,13 +182,6 @@ export function InspectorPanel() {
             ) : null}
           </Section>
 
-          <Section title="Layer">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ReadOnlyField label="ID" value={layer.id} />
-              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
-            </div>
-          </Section>
-
           {multipleLayersSelected ? (
             <Section title="Align">
               <div className="grid grid-cols-3 gap-2">
@@ -224,6 +216,13 @@ export function InspectorPanel() {
               ) : null}
             </Section>
           ) : null}
+          
+          <Section title="Layer">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ReadOnlyField label="ID" value={layer.id} />
+              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
+            </div>
+          </Section>
 
           {layer.path && (
             <Section title="Path">
@@ -677,6 +676,21 @@ function IconActionButton({
     >
       {children}
     </Button>
+  );
+}
+
+function InspectorStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-background px-3 py-2">
+      <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
+    </div>
   );
 }
 

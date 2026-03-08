@@ -758,7 +758,7 @@ function patchStyle(
   if (!iconId || !stateId) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = icon?.states[stateId];
+  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
   const layer = st?.layers[layerId];
   if (!layer) return;
 
@@ -776,7 +776,7 @@ function patchTransform(
   if (!iconId || !stateId) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = icon?.states[stateId];
+  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
   const layer = st?.layers[layerId];
   if (!layer) return;
 
@@ -809,7 +809,7 @@ function patchSelectedPoints(
   if (!iconId || !stateId || pointIds.length === 0) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = icon?.states[stateId];
+  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
   const layer = st?.layers[layerId];
   const d = layer?.path?.d;
   if (!layer || !d || !isPathDirectlyEditable(d)) return;

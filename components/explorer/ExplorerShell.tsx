@@ -212,12 +212,14 @@ export function ExplorerShell() {
               ) : null}
               {visibleIcons.map((icon) => {
                 const iconDef = project?.icons[icon.id];
+                const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
                 const svg =
                   iconDef &&
+                  firstVariantId &&
                   exportSvgString(
                     iconDef,
-                    Object.keys(iconDef.variants)[0],
-                    Object.keys(iconDef.states)[0],
+                    firstVariantId,
+                    Object.keys(iconDef.variants[firstVariantId]?.states ?? {})[0],
                     project?.tokenSet?.colors,
                   );
                 const active = selectionSet.has(icon.id);

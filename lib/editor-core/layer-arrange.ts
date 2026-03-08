@@ -45,7 +45,9 @@ function computeLayerBounds(layer: Layer): Bounds | null {
 function collectLayerBounds(layerIds: string[], iconId: string, stateId: string): LayerBounds[] {
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const iconState = icon?.states[stateId];
+  const iconState = state.currentVariantId
+    ? icon?.variants[state.currentVariantId]?.states[stateId]
+    : null;
   if (!iconState) return [];
 
   const seen = new Set<string>();
@@ -363,7 +365,7 @@ function computePathBounds(d: string, transform?: Layer['transform']): Bounds | 
         while (canReadNumbers(tokens, index, 1)) {
           const x = readNumber(tokens, index);
           if (x === null || !current) return null;
-          const nextPoint = { x: command === 'h' ? current.x + x : x, y: current.y };
+          const nextPoint: Point = { x: command === 'h' ? current.x + x : x, y: current.y };
           includeLine(current, nextPoint);
           current = nextPoint;
           index += 1;
@@ -377,7 +379,7 @@ function computePathBounds(d: string, transform?: Layer['transform']): Bounds | 
         while (canReadNumbers(tokens, index, 1)) {
           const y = readNumber(tokens, index);
           if (y === null || !current) return null;
-          const nextPoint = { x: current.x, y: command === 'v' ? current.y + y : y };
+          const nextPoint: Point = { x: current.x, y: command === 'v' ? current.y + y : y };
           includeLine(current, nextPoint);
           current = nextPoint;
           index += 1;

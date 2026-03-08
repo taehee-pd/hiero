@@ -21,7 +21,6 @@ export function isIcon(val: unknown): val is Icon {
   if (typeof val.id !== 'string') return false;
   if (typeof val.name !== 'string') return false;
   if (!isObject(val.variants)) return false;
-  if (!isObject(val.states)) return false;
   if (!isObject(val.transitions)) return false;
   return true;
 }

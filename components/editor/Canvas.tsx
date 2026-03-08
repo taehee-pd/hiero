@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
+  selectCurrentGuideMaster,
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
@@ -51,6 +52,7 @@ export function Canvas() {
   const icon = useEditorStore(selectCurrentIcon);
   const variant = useEditorStore(selectCurrentVariant);
   const currentState = useEditorStore(selectCurrentState);
+  const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const viewport = useEditorStore((s) => s.viewport);
   const selection = useEditorStore((s) => s.selection);
   const project = useEditorStore((s) => s.project);
@@ -61,9 +63,6 @@ export function Canvas() {
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
-  const activeGuideMaster = project?.guideMasters
-    ? Object.values(project.guideMasters).find((gm) => gm.targetSize === variant?.size)
-    : undefined;
   const activeGuideSet = activeGuideMaster
     ? { id: activeGuideMaster.id, items: activeGuideMaster.items }
     : undefined;

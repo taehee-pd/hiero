@@ -12,7 +12,7 @@ export function exportSvgString(
   tokens?: Record<string, string>,
 ): string {
   const variant = icon.variants[variantId];
-  const state = icon.states[stateId];
+  const state = variant?.states[stateId];
   if (!variant || !state) return '';
 
   const [vx, vy, vw, vh] = variant.viewBox;

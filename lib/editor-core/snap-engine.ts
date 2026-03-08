@@ -207,11 +207,12 @@ export class SnapEngine {
   private getStateFingerprint(): string {
     const s = this.store.getState() as EditorStore;
     const iconId = s.currentIconId ?? '';
+    const variantId = s.currentVariantId ?? '';
     const stateId = s.currentStateId ?? '';
     const projectMarker = s.project ? Object.keys(s.project.icons).length : 0;
     const current = selectCurrentState(s);
     const layerCount = current ? Object.keys(current.layers).length : 0;
-    return `${iconId}|${stateId}|${projectMarker}|${layerCount}`;
+    return `${iconId}|${variantId}|${stateId}|${projectMarker}|${layerCount}`;
   }
 }
 

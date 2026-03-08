@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import { useCurrentVariant, useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import type { GuideItem, GuideMaster } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
@@ -34,12 +35,12 @@ const ITEM_KIND_OPTIONS: Array<GuideItem['kind']> = [
 export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   const project = useEditorStore((s) => s.project);
   const variant = useCurrentVariant();
+  const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const guideMasters = project?.guideMasters ?? {};
   const guideMasterList = useMemo(() => Object.values(guideMasters), [guideMasters]);
-  const activeMasterId =
-    guideMasterList.find((master) => master.targetSize === variant?.size)?.id ?? null;
+  const activeMasterId = activeGuideMaster?.id ?? null;
   const groupedMasters = useMemo(() => {
     const groups = new Map<number, GuideMaster[]>();
     for (const master of guideMasterList) {

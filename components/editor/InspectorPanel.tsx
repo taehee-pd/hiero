@@ -1312,6 +1312,8 @@ function PaintField({
   const paintMode =
     paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
       ? paint.mode
+      : paint?.mode === 'fixed' && paint.value === 'none'
+        ? 'none'
       : paint?.mode === 'currentColor'
         ? fillModeOptions
           ? 'currentFill'
@@ -1418,6 +1420,7 @@ function PaintField({
       const nextMode = e.target.value as
         | 'currentFill'
         | 'currentColor'
+        | 'none'
         | 'solid'
         | GradientPaint['mode'];
 
@@ -1426,9 +1429,18 @@ function PaintField({
         return;
       }
 
+      if (nextMode === 'none') {
+        onChange({ mode: 'fixed', value: 'none' });
+        return;
+      }
+
       if (nextMode === 'solid') {
         if (paint?.mode === 'token' || paint?.mode === 'fixed') {
-          onChange(paint);
+          onChange(
+            paint.mode === 'fixed' && paint.value === 'none'
+              ? { mode: 'fixed', value: getSeedColor(paint, colorTokens) }
+              : paint,
+          );
           return;
         }
         onChange({ mode: 'fixed', value: getSeedColor(paint, colorTokens) });
@@ -1524,13 +1536,18 @@ function PaintField({
             ) : (
               <option value="currentColor">currentColor</option>
             )}
+            <option value="none">None</option>
             <option value="solid">Solid / token</option>
             <option value="linearGradient">Linear gradient</option>
             <option value="radialGradient">Radial gradient</option>
           </select>
         </div>
 
-        {!gradientPaint ? (
+        {paintMode === 'none' ? (
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+            {label} is disabled.
+          </div>
+        ) : !gradientPaint ? (
           <div className="flex items-center gap-1.5">
             {isColor && (
               <input

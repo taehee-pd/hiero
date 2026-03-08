@@ -84,14 +84,14 @@ export function Canvas() {
     );
   }, [icon, variant, currentState, project?.tokenSet?.colors]);
 
-  // Draw direct-select handles on selected layer.
+  // Draw editable handles on the active layer for direct-select and pen workflows.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
 
     svg.querySelectorAll('[data-editor-handle="true"]').forEach((el) => el.remove());
 
-    if (tool !== 'direct-select') return;
+    if (tool !== 'direct-select' && tool !== 'pen') return;
     const activeLayerId = selection.layerIds[0];
     if (!activeLayerId || !currentState) return;
 

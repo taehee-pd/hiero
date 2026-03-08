@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ViewportState, SelectionState } from '@/lib/editor-store/types';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
-import type { Layer, GuideSet, GuideItem } from '@/lib/schema/types';
+import type { Layer, GuideItem, GuideSet } from '@/lib/schema/types';
 import { loadPaperGlobal, type PaperGlobal } from '@/lib/editor-core/paper-runtime';
 
 export type OverlayOptions = {
@@ -10,6 +10,8 @@ export type OverlayOptions = {
   layers: Record<string, Layer>;
   viewBox: [number, number, number, number];
   guideSet?: GuideSet;
+  guidesVisible?: boolean;
+  guideStyle?: 'subtle' | 'strong';
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
@@ -59,6 +61,8 @@ export function useCanvasOverlay(
         layers,
         viewBox,
         guideSet,
+        guidesVisible,
+        guideStyle,
         pointBBox,
         pointMarquee,
         pointBBoxLabel,
@@ -99,9 +103,8 @@ export function useCanvasOverlay(
         }
       }
 
-      drawGuidePresets(scope, viewBox, toScreen);
-      if (guideSet?.items?.length) {
-        drawGuideItems(scope, guideSet.items, viewBox, toScreen);
+      if (guidesVisible !== false && guideSet?.items?.length) {
+        drawGuideItems(scope, guideSet.items, viewBox, toScreen, guideStyle ?? 'subtle');
       }
       const boundary = new scope.Path.Rectangle({
         rectangle: new scope.Rectangle(left, top, renderWidth, renderHeight),
@@ -355,61 +358,19 @@ function formatMeasure(value: number): string {
   return `${Math.round(value * 1000) / 1000}`;
 }
 
-function drawGuidePresets(
-  scope: any,
-  viewBox: [number, number, number, number],
-  toScreen: (x: number, y: number) => any,
-) {
-  const [vx, vy, vw, vh] = viewBox;
-  const inset = Math.min(vw, vh) * 0.08;
-
-  const safeTopLeft = toScreen(vx + inset, vy + inset);
-  const safeBottomRight = toScreen(vx + vw - inset, vy + vh - inset);
-  const safeRect = new scope.Path.Rectangle({
-    from: safeTopLeft,
-    to: safeBottomRight,
-    strokeColor: new scope.Color('rgba(148,163,184,0.18)'),
-    strokeWidth: 0.8,
-    dashArray: [4, 6],
-  });
-  safeRect.fillColor = null;
-
-  const center = toScreen(vx + vw / 2, vy + vh / 2);
-  const edgeX = toScreen(vx + vw * 0.85, vy).x;
-  const radius = Math.abs(edgeX - center.x);
-
-  const keylineCircle = new scope.Path.Circle({
-    center,
-    radius,
-    strokeColor: new scope.Color('rgba(148,163,184,0.14)'),
-    strokeWidth: 0.8,
-    dashArray: [3, 5],
-  });
-  keylineCircle.fillColor = null;
-
-  const keylineSquare = new scope.Path.Rectangle({
-    rectangle: new scope.Rectangle(
-      center.x - radius,
-      center.y - radius,
-      radius * 2,
-      radius * 2,
-    ),
-    strokeColor: new scope.Color('rgba(148,163,184,0.14)'),
-    strokeWidth: 0.8,
-    dashArray: [3, 5],
-  });
-  keylineSquare.fillColor = null;
-}
-
 function drawGuideItems(
   scope: any,
   items: GuideItem[],
   viewBox: [number, number, number, number],
   toScreen: (x: number, y: number) => any,
+  guideStyle: 'subtle' | 'strong',
 ) {
   const [vx, vy, vw, vh] = viewBox;
-  const guideStroke = new scope.Color('rgba(148,163,184,0.24)');
+  const guideStroke = new scope.Color(
+    guideStyle === 'strong' ? 'rgba(148,163,184,0.45)' : 'rgba(148,163,184,0.18)',
+  );
   const guideFill = new scope.Color('rgba(148,163,184,0.30)');
+  const dashArray = guideStyle === 'strong' ? undefined : [4, 6];
 
   for (const item of items) {
     switch (item.kind) {
@@ -419,6 +380,7 @@ function drawGuideItems(
         const line = new scope.Path.Line(a, b);
         line.strokeColor = guideStroke;
         line.strokeWidth = 1;
+        line.dashArray = dashArray;
         break;
       }
       case 'vline': {
@@ -427,6 +389,7 @@ function drawGuideItems(
         const line = new scope.Path.Line(a, b);
         line.strokeColor = guideStroke;
         line.strokeWidth = 1;
+        line.dashArray = dashArray;
         break;
       }
       case 'rect': {
@@ -439,6 +402,7 @@ function drawGuideItems(
           strokeWidth: 1,
         });
         rect.fillColor = null;
+        rect.dashArray = dashArray;
         break;
       }
       case 'ellipse': {
@@ -452,6 +416,7 @@ function drawGuideItems(
           strokeWidth: 1,
         });
         ellipse.fillColor = null;
+        ellipse.dashArray = dashArray;
         break;
       }
       case 'drawPoint': {

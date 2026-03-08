@@ -92,6 +92,17 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     }
   }
 
+  if (mod && !e.shiftKey && !e.altKey && (e.code === 'Semicolon' || key === ';')) {
+    const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+      toggleGuidesVisible?: () => void;
+    };
+    if (typeof state.toggleGuidesVisible === 'function') {
+      e.preventDefault();
+      state.toggleGuidesVisible();
+      return;
+    }
+  }
+
   // Tool shortcuts (single key, no modifier)
   if (!mod && !e.shiftKey && !e.altKey) {
     const tool = TOOL_SHORTCUTS[key];
@@ -102,6 +113,17 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   }
 
   if (key === 'delete' || key === 'backspace') {
+    const state = editorStore.getState();
+    if (
+      state.currentIconId &&
+      state.selectedIconGuideIndex !== null &&
+      state.selectedIconGuideIndex >= 0
+    ) {
+      state.removeIconGuide(state.currentIconId, state.selectedIconGuideIndex);
+      e.preventDefault();
+      return;
+    }
+
     if (deleteSelectedPoints()) {
       e.preventDefault();
     }

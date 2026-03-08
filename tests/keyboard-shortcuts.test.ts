@@ -146,20 +146,52 @@ describe('keyboard shortcuts', () => {
     expect(editorStore.getState().tool).toBe('pen');
   });
 
-  test('guide shortcut is disabled in the editor canvas workflow', () => {
+  test('single-key g does not toggle guide visibility', () => {
     bootstrap();
     const state = editorStore.getState();
-    state.setTool('select');
+    state.guidesVisible = true;
 
     triggerKey('g');
 
-    expect(editorStore.getState().tool).toBe('select');
+    expect(editorStore.getState().guidesVisible).toBeTrue();
   });
+
+  test('cmd/ctrl+semicolon toggles guide visibility', () => {
+    bootstrap();
+    const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+      toggleGuidesVisible?: () => void;
+    };
+    const originalToggleGuidesVisible = state.toggleGuidesVisible;
+    let toggled = false;
+    state.toggleGuidesVisible = () => {
+      toggled = true;
+    };
+
+    let prevented = false;
+    handleEditorKeyDown({
+      key: ';',
+      code: 'Semicolon',
+      target: { tagName: 'DIV' },
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+    } as unknown as KeyboardEvent);
+
+    expect(prevented).toBeTrue();
+    expect(toggled).toBeTrue();
+    state.toggleGuidesVisible = originalToggleGuidesVisible;
+  });
+
   test('cmd/ctrl+shift+semicolon toggles snapping', () => {
     bootstrap();
     const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
       toggleSnap?: () => void;
     };
+    const originalToggleSnap = state.toggleSnap;
     let toggled = false;
     state.toggleSnap = () => {
       toggled = true;
@@ -181,7 +213,33 @@ describe('keyboard shortcuts', () => {
 
     expect(prevented).toBeTrue();
     expect(toggled).toBeTrue();
+    state.toggleSnap = originalToggleSnap;
   });
+
+  test('delete removes the selected icon guide before point deletion', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    state.addIconGuide(state.currentIconId!, { kind: 'hline', y: 8 });
+    state.setSelectedIconGuideIndex(0);
+
+    let prevented = false;
+    handleEditorKeyDown({
+      key: 'Delete',
+      target: { tagName: 'DIV' },
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      preventDefault: () => {
+        prevented = true;
+      },
+    } as unknown as KeyboardEvent);
+
+    expect(prevented).toBeTrue();
+    expect(editorStore.getState().project!.icons[state.currentIconId!].customGuides).toBeUndefined();
+    expect(editorStore.getState().selectedIconGuideIndex).toBeNull();
+  });
+
   test('ctrl+shift+l aligns selected layers left', () => {
     bootstrapAlignShortcutSelection();
 

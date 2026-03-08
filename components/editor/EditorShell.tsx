@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, Layers2 } from 'lucide-react';
 import { Toolbar } from './Toolbar';
 import { ToolPanel } from './ToolPanel';
 import { LayerPanel } from './LayerPanel';
+import { GuideMasterPanel } from './GuideMasterPanel';
 import { Canvas } from './Canvas';
 import { InspectorPanel } from './InspectorPanel';
 import { editorStore } from '@/lib/editor-store/store';
@@ -61,6 +62,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const project = useEditorStore((s) => s.project);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
+  const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
+  const previousGuidesVisibleRef = useRef(guidesVisible);
 
   useEffect(() => {
     const state = editorStore.getState();
@@ -89,6 +93,16 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     editorStore.getState().setSelection({ layerIds: [nextLayerId], pointIds: [] });
   }, [currentIconId, currentStateId, project, selectedLayerIds.length]);
 
+  useEffect(() => {
+    const previousGuidesVisible = previousGuidesVisibleRef.current;
+    if (!previousGuidesVisible && guidesVisible) {
+      setLeftPanelMode('guides');
+    } else if (previousGuidesVisible && !guidesVisible && leftPanelMode === 'guides') {
+      setLeftPanelMode('layers');
+    }
+    previousGuidesVisibleRef.current = guidesVisible;
+  }, [guidesVisible, leftPanelMode]);
+
   return (
     <div className="swift-surface flex h-dvh w-full flex-col overflow-hidden text-foreground">
       <Toolbar />
@@ -98,10 +112,14 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             <CurrentDocumentPanel />
           </section>
           <section className="studio-panel min-h-0 overflow-hidden rounded-xl p-2">
-            <ToolPanel />
+            <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} />
           </section>
           <section className="studio-panel min-h-0 flex-1 overflow-hidden rounded-xl">
-            <LayerPanel />
+            {leftPanelMode === 'guides' ? (
+              <GuideMasterPanel onClose={() => setLeftPanelMode('layers')} />
+            ) : (
+              <LayerPanel />
+            )}
           </section>
         </aside>
 

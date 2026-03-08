@@ -5,6 +5,7 @@ export type Project = {
   version: '1.0';
   meta: { name: string; createdAt: string; updatedAt: string };
   icons: Record<string, Icon>;
+  guideMasters?: Record<string, GuideMaster>;
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];
 };
@@ -14,11 +15,11 @@ export type Icon = {
   name: string;
   category?: string;
   tags?: string[];
+  customGuides?: GuideItem[];
   variants: Record<string, Variant>;
   states: Record<string, State>;
   transitions: Record<string, Transition>;
   effects?: Record<string, Effect>;
-  guides?: Record<string, GuideSet>;
 };
 
 export type Variant = {
@@ -26,7 +27,6 @@ export type Variant = {
   size: number;
   viewBox: [number, number, number, number];
   defaultState: string;
-  guideSetId?: string;
 };
 
 export type State = {
@@ -154,6 +154,14 @@ export type TopologyContract = {
 
 export type GuideSet = {
   id: string;
+  items: GuideItem[];
+};
+
+export type GuideMaster = {
+  id: string;
+  name: string;
+  targetSize: number;
+  viewBox: [number, number, number, number];
   items: GuideItem[];
 };
 

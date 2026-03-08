@@ -1,5 +1,5 @@
 import type { EditorStore } from './store';
-import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
+import type { Icon, Variant, State, Layer, GuideMaster } from '@/lib/schema/types';
 
 export type LayerPanelRow = {
   layer: Layer;
@@ -23,6 +23,16 @@ export function selectCurrentState(s: EditorStore): State | null {
   const icon = selectCurrentIcon(s);
   if (!icon || !s.currentStateId) return null;
   return icon.states[s.currentStateId] ?? null;
+}
+
+export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
+  const variant = selectCurrentVariant(s);
+  const guideMasters = s.project?.guideMasters;
+  if (!variant || !guideMasters) return null;
+
+  return (
+    Object.values(guideMasters).find((guideMaster) => guideMaster.targetSize === variant.size) ?? null
+  );
 }
 
 export function selectCurrentLayers(s: EditorStore): Layer[] {

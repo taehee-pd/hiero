@@ -3,7 +3,7 @@ import { undo, redo } from '@/lib/editor-store/history';
 import type { Tool } from '@/lib/editor-store/types';
 import { alignLayers } from './layer-arrange';
 import {
-  deleteSelectedPoint,
+  deleteSelectedPoints,
   insertPointAfterSelection,
   nudgeSelectedPointByArrow,
   toggleSelectedPathClosed,
@@ -102,7 +102,7 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   }
 
   if (key === 'delete' || key === 'backspace') {
-    if (deleteSelectedPoint()) {
+    if (deleteSelectedPoints()) {
       e.preventDefault();
     }
     return;

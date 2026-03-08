@@ -10,6 +10,9 @@ export type OverlayOptions = {
   layers: Record<string, Layer>;
   viewBox: [number, number, number, number];
   guideSet?: GuideSet;
+  pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
+  pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
+  pointBBoxLabel?: { width: number; height: number } | null;
   activeSnapGuides?: SnapTarget[];
 };
 
@@ -50,7 +53,17 @@ export function useCanvasOverlay(
       scope.activate();
       scope.project.clear();
 
-      const { viewport, selection, layers, viewBox, guideSet, activeSnapGuides } =
+      const {
+        viewport,
+        selection,
+        layers,
+        viewBox,
+        guideSet,
+        pointBBox,
+        pointMarquee,
+        pointBBoxLabel,
+        activeSnapGuides,
+      } =
         optionsRef.current;
       const [vx, vy, vw, vh] = viewBox;
       const scale = viewport.zoom;
@@ -175,6 +188,14 @@ export function useCanvasOverlay(
         horizontal.strokeWidth = 0.5;
       }
 
+      if (pointBBox) {
+        drawPointSelectionBoundingBox(scope, pointBBox, pointBBoxLabel, toScreen);
+      }
+
+      if (pointMarquee) {
+        drawPointMarquee(scope, pointMarquee, toScreen);
+      }
+
       if (activeSnapGuides?.length) {
         drawActiveSnapGuides(scope, activeSnapGuides, viewBox, toScreen);
       }
@@ -245,6 +266,93 @@ export function useCanvasOverlay(
   useEffect(() => {
     draw();
   }, [draw, options]);
+}
+
+function drawPointSelectionBoundingBox(
+  scope: any,
+  bbox: { minX: number; minY: number; maxX: number; maxY: number },
+  label: { width: number; height: number } | null | undefined,
+  toScreen: (x: number, y: number) => any,
+) {
+  const strokeColor = new scope.Color('rgba(96,165,250,0.7)');
+  const outline = new scope.Path.Rectangle({
+    rectangle: new scope.Rectangle(toScreen(bbox.minX, bbox.minY), toScreen(bbox.maxX, bbox.maxY)),
+    strokeColor,
+    strokeWidth: 1.5,
+  });
+  outline.fillColor = null;
+
+  const midX = (bbox.minX + bbox.maxX) / 2;
+  const midY = (bbox.minY + bbox.maxY) / 2;
+  const handleSize = 4;
+  const halfSize = handleSize / 2;
+  const handlePoints = [
+    [bbox.minX, bbox.minY],
+    [midX, bbox.minY],
+    [bbox.maxX, bbox.minY],
+    [bbox.maxX, midY],
+    [bbox.maxX, bbox.maxY],
+    [midX, bbox.maxY],
+    [bbox.minX, bbox.maxY],
+    [bbox.minX, midY],
+  ];
+
+  handlePoints.forEach(([x, y]) => {
+    const point = toScreen(x, y);
+    const handle = new scope.Path.Rectangle({
+      rectangle: new scope.Rectangle(point.x - halfSize, point.y - halfSize, handleSize, handleSize),
+      strokeColor,
+      strokeWidth: 1,
+      fillColor: new scope.Color('rgba(255,255,255,0.95)'),
+    });
+    handle.strokeColor = strokeColor;
+  });
+
+  if (label) {
+    const anchor = toScreen(bbox.maxX, bbox.minY);
+    const text = new scope.PointText({
+      point: new scope.Point(anchor.x - 6, anchor.y - 10),
+      content: `${formatMeasure(label.width)} x ${formatMeasure(label.height)}`,
+      fillColor: new scope.Color('#eff6ff'),
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize: 10,
+      justification: 'right',
+    });
+    const background = new scope.Path.Rectangle({
+      rectangle: text.bounds.expand(6, 3),
+      radius: 4,
+      fillColor: new scope.Color('rgba(30,41,59,0.92)'),
+      strokeColor,
+      strokeWidth: 1,
+    });
+    background.sendToBack();
+    text.bringToFront();
+  }
+}
+
+function drawPointMarquee(
+  scope: any,
+  marquee: { minX: number; minY: number; maxX: number; maxY: number },
+  toScreen: (x: number, y: number) => any,
+) {
+  const topLeft = toScreen(marquee.minX, marquee.minY);
+  const bottomRight = toScreen(marquee.maxX, marquee.maxY);
+  const rect = new scope.Rectangle(topLeft, bottomRight);
+  const fill = new scope.Color('rgba(96,165,250,0.14)');
+  const stroke = new scope.Color('rgba(96,165,250,0.72)');
+
+  const outline = new scope.Path.Rectangle({
+    rectangle: rect,
+    strokeColor: stroke,
+    strokeWidth: 1,
+    dashArray: [5, 4],
+    fillColor: fill,
+  });
+  outline.fillColor = fill;
+}
+
+function formatMeasure(value: number): string {
+  return `${Math.round(value * 1000) / 1000}`;
 }
 
 function drawGuidePresets(

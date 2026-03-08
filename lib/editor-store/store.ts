@@ -1,7 +1,14 @@
 import type { Project, Layer } from '@/lib/schema/types';
+import type {
+  Tool,
+  SelectionState,
+  ViewportState,
+  ShapeType,
+  PointMarqueeState,
+  PointTransformLabelState,
+} from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
-import type { Tool, SelectionState, ViewportState } from './types';
 
 export type EditorState = {
   project: Project | null;
@@ -13,6 +20,11 @@ export type EditorState = {
   snapEnabled: boolean;
   viewport: ViewportState;
   tool: Tool;
+  shapeSubTool: ShapeType;
+  shapePolygonSides: number;
+  shapeStarPoints: number;
+  pointMarquee: PointMarqueeState | null;
+  pointTransformLabel: PointTransformLabelState | null;
 };
 
 export type EditorActions = {
@@ -29,6 +41,11 @@ export type EditorActions = {
   toggleSnap(): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
+  setShapeSubTool(shapeSubTool: ShapeType): void;
+  setShapePolygonSides(sides: number): void;
+  setShapeStarPoints(points: number): void;
+  setPointMarquee(marquee: PointMarqueeState | null): void;
+  setPointTransformLabel(label: PointTransformLabelState | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
   pauseHistory(): void;
   resumeHistory(): void;
@@ -48,6 +65,7 @@ type TemporalState = {
   clear(): void;
   pause(): void;
   resume(): void;
+  discard(): void;
   commit(_label?: string): void;
 };
 
@@ -61,6 +79,11 @@ const initialState: EditorState = {
   snapEnabled: true,
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
+  shapeSubTool: 'rectangle',
+  shapePolygonSides: 5,
+  shapeStarPoints: 5,
+  pointMarquee: null,
+  pointTransformLabel: null,
 };
 
 let currentState: EditorStore;
@@ -88,6 +111,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     project: snapshot.project,
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
+    pointMarquee: null,
   };
   emit();
 }
@@ -125,6 +149,17 @@ const temporalState: TemporalState = {
 
   resume() {
     tracking = true;
+  },
+
+  discard() {
+    if (transactionBase === undefined) return;
+    currentState = {
+      ...currentState,
+      project: transactionBase,
+    };
+    tracking = true;
+    transactionBase = undefined;
+    emit();
   },
 
   commit(_label?: string) {
@@ -191,6 +226,8 @@ function createActions(): EditorActions {
         activeSnapGuides: [],
         snapEnabled: true,
         viewport: { zoom: 12, panX: 0, panY: 0 },
+        pointMarquee: null,
+        pointTransformLabel: null,
       });
       resetHistoryForLoadedDocument();
     },
@@ -216,12 +253,13 @@ function createActions(): EditorActions {
           currentStateId: Object.keys(icon.states)[0] ?? null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
+          pointMarquee: null,
         };
       });
     },
 
     setCurrentVariant(id) {
-      editorStoreApi.setState({ currentVariantId: id, activeSnapGuides: [] });
+      editorStoreApi.setState({ currentVariantId: id, activeSnapGuides: [], pointMarquee: null });
     },
 
     setCurrentState(id) {
@@ -229,6 +267,7 @@ function createActions(): EditorActions {
         currentStateId: id,
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
+        pointMarquee: null,
       });
     },
 
@@ -304,6 +343,7 @@ function createActions(): EditorActions {
       editorStoreApi.setState({
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
+        pointMarquee: null,
       });
     },
 
@@ -327,7 +367,28 @@ function createActions(): EditorActions {
         tool,
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
+        pointMarquee: null,
       });
+    },
+
+    setShapeSubTool(shapeSubTool) {
+      editorStoreApi.setState({ shapeSubTool });
+    },
+
+    setShapePolygonSides(sides) {
+      editorStoreApi.setState({ shapePolygonSides: clampInteger(sides, 3) });
+    },
+
+    setShapeStarPoints(points) {
+      editorStoreApi.setState({ shapeStarPoints: clampInteger(points, 2) });
+    },
+
+    setPointMarquee(marquee) {
+      editorStoreApi.setState({ pointMarquee: marquee });
+    },
+
+    setPointTransformLabel(label) {
+      editorStoreApi.setState({ pointTransformLabel: label });
     },
 
     updateProjectMeta(patch) {
@@ -437,3 +498,8 @@ currentState = {
 };
 
 export const editorStore = editorStoreApi;
+
+function clampInteger(value: number, minimum: number): number {
+  if (!Number.isFinite(value)) return minimum;
+  return Math.max(minimum, Math.round(value));
+}

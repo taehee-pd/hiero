@@ -32,6 +32,10 @@ export function resumeHistory() {
   getTemporalState().resume();
 }
 
+export function discardHistory() {
+  getTemporalState().discard();
+}
+
 export function commitHistory(label?: string) {
   getTemporalState().commit(label);
 }

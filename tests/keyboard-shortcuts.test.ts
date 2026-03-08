@@ -155,7 +155,6 @@ describe('keyboard shortcuts', () => {
 
     expect(editorStore.getState().tool).toBe('select');
   });
-
   test('cmd/ctrl+shift+semicolon toggles snapping', () => {
     bootstrap();
     const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
@@ -183,7 +182,6 @@ describe('keyboard shortcuts', () => {
     expect(prevented).toBeTrue();
     expect(toggled).toBeTrue();
   });
-
   test('ctrl+shift+l aligns selected layers left', () => {
     bootstrapAlignShortcutSelection();
 

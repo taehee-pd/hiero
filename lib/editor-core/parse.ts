@@ -267,7 +267,9 @@ function makePoint(x: number, y: number, segment: PathSegment | null = null): Pa
 }
 
 function inferSegment(prev: PathPoint, pt: PathPoint): PathSegment {
-  if (pt.segment) return pt.segment;
+  if (pt.segment?.type === 'arc') return pt.segment;
+  if (pt.segment?.type === 'quadratic') return pt.segment;
+  if (pt.segment?.type === 'cubic') return pt.segment;
   if (prev.handleOut || pt.handleIn) return { type: 'cubic' };
   return { type: 'line' };
 }

@@ -5,11 +5,33 @@ import {
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
+import {
+  commitHistory,
+  discardHistory,
+  pauseHistory,
+  resumeHistory,
+} from '@/lib/editor-store/history';
+import {
+  createEllipsePath,
+  createLinePath,
+  createPolygonPath,
+  createRectPath,
+  createStarPath,
+} from './path-shapes';
+import { getSelectedPointsBoundingBox } from './vector-commands';
+import type { PathPoint } from './path-model';
+import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
-import { pauseHistory, resumeHistory, commitHistory } from '@/lib/editor-store/history';
-
 type ControlDirection = 'in' | 'out';
-type DragMode = 'layer' | 'point' | 'control' | null;
+type DragMode =
+  | 'layer'
+  | 'point'
+  | 'control'
+  | 'point-marquee'
+  | 'shape'
+  | 'selection-move'
+  | 'selection-resize'
+  | null;
 type PenPlacement = {
   layerId: string;
   pointKey: string;
@@ -17,8 +39,43 @@ type PenPlacement = {
   pointerId: number;
   basePathD: string;
 };
+type ShapePlacement = {
+  layerId: string;
+  pointerId: number;
+  start: { x: number; y: number };
+  previousSelection: SelectionState;
+};
+type BBoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+type SelectionBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+type SelectionTransformPlacement = {
+  layerId: string;
+  pointerId: number;
+  pointKeys: string[];
+  start: { x: number; y: number };
+  bounds: SelectionBounds;
+  mode: 'move' | 'resize';
+  handle: BBoxHandle | null;
+  basePathD: string;
+};
+type PointMarqueePlacement = {
+  layerId: string;
+  pointerId: number;
+  start: { x: number; y: number };
+  baseSelection: string[];
+  mode: 'replace' | 'toggle';
+  clickLayerId: string | null;
+};
 
 const PEN_CLOSE_DIST_SQ = 1;
+const SHAPE_EMPTY_EPSILON = 0.001;
+const BBOX_HIT_PADDING_PX = 12;
+const POINT_HIT_RADIUS_PX = 18;
+const MARQUEE_DRAG_THRESHOLD_PX = 4;
 
 /**
  * PathEditor: imperative interaction engine for the canvas.
@@ -38,6 +95,9 @@ export class PathEditor {
   private originalPathD: string | null = null;
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
+  private shapePlacement: ShapePlacement | null = null;
+  private pointMarqueePlacement: PointMarqueePlacement | null = null;
+  private selectionTransformPlacement: SelectionTransformPlacement | null = null;
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
 
@@ -105,6 +165,15 @@ export class PathEditor {
       return;
     }
 
+    if (tool === 'shape') {
+      const placement = this.beginShapePlacement(e);
+      if (placement) {
+        state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
+        this.svg.setPointerCapture?.(e.pointerId);
+      }
+      return;
+    }
+
     if (tool === 'direct-select') {
       if (layerId && pointKey && controlDirection) {
         state.setSelection({ layerIds: [layerId], pointIds: [`${pointKey}@${controlDirection}`] });
@@ -114,6 +183,10 @@ export class PathEditor {
         state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
         this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
         (target as Element).setPointerCapture?.(e.pointerId);
+      } else if (this.beginSelectionBoundsDrag(e)) {
+        this.svg.setPointerCapture?.(e.pointerId);
+      } else if (this.beginPointMarquee(e, layerId)) {
+        this.svg.setPointerCapture?.(e.pointerId);
       } else if (layerId) {
         const nearestPointKey = this.findNearestPointKey(layerId, e.clientX, e.clientY);
         state.setSelection({
@@ -371,6 +444,24 @@ export class PathEditor {
       return;
     }
 
+    if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
+      this.updateShapePreview(e);
+      return;
+    }
+
+    if (
+      this.selectionTransformPlacement &&
+      e.pointerId === this.selectionTransformPlacement.pointerId
+    ) {
+      this.updateSelectionTransformPreview(e);
+      return;
+    }
+
+    if (this.pointMarqueePlacement && e.pointerId === this.pointMarqueePlacement.pointerId) {
+      this.updatePointMarquee(e);
+      return;
+    }
+
     if (!this.isDragging || !this.dragLayerId) return;
 
     if (this.dragMode === 'layer') {
@@ -391,6 +482,191 @@ export class PathEditor {
     ) {
       this.dragControl(e);
     }
+  }
+
+  private beginSelectionBoundsDrag(e: PointerEvent): boolean {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    const layerId = state.selection.layerIds[0] ?? null;
+    if (!iconId || !stateId || !layerId) return false;
+
+    const bbox = getSelectedPointsBoundingBox();
+    if (!bbox) return false;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return false;
+    const hit = this.hitTestSelectionBounds(svgPoint, bbox);
+    if (!hit) return false;
+
+    const pathD = state.project?.icons[iconId].states[stateId].layers[layerId]?.path?.d;
+    if (!pathD || !isPathDirectlyEditable(pathD)) return false;
+
+    this.dragMode = hit.type === 'move' ? 'selection-move' : 'selection-resize';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.originalPathD = pathD;
+    this.selectionTransformPlacement = {
+      layerId,
+      pointerId: e.pointerId,
+      pointKeys: state.selection.pointIds,
+      start: this.snapPointToGrid(svgPoint),
+      bounds: {
+        minX: bbox.minX,
+        minY: bbox.minY,
+        maxX: bbox.maxX,
+        maxY: bbox.maxY,
+      },
+      mode: hit.type,
+      handle: hit.handle,
+      basePathD: pathD,
+    };
+    state.setPointTransformLabel({
+      width: bbox.maxX - bbox.minX,
+      height: bbox.maxY - bbox.minY,
+    });
+    pauseHistory();
+    return true;
+  }
+
+  private beginPointMarquee(e: PointerEvent, clickLayerId: string | null): boolean {
+    const state = editorStore.getState();
+    const layerId = this.resolveMarqueeLayerId(clickLayerId);
+    if (!layerId) return false;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return false;
+
+    this.dragMode = 'point-marquee';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.pointMarqueePlacement = {
+      layerId,
+      pointerId: e.pointerId,
+      start: svgPoint,
+      baseSelection: uniquePointKeys(state.selection.pointIds),
+      mode: e.shiftKey ? 'toggle' : 'replace',
+      clickLayerId,
+    };
+    state.setPointMarquee({
+      minX: svgPoint.x,
+      minY: svgPoint.y,
+      maxX: svgPoint.x,
+      maxY: svgPoint.y,
+    });
+    return true;
+  }
+
+  private resolveMarqueeLayerId(clickLayerId: string | null): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return null;
+
+    const candidates = [clickLayerId, state.selection.layerIds[0] ?? null];
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const d = state.project?.icons[iconId].states[stateId].layers[candidate]?.path?.d;
+      if (d && isPathDirectlyEditable(d)) return candidate;
+    }
+
+    return null;
+  }
+
+  private updatePointMarquee(e: PointerEvent) {
+    const placement = this.pointMarqueePlacement;
+    if (!placement) return;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+
+    const marquee = normalizeBounds(placement.start, svgPoint);
+    const state = editorStore.getState();
+    state.setPointMarquee(marquee);
+
+    const matchedPointKeys = this.collectPointsInMarquee(placement.layerId, marquee);
+    if (placement.mode === 'toggle') {
+      const baseSelection = new Set(placement.baseSelection);
+      for (const key of matchedPointKeys) {
+        if (baseSelection.has(key)) {
+          baseSelection.delete(key);
+        } else {
+          baseSelection.add(key);
+        }
+      }
+      state.setSelection({
+        layerIds: [placement.layerId],
+        pointIds: [...baseSelection],
+      });
+      return;
+    }
+
+    state.setSelection({
+      layerIds: [placement.layerId],
+      pointIds: matchedPointKeys,
+    });
+  }
+
+  private updateSelectionTransformPreview(e: PointerEvent) {
+    if (!this.selectionTransformPlacement || !this.dragLayerId) return;
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    const preview = this.buildSelectionTransformPreview(e);
+    if (!preview) return;
+
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      path: { d: preview.d },
+    });
+    state.setPointTransformLabel(preview.label);
+  }
+
+  private beginShapePlacement(e: PointerEvent): ShapePlacement | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId || !state.project) return null;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+    const start = this.snapPointToGrid(svgPoint);
+    const layerId = this.createShapeLayer(start);
+    if (!layerId) return null;
+
+    this.dragMode = 'shape';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.shapePlacement = {
+      layerId,
+      pointerId: e.pointerId,
+      start,
+      previousSelection: state.selection,
+    };
+
+    return this.shapePlacement;
+  }
+
+  private updateShapePreview(e: PointerEvent) {
+    if (!this.shapePlacement) return;
+
+    const preview = this.buildShapePreview(this.shapePlacement.start, e);
+    if (!preview) return;
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return;
+
+    state.patchLayer(iconId, stateId, this.shapePlacement.layerId, {
+      path: { d: preview.d },
+    });
   }
 
   private dragLayer(e: PointerEvent) {
@@ -537,6 +813,24 @@ export class PathEditor {
       this.penPlacement = null;
     }
 
+    if (this.shapePlacement) {
+      this.cancelShapePlacement();
+      return;
+    }
+
+    if (this.selectionTransformPlacement) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    if (this.pointMarqueePlacement) {
+      editorStore.getState().setPointMarquee(null);
+      this.resetDrag();
+      return;
+    }
+
     if (!this.isDragging) return;
     resumeHistory();
     this.resetDrag();
@@ -552,6 +846,24 @@ export class PathEditor {
       return;
     }
 
+    if (this.shapePlacement) {
+      this.cancelShapePlacement();
+      return;
+    }
+
+    if (this.selectionTransformPlacement) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    if (this.pointMarqueePlacement) {
+      editorStore.getState().setPointMarquee(null);
+      this.resetDrag();
+      return;
+    }
+
     if (!this.isDragging) return;
     resumeHistory();
     this.resetDrag();
@@ -564,6 +876,24 @@ export class PathEditor {
       commitHistory('pen-point');
       this.penPlacement = null;
       this.clearActiveSnapGuides();
+      return;
+    }
+
+    if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
+      this.commitShapePlacement(e);
+      return;
+    }
+
+    if (
+      this.selectionTransformPlacement &&
+      e.pointerId === this.selectionTransformPlacement.pointerId
+    ) {
+      this.commitSelectionTransform(e);
+      return;
+    }
+
+    if (this.pointMarqueePlacement && e.pointerId === this.pointMarqueePlacement.pointerId) {
+      this.commitPointMarquee(e);
       return;
     }
 
@@ -757,9 +1087,42 @@ export class PathEditor {
       });
     });
 
-    // Avoid selecting a far-away point when user clicks empty area on the path fill.
-    if (!nearest || nearest.distSq > 2.25) return null;
-    return nearest.key;
+    const hitRadius = this.svgUnitsPerScreenPx() * POINT_HIT_RADIUS_PX;
+    const nearestPoint = nearest;
+    if (!nearestPoint || nearestPoint.distSq > hitRadius * hitRadius) return null;
+    return nearestPoint.key;
+  }
+
+  private collectPointsInMarquee(
+    layerId: string,
+    marquee: { minX: number; minY: number; maxX: number; maxY: number },
+  ): string[] {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) return [];
+
+    const d = state.project?.icons[iconId].states[stateId].layers[layerId]?.path?.d;
+    if (!d || !isPathDirectlyEditable(d)) return [];
+
+    const editable = parseSvgPath(d);
+    const hitRadius = this.svgUnitsPerScreenPx() * POINT_HIT_RADIUS_PX;
+    const matches: string[] = [];
+
+    editable.subPaths.forEach((subPath, subPathIndex) => {
+      subPath.points.forEach((point, pointIndex) => {
+        if (
+          point.position.x + hitRadius >= marquee.minX &&
+          point.position.x - hitRadius <= marquee.maxX &&
+          point.position.y + hitRadius >= marquee.minY &&
+          point.position.y - hitRadius <= marquee.maxY
+        ) {
+          matches.push(`${subPathIndex}:${pointIndex}`);
+        }
+      });
+    });
+
+    return matches;
   }
 
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
@@ -844,6 +1207,10 @@ export class PathEditor {
       editorStore.getState().setActiveSnapGuides(result.guides);
     }
     return result;
+  }
+
+  private snapPointToGrid(point: { x: number; y: number }) {
+    return this.computeSnappedPoint(point);
   }
 
   private clearActiveSnapGuides() {
@@ -969,6 +1336,7 @@ export class PathEditor {
 
   private resetDrag() {
     this.clearActiveSnapGuides();
+    editorStore.getState().setPointMarquee(null);
     this.isDragging = false;
     this.dragMode = null;
     this.dragLayerId = null;
@@ -976,10 +1344,634 @@ export class PathEditor {
     this.dragControlDirection = null;
     this.originalTransform = null;
     this.originalPathD = null;
+    this.shapePlacement = null;
+    this.pointMarqueePlacement = null;
+    this.selectionTransformPlacement = null;
   }
 
   destroy() {
     this.clearActiveSnapGuides();
     this.cleanup?.();
   }
+
+  private createShapeLayer(start: { x: number; y: number }): string | null {
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId || !state.project) return null;
+
+    const icon = state.project.icons[iconId];
+    const currentState = icon?.states[stateId];
+    if (!icon || !currentState) return null;
+
+    const ids = Object.keys(currentState.layers);
+    let index = 1;
+    let nextLayerId = `shape-${index}`;
+    while (ids.includes(nextLayerId)) {
+      index += 1;
+      nextLayerId = `shape-${index}`;
+    }
+
+    const initialPath = buildShapePathFromDrag({
+      shapeType: state.shapeSubTool,
+      start,
+      current: start,
+      shiftKey: false,
+      altKey: false,
+      polygonSides: state.shapePolygonSides,
+      starPoints: state.shapeStarPoints,
+    }).d;
+
+    pauseHistory();
+    editorStore.setState((s) => {
+      if (!s.project) return s;
+      const currentIcon = s.project.icons[iconId];
+      const currentIconState = currentIcon?.states[stateId];
+      if (!currentIcon || !currentIconState) return s;
+
+      return {
+        project: {
+          ...s.project,
+          icons: {
+            ...s.project.icons,
+            [iconId]: {
+              ...currentIcon,
+              states: {
+                ...currentIcon.states,
+                [stateId]: {
+                  ...currentIconState,
+                  layers: {
+                    ...currentIconState.layers,
+                    [nextLayerId]: {
+                      id: nextLayerId,
+                      role: 'primary',
+                      visible: true,
+                      path: { d: initialPath },
+                      style: {
+                        fill: { mode: 'fixed', value: 'none' },
+                        stroke: { mode: 'currentColor' },
+                        strokeWidth: 2,
+                        lineCap: 'round',
+                        lineJoin: 'round',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
+    });
+
+    return nextLayerId;
+  }
+
+  private buildShapePreview(start: { x: number; y: number }, e: PointerEvent) {
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+
+    const current = this.snapPointToGrid(svgPoint);
+    const state = editorStore.getState();
+
+    return buildShapePathFromDrag({
+      shapeType: state.shapeSubTool,
+      start,
+      current,
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
+      polygonSides: state.shapePolygonSides,
+      starPoints: state.shapeStarPoints,
+    });
+  }
+
+  private commitShapePlacement(e: PointerEvent) {
+    if (!this.shapePlacement) return;
+
+    const preview = this.buildShapePreview(this.shapePlacement.start, e);
+    if (!preview || preview.isEmpty) {
+      this.cancelShapePlacement();
+      return;
+    }
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) {
+      this.cancelShapePlacement();
+      return;
+    }
+
+    state.patchLayer(iconId, stateId, this.shapePlacement.layerId, {
+      path: { d: preview.d },
+    });
+
+    resumeHistory();
+    commitHistory('shape-draw');
+    this.resetDrag();
+  }
+
+  private cancelShapePlacement() {
+    const previousSelection = this.shapePlacement?.previousSelection ?? {
+      layerIds: [],
+      pointIds: [],
+    };
+
+    discardHistory();
+    editorStore.getState().setSelection(previousSelection);
+    this.resetDrag();
+  }
+
+  private commitSelectionTransform(e: PointerEvent) {
+    if (!this.selectionTransformPlacement || !this.dragLayerId) return;
+
+    const preview = this.buildSelectionTransformPreview(e);
+    if (!preview) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) {
+      discardHistory();
+      state.setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      path: { d: preview.d },
+    });
+    state.setPointTransformLabel(null);
+    resumeHistory();
+    commitHistory(
+      this.selectionTransformPlacement.mode === 'move'
+        ? 'point-group-move'
+        : 'point-group-resize',
+    );
+    this.resetDrag();
+  }
+
+  private commitPointMarquee(e: PointerEvent) {
+    const placement = this.pointMarqueePlacement;
+    if (!placement) return;
+
+    const moved =
+      Math.abs(e.clientX - this.dragStartX) > MARQUEE_DRAG_THRESHOLD_PX ||
+      Math.abs(e.clientY - this.dragStartY) > MARQUEE_DRAG_THRESHOLD_PX;
+
+    const state = editorStore.getState();
+    if (!moved) {
+      if (placement.clickLayerId) {
+        const nearestPointKey = this.findNearestPointKey(
+          placement.clickLayerId,
+          e.clientX,
+          e.clientY,
+        );
+        if (nearestPointKey) {
+          state.setSelection({
+            layerIds: [placement.clickLayerId],
+            pointIds: [nearestPointKey],
+          });
+        } else {
+          state.setSelection({
+            layerIds: [placement.layerId],
+            pointIds: [],
+          });
+        }
+      } else {
+        state.clearSelection();
+      }
+    }
+
+    this.resetDrag();
+  }
+
+  private buildSelectionTransformPreview(
+    e: PointerEvent,
+  ): { d: string; label: { width: number; height: number } } | null {
+    const placement = this.selectionTransformPlacement;
+    if (!placement) return null;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+    const current = this.snapPointToGrid(svgPoint);
+    const editable = parseSvgPath(placement.basePathD);
+    const resolvedPoints = placement.pointKeys
+      .map((key) => {
+        const point = this.resolvePoint(editable, key);
+        if (!point) return null;
+        return { key, point };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+    if (resolvedPoints.length === 0) return null;
+
+    if (placement.mode === 'move') {
+      const dx = current.x - placement.start.x;
+      const dy = current.y - placement.start.y;
+      resolvedPoints.forEach(({ point }) => {
+        translatePathPoint(point, dx, dy);
+      });
+      return {
+        d: serializePath(editable),
+        label: {
+          width: placement.bounds.maxX - placement.bounds.minX,
+          height: placement.bounds.maxY - placement.bounds.minY,
+        },
+      };
+    }
+
+    const nextBounds = computeResizedBounds(
+      placement.bounds,
+      placement.handle ?? 'se',
+      current,
+      e.shiftKey,
+      e.altKey,
+    );
+    const scaleX = (nextBounds.maxX - nextBounds.minX) / Math.max(
+      placement.bounds.maxX - placement.bounds.minX,
+      SHAPE_EMPTY_EPSILON,
+    );
+    const scaleY = (nextBounds.maxY - nextBounds.minY) / Math.max(
+      placement.bounds.maxY - placement.bounds.minY,
+      SHAPE_EMPTY_EPSILON,
+    );
+
+    resolvedPoints.forEach(({ point }) => {
+      const originalPosition = { ...point.position };
+      const nextPosition = mapPointIntoBounds(point.position, placement.bounds, nextBounds);
+      point.position.x = nextPosition.x;
+      point.position.y = nextPosition.y;
+
+      if (point.handleIn) {
+        point.handleIn = scaleHandleRelativeToPoint(point.handleIn, originalPosition, nextPosition, scaleX, scaleY);
+      }
+      if (point.handleOut) {
+        point.handleOut = scaleHandleRelativeToPoint(point.handleOut, originalPosition, nextPosition, scaleX, scaleY);
+      }
+    });
+
+    return {
+      d: serializePath(editable),
+      label: {
+        width: nextBounds.maxX - nextBounds.minX,
+        height: nextBounds.maxY - nextBounds.minY,
+      },
+    };
+  }
+
+  private hitTestSelectionBounds(
+    point: { x: number; y: number },
+    bbox: SelectionBounds,
+  ): { type: 'move'; handle: null } | { type: 'resize'; handle: BBoxHandle } | null {
+    const svgPadding = this.svgUnitsPerScreenPx() * BBOX_HIT_PADDING_PX;
+    const handlePositions = getSelectionHandlePositions(bbox);
+
+    for (const [handle, position] of Object.entries(handlePositions) as Array<
+      [BBoxHandle, { x: number; y: number }]
+    >) {
+      if (
+        Math.abs(point.x - position.x) <= svgPadding &&
+        Math.abs(point.y - position.y) <= svgPadding
+      ) {
+        return { type: 'resize', handle };
+      }
+    }
+
+    if (
+      point.x >= bbox.minX &&
+      point.x <= bbox.maxX &&
+      point.y >= bbox.minY &&
+      point.y <= bbox.maxY
+    ) {
+      return { type: 'move', handle: null };
+    }
+
+    return null;
+  }
+}
+
+export function buildShapePathFromDrag(input: {
+  shapeType: ShapeType;
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  shiftKey: boolean;
+  altKey: boolean;
+  polygonSides: number;
+  starPoints: number;
+}): { d: string; isEmpty: boolean } {
+  const { shapeType, start, current, shiftKey, altKey, polygonSides, starPoints } = input;
+  const dx = current.x - start.x;
+  const dy = current.y - start.y;
+
+  if (shapeType === 'line') {
+    const constrained = shiftKey ? constrainEqualDelta(dx, dy) : { dx, dy };
+    const startPoint = altKey
+      ? {
+          x: start.x - constrained.dx,
+          y: start.y - constrained.dy,
+        }
+      : start;
+    const endPoint = altKey
+      ? {
+          x: start.x + constrained.dx,
+          y: start.y + constrained.dy,
+        }
+      : {
+          x: start.x + constrained.dx,
+          y: start.y + constrained.dy,
+        };
+
+    return {
+      d: createLinePath(startPoint.x, startPoint.y, endPoint.x, endPoint.y),
+      isEmpty:
+        Math.abs(constrained.dx) <= SHAPE_EMPTY_EPSILON &&
+        Math.abs(constrained.dy) <= SHAPE_EMPTY_EPSILON,
+    };
+  }
+
+  const box = resolveDragBox(start, current, shiftKey, altKey);
+  const centerX = box.x + box.width / 2;
+  const centerY = box.y + box.height / 2;
+
+  switch (shapeType) {
+    case 'rectangle':
+      return {
+        d: createRectPath(box.x, box.y, box.width, box.height),
+        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+      };
+    case 'ellipse':
+      return {
+        d: createEllipsePath(centerX, centerY, box.width / 2, box.height / 2),
+        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+      };
+    case 'polygon': {
+      const radius = Math.min(box.width, box.height) / 2;
+      return {
+        d: createPolygonPath(centerX, centerY, radius, polygonSides),
+        isEmpty: radius <= SHAPE_EMPTY_EPSILON,
+      };
+    }
+    case 'star': {
+      const outerRadius = Math.min(box.width, box.height) / 2;
+      return {
+        d: createStarPath(centerX, centerY, outerRadius, outerRadius / 2, starPoints),
+        isEmpty: outerRadius <= SHAPE_EMPTY_EPSILON,
+      };
+    }
+  }
+}
+
+function resolveDragBox(
+  start: { x: number; y: number },
+  current: { x: number; y: number },
+  shiftKey: boolean,
+  altKey: boolean,
+) {
+  const rawDx = current.x - start.x;
+  const rawDy = current.y - start.y;
+
+  if (altKey) {
+    let halfWidth = Math.abs(rawDx);
+    let halfHeight = Math.abs(rawDy);
+
+    if (shiftKey) {
+      const size = Math.max(halfWidth, halfHeight);
+      halfWidth = size;
+      halfHeight = size;
+    }
+
+    return {
+      x: start.x - halfWidth,
+      y: start.y - halfHeight,
+      width: halfWidth * 2,
+      height: halfHeight * 2,
+    };
+  }
+
+  const constrained = shiftKey ? constrainEqualDelta(rawDx, rawDy) : { dx: rawDx, dy: rawDy };
+  const endX = start.x + constrained.dx;
+  const endY = start.y + constrained.dy;
+
+  return {
+    x: Math.min(start.x, endX),
+    y: Math.min(start.y, endY),
+    width: Math.abs(constrained.dx),
+    height: Math.abs(constrained.dy),
+  };
+}
+
+function constrainEqualDelta(dx: number, dy: number) {
+  const size = Math.max(Math.abs(dx), Math.abs(dy));
+  return {
+    dx: resolveSignedLength(dx, dy, size),
+    dy: resolveSignedLength(dy, dx, size),
+  };
+}
+
+function resolveSignedLength(primary: number, secondary: number, length: number): number {
+  if (length <= SHAPE_EMPTY_EPSILON) return 0;
+  if (primary > 0) return length;
+  if (primary < 0) return -length;
+  if (secondary > 0) return length;
+  if (secondary < 0) return -length;
+  return length;
+}
+
+function translatePathPoint(point: PathPoint, dx: number, dy: number): void {
+  point.position.x += dx;
+  point.position.y += dy;
+  if (point.handleIn) {
+    point.handleIn.x += dx;
+    point.handleIn.y += dy;
+  }
+  if (point.handleOut) {
+    point.handleOut.x += dx;
+    point.handleOut.y += dy;
+  }
+}
+
+function normalizeBounds(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): SelectionBounds {
+  return {
+    minX: Math.min(a.x, b.x),
+    minY: Math.min(a.y, b.y),
+    maxX: Math.max(a.x, b.x),
+    maxY: Math.max(a.y, b.y),
+  };
+}
+
+function uniquePointKeys(pointIds: string[]): string[] {
+  return Array.from(
+    new Set(
+      pointIds.map((pointId) => pointId.split('@')[0] ?? pointId).filter(Boolean),
+    ),
+  );
+}
+
+function getSelectionHandlePositions(bounds: SelectionBounds): Record<BBoxHandle, { x: number; y: number }> {
+  const midX = (bounds.minX + bounds.maxX) / 2;
+  const midY = (bounds.minY + bounds.maxY) / 2;
+  return {
+    nw: { x: bounds.minX, y: bounds.minY },
+    n: { x: midX, y: bounds.minY },
+    ne: { x: bounds.maxX, y: bounds.minY },
+    e: { x: bounds.maxX, y: midY },
+    se: { x: bounds.maxX, y: bounds.maxY },
+    s: { x: midX, y: bounds.maxY },
+    sw: { x: bounds.minX, y: bounds.maxY },
+    w: { x: bounds.minX, y: midY },
+  };
+}
+
+function computeResizedBounds(
+  bounds: SelectionBounds,
+  handle: BBoxHandle,
+  current: { x: number; y: number },
+  preserveAspect: boolean,
+  resizeFromCenter: boolean,
+): SelectionBounds {
+  const center = {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  };
+  const edges = getHandleEdges(handle);
+  const originalWidth = Math.max(bounds.maxX - bounds.minX, SHAPE_EMPTY_EPSILON);
+  const originalHeight = Math.max(bounds.maxY - bounds.minY, SHAPE_EMPTY_EPSILON);
+  const aspectRatio = originalWidth / originalHeight;
+
+  let minX = bounds.minX;
+  let maxX = bounds.maxX;
+  let minY = bounds.minY;
+  let maxY = bounds.maxY;
+
+  if (resizeFromCenter) {
+    if (edges.left || edges.right) {
+      const halfWidth = Math.max(Math.abs(current.x - center.x), SHAPE_EMPTY_EPSILON / 2);
+      minX = center.x - halfWidth;
+      maxX = center.x + halfWidth;
+    }
+    if (edges.top || edges.bottom) {
+      const halfHeight = Math.max(Math.abs(current.y - center.y), SHAPE_EMPTY_EPSILON / 2);
+      minY = center.y - halfHeight;
+      maxY = center.y + halfHeight;
+    }
+  } else {
+    if (edges.left) minX = Math.min(current.x, bounds.maxX - SHAPE_EMPTY_EPSILON);
+    if (edges.right) maxX = Math.max(current.x, bounds.minX + SHAPE_EMPTY_EPSILON);
+    if (edges.top) minY = Math.min(current.y, bounds.maxY - SHAPE_EMPTY_EPSILON);
+    if (edges.bottom) maxY = Math.max(current.y, bounds.minY + SHAPE_EMPTY_EPSILON);
+  }
+
+  if (preserveAspect) {
+    ({ minX, minY, maxX, maxY } = applyAspectRatioToBounds({
+      bounds,
+      current: { minX, minY, maxX, maxY },
+      center,
+      edges,
+      aspectRatio,
+      resizeFromCenter,
+    }));
+  }
+
+  return { minX, minY, maxX, maxY };
+}
+
+function getHandleEdges(handle: BBoxHandle) {
+  return {
+    left: handle.includes('w'),
+    right: handle.includes('e'),
+    top: handle.includes('n'),
+    bottom: handle.includes('s'),
+  };
+}
+
+function applyAspectRatioToBounds(input: {
+  bounds: SelectionBounds;
+  current: SelectionBounds;
+  center: { x: number; y: number };
+  edges: ReturnType<typeof getHandleEdges>;
+  aspectRatio: number;
+  resizeFromCenter: boolean;
+}): SelectionBounds {
+  const { bounds, current, center, edges, aspectRatio, resizeFromCenter } = input;
+  let width = Math.max(current.maxX - current.minX, SHAPE_EMPTY_EPSILON);
+  let height = Math.max(current.maxY - current.minY, SHAPE_EMPTY_EPSILON);
+
+  if ((edges.left || edges.right) && !(edges.top || edges.bottom)) {
+    height = width / aspectRatio;
+  } else if ((edges.top || edges.bottom) && !(edges.left || edges.right)) {
+    width = height * aspectRatio;
+  } else {
+    const widthRatio = width / Math.max(bounds.maxX - bounds.minX, SHAPE_EMPTY_EPSILON);
+    const heightRatio = height / Math.max(bounds.maxY - bounds.minY, SHAPE_EMPTY_EPSILON);
+    if (widthRatio >= heightRatio) {
+      height = width / aspectRatio;
+    } else {
+      width = height * aspectRatio;
+    }
+  }
+
+  if (resizeFromCenter) {
+    return {
+      minX: center.x - width / 2,
+      maxX: center.x + width / 2,
+      minY: center.y - height / 2,
+      maxY: center.y + height / 2,
+    };
+  }
+
+  const anchorX = edges.left ? bounds.maxX : edges.right ? bounds.minX : center.x;
+  const anchorY = edges.top ? bounds.maxY : edges.bottom ? bounds.minY : center.y;
+
+  return {
+    minX: edges.left ? anchorX - width : edges.right ? anchorX : anchorX - width / 2,
+    maxX: edges.left ? anchorX : edges.right ? anchorX + width : anchorX + width / 2,
+    minY: edges.top ? anchorY - height : edges.bottom ? anchorY : anchorY - height / 2,
+    maxY: edges.top ? anchorY : edges.bottom ? anchorY + height : anchorY + height / 2,
+  };
+}
+
+export function mapPointIntoBounds(
+  point: { x: number; y: number },
+  oldBounds: SelectionBounds,
+  newBounds: SelectionBounds,
+) {
+  return {
+    x: remapAxis(point.x, oldBounds.minX, oldBounds.maxX, newBounds.minX, newBounds.maxX),
+    y: remapAxis(point.y, oldBounds.minY, oldBounds.maxY, newBounds.minY, newBounds.maxY),
+  };
+}
+
+function remapAxis(
+  value: number,
+  oldMin: number,
+  oldMax: number,
+  newMin: number,
+  newMax: number,
+) {
+  const oldSize = oldMax - oldMin;
+  if (Math.abs(oldSize) <= SHAPE_EMPTY_EPSILON) {
+    return (newMin + newMax) / 2;
+  }
+  return newMin + ((value - oldMin) / oldSize) * (newMax - newMin);
+}
+
+function scaleHandleRelativeToPoint(
+  handle: { x: number; y: number },
+  oldPoint: { x: number; y: number },
+  newPoint: { x: number; y: number },
+  scaleX: number,
+  scaleY: number,
+) {
+  return {
+    x: newPoint.x + (handle.x - oldPoint.x) * scaleX,
+    y: newPoint.y + (handle.y - oldPoint.y) * scaleY,
+  };
 }

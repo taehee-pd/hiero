@@ -1,14 +1,32 @@
 'use client';
 
-import { Magnet, MousePointer2, Move, Pen, Square, Ruler } from 'lucide-react';
+import { useState } from 'react';
+import {
+  ChevronDown,
+  Circle,
+  Magnet,
+  Minus,
+  MousePointer2,
+  Move,
+  Pen,
+  Pentagon,
+  Ruler,
+  Square,
+  Star,
+} from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/kibo-ui/tooltip';
 import { useEditorStore, useTool, useEditorActions } from '@/lib/editor-store/hooks';
-import type { Tool } from '@/lib/editor-store/types';
+import type { ShapeType, Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
 
 const TOOLS: Array<{
@@ -25,10 +43,28 @@ const TOOLS: Array<{
   { id: 'guide', icon: Ruler, label: 'Guide', shortcut: 'G', disabled: true },
 ];
 
+export const SHAPE_SUB_TOOLS: Array<{
+  id: ShapeType;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}> = [
+  { id: 'rectangle', icon: Square, label: 'Rectangle' },
+  { id: 'ellipse', icon: Circle, label: 'Ellipse' },
+  { id: 'polygon', icon: Pentagon, label: 'Polygon' },
+  { id: 'star', icon: Star, label: 'Star' },
+  { id: 'line', icon: Minus, label: 'Line' },
+];
+
+export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
+  return SHAPE_SUB_TOOLS.find((shape) => shape.id === shapeSubTool)?.label ?? 'Shape';
+}
+
 export function ToolPanel() {
   const activeTool = useTool();
+  const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
-  const { setTool, toggleSnap } = useEditorActions();
+  const { setShapeSubTool, setTool, toggleSnap } = useEditorActions();
+  const [shapePickerOpen, setShapePickerOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col gap-2">
@@ -38,35 +74,97 @@ export function ToolPanel() {
       <div className="grid gap-1">
         {TOOLS.map((tool) => {
           const isActive = activeTool === tool.id;
+          const isShapeTool = tool.id === 'shape';
+          const tooltipLabel =
+            isShapeTool && isActive
+              ? `Shape: ${getShapeSubToolLabel(shapeSubTool)}`
+              : tool.label;
 
           return (
-            <Tooltip key={tool.id}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    if (!tool.disabled) setTool(tool.id);
-                  }}
-                  disabled={tool.disabled}
-                  data-active={isActive ? 'true' : 'false'}
-                  className={cn(
-                    'workspace-nav-button h-10 rounded-md px-3 py-2',
-                    tool.disabled && 'opacity-50',
-                  )}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="workspace-tool-button flex size-7 items-center justify-center rounded-md">
-                      <tool.icon className="size-4" />
+            <div
+              key={tool.id}
+              className={cn('flex items-center', isShapeTool && isActive && 'gap-1')}
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      if (!tool.disabled) setTool(tool.id);
+                    }}
+                    disabled={tool.disabled}
+                    aria-label={tooltipLabel}
+                    aria-pressed={isActive}
+                    data-active={isActive ? 'true' : 'false'}
+                    className={cn(
+                      'workspace-nav-button h-10 rounded-md px-3 py-2',
+                      isShapeTool && isActive && 'rounded-r-sm',
+                      tool.disabled && 'opacity-50',
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="workspace-tool-button flex size-7 items-center justify-center rounded-md">
+                        <tool.icon className="size-4" />
+                      </span>
+                      <span className="text-sm font-medium text-foreground">{tool.label}</span>
                     </span>
-                    <span className="text-sm font-medium text-foreground">{tool.label}</span>
-                  </span>
-                  <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
-                    {tool.shortcut}
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{tool.label}</TooltipContent>
-            </Tooltip>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                      {tool.shortcut}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {tooltipLabel}
+                  {tool.disabled ? (
+                    <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
+                  ) : null}
+                </TooltipContent>
+              </Tooltip>
+
+              {isShapeTool && isActive ? (
+                <Popover open={shapePickerOpen} onOpenChange={setShapePickerOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Choose shape type: ${getShapeSubToolLabel(shapeSubTool)}`}
+                          className="h-10 w-8 rounded-l-sm rounded-r-md border border-border bg-background px-0 hover:bg-accent/40"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Choose shape</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent side="right" align="start" className="w-44 p-2">
+                    <div className="grid gap-1">
+                      {SHAPE_SUB_TOOLS.map((shape) => {
+                        const isSelected = shape.id === shapeSubTool;
+                        return (
+                          <Button
+                            key={shape.id}
+                            type="button"
+                            variant={isSelected ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="justify-start"
+                            onClick={() => {
+                              setShapeSubTool(shape.id);
+                              setTool('shape');
+                              setShapePickerOpen(false);
+                            }}
+                          >
+                            <shape.icon className="size-4" />
+                            <span>{shape.label}</span>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : null}
+            </div>
           );
         })}
       </div>

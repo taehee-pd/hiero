@@ -1,28 +1,42 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import {
   LoaderCircle,
-  Minus,
-  Shapes,
-  SplitSquareHorizontal,
-  Squircle,
+  AlignCenterHorizontal,
+  AlignCenterVertical,
   AlignHorizontalJustifyCenter,
   AlignHorizontalJustifyEnd,
   AlignHorizontalJustifyStart,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignStartHorizontal,
+  AlignStartVertical,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
   AlignVerticalJustifyStart,
   BetweenHorizontalStart,
   BetweenVerticalStart,
+  Minus,
+  Shapes,
+  SplitSquareHorizontal,
+  Squircle,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
+import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { alignLayers, distributeLayers } from '@/lib/editor-core';
 import {
+  alignLayers,
+  alignSelectedPoints,
+  distributeLayers,
+  distributeSelectedPoints,
+  setSelectedPointType,
+} from '@/lib/editor-core';
+import {
+  useEditorActions,
   useEditorStore,
   useSelection,
 } from '@/lib/editor-store/hooks';
@@ -30,6 +44,7 @@ import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { Layer, PaintRef } from '@/lib/schema/types';
+import type { NodeType, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 import { cn } from '@/lib/utils';
 
@@ -58,8 +73,37 @@ const DISTRIBUTE_ACTIONS = [
   { label: 'Distribute vertically', mode: 'vertical', icon: BetweenVerticalStart },
 ] as const;
 
+const POINT_ALIGN_ACTIONS = [
+  { label: 'Align points left', axis: 'x', anchor: 'min', icon: AlignStartVertical },
+  { label: 'Align points center horizontally', axis: 'x', anchor: 'center', icon: AlignCenterVertical },
+  { label: 'Align points right', axis: 'x', anchor: 'max', icon: AlignEndVertical },
+  { label: 'Align points top', axis: 'y', anchor: 'min', icon: AlignStartHorizontal },
+  { label: 'Align points center vertically', axis: 'y', anchor: 'center', icon: AlignCenterHorizontal },
+  { label: 'Align points bottom', axis: 'y', anchor: 'max', icon: AlignEndHorizontal },
+] as const;
+
+const POINT_DISTRIBUTE_ACTIONS = [
+  { label: 'Distribute points horizontally', axis: 'x', rotate: '' },
+  { label: 'Distribute points vertically', axis: 'y', rotate: 'rotate-90' },
+] as const;
+
+const NODE_TYPE_OPTIONS = [
+  { value: 'corner', label: 'Corner', glyph: '∟' },
+  { value: 'smooth', label: 'Smooth', glyph: '∿' },
+  { value: 'symmetric', label: 'Symmetric', glyph: '⇄' },
+] as const;
+
 export function InspectorPanel() {
+  const tool = useEditorStore((s) => s.tool);
+  const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
+  const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
+  const shapeStarPoints = useEditorStore((s) => s.shapeStarPoints);
   const selection = useSelection();
+  const {
+    setShapePolygonSides,
+    setShapeStarPoints,
+    setShapeSubTool,
+  } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -74,7 +118,15 @@ export function InspectorPanel() {
     currentState && selectedLayerId
       ? currentState.layers[selectedLayerId] ?? null
       : null;
+  const pointContext = layer
+    ? getSelectedPointContext(layer, selection.pointIds)
+    : getSelectedPointContext(null, []);
   const multipleLayersSelected = selection.layerIds.length > 1;
+  const enoughLayersToDistribute = selection.layerIds.length > 2;
+  const showShapeToolSettings = tool === 'shape';
+  const canAlignPoints = pointContext.count >= 2;
+  const canDistributePoints = pointContext.count >= 3;
+  const hasSinglePointSelection = pointContext.count === 1;
   const hasBooleanableSelection = Boolean(
     currentState &&
       multipleLayersSelected &&
@@ -104,48 +156,78 @@ export function InspectorPanel() {
     [applyBoolean, booleanDisabled],
   );
 
-  if (!layer) {
+  if (!layer && !showShapeToolSettings) {
     return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="workspace-panel-header px-4 py-3">
-          <p className="text-sm font-medium text-foreground">Inspector</p>
+      <div className="flex h-full flex-col bg-transparent">
+        <div className="px-4 pt-3 pb-2">
+          <span className="text-sm font-semibold">Inspect</span>
         </div>
-        <div className="flex flex-1 items-center justify-center px-4 py-6">
-          <div className="workspace-empty-state w-full rounded-md px-4 py-6 text-center text-sm text-muted-foreground">
-            No selection
-          </div>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-xs text-muted-foreground">No layer</p>
         </div>
       </div>
     );
   }
 
-  const pointContext = getSelectedPointContext(layer, selection.pointIds);
-  const hasEditablePath = Boolean(layer.path?.d && isPathDirectlyEditable(layer.path.d));
-  const pathPreview = layer.path?.d
-    ? layer.path.d.length > 84
-      ? `${layer.path.d.slice(0, 84)}...`
-      : layer.path.d
-    : 'No path';
-  const enoughLayersToDistribute = selection.layerIds.length > 2;
-
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="workspace-panel-header px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{layer.role ?? 'layer'}</p>
-          </div>
-          <span className="text-xs text-muted-foreground">{selection.layerIds.length} selected</span>
-        </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <InspectorStat label="Path" value={layer.path ? 'Ready' : 'Missing'} />
-          <InspectorStat label="Points" value={pointContext.count.toString().padStart(2, '0')} />
-          <InspectorStat label="Mode" value={hasEditablePath ? 'Edit' : 'Mixed'} />
-        </div>
+    <div className="flex h-full flex-col bg-transparent">
+      <div className="px-4 pt-3 pb-2">
+        <span className="text-sm font-semibold">Inspect</span>
       </div>
-      <ScrollArea className="workspace-scroll min-h-0 flex-1">
-        <div className="flex flex-col gap-3 px-4 py-4">
+      <ScrollArea className="flex-1">
+        <div className="flex flex-col gap-4 px-4 pb-4">
+          {showShapeToolSettings && (
+            <>
+              <Section title="Shape Tool">
+                <SelectField
+                  label="Type"
+                  value={shapeSubTool}
+                  options={[
+                    ['rectangle', 'Rectangle'],
+                    ['ellipse', 'Ellipse'],
+                    ['polygon', 'Polygon'],
+                    ['star', 'Star'],
+                    ['line', 'Line'],
+                  ]}
+                  onChange={(value) => setShapeSubTool(value as typeof shapeSubTool)}
+                />
+                {shapeSubTool === 'polygon' && (
+                  <NumberField
+                    label="Sides"
+                    value={shapePolygonSides}
+                    min={3}
+                    step={1}
+                    onChange={setShapePolygonSides}
+                  />
+                )}
+                {shapeSubTool === 'star' && (
+                  <NumberField
+                    label="Points"
+                    value={shapeStarPoints}
+                    min={2}
+                    step={1}
+                    onChange={setShapeStarPoints}
+                  />
+                )}
+                {!layer && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Drag on the canvas to place a new {shapeSubTool}.
+                  </p>
+                )}
+              </Section>
+              {layer && <Separator />}
+            </>
+          )}
+
+          {!layer ? null : (
+            <>
+          <Section title="Layer">
+            <ReadOnlyField label="ID" value={layer.id} />
+            <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
+          </Section>
+
+          <Separator />
+
           <Section title="Boolean">
             <div className="grid grid-cols-2 gap-2">
               {BOOLEAN_ACTIONS.map(({ mode, label, icon: Icon }) => {
@@ -169,8 +251,12 @@ export function InspectorPanel() {
                         <Icon className="size-4" />
                       )}
                       <span className="flex flex-col items-start leading-none">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">{label}</span>
-                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">{isPending ? 'Applying...' : ''}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                          {label}
+                        </span>
+                        <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                          {isPending ? 'Applying...' : ''}
+                        </span>
                       </span>
                     </span>
                   </Button>
@@ -182,55 +268,64 @@ export function InspectorPanel() {
             ) : null}
           </Section>
 
-          {multipleLayersSelected ? (
-            <Section title="Align">
-              <div className="grid grid-cols-3 gap-2">
-                {ALIGN_ACTIONS.map((action) => (
-                  <IconActionButton
-                    key={action.mode}
-                    label={action.label}
-                    onClick={() =>
-                      alignLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
-                    }
-                  >
-                    <action.icon className="size-4" />
-                  </IconActionButton>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {DISTRIBUTE_ACTIONS.map((action) => (
-                  <IconActionButton
-                    key={action.mode}
-                    label={action.label}
-                    disabled={!enoughLayersToDistribute}
-                    onClick={() =>
-                      distributeLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
-                    }
-                  >
-                    <action.icon className="size-4" />
-                  </IconActionButton>
-                ))}
-              </div>
-              {!enoughLayersToDistribute ? (
-                <p className="text-[11px] text-muted-foreground">Distribute requires 3+ layers.</p>
-              ) : null}
-            </Section>
-          ) : null}
-          
-          <Section title="Layer">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ReadOnlyField label="ID" value={layer.id} />
-              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
-            </div>
-          </Section>
+          <Separator />
+
+          {multipleLayersSelected && (
+            <>
+              <Section title="Align">
+                <div className="grid grid-cols-3 gap-1">
+                  {ALIGN_ACTIONS.map((action) => (
+                    <IconActionButton
+                      key={action.mode}
+                      label={action.label}
+                      onClick={() =>
+                        alignLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                      }
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {DISTRIBUTE_ACTIONS.map((action) => (
+                    <IconActionButton
+                      key={action.mode}
+                      label={action.label}
+                      disabled={!enoughLayersToDistribute}
+                      onClick={() =>
+                        distributeLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                      }
+                    >
+                      <action.icon className="size-4" />
+                    </IconActionButton>
+                  ))}
+                </div>
+                {!enoughLayersToDistribute && (
+                  <p className="text-[11px] text-muted-foreground">Distribute requires 3+ layers</p>
+                )}
+              </Section>
+              <Separator />
+            </>
+          )}
 
           {layer.path && (
-            <Section title="Path">
-              <ReadOnlyField label="Path Data" value={pathPreview} mono />
-              {layer.path.fillRule && (
-                <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
-              )}
-            </Section>
+            <>
+              <Section title="Path">
+                <ReadOnlyField
+                  label="d"
+                  value={
+                    layer.path.d.length > 60
+                      ? layer.path.d.slice(0, 60) + '...'
+                      : layer.path.d
+                  }
+                  mono
+                />
+                {layer.path.fillRule && (
+                  <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
+                )}
+              </Section>
+              <Separator />
+            </>
           )}
 
           <Section title="Style">
@@ -255,221 +350,290 @@ export function InspectorPanel() {
                 })
               }
             />
-            <div className="grid gap-2 sm:grid-cols-2">
-              <NumberField
-                label="Stroke Width"
-                value={layer.style.strokeWidth}
-                onChange={(v) =>
-                  patchStyle(currentIconId, currentStateId, layer.id, {
-                    strokeWidth: v,
-                  })
-                }
-              />
-              <SelectField
-                label="Line Cap"
-                value={layer.style.lineCap ?? 'butt'}
-                options={[
-                  ['butt', 'Butt'],
-                  ['round', 'Round'],
-                  ['square', 'Square'],
-                ]}
-                onChange={(value) =>
-                  patchStyle(currentIconId, currentStateId, layer.id, {
-                    lineCap: value as Layer['style']['lineCap'],
-                  })
-                }
-              />
-              <SelectField
-                label="Line Join"
-                value={layer.style.lineJoin ?? 'miter'}
-                options={[
-                  ['miter', 'Miter'],
-                  ['round', 'Round'],
-                  ['bevel', 'Bevel'],
-                ]}
-                onChange={(value) =>
-                  patchStyle(currentIconId, currentStateId, layer.id, {
-                    lineJoin: value as Layer['style']['lineJoin'],
-                  })
-                }
-              />
-              <NumberField
-                label="Fill Opacity"
-                value={layer.style.fillOpacity}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(v) =>
-                  patchStyle(currentIconId, currentStateId, layer.id, {
-                    fillOpacity: v,
-                  })
-                }
-              />
-              <NumberField
-                label="Stroke Opacity"
-                value={layer.style.strokeOpacity}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(v) =>
-                  patchStyle(currentIconId, currentStateId, layer.id, {
-                    strokeOpacity: v,
-                  })
-                }
-              />
-            </div>
+            <NumberField
+              label="Stroke Width"
+              value={layer.style.strokeWidth}
+              onChange={(v) =>
+                patchStyle(currentIconId, currentStateId, layer.id, {
+                  strokeWidth: v,
+                })
+              }
+            />
+            <SelectField
+              label="Line Cap"
+              value={layer.style.lineCap ?? 'butt'}
+              options={[
+                ['butt', 'Butt'],
+                ['round', 'Round'],
+                ['square', 'Square'],
+              ]}
+              onChange={(value) =>
+                patchStyle(currentIconId, currentStateId, layer.id, {
+                  lineCap: value as Layer['style']['lineCap'],
+                })
+              }
+            />
+            <SelectField
+              label="Line Join"
+              value={layer.style.lineJoin ?? 'miter'}
+              options={[
+                ['miter', 'Miter'],
+                ['round', 'Round'],
+                ['bevel', 'Bevel'],
+              ]}
+              onChange={(value) =>
+                patchStyle(currentIconId, currentStateId, layer.id, {
+                  lineJoin: value as Layer['style']['lineJoin'],
+                })
+              }
+            />
+            <NumberField
+              label="Fill Opacity"
+              value={layer.style.fillOpacity}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) =>
+                patchStyle(currentIconId, currentStateId, layer.id, {
+                  fillOpacity: v,
+                })
+              }
+            />
+            <NumberField
+              label="Stroke Opacity"
+              value={layer.style.strokeOpacity}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) =>
+                patchStyle(currentIconId, currentStateId, layer.id, {
+                  strokeOpacity: v,
+                })
+              }
+            />
           </Section>
 
-          <Section title="Points">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <ReadOnlyField label="Selected" value={String(pointContext.count)} />
-              <SelectField
-                label="Point Type"
-                value={pointContext.nodeType}
-                disabled={pointContext.count === 0}
-                options={[
-                  ['corner', 'Corner'],
-                  ['smooth', 'Smooth'],
-                  ['symmetric', 'Symmetric'],
-                ]}
-                onChange={(value) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.nodeType = value as typeof pt.nodeType;
-                    if (value === 'corner') {
-                      pt.handleIn = null;
-                      pt.handleOut = null;
-                    }
-                  })
-                }
-              />
-              <NumberField
+          <Separator />
+
+          <Section title="Vector">
+            <div className="flex items-center gap-1">
+              {POINT_ALIGN_ACTIONS.slice(0, 3).map((action) => (
+                <IconActionButton
+                  key={`${action.axis}-${action.anchor}`}
+                  label={action.label}
+                  disabled={!canAlignPoints}
+                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                >
+                  <action.icon className="size-4" />
+                </IconActionButton>
+              ))}
+              <div className="mx-1 h-6 w-px bg-border/70" />
+              {POINT_ALIGN_ACTIONS.slice(3).map((action) => (
+                <IconActionButton
+                  key={`${action.axis}-${action.anchor}`}
+                  label={action.label}
+                  disabled={!canAlignPoints}
+                  onClick={() => alignSelectedPoints(action.axis, action.anchor)}
+                >
+                  <action.icon className="size-4" />
+                </IconActionButton>
+              ))}
+              <div className="mx-1 h-6 w-px bg-border/70" />
+              {POINT_DISTRIBUTE_ACTIONS.map((action) => (
+                <IconActionButton
+                  key={action.axis}
+                  label={action.label}
+                  disabled={!canDistributePoints}
+                  onClick={() => distributeSelectedPoints(action.axis)}
+                >
+                  <Minus className={`size-4 ${action.rotate}`} />
+                </IconActionButton>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <AxisField
                 label="X"
-                value={pointContext.x}
+                value={pointContext.xMixed ? undefined : pointContext.x}
+                placeholder={pointContext.xMixed ? 'Mixed' : undefined}
                 disabled={pointContext.count === 0}
                 onChange={(v) =>
                   patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.position.x = v;
+                    translatePointPosition(pt, v - pt.position.x, 0);
                   })
                 }
               />
-              <NumberField
+              <AxisField
                 label="Y"
-                value={pointContext.y}
+                value={pointContext.yMixed ? undefined : pointContext.y}
+                placeholder={pointContext.yMixed ? 'Mixed' : undefined}
                 disabled={pointContext.count === 0}
                 onChange={(v) =>
                   patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.position.y = v;
-                  })
-                }
-              />
-              <NumberField
-                label="Radius"
-                value={pointContext.radius}
-                min={0}
-                step={0.25}
-                disabled={pointContext.count === 0}
-                onChange={(v) =>
-                  applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
-                }
-              />
-              <ReadOnlyField
-                label="Editing"
-                value={pointContext.count === 1 ? 'Single point' : pointContext.count > 1 ? 'Multi-point' : 'Inactive'}
-              />
-              <NumberField
-                label="In X"
-                value={pointContext.handleInX}
-                disabled={pointContext.count !== 1}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.handleIn = { x: v, y: pt.handleIn?.y ?? pt.position.y };
-                  })
-                }
-              />
-              <NumberField
-                label="In Y"
-                value={pointContext.handleInY}
-                disabled={pointContext.count !== 1}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.handleIn = { x: pt.handleIn?.x ?? pt.position.x, y: v };
-                  })
-                }
-              />
-              <NumberField
-                label="Out X"
-                value={pointContext.handleOutX}
-                disabled={pointContext.count !== 1}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.handleOut = { x: v, y: pt.handleOut?.y ?? pt.position.y };
-                  })
-                }
-              />
-              <NumberField
-                label="Out Y"
-                value={pointContext.handleOutY}
-                disabled={pointContext.count !== 1}
-                onChange={(v) =>
-                  patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
-                    pt.handleOut = { x: pt.handleOut?.x ?? pt.position.x, y: v };
+                    translatePointPosition(pt, 0, v - pt.position.y);
                   })
                 }
               />
             </div>
+
+            <div className="flex items-center gap-2">
+              <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+                Type
+              </Label>
+              <div className="flex flex-1 items-center gap-1">
+                {NODE_TYPE_OPTIONS.map((option) => (
+                  <NodeTypeButton
+                    key={option.value}
+                    label={option.label}
+                    active={pointContext.nodeType === option.value}
+                    disabled={pointContext.count === 0}
+                    onClick={() => setSelectedPointType(option.value)}
+                  >
+                    {option.glyph}
+                  </NodeTypeButton>
+                ))}
+              </div>
+            </div>
+
+            <IconNumberField
+              label="Radius"
+              icon="⌒"
+              value={pointContext.radius}
+              min={0}
+              step={0.25}
+              disabled={pointContext.count === 0}
+              onChange={(v) =>
+                applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
+              }
+            />
+
+            {hasSinglePointSelection && (
+              <div className="grid grid-cols-2 gap-2">
+                <AxisField
+                  label="In X"
+                  value={pointContext.handleInX}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'in',
+                      'x',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="In Y"
+                  value={pointContext.handleInY}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleIn}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'in',
+                      'y',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="Out X"
+                  value={pointContext.handleOutX}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'out',
+                      'x',
+                      v,
+                    )
+                  }
+                />
+                <AxisField
+                  label="Out Y"
+                  value={pointContext.handleOutY}
+                  disabled={!hasSinglePointSelection || !pointContext.hasHandleOut}
+                  onChange={(v) =>
+                    updateSelectedHandle(
+                      currentIconId,
+                      currentStateId,
+                      layer.id,
+                      selection.pointIds,
+                      pointContext.nodeType,
+                      'out',
+                      'y',
+                      v,
+                    )
+                  }
+                />
+              </div>
+            )}
           </Section>
+
+          <Separator />
 
           <Section title="Transform">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <NumberField
-                label="X"
-                value={layer.transform?.x}
-                onChange={(v) =>
-                  patchTransform(currentIconId, currentStateId, layer.id, {
-                    x: v,
-                  })
-                }
-              />
-              <NumberField
-                label="Y"
-                value={layer.transform?.y}
-                onChange={(v) =>
-                  patchTransform(currentIconId, currentStateId, layer.id, {
-                    y: v,
-                  })
-                }
-              />
-              <NumberField
-                label="Rotate"
-                value={layer.transform?.rotate}
-                onChange={(v) =>
-                  patchTransform(currentIconId, currentStateId, layer.id, {
-                    rotate: v,
-                  })
-                }
-              />
-              <NumberField
-                label="Scale X"
-                value={layer.transform?.scaleX}
-                step={0.1}
-                onChange={(v) =>
-                  patchTransform(currentIconId, currentStateId, layer.id, {
-                    scaleX: v,
-                  })
-                }
-              />
-              <NumberField
-                label="Scale Y"
-                value={layer.transform?.scaleY}
-                step={0.1}
-                onChange={(v) =>
-                  patchTransform(currentIconId, currentStateId, layer.id, {
-                    scaleY: v,
-                  })
-                }
-              />
-            </div>
+            <NumberField
+              label="X"
+              value={layer.transform?.x}
+              onChange={(v) =>
+                patchTransform(currentIconId, currentStateId, layer.id, {
+                  x: v,
+                })
+              }
+            />
+            <NumberField
+              label="Y"
+              value={layer.transform?.y}
+              onChange={(v) =>
+                patchTransform(currentIconId, currentStateId, layer.id, {
+                  y: v,
+                })
+              }
+            />
+            <NumberField
+              label="Rotate"
+              value={layer.transform?.rotate}
+              onChange={(v) =>
+                patchTransform(currentIconId, currentStateId, layer.id, {
+                  rotate: v,
+                })
+              }
+            />
+            <NumberField
+              label="Scale X"
+              value={layer.transform?.scaleX}
+              step={0.1}
+              onChange={(v) =>
+                patchTransform(currentIconId, currentStateId, layer.id, {
+                  scaleX: v,
+                })
+              }
+            />
+            <NumberField
+              label="Scale Y"
+              value={layer.transform?.scaleY}
+              step={0.1}
+              onChange={(v) =>
+                patchTransform(currentIconId, currentStateId, layer.id, {
+                  scaleY: v,
+                })
+              }
+            />
           </Section>
+            </>
+          )}
         </div>
       </ScrollArea>
     </div>
@@ -516,7 +680,13 @@ type EditablePoint = {
   position: { x: number; y: number };
   handleIn: { x: number; y: number } | null;
   handleOut: { x: number; y: number } | null;
-  nodeType: 'smooth' | 'corner' | 'symmetric';
+  nodeType: NodeType;
+};
+
+type ResolvedEditablePoint = {
+  point: EditablePoint;
+  subPath: SubPath;
+  pointIndex: number;
 };
 
 function patchSelectedPoints(
@@ -524,7 +694,7 @@ function patchSelectedPoints(
   stateId: string | null,
   layerId: string,
   pointIds: string[],
-  updater: (point: EditablePoint) => void,
+  updater: (point: EditablePoint, resolved: ResolvedEditablePoint) => void,
 ) {
   if (!iconId || !stateId || pointIds.length === 0) return;
   const state = editorStore.getState();
@@ -536,8 +706,8 @@ function patchSelectedPoints(
 
   const path = parseSvgPath(d);
   for (const pointId of pointIds) {
-    const point = findPointByKey(path, pointId);
-    if (point) updater(point as EditablePoint);
+    const resolved = findPointByKey(path, pointId);
+    if (resolved) updater(resolved.point as EditablePoint, resolved);
   }
 
   state.patchLayer(iconId, stateId, layerId, {
@@ -552,7 +722,7 @@ function applyPointRadius(
   pointIds: string[],
   radius: number,
 ) {
-  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt) => {
+  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt, resolved) => {
     if (radius <= 0) {
       pt.handleIn = null;
       pt.handleOut = null;
@@ -561,23 +731,36 @@ function applyPointRadius(
     }
 
     pt.nodeType = 'smooth';
-    pt.handleIn = { x: pt.position.x - radius, y: pt.position.y };
-    pt.handleOut = { x: pt.position.x + radius, y: pt.position.y };
+    const direction = getPointBisectorDirection(resolved.subPath, resolved.pointIndex);
+    pt.handleIn = {
+      x: pt.position.x - direction.x * radius,
+      y: pt.position.y - direction.y * radius,
+    };
+    pt.handleOut = {
+      x: pt.position.x + direction.x * radius,
+      y: pt.position.y + direction.y * radius,
+    };
   });
 }
 
-function getSelectedPointContext(layer: Layer, pointIds: string[]) {
+function getSelectedPointContext(layer: Layer | null, pointIds: string[]) {
   const base = {
     count: 0,
     x: undefined as number | undefined,
     y: undefined as number | undefined,
+    xMixed: false,
+    yMixed: false,
     radius: undefined as number | undefined,
-    nodeType: 'corner',
+    nodeType: null as NodeType | null,
     handleInX: undefined as number | undefined,
     handleInY: undefined as number | undefined,
     handleOutX: undefined as number | undefined,
     handleOutY: undefined as number | undefined,
+    hasHandleIn: false,
+    hasHandleOut: false,
   };
+
+  if (!layer) return base;
 
   const d = layer.path?.d;
   if (!d || !isPathDirectlyEditable(d) || pointIds.length === 0) return base;
@@ -585,40 +768,175 @@ function getSelectedPointContext(layer: Layer, pointIds: string[]) {
   const path = parseSvgPath(d);
   const points = pointIds
     .map((pointId) => findPointByKey(path, pointId))
-    .filter((pt): pt is NonNullable<typeof pt> => Boolean(pt));
+    .filter((pt): pt is NonNullable<typeof pt> => Boolean(pt))
+    .map((resolved) => resolved.point);
 
   if (points.length === 0) return base;
 
   const first = points[0];
-  const radius =
+  const xMixed = points.some((point) => point.position.x !== first.position.x);
+  const yMixed = points.some((point) => point.position.y !== first.position.y);
+  const inferredTypes = points.map((point) => inferPointNodeType(point as EditablePoint));
+  const nodeType = inferredTypes.every((type) => type === inferredTypes[0])
+    ? inferredTypes[0]
+    : null;
+  const firstRadius =
     first.handleOut && first.handleIn
-      ? (Math.abs(first.handleOut.x - first.position.x) +
-          Math.abs(first.position.x - first.handleIn.x)) /
-        2
-      : undefined;
+      ? (distance(first.handleOut, first.position) + distance(first.handleIn, first.position)) / 2
+      : first.handleOut
+        ? distance(first.handleOut, first.position)
+        : first.handleIn
+          ? distance(first.handleIn, first.position)
+          : undefined;
+  const radius = points.every((point) => getPointRadius(point) === firstRadius)
+    ? firstRadius
+    : undefined;
 
   return {
     count: points.length,
-    x: first.position.x,
-    y: first.position.y,
+    x: xMixed ? undefined : first.position.x,
+    y: yMixed ? undefined : first.position.y,
+    xMixed,
+    yMixed,
     radius,
-    nodeType: first.nodeType,
+    nodeType,
     handleInX: first.handleIn?.x,
     handleInY: first.handleIn?.y,
     handleOutX: first.handleOut?.x,
     handleOutY: first.handleOut?.y,
+    hasHandleIn: Boolean(first.handleIn),
+    hasHandleOut: Boolean(first.handleOut),
   };
 }
 
 function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
-  const [pointKey] = key.split('@');
-  const [subPathRaw, pointRaw] = pointKey.split(':');
+  const [subPathRaw, pointRaw] = key.split(':');
   const subPathIndex = Number(subPathRaw);
   const pointIndex = Number(pointRaw);
   if (!Number.isInteger(subPathIndex) || !Number.isInteger(pointIndex)) return null;
 
   const subPath = path.subPaths[subPathIndex];
-  return subPath?.points[pointIndex] ?? null;
+  const point = subPath?.points[pointIndex];
+  if (!subPath || !point) return null;
+  return { point, subPath, pointIndex };
+}
+
+function updateSelectedHandle(
+  iconId: string | null,
+  stateId: string | null,
+  layerId: string,
+  pointIds: string[],
+  nodeType: NodeType | null,
+  handle: 'in' | 'out',
+  axis: 'x' | 'y',
+  value: number,
+) {
+  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt) => {
+    const targetKey = handle === 'in' ? 'handleIn' : 'handleOut';
+    const oppositeKey = handle === 'in' ? 'handleOut' : 'handleIn';
+    const targetHandle = pt[targetKey] ?? { x: pt.position.x, y: pt.position.y };
+    pt[targetKey] = { ...targetHandle, [axis]: value };
+
+    if (nodeType === 'symmetric' && pt[targetKey]) {
+      const dx = pt[targetKey]!.x - pt.position.x;
+      const dy = pt[targetKey]!.y - pt.position.y;
+      pt[oppositeKey] = {
+        x: pt.position.x - dx,
+        y: pt.position.y - dy,
+      };
+      pt.nodeType = 'symmetric';
+    }
+  });
+}
+
+function translatePointPosition(point: EditablePoint, dx: number, dy: number) {
+  point.position.x += dx;
+  point.position.y += dy;
+  if (point.handleIn) {
+    point.handleIn.x += dx;
+    point.handleIn.y += dy;
+  }
+  if (point.handleOut) {
+    point.handleOut.x += dx;
+    point.handleOut.y += dy;
+  }
+}
+
+function getPointBisectorDirection(subPath: SubPath, pointIndex: number) {
+  const point = subPath.points[pointIndex];
+  const prev = getNeighborPoint(subPath, pointIndex, -1);
+  const next = getNeighborPoint(subPath, pointIndex, 1);
+
+  const incoming = prev
+    ? normalize({
+        x: point.position.x - prev.position.x,
+        y: point.position.y - prev.position.y,
+      })
+    : null;
+  const outgoing = next
+    ? normalize({
+        x: next.position.x - point.position.x,
+        y: next.position.y - point.position.y,
+      })
+    : null;
+
+  if (incoming && outgoing) {
+    const bisector = normalize({
+      x: incoming.x + outgoing.x,
+      y: incoming.y + outgoing.y,
+    });
+    if (bisector) return bisector;
+  }
+
+  return outgoing ?? incoming ?? { x: 1, y: 0 };
+}
+
+function getNeighborPoint(subPath: SubPath, pointIndex: number, direction: -1 | 1) {
+  const nextIndex = pointIndex + direction;
+  if (nextIndex >= 0 && nextIndex < subPath.points.length) {
+    return subPath.points[nextIndex];
+  }
+
+  if (!subPath.closed || subPath.points.length === 0) return null;
+  return direction === -1
+    ? subPath.points[subPath.points.length - 1]
+    : subPath.points[0];
+}
+
+function normalize(vector: { x: number; y: number }) {
+  const length = Math.hypot(vector.x, vector.y);
+  if (length <= Number.EPSILON) return null;
+  return { x: vector.x / length, y: vector.y / length };
+}
+
+function distance(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function getPointRadius(point: EditablePoint) {
+  if (point.handleIn && point.handleOut) {
+    return (distance(point.handleIn, point.position) + distance(point.handleOut, point.position)) / 2;
+  }
+  if (point.handleIn) return distance(point.handleIn, point.position);
+  if (point.handleOut) return distance(point.handleOut, point.position);
+  return undefined;
+}
+
+function inferPointNodeType(point: EditablePoint): NodeType {
+  if (!point.handleIn && !point.handleOut) return 'corner';
+  if (point.handleIn && point.handleOut) {
+    const inDx = point.handleIn.x - point.position.x;
+    const inDy = point.handleIn.y - point.position.y;
+    const outDx = point.handleOut.x - point.position.x;
+    const outDy = point.handleOut.y - point.position.y;
+    const mirrored =
+      Math.abs(inDx + outDx) <= 0.001 &&
+      Math.abs(inDy + outDy) <= 0.001;
+    const equalLength =
+      Math.abs(Math.hypot(inDx, inDy) - Math.hypot(outDx, outDy)) <= 0.001;
+    if (mirrored && equalLength) return 'symmetric';
+  }
+  return 'smooth';
 }
 
 function Section({
@@ -629,26 +947,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="workspace-meta-card rounded-md p-3">
-      <div className="mb-3">
-        <p className="text-xs font-medium text-foreground">{title}</p>
-      </div>
-      <div className="flex flex-col gap-2.5">{children}</div>
-    </section>
-  );
-}
-
-function InspectorStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-md border border-border bg-background px-3 py-2">
-      <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-medium text-foreground">{value}</p>
+    <div className="flex flex-col gap-2">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {title}
+      </span>
+      {children}
     </div>
   );
 }
@@ -667,13 +970,12 @@ function IconActionButton({
   return (
     <Button
       type="button"
-      size="sm"
+      size="icon-sm"
       variant="outline"
       disabled={disabled}
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="h-10 rounded-md border-border bg-background px-0 transition hover:bg-accent/40"
     >
       {children}
     </Button>
@@ -690,15 +992,12 @@ function ReadOnlyField({
   mono?: boolean;
 }) {
   return (
-    <div className="grid gap-1.5">
-      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="flex items-center gap-2">
+      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
         {label}
       </Label>
       <span
-        className={cn(
-          'min-h-9 truncate rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground',
-          mono && 'font-mono text-[11px]',
-        )}
+        className={`flex-1 truncate text-xs ${mono ? 'font-mono' : ''} text-foreground`}
       >
         {value}
       </span>
@@ -732,8 +1031,8 @@ function NumberField({
   );
 
   return (
-    <div className="grid gap-1.5">
-      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="flex items-center gap-2">
+      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -744,9 +1043,114 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-9 rounded-md border-border bg-background text-sm"
+        className="h-7 bg-input text-xs"
       />
     </div>
+  );
+}
+
+function AxisField({
+  label,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (v: number) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const num = parseFloat(e.target.value);
+      if (!Number.isNaN(num)) onChange(num);
+    },
+    [onChange],
+  );
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input
+        type="text"
+        inputMode="decimal"
+        value={value ?? ''}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={handleChange}
+        className="h-8 bg-input text-xs"
+      />
+    </div>
+  );
+}
+
+function IconNumberField({
+  label,
+  icon,
+  value,
+  onChange,
+  min,
+  step,
+  disabled,
+}: {
+  label: string;
+  icon: string;
+  value: number | undefined;
+  onChange: (v: number) => void;
+  min?: number;
+  step?: number;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Label className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+        <span className="font-mono text-sm leading-none">{icon}</span>
+        <span>{label}</span>
+      </Label>
+      <Input
+        type="number"
+        value={value ?? ''}
+        min={min}
+        step={step}
+        disabled={disabled}
+        onChange={(e) => {
+          const num = parseFloat(e.target.value);
+          if (!Number.isNaN(num)) onChange(num);
+        }}
+        className="h-7 bg-input text-xs"
+      />
+    </div>
+  );
+}
+
+function NodeTypeButton({
+  label,
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button
+      type="button"
+      size="icon-sm"
+      variant={active ? 'secondary' : 'outline'}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="font-mono text-base"
+    >
+      {children}
+    </Button>
   );
 }
 
@@ -764,15 +1168,15 @@ function SelectField({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid gap-1.5">
-      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="flex items-center gap-2">
+      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
         {label}
       </Label>
       <select
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm"
+        className="h-8 w-full rounded-xl border border-input bg-input/80 px-2 text-xs"
       >
         {options.map(([v, labelText]) => (
           <option key={v} value={v}>
@@ -851,16 +1255,16 @@ function PaintField({
     paint.value.startsWith('#');
 
   return (
-    <div className="grid gap-1.5">
-      <Label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="flex items-center gap-2">
+      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
         {label}
       </Label>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-background p-2">
+      <div className="flex flex-1 items-center gap-1.5">
         {fillModeOptions && (
           <select
             value={paintKind}
             onChange={handleKindChange}
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            className="h-8 rounded-xl border border-input bg-input/80 px-2 text-xs"
             aria-label={`${label} mode`}
           >
             <option value="currentFill">currentFill</option>
@@ -874,7 +1278,7 @@ function PaintField({
             onChange={(e) =>
               onChange({ mode: 'fixed', value: e.target.value })
             }
-            className="size-9 cursor-pointer rounded-md border border-border bg-transparent p-1"
+            className="size-7 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
             aria-label={`${label} color picker`}
           />
         )}
@@ -885,7 +1289,7 @@ function PaintField({
           disabled={fillModeOptions && paintKind === 'currentFill'}
           list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
           placeholder={fillModeOptions ? '#RRGGBB or token name' : 'currentColor / #RRGGBB / token'}
-          className="h-9 min-w-[12rem] flex-1 rounded-md border-border bg-background font-mono text-[11px]"
+          className="h-7 bg-input font-mono text-xs"
         />
         {tokenNames.length > 0 && (
           <datalist id={`${label.toLowerCase()}-token-list`}>

@@ -8,6 +8,7 @@ type SelectionTarget = {
   stateId: string;
   layerId: string;
   pointKey: string;
+  handleDirection: 'in' | 'out' | null;
   pathD: string;
 };
 
@@ -16,14 +17,27 @@ function getSelectionTarget(): SelectionTarget | null {
   const iconId = state.currentIconId;
   const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
-  const pointKey = state.selection.pointIds[0];
+  const rawPointKey = state.selection.pointIds[0];
 
-  if (!iconId || !stateId || !layerId || !pointKey) return null;
+  if (!iconId || !stateId || !layerId || !rawPointKey) return null;
+
+  const { pointKey, handleDirection } = parseSelectionPointKey(rawPointKey);
 
   const pathD = state.project?.icons[iconId]?.states[stateId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
-  return { iconId, stateId, layerId, pointKey, pathD };
+  return { iconId, stateId, layerId, pointKey, handleDirection, pathD };
+}
+
+function parseSelectionPointKey(rawPointKey: string): {
+  pointKey: string;
+  handleDirection: 'in' | 'out' | null;
+} {
+  const [pointKey, suffix] = rawPointKey.split('@');
+  if (suffix === 'in' || suffix === 'out') {
+    return { pointKey, handleDirection: suffix };
+  }
+  return { pointKey: rawPointKey, handleDirection: null };
 }
 
 function resolvePoint(pathD: string, pointKey: string) {
@@ -65,7 +79,27 @@ export function deleteSelectedPoint(): boolean {
 
   const resolved = resolvePoint(target.pathD, target.pointKey);
   if (!resolved) return false;
-  const { editable, subPath, subPathIdx, pointIdx } = resolved;
+  const { editable, subPath, point, subPathIdx, pointIdx } = resolved;
+
+  if (target.handleDirection) {
+    if (target.handleDirection === 'in') {
+      point.handleIn = null;
+    } else {
+      point.handleOut = null;
+    }
+
+    if (point.segment?.type === 'arc') {
+      point.segment = { type: 'line' };
+      point.nodeType = 'corner';
+    }
+
+    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+    editorStore.getState().setSelection({
+      layerIds: [target.layerId],
+      pointIds: [target.pointKey],
+    });
+    return true;
+  }
 
   if (subPath.points.length <= 1) return false;
 

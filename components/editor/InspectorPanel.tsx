@@ -611,7 +611,8 @@ function getSelectedPointContext(layer: Layer, pointIds: string[]) {
 }
 
 function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
-  const [subPathRaw, pointRaw] = key.split(':');
+  const [pointKey] = key.split('@');
+  const [subPathRaw, pointRaw] = pointKey.split(':');
   const subPathIndex = Number(subPathRaw);
   const pointIndex = Number(pointRaw);
   if (!Number.isInteger(subPathIndex) || !Number.isInteger(pointIndex)) return null;

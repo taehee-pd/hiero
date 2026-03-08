@@ -2,6 +2,8 @@ import { commitHistory, pauseHistory, resumeHistory } from '@/lib/editor-store/h
 import { editorStore } from '@/lib/editor-store/store';
 import type { Layer } from '@/lib/schema/types';
 
+declare const require: undefined | ((id: string) => PaperModule);
+
 type AlignMode = 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom';
 type DistributeMode = 'horizontal' | 'vertical';
 
@@ -49,15 +51,21 @@ let paperScope: any | null = null;
 
 function loadPaperModule(): PaperModule | null {
   if (typeof window !== 'undefined') {
-    return window.paper ?? null;
+    if (window.paper) {
+      return window.paper;
+    }
   }
 
   try {
-    const req = Function('return require')() as (id: string) => PaperModule;
-    return req('paper/dist/paper-core');
+    if (typeof require === 'function') {
+      const moduleId = ['paper', 'dist', 'paper-core'].join('/');
+      return require(moduleId);
+    }
   } catch {
     return null;
   }
+
+  return null;
 }
 
 function getPaperScope(): any | null {

@@ -8,6 +8,7 @@ import {
   toggleSelectedPathClosed,
   toggleSelectedPointType,
 } from '../lib/editor-core/vector-commands';
+import type { Project } from '../lib/schema/types';
 
 function bootstrap() {
   const state = editorStore.getState();
@@ -21,6 +22,48 @@ function setupLayerSelection(pointKey: string) {
   const layerId = 'chevron';
   state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
   return { iconId, stateId, layerId };
+}
+
+const ARC_HANDLE_PROJECT: Project = {
+  version: '1.0',
+  meta: {
+    name: 'Arc Handles',
+    createdAt: '2026-03-08T00:00:00Z',
+    updatedAt: '2026-03-08T00:00:00Z',
+  },
+  icons: {
+    arc: {
+      id: 'arc',
+      name: 'Arc',
+      variants: {
+        v24: {
+          id: 'v24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          defaultState: 'default',
+        },
+      },
+      states: {
+        default: {
+          id: 'default',
+          layers: {
+            curve: {
+              id: 'curve',
+              path: { d: 'M2 12 A8 8 0 0 1 18 12' },
+              style: {},
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+  },
+};
+
+function bootstrapArcHandleProject() {
+  const state = editorStore.getState();
+  state.loadProject(structuredClone(ARC_HANDLE_PROJECT));
+  return { iconId: 'arc', stateId: 'default', layerId: 'curve' };
 }
 
 describe('vector commands', () => {
@@ -88,5 +131,29 @@ describe('vector commands', () => {
     const d = editorStore.getState().project!.icons['icon-chevron'].states.default.layers['chevron'].path!
       .d;
     expect(d).toBe('M9.5 7 L15 12 L9.5 17');
+  });
+
+  test('deleting selected incoming handle on an arc point clears only that handle and downgrades the arc', () => {
+    const { layerId } = bootstrapArcHandleProject();
+    editorStore.getState().setSelection({ layerIds: [layerId], pointIds: ['0:1@in'] });
+
+    expect(deleteSelectedPoint()).toBeTrue();
+
+    const next = editorStore.getState();
+    const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
+    expect(d).toBe('M2 12 L18 12');
+    expect(next.selection.pointIds).toEqual(['0:1']);
+  });
+
+  test('deleting selected outgoing handle on an arc point clears only that handle and downgrades the arc', () => {
+    const { layerId } = bootstrapArcHandleProject();
+    editorStore.getState().setSelection({ layerIds: [layerId], pointIds: ['0:1@out'] });
+
+    expect(deleteSelectedPoint()).toBeTrue();
+
+    const next = editorStore.getState();
+    const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
+    expect(d).toBe('M2 12 L18 12');
+    expect(next.selection.pointIds).toEqual(['0:1']);
   });
 });

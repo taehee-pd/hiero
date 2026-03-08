@@ -27,8 +27,9 @@ export function exportSvgString(
   const layers = Object.keys(state.layers)
     .sort((a, b) => a.localeCompare(b))
     .map((id) => state.layers[id]);
+  const layerById = new Map(layers.map((layer) => [layer.id, layer]));
   for (const layer of layers) {
-    if (layer.visible === false || !layer.path?.d) continue;
+    if (layer.visible === false || !layer.path?.d || layer.isClipMask) continue;
 
     const attrs: string[] = [];
     attrs.push(`id="${escapeAttr(layer.id)}"`);
@@ -76,6 +77,11 @@ export function exportSvgString(
     const transform = buildTransform(layer);
     if (transform) {
       attrs.push(`transform="${escapeAttr(transform)}"`);
+    }
+
+    const clipPath = resolveClipPath(layer, layerById, defs);
+    if (clipPath) {
+      attrs.push(`clip-path="${escapeAttr(clipPath)}"`);
     }
 
     pathLines.push(`  <path ${attrs.join(' ')}/>`);
@@ -140,12 +146,55 @@ function buildTransform(layer: Layer): string | null {
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
+function resolveClipPath(
+  layer: Layer,
+  layerById: Map<string, Layer>,
+  defs: Map<string, string>,
+): string | null {
+  const maskLayerId = layer.clipPathLayerId;
+  if (!maskLayerId) return null;
+
+  const maskLayer = layerById.get(maskLayerId);
+  if (!isValidClipMaskLayer(maskLayer)) return null;
+
+  const clipPathId = buildClipPathId(layer.id);
+  defs.set(clipPathId, serializeClipPath(clipPathId, maskLayer));
+  return `url(#${clipPathId})`;
+}
+
 function escapeAttr(val: string): string {
   return val.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
 function buildGradientId(layerId: string, role: 'fill' | 'stroke'): string {
   return `gradient-${layerId}-${role}`;
+}
+
+function buildClipPathId(layerId: string): string {
+  return `clip-${layerId}`;
+}
+
+function isValidClipMaskLayer(layer: Layer | undefined): layer is Layer & {
+  path: { d: string; fillRule?: 'nonzero' | 'evenodd' };
+} {
+  return Boolean(layer && layer.visible !== false && layer.path?.d);
+}
+
+function serializeClipPath(id: string, maskLayer: Layer): string {
+  const attrs = [
+    `d="${escapeAttr(maskLayer.path!.d)}"`,
+  ];
+  if (maskLayer.path?.fillRule) {
+    attrs.push(`fill-rule="${maskLayer.path.fillRule}"`);
+  }
+  const transform = buildTransform(maskLayer);
+  if (transform) {
+    attrs.push(`transform="${escapeAttr(transform)}"`);
+  }
+
+  return `<clipPath id="${escapeAttr(id)}"><path ${attrs.join(
+    ' ',
+  )}/></clipPath>`;
 }
 
 function serializeLinearGradient(

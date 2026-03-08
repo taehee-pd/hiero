@@ -1,18 +1,18 @@
 'use client';
 
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Link2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Button } from '@/components/kibo-ui/button';
 import {
-  useCurrentLayers,
   useSelection,
   useEditorStore,
   useEditorActions,
 } from '@/lib/editor-store/hooks';
+import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
 
 export function LayerPanel() {
-  const layers = useCurrentLayers();
+  const rows = useEditorStore(selectCurrentLayerPanelRows);
   const selection = useSelection();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
@@ -25,18 +25,19 @@ export function LayerPanel() {
           <p className="workspace-kicker">Structure</p>
           <p className="mt-2 text-sm font-semibold text-foreground">Layers</p>
         </div>
-        <span className="workspace-badge">{layers.length}</span>
+        <span className="workspace-badge">{rows.length}</span>
       </div>
       <ScrollArea className="workspace-scroll flex-1">
         <div className="flex flex-col gap-2 p-2.5">
-          {layers.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
               No layers
             </div>
           ) : null}
-          {layers.map((layer) => {
+          {rows.map(({ layer, depth, maskLayerId, clippedLayerIds }) => {
             const isSelected = selection.layerIds.includes(layer.id);
             const isVisible = layer.visible !== false;
+            const isMask = layer.isClipMask === true;
 
             return (
               <div
@@ -51,6 +52,7 @@ export function LayerPanel() {
                 role="button"
                 tabIndex={0}
                 aria-selected={isSelected}
+                style={{ marginLeft: depth === 0 ? 0 : 16 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
@@ -74,9 +76,23 @@ export function LayerPanel() {
                   )}
                 />
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-40')}>
-                  <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
+                  <div className="flex items-center gap-2">
+                    {maskLayerId ? (
+                      <Link2 className="size-3 shrink-0 text-muted-foreground" />
+                    ) : null}
+                    <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
+                    {isMask ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        Mask
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {layer.role ?? 'layer'}
+                    {maskLayerId
+                      ? `clipped by ${maskLayerId}`
+                      : clippedLayerIds.length > 0
+                        ? `${clippedLayerIds.length} clipped`
+                        : (layer.role ?? 'layer')}
                   </p>
                 </div>
                 <Button

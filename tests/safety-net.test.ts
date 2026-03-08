@@ -3,6 +3,7 @@ import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 import { exportSvgString } from '../lib/export/export-svg';
 import { editorStore } from '../lib/editor-store/store';
 import { handleEditorKeyDown } from '../lib/editor-core/keyboard';
+import { buildLayerPanelRows } from '../lib/editor-store/selectors';
 
 function bootstrap() {
   editorStore.getState().loadProject(structuredClone(SAMPLE_PROJECT));
@@ -83,5 +84,72 @@ describe('safety net checks', () => {
     expect(svg).toContain('fill="url(#gradient-chevron-fill)"');
     expect(svg).toContain('stroke="url(#gradient-chevron-stroke)"');
     expect(svg).toContain('stop-opacity="0.4"');
+  });
+
+  test('svg export emits clip paths and suppresses visible mask layers', () => {
+    const icon = structuredClone(SAMPLE_PROJECT.icons['icon-chevron']);
+    icon.states.default.layers.mask = {
+      id: 'mask',
+      isClipMask: true,
+      path: { d: 'M2 2 H22 V22 H2 Z', fillRule: 'evenodd' },
+      style: {},
+      transform: { x: 1, y: 2 },
+    };
+    icon.states.default.layers.chevron.clipPathLayerId = 'mask';
+
+    const svg = exportSvgString(icon, 'v24', 'default', SAMPLE_PROJECT.tokenSet?.colors);
+
+    expect(svg).toContain('<clipPath id="clip-chevron">');
+    expect(svg).toContain(
+      '<path d="M2 2 H22 V22 H2 Z" fill-rule="evenodd" transform="translate(1, 2)"/>',
+    );
+    expect(svg).toContain('id="chevron"');
+    expect(svg).toContain('clip-path="url(#clip-chevron)"');
+    expect(svg).not.toContain('id="mask"');
+  });
+
+  test('clipping mask store actions assign and release mask relationships', () => {
+    bootstrap();
+    const state = editorStore.getState();
+    const iconId = state.currentIconId!;
+    const stateId = state.currentStateId!;
+
+    state.setClipMask('bg-circle', ['chevron', 'accent-dot']);
+
+    let layers = editorStore.getState().project!.icons[iconId].states[stateId].layers;
+    expect(layers['bg-circle']!.isClipMask).toBeTrue();
+    expect(layers.chevron!.clipPathLayerId).toBe('bg-circle');
+    expect(layers['accent-dot']!.clipPathLayerId).toBe('bg-circle');
+
+    state.releaseClipMask('chevron');
+
+    layers = editorStore.getState().project!.icons[iconId].states[stateId].layers;
+    expect(layers.chevron!.clipPathLayerId).toBeUndefined();
+    expect(layers['accent-dot']!.clipPathLayerId).toBe('bg-circle');
+    expect(layers['bg-circle']!.isClipMask).toBeTrue();
+
+    state.releaseClipMask('bg-circle');
+
+    layers = editorStore.getState().project!.icons[iconId].states[stateId].layers;
+    expect(layers['bg-circle']!.isClipMask).toBeFalse();
+    expect(layers['accent-dot']!.clipPathLayerId).toBeUndefined();
+  });
+
+  test('layer panel rows nest clipped layers beneath their mask rows', () => {
+    const rows = buildLayerPanelRows([
+      { id: 'target-a', style: {}, path: { d: 'M0 0 H1 V1 Z' }, clipPathLayerId: 'mask' },
+      { id: 'free', style: {}, path: { d: 'M0 0 H1 V1 Z' } },
+      { id: 'mask', style: {}, path: { d: 'M0 0 H1 V1 Z' }, isClipMask: true },
+      { id: 'target-b', style: {}, path: { d: 'M0 0 H1 V1 Z' }, clipPathLayerId: 'mask' },
+    ]);
+
+    expect(rows.map((row) => `${row.depth}:${row.layer.id}`)).toEqual([
+      '0:free',
+      '0:mask',
+      '1:target-a',
+      '1:target-b',
+    ]);
+    expect(rows[1]!.clippedLayerIds).toEqual(['target-a', 'target-b']);
+    expect(rows[2]!.maskLayerId).toBe('mask');
   });
 });

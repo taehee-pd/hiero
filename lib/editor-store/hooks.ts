@@ -69,6 +69,8 @@ export function useEditorActions() {
       setCurrentState: state.setCurrentState,
       patchLayer: state.patchLayer,
       setLayerVisibility: state.setLayerVisibility,
+      setClipMask: state.setClipMask,
+      releaseClipMask: state.releaseClipMask,
       setSelection: state.setSelection,
       clearSelection: state.clearSelection,
       setActiveSnapGuides: state.setActiveSnapGuides,

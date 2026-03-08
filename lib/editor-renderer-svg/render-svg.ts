@@ -41,12 +41,13 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
   const layers = Object.keys(state.layers)
     .sort((a, b) => a.localeCompare(b))
     .map((id) => state.layers[id]);
+  const layerById = new Map(layers.map((layer) => [layer.id, layer]));
   const rendered = new Set<string>();
 
   for (const layer of layers) {
     rendered.add(layer.id);
 
-    if (layer.visible === false || !layer.path?.d) {
+    if (layer.visible === false || !layer.path?.d || layer.isClipMask) {
       // Remove hidden/pathless layers from DOM
       const el = existing.get(layer.id);
       if (el) el.remove();
@@ -73,6 +74,8 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
 
     // Transform
     applyTransform(pathEl, layer);
+
+    applyClipPath(pathEl, layer, layerById, defs);
   }
 
   // Remove stale elements
@@ -184,6 +187,29 @@ function applyTransform(el: SVGPathElement, layer: Layer): void {
   }
 }
 
+function applyClipPath(
+  el: SVGPathElement,
+  layer: Layer,
+  layerById: Map<string, Layer>,
+  defs: SVGDefsElement,
+): void {
+  const maskLayerId = layer.clipPathLayerId;
+  if (!maskLayerId) {
+    el.removeAttribute('clip-path');
+    return;
+  }
+
+  const maskLayer = layerById.get(maskLayerId);
+  if (!isValidClipMaskLayer(maskLayer)) {
+    el.removeAttribute('clip-path');
+    return;
+  }
+
+  const clipPathId = buildClipPathId(layer.id);
+  defs.appendChild(createClipPath(clipPathId, maskLayer));
+  el.setAttribute('clip-path', `url(#${clipPathId})`);
+}
+
 function ensureManagedDefs(target: SVGSVGElement): SVGDefsElement {
   const existing = target.querySelector<SVGDefsElement>(
     `defs[${MANAGED_DEFS_ATTR}="${MANAGED_DEFS_VALUE}"]`,
@@ -198,6 +224,33 @@ function ensureManagedDefs(target: SVGSVGElement): SVGDefsElement {
 
 function buildGradientId(layerId: string, role: 'fill' | 'stroke'): string {
   return `gradient-${layerId}-${role}`;
+}
+
+function buildClipPathId(layerId: string): string {
+  return `clip-${layerId}`;
+}
+
+function isValidClipMaskLayer(layer: Layer | undefined): layer is Layer & {
+  path: { d: string; fillRule?: 'nonzero' | 'evenodd' };
+} {
+  return Boolean(layer && layer.visible !== false && layer.path?.d);
+}
+
+function createClipPath(id: string, maskLayer: Layer): SVGClipPathElement {
+  const clipPath = document.createElementNS(SVG_NS, 'clipPath');
+  const pathEl = document.createElementNS(SVG_NS, 'path');
+
+  clipPath.setAttribute('id', id);
+  pathEl.setAttribute('d', maskLayer.path!.d);
+
+  if (maskLayer.path?.fillRule) {
+    pathEl.setAttribute('fill-rule', maskLayer.path.fillRule);
+  }
+
+  applyTransform(pathEl, maskLayer);
+  clipPath.appendChild(pathEl);
+
+  return clipPath;
 }
 
 function createLinearGradient(

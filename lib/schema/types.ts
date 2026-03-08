@@ -39,6 +39,9 @@ export type Layer = {
   id: string;
   role?: 'primary' | 'secondary' | 'tertiary' | string;
   visible?: boolean;
+  clipPathLayerId?: string;
+  isClipMask?: boolean;
+  groupId?: string;
   path?: { d: string; fillRule?: 'nonzero' | 'evenodd' };
   style: {
     fill?: PaintRef;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import type { GuideItem } from '@/lib/schema/types';
 
@@ -42,6 +42,7 @@ export function Rulers({
 }) {
   const { addIconGuide, updateIconGuide, removeIconGuide, setSelectedIconGuideIndex } =
     useEditorActions();
+  const dragSessionRef = useRef<DragState | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
@@ -108,110 +109,143 @@ export function Rulers({
     [containerRef, metrics],
   );
 
-  useEffect(() => {
-    if (!dragState || !currentIconId) return;
+  const clearDragSession = useCallback(() => {
+    dragSessionRef.current = null;
+    setDragState(null);
+  }, []);
 
-    const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerId !== dragState.pointerId) return;
-      const nextValue = getPointerGuideValue(dragState.kind, event.clientX, event.clientY);
-      if (nextValue === null) return;
-
-      const movedEnough =
-        Math.abs(event.clientX - dragState.startClientX) >= DRAG_THRESHOLD_PX ||
-        Math.abs(event.clientY - dragState.startClientY) >= DRAG_THRESHOLD_PX;
-
-      setDragState((current) =>
-        current
-          ? {
-              ...current,
-              value: nextValue,
-              dragging: current.dragging || movedEnough,
-              duplicate:
-                current.source === 'guide' && (current.dragging || movedEnough)
-                  ? event.altKey
-                  : false,
-            }
-          : current,
-      );
-    };
-
-    const handlePointerUp = (event: PointerEvent) => {
-      if (event.pointerId !== dragState.pointerId) return;
-
-      const releasedOverRuler = isReleasedOverMatchingRuler(
-        containerRef.current?.getBoundingClientRect() ?? null,
-        dragState.kind,
-        event,
-      );
-
-      if (!dragState.dragging) {
-        if (dragState.source === 'guide' && dragState.guideIndex !== null) {
-          setSelectedIconGuideIndex(dragState.guideIndex);
-        }
-        setDragState(null);
+  const commitDragSession = useCallback(
+    (session: DragState, event: PointerEvent) => {
+      if (!currentIconId) {
+        clearDragSession();
         return;
       }
 
-      if (dragState.source === 'ruler') {
+      const releasedOverRuler = isReleasedOverMatchingRuler(
+        containerRef.current?.getBoundingClientRect() ?? null,
+        session.kind,
+        event,
+      );
+
+      if (!session.dragging) {
+        if (session.source === 'guide' && session.guideIndex !== null) {
+          setSelectedIconGuideIndex(session.guideIndex);
+        }
+        clearDragSession();
+        return;
+      }
+
+      if (session.source === 'ruler') {
         if (!releasedOverRuler) {
           addIconGuide(
             currentIconId,
-            dragState.kind === 'vline'
-              ? { kind: 'vline', x: dragState.value }
-              : { kind: 'hline', y: dragState.value },
+            session.kind === 'vline'
+              ? { kind: 'vline', x: session.value }
+              : { kind: 'hline', y: session.value },
           );
         }
-      } else if (dragState.guideIndex !== null) {
-        if (dragState.duplicate) {
-          if (!releasedOverRuler) {
-            addIconGuide(
-              currentIconId,
-              dragState.kind === 'vline'
-                ? { kind: 'vline', x: dragState.value }
-                : { kind: 'hline', y: dragState.value },
-            );
-          } else {
-            setSelectedIconGuideIndex(dragState.guideIndex);
-          }
-        } else if (releasedOverRuler) {
-          removeIconGuide(currentIconId, dragState.guideIndex);
-        } else {
-          const existingGuide = customGuides[dragState.guideIndex];
-          if (existingGuide?.kind === 'vline') {
-            updateIconGuide(currentIconId, dragState.guideIndex, {
-              kind: 'vline',
-              x: dragState.value,
-            });
-          } else if (existingGuide?.kind === 'hline') {
-            updateIconGuide(currentIconId, dragState.guideIndex, {
-              kind: 'hline',
-              y: dragState.value,
-            });
-          }
-          setSelectedIconGuideIndex(dragState.guideIndex);
-        }
+        clearDragSession();
+        return;
       }
 
-      setDragState(null);
+      if (session.guideIndex === null) {
+        clearDragSession();
+        return;
+      }
+
+      if (session.duplicate) {
+        if (!releasedOverRuler) {
+          addIconGuide(
+            currentIconId,
+            session.kind === 'vline'
+              ? { kind: 'vline', x: session.value }
+              : { kind: 'hline', y: session.value },
+          );
+        } else {
+          setSelectedIconGuideIndex(session.guideIndex);
+        }
+        clearDragSession();
+        return;
+      }
+
+      if (releasedOverRuler) {
+        removeIconGuide(currentIconId, session.guideIndex);
+        clearDragSession();
+        return;
+      }
+
+      const existingGuide = customGuides[session.guideIndex];
+      if (existingGuide?.kind === 'vline') {
+        updateIconGuide(currentIconId, session.guideIndex, {
+          kind: 'vline',
+          x: session.value,
+        });
+      } else if (existingGuide?.kind === 'hline') {
+        updateIconGuide(currentIconId, session.guideIndex, {
+          kind: 'hline',
+          y: session.value,
+        });
+      }
+      setSelectedIconGuideIndex(session.guideIndex);
+      clearDragSession();
+    },
+    [
+      addIconGuide,
+      clearDragSession,
+      containerRef,
+      currentIconId,
+      customGuides,
+      removeIconGuide,
+      setSelectedIconGuideIndex,
+      updateIconGuide,
+    ],
+  );
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+
+      const nextValue = getPointerGuideValue(current.kind, event.clientX, event.clientY);
+      if (nextValue === null) return;
+
+      const movedEnough =
+        Math.abs(event.clientX - current.startClientX) >= DRAG_THRESHOLD_PX ||
+        Math.abs(event.clientY - current.startClientY) >= DRAG_THRESHOLD_PX;
+
+      const nextState: DragState = {
+        ...current,
+        value: nextValue,
+        dragging: current.dragging || movedEnough,
+        duplicate:
+          current.source === 'guide' && (current.dragging || movedEnough) ? event.altKey : false,
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+      commitDragSession(current, event);
+    };
+
+    const handlePointerCancel = (event: PointerEvent) => {
+      const current = dragSessionRef.current;
+      if (!current || event.pointerId !== current.pointerId) return;
+      clearDragSession();
     };
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
     };
-  }, [
-    addIconGuide,
-    containerRef,
-    currentIconId,
-    customGuides,
-    dragState,
-    getPointerGuideValue,
-    removeIconGuide,
-    setSelectedIconGuideIndex,
-    updateIconGuide,
-  ]);
+  }, [clearDragSession, commitDragSession, getPointerGuideValue]);
 
   const horizontalTicks = useMemo(
     () =>
@@ -243,7 +277,7 @@ export function Rulers({
       const value = getPointerGuideValue(kind, event.clientX, event.clientY);
       if (value === null) return;
 
-      setDragState({
+      const nextState: DragState = {
         kind,
         source: 'ruler',
         pointerId: event.pointerId,
@@ -253,7 +287,11 @@ export function Rulers({
         dragging: false,
         duplicate: false,
         value,
-      });
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     },
     [getPointerGuideValue],
@@ -267,7 +305,8 @@ export function Rulers({
       event: React.PointerEvent<HTMLButtonElement>,
     ) => {
       setSelectedIconGuideIndex(index);
-      setDragState({
+
+      const nextState: DragState = {
         kind,
         source: 'guide',
         pointerId: event.pointerId,
@@ -277,7 +316,11 @@ export function Rulers({
         dragging: false,
         duplicate: false,
         value,
-      });
+      };
+
+      dragSessionRef.current = nextState;
+      setDragState(nextState);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     },
     [setSelectedIconGuideIndex],

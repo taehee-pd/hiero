@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Check, Grid3X3, Search } from 'lucide-react';
-import { Input } from '@/components/kibo-ui/input';
-import { Button } from '@/components/kibo-ui/button';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
@@ -114,32 +115,48 @@ export function ExplorerShell() {
 
   return (
     <div className="swift-surface flex h-dvh flex-col overflow-hidden text-foreground">
-      <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-5 py-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="mr-auto min-w-0 space-y-1">
-            <p className="workspace-kicker">Library</p>
-            <p className="truncate font-display text-2xl text-foreground">{projectName}</p>
-            <p className="text-sm text-muted-foreground">
-              Browse, organize, and open icons without splitting counts across the page.
-            </p>
+      <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="mr-auto min-w-0">
+            <p className="truncate text-lg font-semibold tracking-tight text-foreground">{projectName}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>library</span>
+              <span className="text-border">/</span>
+              <span>{icons.length} icons</span>
+              {selection.length > 0 ? (
+                <>
+                  <span className="text-border">/</span>
+                  <span>{selection.length} selected</span>
+                </>
+              ) : null}
+            </div>
           </div>
-          <div className="relative min-w-[18rem] flex-1 md:max-w-md">
+          <div className="relative min-w-[16rem] flex-1 lg:max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search"
-              className="h-9 rounded-md border-border bg-background pl-10"
+              placeholder="Search icons"
+              className="h-9 rounded-xl border-border/80 bg-background/80 pl-10 shadow-none"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+              {visibleIcons.length} visible
+            </Badge>
+            {activeCategory !== 'all' ? (
+              <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+                {formatCategoryLabel(activeCategory)}
+              </Badge>
+            ) : null}
           </div>
         </div>
       </header>
 
       <main className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside className="studio-panel min-h-0 overflow-hidden rounded-2xl">
-          <div className="workspace-panel-header px-4 py-4">
-            <p className="workspace-kicker">Collections</p>
-            <p className="mt-2 text-base font-semibold text-foreground">Categories</p>
+          <div className="workspace-panel-header px-4 py-3">
+            <p className="text-sm font-medium text-foreground">Categories</p>
           </div>
           <div className="flex h-full min-h-0 flex-col gap-4 p-3">
             <div className="grid gap-1">
@@ -160,11 +177,8 @@ export function ExplorerShell() {
               ))}
             </div>
 
-            <div className="mt-auto rounded-2xl border border-border/70 bg-background/70 p-3">
-              <p className="text-sm font-medium text-foreground">Create or assign category</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Type a category name, then apply it to the selected icons.
-              </p>
+            <div className="mt-auto rounded-2xl border border-border/80 bg-background/80 p-3">
+              <p className="text-sm font-medium text-foreground">Assign category</p>
               <Input
                 value={categoryInput}
                 onChange={(e) => setCategoryInput(e.target.value)}
@@ -174,12 +188,12 @@ export function ExplorerShell() {
                     assignCategory();
                   }
                 }}
-                placeholder="e.g. media controls"
-                className="mt-3 h-10 rounded-xl border-border bg-background"
+                placeholder="media-controls"
+                className="mt-3 h-9 rounded-xl border-border/80 bg-background shadow-none"
               />
               <Button
-                variant="default"
-                className="mt-3 h-10 w-full rounded-xl"
+                variant="outline"
+                className="mt-3 h-9 w-full rounded-xl"
                 onClick={assignCategory}
                 disabled={selection.length === 0 || !categoryInput.trim()}
               >
@@ -192,15 +206,18 @@ export function ExplorerShell() {
         </aside>
 
         <section className="studio-panel min-h-0 overflow-hidden rounded-2xl">
-          <div className="workspace-panel-header flex flex-wrap items-end justify-between gap-3 px-4 py-4">
-            <div className="space-y-1">
-              <p className="workspace-kicker">Showing</p>
-              <p className="text-lg font-semibold text-foreground">{resultsTitle}</p>
-              <p className="text-sm text-muted-foreground">{resultsSubtitle}</p>
+          <div className="workspace-panel-header flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">{resultsTitle}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{resultsSubtitle}</p>
             </div>
-            {selection.length > 0 ? (
-              <span className="workspace-badge">{selection.length} selected</span>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {selection.length > 0 ? (
+                <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+                  {selection.length} selected
+                </Badge>
+              ) : null}
+            </div>
           </div>
 
           <ScrollArea className="workspace-scroll h-full">
@@ -228,32 +245,37 @@ export function ExplorerShell() {
                   <article
                     key={icon.id}
                     className={cn(
-                      'studio-card group rounded-2xl p-3 transition-all',
-                      active && 'border-primary/40 bg-primary/5 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_28%,transparent)]',
+                      'studio-card group rounded-2xl bg-card p-3 transition-all duration-150',
+                      active && 'border-primary/35 bg-primary/[0.05] shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_26%,transparent)]',
                     )}
                   >
                     <div className="mb-3 flex items-center justify-between gap-2">
                       {activeCategory === 'all' ? (
-                        <span className="studio-chip truncate border-border/70 bg-background/80 text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className="max-w-[10rem] truncate rounded-full border-border/80 bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
+                        >
                           {formatCategoryLabel(icon.category || 'uncategorized')}
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="text-sm text-muted-foreground">{icon.id}</span>
+                        <span className="truncate text-xs text-muted-foreground">{icon.id}</span>
                       )}
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => toggleSelection(icon.id)}
                         aria-pressed={active}
                         aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
                         className={cn(
-                          'inline-flex size-8 items-center justify-center rounded-xl border transition',
+                          'rounded-xl border transition',
                           active
-                            ? 'border-primary/40 bg-primary/10 text-primary'
-                            : 'border-border bg-background text-muted-foreground hover:border-foreground/15 hover:text-foreground',
+                            ? 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/10'
+                            : 'border-border/80 bg-background text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground',
                         )}
                       >
                         <Check className="size-3.5" />
-                      </button>
+                      </Button>
                     </div>
 
                     <Link
@@ -261,23 +283,23 @@ export function ExplorerShell() {
                       onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
                       className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                     >
-                      <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-2xl border border-border/70 transition group-hover:border-foreground/12 group-hover:shadow-sm">
+                      <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-[1.25rem] border border-border/80 bg-muted/30 transition group-hover:border-border group-hover:bg-muted/50">
                         {svg ? (
                           <div
-                            className="h-14 w-14 text-slate-900 transition-transform duration-150 group-hover:scale-[1.03] dark:text-slate-100"
+                            className="h-14 w-14 text-slate-900 transition-transform duration-150 group-hover:scale-[1.02] dark:text-slate-100"
                             dangerouslySetInnerHTML={{ __html: svg }}
                           />
                         ) : (
                           <Grid3X3 className="size-5 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="flex items-end justify-between gap-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">{icon.name}</p>
-                          <p className="truncate text-sm text-muted-foreground">{icon.id}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{icon.id}</p>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-sm font-medium uppercase text-muted-foreground transition group-hover:text-foreground">
-                          Open
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition group-hover:text-foreground">
+                          edit
                           <ArrowUpRight className="size-4 shrink-0" />
                         </span>
                       </div>
@@ -311,8 +333,8 @@ function CategoryButton({
       onClick={onClick}
       className="workspace-nav-button h-10 rounded-xl px-3 py-2"
     >
-      <span className="truncate text-sm text-foreground">{label}</span>
-      <span className="text-xs text-muted-foreground">{count}</span>
+      <span className="truncate text-sm font-medium text-foreground">{label}</span>
+      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{count}</span>
     </button>
   );
 }

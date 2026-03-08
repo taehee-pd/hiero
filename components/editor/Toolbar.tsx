@@ -13,12 +13,13 @@ import {
   Maximize2,
   Import,
 } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/kibo-ui/tooltip';
+} from '@/components/ui/tooltip';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
@@ -146,14 +147,15 @@ export function Toolbar() {
   }, []);
 
   return (
-    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="mr-auto min-w-0 space-y-1">
-          <p className="workspace-kicker">Editor</p>
-          <p className="truncate text-lg font-semibold text-foreground">{projectName}</p>
-          <p className="truncate text-sm text-muted-foreground">
-            {currentIconName ?? 'No icon selected'} · {selectionCount} selected
-          </p>
+    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="mr-auto min-w-0">
+          <p className="truncate text-base font-semibold tracking-tight text-foreground">{projectName}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
+            <span className="text-border">/</span>
+            <span>{selectionCount} selected</span>
+          </div>
         </div>
 
         <ToolbarGroup>
@@ -191,9 +193,9 @@ export function Toolbar() {
         </ToolbarGroup>
 
         <ToolbarGroup>
-          <span className="workspace-badge min-w-[4.25rem] justify-center">
+          <Badge variant="outline" className="min-w-[4.25rem] rounded-xl px-2.5 py-1 text-[11px] font-medium">
             {Math.round(zoom * 100)}%
-          </span>
+          </Badge>
           <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact />
           <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact />
           <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact />

@@ -75,6 +75,24 @@ mock.module('../lib/editor-core/paper-runtime', () => ({
 }));
 
 describe('boolean ops', () => {
+  test('returns stable shortcuts for empty operands without invoking paper', async () => {
+    const { booleanOp } = await import('../lib/editor-core/boolean-ops');
+
+    await expect(booleanOp('unite', '', RECT_B)).resolves.toBe(RECT_B);
+    await expect(booleanOp('subtract', RECT_A, '')).resolves.toBe(RECT_A);
+    await expect(booleanOp('intersect', RECT_A, '')).resolves.toBe('');
+    await expect(booleanOp('exclude', '', '')).resolves.toBe('');
+  });
+
+  test('returns stable shortcuts for identical operands', async () => {
+    const { booleanOp } = await import('../lib/editor-core/boolean-ops');
+
+    await expect(booleanOp('unite', RECT_A, RECT_A)).resolves.toBe(RECT_A);
+    await expect(booleanOp('intersect', RECT_A, RECT_A)).resolves.toBe(RECT_A);
+    await expect(booleanOp('subtract', RECT_A, RECT_A)).resolves.toBe('');
+    await expect(booleanOp('exclude', RECT_A, RECT_A)).resolves.toBe('');
+  });
+
   test('unite simplifies overlapping rectangles and round-trips stably', async () => {
     const { booleanOp } = await import('../lib/editor-core/boolean-ops');
     const result = await booleanOp('unite', RECT_A, RECT_B);
@@ -95,5 +113,14 @@ describe('boolean ops', () => {
 
     const roundTrip = serializePath(parseSvgPath(result));
     expect(serializePath(parseSvgPath(roundTrip))).toBe(roundTrip);
+  });
+
+  test('intersect and exclude produce deterministic results', async () => {
+    const { booleanOp } = await import('../lib/editor-core/boolean-ops');
+
+    await expect(booleanOp('intersect', RECT_A, RECT_B)).resolves.toBe(
+      'M5 0 L10 0 L10 10 L5 10 Z',
+    );
+    await expect(booleanOp('exclude', RECT_A, RECT_B)).resolves.toBe(`${RECT_A} ${RECT_B}`);
   });
 });

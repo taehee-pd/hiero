@@ -28,16 +28,22 @@ describe('phase 1 deterministic checks', () => {
 
   test('layer serialization is deterministic regardless of insertion order', () => {
     const icon = SAMPLE_PROJECT.icons['icon-chevron'];
-    const state = icon.states.default;
+    const state = icon.variants.v24.states.default;
     const reordered = {
       ...icon,
-      states: {
-        default: {
-          ...state,
-          layers: {
-            chevron: state.layers.chevron,
-            'accent-dot': state.layers['accent-dot'],
-            'bg-circle': state.layers['bg-circle'],
+      variants: {
+        ...icon.variants,
+        v24: {
+          ...icon.variants.v24,
+          states: {
+            default: {
+              ...state,
+              layers: {
+                chevron: state.layers.chevron,
+                'accent-dot': state.layers['accent-dot'],
+                'bg-circle': state.layers['bg-circle'],
+              },
+            },
           },
         },
       },
@@ -78,7 +84,7 @@ describe('phase 1 deterministic checks', () => {
     expect(isPathDirectlyEditable('M2 2 L10 2 L10 10 L2 10 Z')).toBeTrue();
     expect(
       isPathDirectlyEditable(
-        SAMPLE_PROJECT.icons['icon-play']!.states.default.layers.triangle.path!.d,
+        SAMPLE_PROJECT.icons['icon-play']!.variants.v24.states.default.layers.triangle.path!.d,
       ),
     ).toBeTrue();
   });

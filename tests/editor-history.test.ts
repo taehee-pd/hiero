@@ -18,29 +18,31 @@ function bootstrap() {
   clearHistory();
 }
 
+function getLayer(iconId: string, variantId: string, stateId: string, layerId: string) {
+  return editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId].layers[layerId];
+}
+
 describe('editor history', () => {
   test('undo/redo works for standard project mutations', () => {
     bootstrap();
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
+    const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
     const layerId = 'chevron';
 
-    const before = editorStore.getState().project!.icons[iconId].states[stateId].layers[layerId]
-      .visible;
+    const before = getLayer(iconId, variantId, stateId, layerId).visible;
 
     state.setLayerVisibility(iconId, stateId, layerId, false);
     expect(canUndo()).toBeTrue();
 
     undo();
-    const afterUndo = editorStore.getState().project!.icons[iconId].states[stateId].layers[layerId]
-      .visible;
+    const afterUndo = getLayer(iconId, variantId, stateId, layerId).visible;
     expect(afterUndo).toBe(before);
     expect(canRedo()).toBeTrue();
 
     redo();
-    const afterRedo = editorStore.getState().project!.icons[iconId].states[stateId].layers[layerId]
-      .visible;
+    const afterRedo = getLayer(iconId, variantId, stateId, layerId).visible;
     expect(afterRedo).toBe(false);
   });
 
@@ -48,15 +50,11 @@ describe('editor history', () => {
     bootstrap();
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
+    const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
     const layerId = 'chevron';
 
-    const startPath = editorStore
-      .getState()
-      .project!.icons[iconId]
-      .states[stateId]
-      .layers[layerId]
-      .path!.d;
+    const startPath = getLayer(iconId, variantId, stateId, layerId).path!.d;
 
     pauseHistory();
     state.patchLayer(iconId, stateId, layerId, {
@@ -73,21 +71,11 @@ describe('editor history', () => {
     expect(canUndo()).toBeTrue();
 
     undo();
-    const afterUndo = editorStore
-      .getState()
-      .project!.icons[iconId]
-      .states[stateId]
-      .layers[layerId]
-      .path!.d;
+    const afterUndo = getLayer(iconId, variantId, stateId, layerId).path!.d;
     expect(afterUndo).toBe(startPath);
 
     redo();
-    const afterRedo = editorStore
-      .getState()
-      .project!.icons[iconId]
-      .states[stateId]
-      .layers[layerId]
-      .path!.d;
+    const afterRedo = getLayer(iconId, variantId, stateId, layerId).path!.d;
     expect(afterRedo).toBe('M0 0 L2 2');
   });
 });

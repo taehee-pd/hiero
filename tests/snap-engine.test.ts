@@ -82,6 +82,7 @@ function createMockStore(state: EditorStore): StoreLike & { emit: () => void } {
 
 describe('snap engine', () => {
   test('computeSnap snaps to grid by default', () => {
+    editorStore.setState({ snapEnabled: true, activeSnapGuides: [] });
     const result = computeSnap(
       { x: 3.24, y: 6.76 },
       {
@@ -106,6 +107,7 @@ describe('snap engine', () => {
       currentIconId: 'snap',
       currentVariantId: 'v24',
       currentStateId: 'default',
+      snapEnabled: true,
       viewport: { zoom: 4, panX: 0, panY: 0 },
     } as EditorStore;
 
@@ -147,6 +149,7 @@ describe('snap engine', () => {
       currentIconId: 'snap',
       currentVariantId: 'v24',
       currentStateId: 'default',
+      snapEnabled: true,
       viewport: { zoom: 1, panX: 0, panY: 0 },
     } as EditorStore;
 
@@ -190,6 +193,7 @@ describe('snap engine', () => {
     editorStore.getState().setCurrentIcon('icon-chevron');
     editorStore.getState().setCurrentVariant('v24');
     editorStore.getState().setCurrentState('default');
+    editorStore.setState({ snapEnabled: true, activeSnapGuides: [] });
 
     const result = computeSnap({ x: 12.1, y: 12.1 }, { zoom: 4, tolerancePx: 3 });
     expect(result.snappedX).toBeTrue();

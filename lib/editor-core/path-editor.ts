@@ -274,6 +274,7 @@ export class PathEditor {
       handleIn: null,
       handleOut: null,
       nodeType: 'corner',
+      segment: { type: 'line' },
     });
 
     const basePathD = serializePath(editable);
@@ -667,6 +668,7 @@ export class PathEditor {
       handleIn: null,
       handleOut: null,
       nodeType: 'corner',
+      segment: { type: 'line' },
     });
 
     state.patchLayer(iconId, stateId, layerId, {

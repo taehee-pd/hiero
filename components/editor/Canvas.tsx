@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -17,6 +17,8 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const HANDLE_RADIUS_PX = 3;
 const HANDLE_STROKE_PX = 1;
 const HANDLE_HIT_RADIUS_PX = 9;
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 32;
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,7 @@ export function Canvas() {
 
   const activeGuideSet =
     icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
+  const gestureScaleRef = useRef(1);
 
   // Render SVG geometry when state changes.
   // Always clear stale geometry if the active icon/variant/state becomes unavailable.
@@ -137,25 +140,66 @@ export function Canvas() {
     activeSnapGuides,
   });
 
-  // ── Zoom via wheel ──────────────────────────────────────
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const state = editorStore.getState();
-    const { viewport, setViewport } = state;
+    const zoomCanvas = (factor: number) => {
+      if (!Number.isFinite(factor) || factor <= 0) return;
+      const state = editorStore.getState();
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
+      if (nextZoom === state.viewport.zoom) return;
+      state.setViewport({ zoom: nextZoom });
+    };
 
-    if (e.ctrlKey || e.metaKey) {
-      // Pinch-to-zoom
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      const newZoom = Math.max(0.1, Math.min(32, viewport.zoom * delta));
-      setViewport({ zoom: newZoom });
-    } else {
-      // Pan
-      setViewport({
-        panX: viewport.panX - e.deltaX,
-        panY: viewport.panY - e.deltaY,
+    const panCanvas = (deltaX: number, deltaY: number) => {
+      const state = editorStore.getState();
+      state.setViewport({
+        panX: state.viewport.panX - deltaX,
+        panY: state.viewport.panY - deltaY,
       });
-    }
+    };
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+
+      if (event.ctrlKey || event.metaKey) {
+        zoomCanvas(Math.exp(-event.deltaY * 0.01));
+        return;
+      }
+
+      panCanvas(event.deltaX, event.deltaY);
+    };
+
+    const handleGestureStart = (event: Event) => {
+      event.preventDefault();
+      gestureScaleRef.current = (event as Event & { scale?: number }).scale ?? 1;
+    };
+
+    const handleGestureChange = (event: Event) => {
+      event.preventDefault();
+      const scale = (event as Event & { scale?: number }).scale ?? gestureScaleRef.current;
+      const delta = scale / Math.max(gestureScaleRef.current, 0.0001);
+      gestureScaleRef.current = scale;
+      zoomCanvas(delta);
+    };
+
+    const handleGestureEnd = (event: Event) => {
+      event.preventDefault();
+      gestureScaleRef.current = 1;
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    container.addEventListener('gesturestart', handleGestureStart as EventListener);
+    container.addEventListener('gesturechange', handleGestureChange as EventListener);
+    container.addEventListener('gestureend', handleGestureEnd as EventListener);
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('gesturestart', handleGestureStart as EventListener);
+      container.removeEventListener('gesturechange', handleGestureChange as EventListener);
+      container.removeEventListener('gestureend', handleGestureEnd as EventListener);
+    };
   }, []);
 
   // Compute icon positioning
@@ -173,8 +217,8 @@ export function Canvas() {
     <div
       ref={containerRef}
       className="workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg"
-      onWheel={handleWheel}
       data-canvas-root
+      style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
     >
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"

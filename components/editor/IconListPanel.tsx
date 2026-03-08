@@ -42,10 +42,10 @@ export function IconListPanel() {
     <div className="flex h-full flex-col border-r border-border bg-card/40">
       <div className="border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-sm font-medium uppercase text-muted-foreground">
             Explorer
           </span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
             {icons.length} icons
           </span>
         </div>
@@ -85,7 +85,7 @@ export function IconListPanel() {
               <Shapes className="mt-0.5 size-3.5 shrink-0 opacity-60" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{icon.name}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">{icon.id}</span>
+                <span className="block truncate text-sm text-muted-foreground">{icon.id}</span>
               </span>
             </button>
           ))}

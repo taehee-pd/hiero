@@ -82,12 +82,12 @@ export function LayerPanel() {
                     ) : null}
                     <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
                     {isMask ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
                         Mask
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <p className="mt-1 text-sm uppercase text-muted-foreground">
                     {maskLayerId
                       ? `clipped by ${maskLayerId}`
                       : clippedLayerIds.length > 0

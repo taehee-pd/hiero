@@ -317,7 +317,7 @@ function drawPointSelectionBoundingBox(
       point: new scope.Point(anchor.x - 6, anchor.y - 10),
       content: `${formatMeasure(label.width)} x ${formatMeasure(label.height)}`,
       fillColor: new scope.Color('#eff6ff'),
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontFamily: 'Geist Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 10,
       justification: 'right',
     });

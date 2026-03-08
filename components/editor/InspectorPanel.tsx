@@ -244,7 +244,7 @@ export function InspectorPanel() {
                   />
                 )}
                 {!layer && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Drag on the canvas to place a new {shapeSubTool}.
                   </p>
                 )}
@@ -275,10 +275,10 @@ export function InspectorPanel() {
                   <span className="flex w-full items-center gap-2.5">
                     <VenetianMask className="size-4" />
                     <span className="flex flex-col items-start leading-none">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                      <span className="text-sm font-semibold uppercase">
                         Make Clipping Mask
                       </span>
-                      <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                      <span className="mt-1 text-xs font-normal text-muted-foreground">
                         {activeMaskLayer
                           ? `${activeMaskLayer.id} clips ${clipTargetIds.length} layer${clipTargetIds.length === 1 ? '' : 's'}`
                           : 'Choose a mask and one or more targets'}
@@ -318,10 +318,10 @@ export function InspectorPanel() {
                             <Icon className="size-4" />
                           )}
                           <span className="flex flex-col items-start leading-none">
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                            <span className="text-sm font-semibold uppercase">
                               {label}
                             </span>
-                            <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                            <span className="mt-1 text-xs font-normal text-muted-foreground">
                               {isPending ? 'Applying...' : 'Combine selected paths'}
                             </span>
                           </span>
@@ -389,10 +389,10 @@ export function InspectorPanel() {
                   <span className="flex w-full items-center gap-2.5">
                     <ScissorsLineDashed className="size-4" />
                     <span className="flex flex-col items-start leading-none">
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                      <span className="text-sm font-semibold uppercase">
                         Release Clipping Mask
                       </span>
-                      <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                      <span className="mt-1 text-xs font-normal text-muted-foreground">
                         {layer?.isClipMask
                           ? 'Remove this mask from all clipped layers'
                           : `Detach from ${layer?.clipPathLayerId}`}
@@ -1081,7 +1081,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+      <span className="text-sm font-semibold uppercase text-muted-foreground">
         {title}
       </span>
       {children}
@@ -1126,7 +1126,7 @@ function ReadOnlyField({
 }) {
   return (
     <div className="grid gap-1">
-      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <Label className="text-sm uppercase text-muted-foreground">
         {label}
       </Label>
       <span
@@ -1165,7 +1165,7 @@ function NumberField({
 
   return (
     <div className="grid gap-1">
-      <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <Label className="text-sm uppercase text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -1184,7 +1184,7 @@ function NumberField({
 
 function InlineMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-[11px] text-muted-foreground">
+    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
       {children}
     </div>
   );
@@ -1192,7 +1192,7 @@ function InlineMessage({ children }: { children: React.ReactNode }) {
 
 function InlineStat({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-[11px] font-medium text-foreground/80">
+    <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-sm font-medium text-foreground/80">
       {children}
     </div>
   );
@@ -1221,7 +1221,7 @@ function AxisField({
 
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Label className="text-sm text-muted-foreground">{label}</Label>
       <Input
         type="text"
         inputMode="decimal"
@@ -1646,7 +1646,7 @@ function PaintField({
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/35 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        <Label className="text-sm uppercase text-muted-foreground">
           {label}
         </Label>
         <div className="flex items-center gap-1.5">
@@ -1711,7 +1711,7 @@ function PaintField({
               </datalist>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Use a hex value, <span className="font-mono">currentColor</span>, or a token name.
           </p>
         </>
@@ -1780,7 +1780,7 @@ function PaintField({
               >
                 Remove stop
               </Button>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 Drag stops to change offset.
               </span>
             </div>
@@ -1904,7 +1904,7 @@ function GradientInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Label className="text-sm text-muted-foreground">{label}</Label>
       <Input
         type="number"
         value={value}

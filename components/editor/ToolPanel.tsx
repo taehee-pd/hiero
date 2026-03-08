@@ -120,7 +120,7 @@ export function ToolPanel({
                       </span>
                       <span className="text-sm font-medium text-foreground">{tool.label}</span>
                     </span>
-                    <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-muted-foreground">
+                    <span className="text-xs font-mono uppercase text-muted-foreground">
                       {tool.shortcut}
                     </span>
                   </Button>
@@ -128,7 +128,7 @@ export function ToolPanel({
                 <TooltipContent side="right">
                   {tooltipLabel}
                   {tool.disabled && !isGuideEntry ? (
-                    <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
+                    <span className="ml-2 text-xs text-muted-foreground">Preset only</span>
                   ) : null}
                 </TooltipContent>
               </Tooltip>
@@ -199,7 +199,7 @@ export function ToolPanel({
                 {snapEnabled ? 'Snap On' : 'Snap Off'}
               </span>
             </span>
-            <span className="text-[10px] font-mono tracking-[0.08em] text-muted-foreground">
+            <span className="text-xs font-mono text-muted-foreground">
               Cmd/Ctrl+Shift+;
             </span>
           </Button>
@@ -207,7 +207,7 @@ export function ToolPanel({
         <TooltipContent side="right">Toggle snapping</TooltipContent>
       </Tooltip>
       {guidePanelOpen ? (
-        <p className="px-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="px-2 text-sm uppercase text-muted-foreground">
           Guides visible: {guidesVisible ? 'yes' : 'no'}
         </p>
       ) : null}

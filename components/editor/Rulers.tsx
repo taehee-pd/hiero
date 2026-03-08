@@ -10,7 +10,7 @@ const DRAG_THRESHOLD_PX = 4;
 const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
 const DEFAULT_GUIDE_COLOR = 'rgba(34,211,238,0.9)';
 const SELECTED_GUIDE_COLOR = 'rgba(8,145,178,0.98)';
-const DEFAULT_GUIDE_WIDTH = 2;
+const DEFAULT_GUIDE_WIDTH = 1;
 const SELECTED_GUIDE_WIDTH = 3;
 
 type DragState = {
@@ -429,7 +429,7 @@ export function Rulers({
                 y={10}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="ui-monospace, SFMono-Regular, monospace"
+                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
               >
                 {formatTickValue(tick.value)}
               </text>
@@ -458,7 +458,7 @@ export function Rulers({
                 y={tick.screen - 3}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="ui-monospace, SFMono-Regular, monospace"
+                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
                 transform={`rotate(-90 10 ${tick.screen - 3})`}
               >
                 {formatTickValue(tick.value)}

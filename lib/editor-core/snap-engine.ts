@@ -1,5 +1,10 @@
 import { editorStore, type EditorStore } from '@/lib/editor-store/store';
-import { selectCurrentIcon, selectCurrentState, selectCurrentVariant } from '@/lib/editor-store/selectors';
+import {
+  selectCurrentIcon,
+  selectCurrentGuideMaster,
+  selectCurrentState,
+  selectCurrentVariant,
+} from '@/lib/editor-store/selectors';
 import { parseSvgPath } from './parse';
 import type { GuideItem, Layer } from '@/lib/schema/types';
 
@@ -66,6 +71,7 @@ export class SnapEngine {
 
     const variant = selectCurrentVariant(state);
     const icon = selectCurrentIcon(state);
+    const guideMaster = selectCurrentGuideMaster(state);
     const currentState = selectCurrentState(state);
 
     const viewBox = options.viewBox ?? variant?.viewBox;
@@ -81,10 +87,12 @@ export class SnapEngine {
       this.collectViewBoxCenterTargets(viewBox, candidates);
     }
 
-    const activeGuideSet =
-      icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
-    if (activeGuideSet?.items?.length) {
-      this.collectGuideTargets(activeGuideSet.items, candidates);
+    if (guideMaster?.items?.length) {
+      this.collectGuideTargets(guideMaster.items, candidates);
+    }
+
+    if (icon?.customGuides?.length) {
+      this.collectGuideTargets(icon.customGuides, candidates);
     }
 
     if (currentState?.layers) {

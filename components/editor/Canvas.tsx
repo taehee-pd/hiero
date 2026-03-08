@@ -10,6 +10,7 @@ import {
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
+import { Rulers } from './Rulers';
 import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
@@ -57,9 +58,15 @@ export function Canvas() {
   const pointMarquee = useEditorStore((s) => s.pointMarquee);
   const pointTransformLabel = useEditorStore((s) => s.pointTransformLabel);
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
-
-  const activeGuideSet =
-    icon && variant?.guideSetId ? icon.guides?.[variant.guideSetId] : undefined;
+  const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const guideStyle = useEditorStore((s) => s.guideStyle);
+  const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
+  const activeGuideMaster = project?.guideMasters
+    ? Object.values(project.guideMasters).find((gm) => gm.targetSize === variant?.size)
+    : undefined;
+  const activeGuideSet = activeGuideMaster
+    ? { id: activeGuideMaster.id, items: activeGuideMaster.items }
+    : undefined;
   const pointBBox = useEditorStore(() => {
     if (tool !== 'direct-select' || pointMarquee) return null;
     const bbox = getSelectedPointsBoundingBox();
@@ -279,6 +286,8 @@ export function Canvas() {
     layers: currentState?.layers ?? {},
     viewBox: variant?.viewBox ?? [0, 0, 24, 24],
     guideSet: activeGuideSet,
+    guidesVisible,
+    guideStyle,
     pointBBox,
     pointMarquee,
     pointBBoxLabel: pointTransformLabel,
@@ -375,6 +384,19 @@ export function Canvas() {
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
       />
+
+      {icon && variant ? (
+        <Rulers
+          containerRef={containerRef}
+          currentIconId={icon.id}
+          viewBox={variant.viewBox}
+          viewport={viewport}
+          guidesVisible={guidesVisible}
+          guideStyle={guideStyle}
+          customGuides={icon.customGuides ?? []}
+          selectedGuideIndex={selectedIconGuideIndex}
+        />
+      ) : null}
 
       {icon && variant && currentState && (
         <div

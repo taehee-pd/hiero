@@ -59,11 +59,16 @@ export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
   return SHAPE_SUB_TOOLS.find((shape) => shape.id === shapeSubTool)?.label ?? 'Shape';
 }
 
-export function ToolPanel() {
+export function ToolPanel({
+  guidePanelOpen = false,
+}: {
+  guidePanelOpen?: boolean;
+}) {
   const activeTool = useTool();
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
-  const { setShapeSubTool, setTool, toggleSnap } = useEditorActions();
+  const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const { setShapeSubTool, setTool, toggleSnap, toggleGuidesVisible } = useEditorActions();
   const [shapePickerOpen, setShapePickerOpen] = useState(false);
 
   return (
@@ -73,12 +78,15 @@ export function ToolPanel() {
       </div>
       <div className="grid gap-1">
         {TOOLS.map((tool) => {
-          const isActive = activeTool === tool.id;
+          const isGuideEntry = tool.id === 'guide';
+          const isActive = isGuideEntry ? guidesVisible : activeTool === tool.id;
           const isShapeTool = tool.id === 'shape';
           const tooltipLabel =
             isShapeTool && isActive
               ? `Shape: ${getShapeSubToolLabel(shapeSubTool)}`
-              : tool.label;
+              : isGuideEntry
+                ? `Guides ${guidesVisible ? 'on' : 'off'}`
+                : tool.label;
 
           return (
             <div
@@ -90,16 +98,20 @@ export function ToolPanel() {
                   <Button
                     variant="ghost"
                     onClick={() => {
+                      if (isGuideEntry) {
+                        toggleGuidesVisible();
+                        return;
+                      }
                       if (!tool.disabled) setTool(tool.id);
                     }}
-                    disabled={tool.disabled}
+                    disabled={tool.disabled && !isGuideEntry}
                     aria-label={tooltipLabel}
                     aria-pressed={isActive}
                     data-active={isActive ? 'true' : 'false'}
                     className={cn(
                       'workspace-nav-button h-10 rounded-md px-3 py-2',
                       isShapeTool && isActive && 'rounded-r-sm',
-                      tool.disabled && 'opacity-50',
+                      tool.disabled && !isGuideEntry && 'opacity-50',
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -115,7 +127,7 @@ export function ToolPanel() {
                 </TooltipTrigger>
                 <TooltipContent side="right">
                   {tooltipLabel}
-                  {tool.disabled ? (
+                  {tool.disabled && !isGuideEntry ? (
                     <span className="ml-2 text-[10px] text-muted-foreground">Preset only</span>
                   ) : null}
                 </TooltipContent>
@@ -194,6 +206,11 @@ export function ToolPanel() {
         </TooltipTrigger>
         <TooltipContent side="right">Toggle snapping</TooltipContent>
       </Tooltip>
+      {guidePanelOpen ? (
+        <p className="px-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          Guides visible: {guidesVisible ? 'yes' : 'no'}
+        </p>
+      ) : null}
     </div>
   );
 }

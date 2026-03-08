@@ -7,7 +7,7 @@ import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 
 type StoreLike = {
   getState: () => EditorStore;
-  subscribe: (listener: () => void) => () => void;
+  subscribe: (listener: () => void) => () => boolean;
 };
 
 function createProjectFixture(): Project {
@@ -17,6 +17,19 @@ function createProjectFixture(): Project {
       name: 'Snap Fixture',
       createdAt: '2026-03-07T00:00:00Z',
       updatedAt: '2026-03-07T00:00:00Z',
+    },
+    guideMasters: {
+      'primary-guides': {
+        id: 'primary-guides',
+        name: '24px Primary Guides',
+        targetSize: 24,
+        viewBox: [0, 0, 24, 24],
+        items: [
+          { kind: 'vline', x: 6 },
+          { kind: 'hline', y: 18 },
+          { kind: 'rect', x: 4, y: 4, width: 8, height: 8 },
+        ],
+      },
     },
     icons: {
       snap: {
@@ -28,17 +41,6 @@ function createProjectFixture(): Project {
             size: 24,
             viewBox: [0, 0, 24, 24],
             defaultState: 'default',
-            guideSetId: 'primary-guides',
-          },
-        },
-        guides: {
-          'primary-guides': {
-            id: 'primary-guides',
-            items: [
-              { kind: 'vline', x: 6 },
-              { kind: 'hline', y: 18 },
-              { kind: 'rect', x: 4, y: 4, width: 8, height: 8 },
-            ],
           },
         },
         states: {

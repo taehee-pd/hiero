@@ -35,18 +35,22 @@ describe('safety net checks', () => {
     expect(editorStore.getState().tool).toBe('pen');
   });
 
-  test('svg export excludes guide presets and guide items', () => {
-    const icon = structuredClone(SAMPLE_PROJECT.icons['icon-chevron']);
-    icon.variants.v24.guideSetId = 'master';
-    icon.guides = {
+  test('svg export remains unaffected by project guide masters', () => {
+    const project = structuredClone(SAMPLE_PROJECT);
+    project.guideMasters = {
       master: {
         id: 'master',
+        name: '24px Master',
+        targetSize: 24,
+        viewBox: [0, 0, 24, 24],
         items: [
           { kind: 'hline', y: 12 },
           { kind: 'vline', x: 12 },
         ],
       },
     };
+    editorStore.getState().loadProject(project);
+    const icon = editorStore.getState().project!.icons['icon-chevron'];
 
     const svg = exportSvgString(icon, 'v24', 'default', SAMPLE_PROJECT.tokenSet?.colors);
 

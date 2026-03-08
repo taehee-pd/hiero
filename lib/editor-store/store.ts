@@ -1,4 +1,12 @@
-import type { Project, Icon, Layer } from '@/lib/schema/types';
+import type {
+  Project,
+  Icon,
+  Layer,
+  GuideMaster,
+  GuideSet,
+  GuideItem,
+  Variant,
+} from '@/lib/schema/types';
 import type {
   Tool,
   SelectionState,
@@ -8,6 +16,7 @@ import type {
   PointTransformLabelState,
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
+import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 
 export type EditorState = {
@@ -15,9 +24,12 @@ export type EditorState = {
   currentIconId: string | null;
   currentVariantId: string | null;
   currentStateId: string | null;
+  selectedIconGuideIndex: number | null;
   selection: SelectionState;
   activeSnapGuides: SnapTarget[];
   snapEnabled: boolean;
+  guidesVisible: boolean;
+  guideStyle: 'subtle' | 'strong';
   viewport: ViewportState;
   tool: Tool;
   shapeSubTool: ShapeType;
@@ -28,12 +40,13 @@ export type EditorState = {
 };
 
 export type EditorActions = {
-  loadProject(project: Project): void;
+  loadProject(project: ProjectInput): void;
   newProject(): void;
   insertIcon(icon: Icon): void;
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
+  setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
   setClipMask(clipLayerId: string, targetLayerIds: string[]): void;
@@ -42,6 +55,8 @@ export type EditorActions = {
   clearSelection(): void;
   setActiveSnapGuides(guides: SnapTarget[]): void;
   toggleSnap(): void;
+  toggleGuidesVisible(): void;
+  setGuideStyle(style: 'subtle' | 'strong'): void;
   setViewport(viewport: Partial<ViewportState>): void;
   setTool(tool: Tool): void;
   setShapeSubTool(shapeSubTool: ShapeType): void;
@@ -50,6 +65,15 @@ export type EditorActions = {
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
+  addGuideMaster(master: GuideMaster): void;
+  updateGuideMaster(id: string, patch: Partial<GuideMaster>): void;
+  removeGuideMaster(id: string): void;
+  addGuideItem(masterId: string, item: GuideItem): void;
+  updateGuideItem(masterId: string, index: number, item: GuideItem): void;
+  removeGuideItem(masterId: string, index: number): void;
+  addIconGuide(iconId: string, item: GuideItem): void;
+  updateIconGuide(iconId: string, index: number, item: GuideItem): void;
+  removeIconGuide(iconId: string, index: number): void;
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
@@ -57,6 +81,19 @@ export type EditorActions = {
 };
 
 export type EditorStore = EditorState & EditorActions;
+
+type LegacyVariant = Variant & {
+  guideSetId?: string;
+};
+
+type LegacyIcon = Icon & {
+  variants: Record<string, LegacyVariant>;
+  guides?: Record<string, GuideSet>;
+};
+
+type ProjectInput = Omit<Project, 'icons'> & {
+  icons: Record<string, LegacyIcon>;
+};
 
 type TemporalSnapshot = { project: Project | null };
 
@@ -77,9 +114,12 @@ const initialState: EditorState = {
   currentIconId: null,
   currentVariantId: null,
   currentStateId: null,
+  selectedIconGuideIndex: null,
   selection: { layerIds: [], pointIds: [] },
   activeSnapGuides: [],
   snapEnabled: true,
+  guidesVisible: true,
+  guideStyle: 'subtle',
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
   shapeSubTool: 'rectangle',
@@ -212,22 +252,150 @@ function resetHistoryForLoadedDocument() {
   temporalState.clear();
 }
 
+function migrateProjectForGuideMasters(project: ProjectInput): Project {
+  const nextGuideMasters: Record<string, GuideMaster> = {
+    ...(project.guideMasters ?? {}),
+  };
+
+  const nextIcons = Object.fromEntries(
+    Object.entries(project.icons).map(([iconId, icon]) => {
+      const variants = icon.variants;
+      const guideRefsBySetId = new Map<string, LegacyVariant[]>();
+
+      for (const variant of Object.values(variants)) {
+        if (!variant.guideSetId) continue;
+        const bucket = guideRefsBySetId.get(variant.guideSetId) ?? [];
+        bucket.push(variant);
+        guideRefsBySetId.set(variant.guideSetId, bucket);
+      }
+
+      for (const [guideSetId, guideSet] of Object.entries(icon.guides ?? {})) {
+        const referencingVariants = guideRefsBySetId.get(guideSetId) ?? [];
+        if (referencingVariants.length === 0) {
+          const fallbackVariant = Object.values(variants)[0];
+          const fallbackSize = fallbackVariant?.size ?? 24;
+          const fallbackViewBox = fallbackVariant?.viewBox ?? [0, 0, fallbackSize, fallbackSize];
+          const fallbackId = ensureUniqueGuideMasterId(
+            guideSetId,
+            nextGuideMasters,
+            fallbackSize,
+          );
+          nextGuideMasters[fallbackId] = {
+            id: fallbackId,
+            name: buildGuideMasterName(guideSetId, fallbackSize),
+            targetSize: fallbackSize,
+            viewBox: fallbackViewBox,
+            items: [],
+          };
+          continue;
+        }
+
+        const variantsBySize = new Map<number, LegacyVariant>();
+        for (const variant of referencingVariants) {
+          if (!variantsBySize.has(variant.size)) {
+            variantsBySize.set(variant.size, variant);
+          }
+        }
+
+        for (const [size, variant] of variantsBySize) {
+          const guideMasterId = ensureUniqueGuideMasterId(
+            guideSetId,
+            nextGuideMasters,
+            size,
+            variantsBySize.size > 1,
+          );
+          nextGuideMasters[guideMasterId] = {
+            id: guideMasterId,
+            name: buildGuideMasterName(guideSetId, size),
+            targetSize: size,
+            viewBox: variant.viewBox,
+            items: guideSet.items,
+          };
+        }
+      }
+
+      const migratedVariants = Object.fromEntries(
+        Object.entries(variants).map(([variantId, variant]) => {
+          const { guideSetId: _guideSetId, ...rest } = variant;
+          return [variantId, rest];
+        }),
+      ) as Icon['variants'];
+      const { guides: _guides, ...restIcon } = icon;
+
+      return [
+        iconId,
+        {
+          ...restIcon,
+          variants: migratedVariants,
+        },
+      ];
+    }),
+  ) as Project['icons'];
+
+  return {
+    ...project,
+    icons: nextIcons,
+    guideMasters: Object.keys(nextGuideMasters).length > 0 ? nextGuideMasters : undefined,
+  };
+}
+
+function ensureUniqueGuideMasterId(
+  baseId: string,
+  guideMasters: Record<string, GuideMaster>,
+  targetSize: number,
+  preferSizedId = false,
+): string {
+  const sizedId = `${baseId}-${targetSize}`;
+  const candidates = preferSizedId ? [sizedId, baseId] : [baseId, sizedId];
+
+  for (const candidate of candidates) {
+    const existing = guideMasters[candidate];
+    if (!existing || existing.targetSize === targetSize) {
+      return candidate;
+    }
+  }
+
+  let suffix = 2;
+  while (true) {
+    const candidate = `${sizedId}-${suffix}`;
+    const existing = guideMasters[candidate];
+    if (!existing || existing.targetSize === targetSize) {
+      return candidate;
+    }
+    suffix += 1;
+  }
+}
+
+function buildGuideMasterName(guideSetId: string, targetSize: number) {
+  const normalized = guideSetId
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  return normalized ? `${targetSize}px ${normalized}` : `${targetSize}px Guide`;
+}
+
 function createActions(): EditorActions {
   return {
     loadProject(project) {
+      const migratedProject = migrateProjectForGuideMasters(project);
       const firstIconId = Object.keys(project.icons)[0] ?? null;
-      const firstIcon = firstIconId ? project.icons[firstIconId] : null;
+      const firstIcon = firstIconId ? migratedProject.icons[firstIconId] : null;
       const firstVariantId = firstIcon ? Object.keys(firstIcon.variants)[0] ?? null : null;
       const firstStateId = firstIcon ? Object.keys(firstIcon.states)[0] ?? null : null;
 
       editorStoreApi.setState({
-        project,
+        project: migratedProject,
         currentIconId: firstIconId,
         currentVariantId: firstVariantId,
         currentStateId: firstStateId,
+        selectedIconGuideIndex: null,
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
         snapEnabled: true,
+        guidesVisible: true,
+        guideStyle: 'subtle',
         viewport: { zoom: 12, panX: 0, panY: 0 },
         pointMarquee: null,
         pointTransformLabel: null,
@@ -237,10 +405,14 @@ function createActions(): EditorActions {
 
     newProject() {
       const now = new Date().toISOString();
+      const defaultGuideMaster = getDefaultGuideMaster(24);
       const project: Project = {
         version: '1.0',
         meta: { name: 'Untitled', createdAt: now, updatedAt: now },
         icons: {},
+        guideMasters: {
+          [defaultGuideMaster.id]: defaultGuideMaster,
+        },
       };
       editorStoreApi.setState({ ...initialState, project });
       resetHistoryForLoadedDocument();
@@ -296,6 +468,7 @@ function createActions(): EditorActions {
           currentIconId: id,
           currentVariantId: Object.keys(icon.variants)[0] ?? null,
           currentStateId: Object.keys(icon.states)[0] ?? null,
+          selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
@@ -304,15 +477,28 @@ function createActions(): EditorActions {
     },
 
     setCurrentVariant(id) {
-      editorStoreApi.setState({ currentVariantId: id, activeSnapGuides: [], pointMarquee: null });
+      editorStoreApi.setState({
+        currentVariantId: id,
+        activeSnapGuides: [],
+        pointMarquee: null,
+        selectedIconGuideIndex: null,
+      });
     },
 
     setCurrentState(id) {
       editorStoreApi.setState({
         currentStateId: id,
+        selectedIconGuideIndex: null,
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
         pointMarquee: null,
+      });
+    },
+
+    setSelectedIconGuideIndex(index) {
+      editorStoreApi.setState({
+        selectedIconGuideIndex: index,
+        selection: { layerIds: [], pointIds: [] },
       });
     },
 
@@ -520,6 +706,7 @@ function createActions(): EditorActions {
     clearSelection() {
       editorStoreApi.setState({
         selection: { layerIds: [], pointIds: [] },
+        selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
       });
@@ -536,6 +723,16 @@ function createActions(): EditorActions {
       }));
     },
 
+    toggleGuidesVisible() {
+      editorStoreApi.setState((s) => ({
+        guidesVisible: !s.guidesVisible,
+      }));
+    },
+
+    setGuideStyle(style) {
+      editorStoreApi.setState({ guideStyle: style });
+    },
+
     setViewport(viewport) {
       editorStoreApi.setState((s) => ({ viewport: { ...s.viewport, ...viewport } }));
     },
@@ -544,6 +741,7 @@ function createActions(): EditorActions {
       editorStoreApi.setState({
         tool,
         selection: { layerIds: [], pointIds: [] },
+        selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
       });
@@ -577,6 +775,222 @@ function createActions(): EditorActions {
             ...s.project,
             meta: { ...s.project.meta, ...patch },
           },
+        };
+      });
+    },
+
+    addGuideMaster(master) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+
+        const nextId = ensureUniqueRecordId(
+          master.id,
+          Object.keys(s.project.guideMasters ?? {}),
+        );
+        const nextMaster =
+          nextId === master.id
+            ? master
+            : {
+                ...master,
+                id: nextId,
+              };
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters: {
+              [nextMaster.id]: nextMaster,
+              ...(s.project.guideMasters ?? {}),
+            },
+          },
+        };
+      });
+    },
+
+    updateGuideMaster(id, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.guideMasters?.[id]) return s;
+        const { id: _nextId, ...safePatch } = patch;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters: {
+              ...s.project.guideMasters,
+              [id]: {
+                ...s.project.guideMasters[id],
+                ...safePatch,
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeGuideMaster(id) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.guideMasters?.[id]) return s;
+
+        const nextGuideMasters = { ...s.project.guideMasters };
+        delete nextGuideMasters[id];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters:
+              Object.keys(nextGuideMasters).length > 0 ? nextGuideMasters : undefined,
+          },
+        };
+      });
+    },
+
+    addGuideItem(masterId, item) {
+      editorStoreApi.setState((s) => {
+        const guideMaster = s.project?.guideMasters?.[masterId];
+        if (!s.project || !guideMaster) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters: {
+              ...s.project.guideMasters,
+              [masterId]: {
+                ...guideMaster,
+                items: [...guideMaster.items, item],
+              },
+            },
+          },
+        };
+      });
+    },
+
+    updateGuideItem(masterId, index, item) {
+      editorStoreApi.setState((s) => {
+        const guideMaster = s.project?.guideMasters?.[masterId];
+        if (!s.project || !guideMaster || index < 0 || index >= guideMaster.items.length) return s;
+
+        const nextItems = guideMaster.items.map((entry, entryIndex) =>
+          entryIndex === index ? item : entry,
+        );
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters: {
+              ...s.project.guideMasters,
+              [masterId]: {
+                ...guideMaster,
+                items: nextItems,
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeGuideItem(masterId, index) {
+      editorStoreApi.setState((s) => {
+        const guideMaster = s.project?.guideMasters?.[masterId];
+        if (!s.project || !guideMaster || index < 0 || index >= guideMaster.items.length) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            guideMasters: {
+              ...s.project.guideMasters,
+              [masterId]: {
+                ...guideMaster,
+                items: guideMaster.items.filter((_, entryIndex) => entryIndex !== index),
+              },
+            },
+          },
+        };
+      });
+    },
+
+    addIconGuide(iconId, item) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+        const nextGuides = [...(icon.customGuides ?? []), item];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                customGuides: nextGuides,
+              },
+            },
+          },
+          selectedIconGuideIndex: nextGuides.length - 1,
+        };
+      });
+    },
+
+    updateIconGuide(iconId, index, item) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.customGuides || index < 0 || index >= icon.customGuides.length) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                customGuides: icon.customGuides.map((entry, entryIndex) =>
+                  entryIndex === index ? item : entry,
+                ),
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeIconGuide(iconId, index) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.customGuides || index < 0 || index >= icon.customGuides.length) return s;
+
+        const nextGuides = icon.customGuides.filter((_, entryIndex) => entryIndex !== index);
+        const nextSelectedIndex =
+          s.selectedIconGuideIndex === null
+            ? null
+            : s.selectedIconGuideIndex === index
+              ? null
+              : s.selectedIconGuideIndex > index
+                ? s.selectedIconGuideIndex - 1
+                : s.selectedIconGuideIndex;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                customGuides: nextGuides.length > 0 ? nextGuides : undefined,
+              },
+            },
+          },
+          selectedIconGuideIndex: nextSelectedIndex,
         };
       });
     },
@@ -683,6 +1097,10 @@ function clampInteger(value: number, minimum: number): number {
 }
 
 function ensureUniqueIconId(candidate: string, existingIds: string[]): string {
+  return ensureUniqueRecordId(candidate, existingIds);
+}
+
+function ensureUniqueRecordId(candidate: string, existingIds: string[]): string {
   if (!existingIds.includes(candidate)) return candidate;
 
   let counter = 2;

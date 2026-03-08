@@ -36,6 +36,8 @@ export type EditorActions = {
   setCurrentState(id: string): void;
   patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
+  setClipMask(clipLayerId: string, targetLayerIds: string[]): void;
+  releaseClipMask(layerId: string): void;
   setSelection(selection: SelectionState): void;
   clearSelection(): void;
   setActiveSnapGuides(guides: SnapTarget[]): void;
@@ -378,6 +380,139 @@ function createActions(): EditorActions {
       });
     },
 
+    setClipMask(clipLayerId, targetLayerIds) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentStateId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const state = icon?.states[s.currentStateId];
+        const maskLayer = state?.layers[clipLayerId];
+        if (!icon || !state || !maskLayer) return s;
+
+        const nextTargetIds = Array.from(new Set(targetLayerIds)).filter(
+          (layerId) => layerId !== clipLayerId && Boolean(state.layers[layerId]),
+        );
+        if (nextTargetIds.length === 0) return s;
+
+        const previousMaskIds = new Set<string>();
+        for (const targetLayerId of nextTargetIds) {
+          const existingMaskId = state.layers[targetLayerId]?.clipPathLayerId;
+          if (existingMaskId && existingMaskId !== clipLayerId) {
+            previousMaskIds.add(existingMaskId);
+          }
+        }
+
+        const nextLayers = { ...state.layers };
+        nextLayers[clipLayerId] = {
+          ...maskLayer,
+          isClipMask: true,
+          clipPathLayerId: undefined,
+        };
+
+        for (const targetLayerId of nextTargetIds) {
+          const targetLayer = nextLayers[targetLayerId];
+          if (!targetLayer) continue;
+          nextLayers[targetLayerId] = {
+            ...targetLayer,
+            clipPathLayerId: clipLayerId,
+          };
+        }
+
+        for (const previousMaskId of previousMaskIds) {
+          const previousMaskLayer = nextLayers[previousMaskId];
+          if (!previousMaskLayer) continue;
+          if (!hasClipMaskTargets(nextLayers, previousMaskId)) {
+            nextLayers[previousMaskId] = {
+              ...previousMaskLayer,
+              isClipMask: false,
+            };
+          }
+        }
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [icon.id]: {
+                ...icon,
+                states: {
+                  ...icon.states,
+                  [state.id]: {
+                    ...state,
+                    layers: nextLayers,
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    releaseClipMask(layerId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentStateId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const state = icon?.states[s.currentStateId];
+        const layer = state?.layers[layerId];
+        if (!icon || !state || !layer) return s;
+
+        const nextLayers = { ...state.layers };
+
+        if (layer.isClipMask) {
+          nextLayers[layerId] = {
+            ...layer,
+            isClipMask: false,
+          };
+
+          for (const candidateId of Object.keys(nextLayers)) {
+            const candidate = nextLayers[candidateId];
+            if (candidate?.clipPathLayerId === layerId) {
+              nextLayers[candidateId] = {
+                ...candidate,
+                clipPathLayerId: undefined,
+              };
+            }
+          }
+        } else if (layer.clipPathLayerId) {
+          const maskLayerId = layer.clipPathLayerId;
+          nextLayers[layerId] = {
+            ...layer,
+            clipPathLayerId: undefined,
+          };
+
+          const maskLayer = nextLayers[maskLayerId];
+          if (maskLayer && !hasClipMaskTargets(nextLayers, maskLayerId)) {
+            nextLayers[maskLayerId] = {
+              ...maskLayer,
+              isClipMask: false,
+            };
+          }
+        } else {
+          return s;
+        }
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [icon.id]: {
+                ...icon,
+                states: {
+                  ...icon.states,
+                  [state.id]: {
+                    ...state,
+                    layers: nextLayers,
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
     setSelection(selection) {
       editorStoreApi.setState({ selection });
     },
@@ -557,4 +692,13 @@ function ensureUniqueIconId(candidate: string, existingIds: string[]): string {
     nextId = `${candidate}-${counter}`;
   }
   return nextId;
+}
+
+function hasClipMaskTargets(
+  layers: Record<string, Layer>,
+  clipLayerId: string,
+): boolean {
+  return Object.values(layers).some(
+    (layer) => layer.id !== clipLayerId && layer.clipPathLayerId === clipLayerId,
+  );
 }

@@ -21,6 +21,8 @@ import {
   Shapes,
   SplitSquareHorizontal,
   Squircle,
+  VenetianMask,
+  ScissorsLineDashed,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
@@ -103,6 +105,8 @@ export function InspectorPanel() {
     setShapePolygonSides,
     setShapeStarPoints,
     setShapeSubTool,
+    setClipMask,
+    releaseClipMask,
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
@@ -133,6 +137,19 @@ export function InspectorPanel() {
       selection.layerIds.every((layerId) => Boolean(currentState.layers[layerId]?.path?.d)),
   );
   const booleanDisabled = !hasBooleanableSelection || pendingBooleanMode !== null;
+  const clippingSelection = selection.layerIds
+    .map((layerId) => currentState?.layers[layerId] ?? null)
+    .filter((candidate): candidate is Layer => Boolean(candidate));
+  const canMakeClipMask =
+    clippingSelection.length >= 2 &&
+    clippingSelection.every((candidate) => Boolean(candidate.path?.d));
+  const activeMaskLayer = clippingSelection[0] ?? null;
+  const clipTargetIds = canMakeClipMask
+    ? clippingSelection.slice(1).map((candidate) => candidate.id)
+    : [];
+  const canReleaseClipMask =
+    selection.layerIds.length === 1 &&
+    Boolean(layer?.isClipMask || layer?.clipPathLayerId);
   const handleBooleanAction = useCallback(
     async (mode: BooleanMode) => {
       if (booleanDisabled) return;
@@ -155,6 +172,14 @@ export function InspectorPanel() {
     },
     [applyBoolean, booleanDisabled],
   );
+  const handleMakeClipMask = useCallback(() => {
+    if (!activeMaskLayer || clipTargetIds.length === 0) return;
+    setClipMask(activeMaskLayer.id, clipTargetIds);
+  }, [activeMaskLayer, clipTargetIds, setClipMask]);
+  const handleReleaseClipMask = useCallback(() => {
+    if (!layer) return;
+    releaseClipMask(layer.id);
+  }, [layer, releaseClipMask]);
 
   if (!layer && !showShapeToolSettings) {
     return (
@@ -239,6 +264,35 @@ export function InspectorPanel() {
 
           {multipleLayersSelected ? (
             <>
+              <Section title="Clipping">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canMakeClipMask}
+                  onClick={handleMakeClipMask}
+                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                >
+                  <span className="flex w-full items-center gap-2.5">
+                    <VenetianMask className="size-4" />
+                    <span className="flex flex-col items-start leading-none">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                        Make Clipping Mask
+                      </span>
+                      <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                        {activeMaskLayer
+                          ? `${activeMaskLayer.id} clips ${clipTargetIds.length} layer${clipTargetIds.length === 1 ? '' : 's'}`
+                          : 'Choose a mask and one or more targets'}
+                      </span>
+                    </span>
+                  </span>
+                </Button>
+                {!canMakeClipMask ? (
+                  <InlineMessage>
+                    Choose at least two path layers. The first selected layer becomes the mask.
+                  </InlineMessage>
+                ) : null}
+              </Section>
+
               <Separator />
 
               <Section title="Boolean">
@@ -322,6 +376,34 @@ export function InspectorPanel() {
               <Separator />
             </>
           )}
+
+          {canReleaseClipMask ? (
+            <>
+              <Section title="Clipping">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleReleaseClipMask}
+                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                >
+                  <span className="flex w-full items-center gap-2.5">
+                    <ScissorsLineDashed className="size-4" />
+                    <span className="flex flex-col items-start leading-none">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">
+                        Release Clipping Mask
+                      </span>
+                      <span className="mt-1 text-[10px] font-normal text-muted-foreground">
+                        {layer?.isClipMask
+                          ? 'Remove this mask from all clipped layers'
+                          : `Detach from ${layer?.clipPathLayerId}`}
+                      </span>
+                    </span>
+                  </span>
+                </Button>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
 
           {layer.path && (
             <>

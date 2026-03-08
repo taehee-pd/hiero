@@ -1,6 +1,13 @@
 import type { EditorStore } from './store';
 import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
 
+export type LayerPanelRow = {
+  layer: Layer;
+  depth: number;
+  maskLayerId: string | null;
+  clippedLayerIds: string[];
+};
+
 export function selectCurrentIcon(s: EditorStore): Icon | null {
   if (!s.project || !s.currentIconId) return null;
   return s.project.icons[s.currentIconId] ?? null;
@@ -24,6 +31,12 @@ export function selectCurrentLayers(s: EditorStore): Layer[] {
   return Object.values(state.layers);
 }
 
+export function selectCurrentLayerPanelRows(s: EditorStore): LayerPanelRow[] {
+  const state = selectCurrentState(s);
+  if (!state) return [];
+  return buildLayerPanelRows(Object.values(state.layers));
+}
+
 export function selectLayerById(
   s: EditorStore,
   layerId: string,
@@ -41,4 +54,50 @@ export function selectIconList(
     id: icon.id,
     name: icon.name,
   }));
+}
+
+export function buildLayerPanelRows(layers: Layer[]): LayerPanelRow[] {
+  const clippedByMask = new Map<string, Layer[]>();
+  const topLevelLayers: Layer[] = [];
+  const layerById = new Map(layers.map((layer) => [layer.id, layer]));
+
+  for (const layer of layers) {
+    const maskLayerId = layer.clipPathLayerId;
+    if (maskLayerId && layerById.has(maskLayerId)) {
+      const bucket = clippedByMask.get(maskLayerId) ?? [];
+      bucket.push(layer);
+      clippedByMask.set(maskLayerId, bucket);
+      continue;
+    }
+    topLevelLayers.push(layer);
+  }
+
+  const rows: LayerPanelRow[] = [];
+  const visited = new Set<string>();
+  const appendLayer = (layer: Layer, depth: number, maskLayerId: string | null) => {
+    if (visited.has(layer.id)) return;
+    visited.add(layer.id);
+
+    const children = clippedByMask.get(layer.id) ?? [];
+    rows.push({
+      layer,
+      depth,
+      maskLayerId,
+      clippedLayerIds: children.map((child) => child.id),
+    });
+
+    for (const child of children) {
+      appendLayer(child, depth + 1, layer.id);
+    }
+  };
+
+  for (const layer of topLevelLayers) {
+    appendLayer(layer, 0, null);
+  }
+
+  for (const layer of layers) {
+    appendLayer(layer, 0, null);
+  }
+
+  return rows;
 }

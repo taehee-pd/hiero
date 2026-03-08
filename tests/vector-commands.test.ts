@@ -16,7 +16,6 @@ import {
 } from '../lib/editor-core/vector-commands';
 import { parseSvgPath } from '../lib/editor-core/parse';
 import type { Project } from '../lib/schema/types';
-import type { Project } from '../lib/schema/types';
 
 function bootstrap() {
   const state = editorStore.getState();
@@ -72,10 +71,52 @@ const ARC_HANDLE_PROJECT: Project = {
   },
 };
 
+const CUBIC_HANDLE_PROJECT: Project = {
+  version: '1.0',
+  meta: {
+    name: 'Cubic Handles',
+    createdAt: '2026-03-08T00:00:00Z',
+    updatedAt: '2026-03-08T00:00:00Z',
+  },
+  icons: {
+    cubic: {
+      id: 'cubic',
+      name: 'Cubic',
+      variants: {
+        v24: {
+          id: 'v24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          defaultState: 'default',
+        },
+      },
+      states: {
+        default: {
+          id: 'default',
+          layers: {
+            curve: {
+              id: 'curve',
+              path: { d: 'M0 0 C5 5 10 10 15 0' },
+              style: {},
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+  },
+};
+
 function bootstrapArcHandleProject() {
   const state = editorStore.getState();
   state.loadProject(structuredClone(ARC_HANDLE_PROJECT));
   return { iconId: 'arc', stateId: 'default', layerId: 'curve' };
+}
+
+function bootstrapCubicHandleProject() {
+  const state = editorStore.getState();
+  state.loadProject(structuredClone(CUBIC_HANDLE_PROJECT));
+  return { iconId: 'cubic', stateId: 'default', layerId: 'curve' };
 }
 
 describe('vector commands', () => {
@@ -260,6 +301,7 @@ describe('vector commands', () => {
     const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
+    expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
   });
 
   test('deleting selected outgoing handle on an arc point clears only that handle and downgrades the arc', () => {
@@ -272,5 +314,19 @@ describe('vector commands', () => {
     const d = next.project!.icons.arc.states.default.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
+    expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
+  });
+
+  test('deleting a selected handle through deleteSelectedPoints keeps the anchor and converts it to a static point', () => {
+    const { layerId } = bootstrapCubicHandleProject();
+    editorStore.getState().setSelection({ layerIds: [layerId], pointIds: ['0:1@in'] });
+
+    expect(deleteSelectedPoints()).toBeTrue();
+
+    const next = editorStore.getState();
+    const d = next.project!.icons.cubic.states.default.layers[layerId].path!.d;
+    expect(d).toBe('M0 0 L15 0');
+    expect(next.selection.pointIds).toEqual(['0:1']);
+    expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
   });
 });

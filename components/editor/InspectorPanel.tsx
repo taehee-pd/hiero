@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   LoaderCircle,
   AlignCenterHorizontal,
@@ -43,8 +43,8 @@ import {
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
-import type { Layer, PaintRef } from '@/lib/schema/types';
-import type { NodeType, SubPath } from '@/lib/editor-core';
+import type { GradientStop, Layer, PaintRef } from '@/lib/schema/types';
+import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +88,7 @@ const POINT_DISTRIBUTE_ACTIONS = [
 ] as const;
 
 const NODE_TYPE_OPTIONS = [
-  { value: 'corner', label: 'Corner', glyph: '∟' },
+  { value: 'static', label: 'Corner', glyph: '∟' },
   { value: 'smooth', label: 'Smooth', glyph: '∿' },
   { value: 'symmetric', label: 'Symmetric', glyph: '⇄' },
 ] as const;
@@ -485,7 +485,7 @@ export function InspectorPanel() {
                   <NodeTypeButton
                     key={option.value}
                     label={option.label}
-                    active={pointContext.nodeType === option.value}
+                    active={isVisualNodeTypeActive(pointContext.nodeType, option.value)}
                     disabled={pointContext.count === 0}
                     onClick={() => setSelectedPointType(option.value)}
                   >
@@ -681,6 +681,7 @@ type EditablePoint = {
   handleIn: { x: number; y: number } | null;
   handleOut: { x: number; y: number } | null;
   nodeType: NodeType;
+  segment: PathSegment | null;
 };
 
 type ResolvedEditablePoint = {
@@ -726,11 +727,13 @@ function applyPointRadius(
     if (radius <= 0) {
       pt.handleIn = null;
       pt.handleOut = null;
-      pt.nodeType = 'corner';
+      pt.nodeType = 'static';
+      pt.segment = { type: 'line' };
       return;
     }
 
     pt.nodeType = 'smooth';
+    pt.segment = { type: 'cubic' };
     const direction = getPointBisectorDirection(resolved.subPath, resolved.pointIndex);
     pt.handleIn = {
       x: pt.position.x - direction.x * radius,
@@ -845,7 +848,18 @@ function updateSelectedHandle(
         y: pt.position.y - dy,
       };
       pt.nodeType = 'symmetric';
+      pt.segment = { type: 'cubic' };
+      return;
     }
+
+    if (!pt.handleIn && !pt.handleOut) {
+      pt.nodeType = 'static';
+      pt.segment = { type: 'line' };
+      return;
+    }
+
+    pt.nodeType = pt.handleIn && pt.handleOut ? 'smooth' : 'corner';
+    pt.segment = { type: 'cubic' };
   });
 }
 
@@ -923,7 +937,7 @@ function getPointRadius(point: EditablePoint) {
 }
 
 function inferPointNodeType(point: EditablePoint): NodeType {
-  if (!point.handleIn && !point.handleOut) return 'corner';
+  if (!point.handleIn && !point.handleOut) return 'static';
   if (point.handleIn && point.handleOut) {
     const inDx = point.handleIn.x - point.position.x;
     const inDy = point.handleIn.y - point.position.y;
@@ -937,6 +951,16 @@ function inferPointNodeType(point: EditablePoint): NodeType {
     if (mirrored && equalLength) return 'symmetric';
   }
   return 'smooth';
+}
+
+function isVisualNodeTypeActive(
+  current: NodeType | null,
+  option: (typeof NODE_TYPE_OPTIONS)[number]['value'],
+) {
+  if (option === 'static') {
+    return current === 'static' || current === 'corner';
+  }
+  return current === option;
 }
 
 function Section({
@@ -1188,6 +1212,85 @@ function SelectField({
   );
 }
 
+type LinearGradientPaint = Extract<PaintRef, { mode: 'linearGradient' }>;
+type RadialGradientPaint = Extract<PaintRef, { mode: 'radialGradient' }>;
+type GradientPaint = LinearGradientPaint | RadialGradientPaint;
+
+const DEFAULT_GRADIENT_STOPS: GradientStop[] = [
+  { offset: 0, color: '#111111' },
+  { offset: 1, color: '#ffffff' },
+];
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeHexColor(value: string | undefined, fallback = '#000000') {
+  if (!value) return fallback;
+  const trimmed = value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed;
+  if (/^#[0-9a-fA-F]{3}$/.test(trimmed)) {
+    return `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`;
+  }
+  return fallback;
+}
+
+function getSeedColor(paint: PaintRef | undefined, colorTokens: Record<string, string>) {
+  if (paint?.mode === 'fixed') return normalizeHexColor(paint.value, '#111111');
+  if (paint?.mode === 'token') {
+    return normalizeHexColor(colorTokens[paint.token], '#111111');
+  }
+  if (paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient') {
+    return normalizeHexColor(paint.stops[0]?.color, '#111111');
+  }
+  return '#111111';
+}
+
+function createDefaultGradientPaint(
+  mode: GradientPaint['mode'],
+  seedColor = '#111111',
+): GradientPaint {
+  const normalizedSeed = normalizeHexColor(seedColor, '#111111');
+  const secondaryColor = normalizedSeed.toLowerCase() === '#ffffff' ? '#111111' : '#ffffff';
+  const stops = [
+    { ...DEFAULT_GRADIENT_STOPS[0], color: normalizedSeed },
+    { ...DEFAULT_GRADIENT_STOPS[1], color: secondaryColor },
+  ];
+
+  if (mode === 'linearGradient') {
+    return { mode, angle: 90, stops };
+  }
+
+  return { mode, cx: 0.5, cy: 0.5, r: 0.5, stops };
+}
+
+function normalizeGradientStops(stops: GradientStop[]): GradientStop[] {
+  return stops
+    .map((stop, index) => ({
+      stop: {
+        offset: clamp(stop.offset, 0, 1),
+        color: normalizeHexColor(stop.color, '#000000'),
+        opacity:
+          stop.opacity === undefined ? undefined : clamp(stop.opacity, 0, 1),
+      },
+      index,
+    }))
+    .sort((a, b) => a.stop.offset - b.stop.offset || a.index - b.index)
+    .map(({ stop }) => stop);
+}
+
+function buildGradientPreview(stops: GradientStop[]) {
+  if (stops.length === 0) {
+    return 'linear-gradient(90deg, #111111 0%, #ffffff 100%)';
+  }
+
+  const segments = normalizeGradientStops(stops).map(
+    (stop) => `${normalizeHexColor(stop.color, '#000000')} ${Math.round(stop.offset * 100)}%`,
+  );
+
+  return `linear-gradient(90deg, ${segments.join(', ')})`;
+}
+
 function PaintField({
   label,
   paint,
@@ -1202,21 +1305,101 @@ function PaintField({
   onChange: (paint: PaintRef) => void;
 }) {
   const tokenNames = Object.keys(colorTokens);
-  const uniqueValue =
+  const [selectedStopIndex, setSelectedStopIndex] = useState(0);
+  const [draggingStopIndex, setDraggingStopIndex] = useState<number | null>(null);
+  const gradientBarRef = useRef<HTMLDivElement | null>(null);
+
+  const paintMode =
+    paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
+      ? paint.mode
+      : paint?.mode === 'fixed' && paint.value === 'none'
+        ? 'none'
+      : paint?.mode === 'currentColor'
+        ? fillModeOptions
+          ? 'currentFill'
+          : 'currentColor'
+        : 'solid';
+  const solidValue =
     !fillModeOptions && paint?.mode === 'currentColor'
       ? 'currentColor'
       : paint?.mode === 'token'
-      ? paint.token
-      : paint?.mode === 'fixed'
-        ? paint.value
-        : 'none';
+        ? paint.token
+        : paint?.mode === 'fixed'
+          ? paint.value
+          : normalizeHexColor(undefined);
+  const gradientPaint =
+    paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
+      ? paint
+      : null;
+  const boundedSelectedStopIndex = gradientPaint
+    ? clamp(selectedStopIndex, 0, Math.max(gradientPaint.stops.length - 1, 0))
+    : 0;
+  const selectedStop = gradientPaint?.stops[boundedSelectedStopIndex] ?? null;
 
-  const paintKind =
-    paint?.mode === 'currentColor'
-      ? 'currentFill'
-      : paint?.mode === 'token' || paint?.mode === 'fixed'
-        ? 'unique'
-        : 'currentFill';
+  const commitGradient = useCallback(
+    (nextPaint: GradientPaint, nextSelectedIndex = boundedSelectedStopIndex) => {
+      onChange({
+        ...nextPaint,
+        stops: normalizeGradientStops(nextPaint.stops),
+      });
+      setSelectedStopIndex(nextSelectedIndex);
+    },
+    [boundedSelectedStopIndex, onChange],
+  );
+
+  const updateGradientStop = useCallback(
+    (index: number, updater: (stop: GradientStop) => GradientStop) => {
+      if (!gradientPaint) return;
+      const updatedStops = gradientPaint.stops.map((stop, stopIndex) =>
+        stopIndex === index ? updater(stop) : stop,
+      );
+      const movedStop = updatedStops[index];
+      const normalizedStops = normalizeGradientStops(updatedStops);
+      const nextSelectedIndex = Math.max(
+        movedStop ? normalizedStops.indexOf(movedStop) : -1,
+        0,
+      );
+      commitGradient(
+        {
+          ...gradientPaint,
+          stops: normalizedStops,
+        },
+        nextSelectedIndex,
+      );
+      if (draggingStopIndex !== null) {
+        setDraggingStopIndex(nextSelectedIndex);
+      }
+    },
+    [commitGradient, draggingStopIndex, gradientPaint],
+  );
+
+  useEffect(() => {
+    if (draggingStopIndex === null || !gradientPaint) return;
+    const activeDragIndex = draggingStopIndex;
+
+    function handlePointerMove(event: PointerEvent) {
+      const bar = gradientBarRef.current;
+      if (!bar) return;
+      const rect = bar.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const nextOffset = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      updateGradientStop(activeDragIndex, (stop) => ({
+        ...stop,
+        offset: nextOffset,
+      }));
+    }
+
+    function handlePointerUp() {
+      setDraggingStopIndex(null);
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [draggingStopIndex, gradientPaint, updateGradientStop]);
 
   const handleRawInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1232,73 +1415,383 @@ function PaintField({
     [onChange, tokenNames],
   );
 
-  const handleKindChange = useCallback(
+  const handleModeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const nextKind = e.target.value;
-      if (nextKind === 'currentFill') {
+      const nextMode = e.target.value as
+        | 'currentFill'
+        | 'currentColor'
+        | 'none'
+        | 'solid'
+        | GradientPaint['mode'];
+
+      if (nextMode === 'currentFill' || nextMode === 'currentColor') {
         onChange({ mode: 'currentColor' });
         return;
       }
 
-      if (paint?.mode === 'token' || paint?.mode === 'fixed') {
-        onChange(paint);
-      } else {
-        onChange({ mode: 'fixed', value: '#000000' });
+      if (nextMode === 'none') {
+        onChange({ mode: 'fixed', value: 'none' });
+        return;
       }
+
+      if (nextMode === 'solid') {
+        if (paint?.mode === 'token' || paint?.mode === 'fixed') {
+          onChange(
+            paint.mode === 'fixed' && paint.value === 'none'
+              ? { mode: 'fixed', value: getSeedColor(paint, colorTokens) }
+              : paint,
+          );
+          return;
+        }
+        onChange({ mode: 'fixed', value: getSeedColor(paint, colorTokens) });
+        return;
+      }
+
+      const defaultGradient = createDefaultGradientPaint(
+        nextMode,
+        getSeedColor(paint, colorTokens),
+      );
+      onChange(defaultGradient);
+      setSelectedStopIndex(0);
     },
-    [onChange, paint],
+    [colorTokens, onChange, paint],
   );
 
   const isColor =
     paint?.mode === 'fixed' &&
-    paint.value !== 'none' &&
-    paint.value.startsWith('#');
+    /^#[0-9a-fA-F]{3,6}$/.test(paint.value);
+
+  const handleAddStop = useCallback(() => {
+    if (!gradientPaint) return;
+    const activeIndex = boundedSelectedStopIndex;
+    const activeStop = gradientPaint.stops[activeIndex];
+    const nextStop = gradientPaint.stops[activeIndex + 1];
+    const prevStop = gradientPaint.stops[activeIndex - 1];
+    let nextOffset = 0.5;
+
+    if (nextStop) {
+      nextOffset = (activeStop.offset + nextStop.offset) / 2;
+    } else if (prevStop) {
+      nextOffset = clamp((prevStop.offset + activeStop.offset) / 2, 0, 1);
+    } else {
+      nextOffset = clamp(activeStop.offset + 0.1, 0, 1);
+    }
+
+    const newStop: GradientStop = {
+      offset: nextOffset,
+      color: selectedStop?.color ?? activeStop.color,
+      opacity: selectedStop?.opacity ?? activeStop.opacity,
+    };
+    const updatedStops = [...gradientPaint.stops, newStop];
+    const normalizedStops = normalizeGradientStops(updatedStops);
+    const nextSelectedIndex = Math.max(
+      normalizedStops.indexOf(newStop),
+      0,
+    );
+
+    commitGradient(
+      {
+        ...gradientPaint,
+        stops: normalizedStops,
+      },
+      nextSelectedIndex,
+    );
+  }, [
+    boundedSelectedStopIndex,
+    commitGradient,
+    gradientPaint,
+    selectedStop?.color,
+    selectedStop?.opacity,
+  ]);
+
+  const handleRemoveStop = useCallback(() => {
+    if (!gradientPaint || gradientPaint.stops.length <= 2) return;
+    const updatedStops = gradientPaint.stops.filter(
+      (_, index) => index !== boundedSelectedStopIndex,
+    );
+    commitGradient(
+      {
+        ...gradientPaint,
+        stops: updatedStops,
+      },
+      clamp(boundedSelectedStopIndex - 1, 0, Math.max(updatedStops.length - 1, 0)),
+    );
+  }, [boundedSelectedStopIndex, commitGradient, gradientPaint]);
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+    <div className="flex items-start gap-2">
+      <Label className="w-20 shrink-0 pt-2 text-xs text-muted-foreground">
         {label}
       </Label>
-      <div className="flex flex-1 items-center gap-1.5">
-        {fillModeOptions && (
+      <div className="flex flex-1 flex-col gap-2 rounded-xl border border-border/60 bg-background/30 p-2">
+        <div className="flex items-center gap-1.5">
           <select
-            value={paintKind}
-            onChange={handleKindChange}
-            className="h-8 rounded-xl border border-input bg-input/80 px-2 text-xs"
+            value={paintMode}
+            onChange={handleModeChange}
+            className="h-8 min-w-[9rem] rounded-xl border border-input bg-input/80 px-2 text-xs"
             aria-label={`${label} mode`}
           >
-            <option value="currentFill">currentFill</option>
-            <option value="unique">Unique color</option>
+            {fillModeOptions ? (
+              <option value="currentFill">currentFill</option>
+            ) : (
+              <option value="currentColor">currentColor</option>
+            )}
+            <option value="none">None</option>
+            <option value="solid">Solid / token</option>
+            <option value="linearGradient">Linear gradient</option>
+            <option value="radialGradient">Radial gradient</option>
           </select>
-        )}
-        {isColor && (
-          <input
-            type="color"
-            value={paint.mode === 'fixed' ? paint.value : '#000000'}
-            onChange={(e) =>
-              onChange({ mode: 'fixed', value: e.target.value })
-            }
-            className="size-7 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
-            aria-label={`${label} color picker`}
-          />
-        )}
-        <Input
-          type="text"
-          value={uniqueValue}
-          onChange={handleRawInputChange}
-          disabled={fillModeOptions && paintKind === 'currentFill'}
-          list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
-          placeholder={fillModeOptions ? '#RRGGBB or token name' : 'currentColor / #RRGGBB / token'}
-          className="h-7 bg-input font-mono text-xs"
-        />
-        {tokenNames.length > 0 && (
-          <datalist id={`${label.toLowerCase()}-token-list`}>
-            {tokenNames.map((tokenName) => (
-              <option key={tokenName} value={tokenName} />
-            ))}
-          </datalist>
+        </div>
+
+        {paintMode === 'none' ? (
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+            {label} is disabled.
+          </div>
+        ) : !gradientPaint ? (
+          <div className="flex items-center gap-1.5">
+            {isColor && (
+              <input
+                type="color"
+                value={normalizeHexColor(
+                  paint?.mode === 'fixed' ? paint.value : undefined,
+                )}
+                onChange={(e) =>
+                  onChange({ mode: 'fixed', value: e.target.value })
+                }
+                className="size-7 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+                aria-label={`${label} color picker`}
+              />
+            )}
+            <Input
+              type="text"
+              value={solidValue}
+              onChange={handleRawInputChange}
+              disabled={
+                (fillModeOptions && paintMode === 'currentFill') ||
+                (!fillModeOptions && paintMode === 'currentColor')
+              }
+              list={tokenNames.length > 0 ? `${label.toLowerCase()}-token-list` : undefined}
+              placeholder={
+                fillModeOptions
+                  ? '#RRGGBB or token name'
+                  : 'currentColor / #RRGGBB / token'
+              }
+              className="h-7 bg-input font-mono text-xs"
+            />
+            {tokenNames.length > 0 && (
+              <datalist id={`${label.toLowerCase()}-token-list`}>
+                {tokenNames.map((tokenName) => (
+                  <option key={tokenName} value={tokenName} />
+                ))}
+              </datalist>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="relative pt-8">
+              <div
+                ref={gradientBarRef}
+                className="relative h-10 rounded-xl border border-border/80 bg-muted/40 shadow-inner"
+                style={{ backgroundImage: buildGradientPreview(gradientPaint.stops) }}
+              />
+              {gradientPaint.stops.map((stop, index) => {
+                const isSelected = index === boundedSelectedStopIndex;
+                return (
+                  <button
+                    key={`${stop.offset}-${stop.color}-${index}`}
+                    type="button"
+                    className={cn(
+                      'absolute top-8 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-sm transition',
+                      isSelected
+                        ? 'border-primary ring-2 ring-primary/30'
+                        : 'border-background/90',
+                    )}
+                    style={{
+                      left: `${stop.offset * 100}%`,
+                      backgroundColor: normalizeHexColor(stop.color, '#000000'),
+                    }}
+                    onClick={() => setSelectedStopIndex(index)}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      setSelectedStopIndex(index);
+                      setDraggingStopIndex(index);
+                    }}
+                    aria-label={`${label} stop ${index + 1}`}
+                    title={`Stop ${index + 1}`}
+                  />
+                );
+              })}
+              {selectedStop && (
+                <input
+                  type="color"
+                  value={normalizeHexColor(selectedStop.color, '#000000')}
+                  onChange={(e) =>
+                    updateGradientStop(boundedSelectedStopIndex, (stop) => ({
+                      ...stop,
+                      color: e.target.value,
+                    }))
+                  }
+                  className="absolute top-0 h-7 w-7 -translate-x-1/2 cursor-pointer rounded-md border border-border bg-background p-0.5 shadow-sm"
+                  style={{ left: `${selectedStop.offset * 100}%` }}
+                  aria-label={`${label} selected stop color`}
+                />
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={handleAddStop}>
+                Add stop
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleRemoveStop}
+                disabled={gradientPaint.stops.length <= 2}
+              >
+                Remove stop
+              </Button>
+              <span className="text-[11px] text-muted-foreground">
+                Drag stops to change offset.
+              </span>
+            </div>
+
+            {selectedStop && (
+              <div className="grid grid-cols-3 gap-2">
+                <GradientInput
+                  label="Stop"
+                  value={selectedStop.offset}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(value) =>
+                    updateGradientStop(boundedSelectedStopIndex, (stop) => ({
+                      ...stop,
+                      offset: value,
+                    }))
+                  }
+                />
+                <GradientInput
+                  label="Opacity"
+                  value={selectedStop.opacity ?? 1}
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  onChange={(value) =>
+                    updateGradientStop(boundedSelectedStopIndex, (stop) => ({
+                      ...stop,
+                      opacity: value,
+                    }))
+                  }
+                />
+                <GradientInput
+                  label="Stops"
+                  value={gradientPaint.stops.length}
+                  disabled
+                  onChange={() => {}}
+                />
+              </div>
+            )}
+
+            {gradientPaint.mode === 'linearGradient' ? (
+              <div className="grid grid-cols-3 gap-2">
+                <GradientInput
+                  label="Angle"
+                  value={gradientPaint.angle}
+                  step={1}
+                  onChange={(value) =>
+                    commitGradient({
+                      ...gradientPaint,
+                      angle: value,
+                    })
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <GradientInput
+                  label="Center X"
+                  value={gradientPaint.cx}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(value) =>
+                    commitGradient({
+                      ...gradientPaint,
+                      cx: value,
+                    })
+                  }
+                />
+                <GradientInput
+                  label="Center Y"
+                  value={gradientPaint.cy}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(value) =>
+                    commitGradient({
+                      ...gradientPaint,
+                      cy: value,
+                    })
+                  }
+                />
+                <GradientInput
+                  label="Radius"
+                  value={gradientPaint.r}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={(value) =>
+                    commitGradient({
+                      ...gradientPaint,
+                      r: value,
+                    })
+                  }
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+function GradientInput({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  disabled,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        onChange={(event) => {
+          const nextValue = parseFloat(event.target.value);
+          if (!Number.isNaN(nextValue)) {
+            onChange(nextValue);
+          }
+        }}
+        className="h-8 bg-input text-xs"
+      />
     </div>
   );
 }

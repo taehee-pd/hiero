@@ -16,6 +16,7 @@ type MultiSelectionTarget = {
   iconId: string;
   stateId: string;
   layerId: string;
+  rawPointKeys: string[];
   pointKeys: string[];
   pathD: string;
 };
@@ -53,14 +54,17 @@ function getMultiSelectionTarget(minPoints = 1): MultiSelectionTarget | null {
   const iconId = state.currentIconId;
   const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
-  const pointKeys = Array.from(new Set(state.selection.pointIds));
+  const rawPointKeys = Array.from(new Set(state.selection.pointIds));
+  const pointKeys = Array.from(
+    new Set(rawPointKeys.map((rawPointKey) => parseSelectionPointKey(rawPointKey).pointKey)),
+  );
 
   if (!iconId || !stateId || !layerId || pointKeys.length < minPoints) return null;
 
   const pathD = state.project?.icons[iconId]?.states[stateId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
-  return { iconId, stateId, layerId, pointKeys, pathD };
+  return { iconId, stateId, layerId, rawPointKeys, pointKeys, pathD };
 }
 
 function resolvePoint(pathD: string, pointKey: string) {
@@ -103,82 +107,30 @@ function patchPath(iconId: string, stateId: string, layerId: string, nextD: stri
 export function deleteSelectedPoint(): boolean {
   const target = getSelectionTarget();
   if (!target) return false;
-
-  const resolved = resolvePoint(target.pathD, target.pointKey);
-  if (!resolved) return false;
-  const { editable, subPath, point, subPathIdx, pointIdx } = resolved;
-
-  if (target.handleDirection) {
-    if (target.handleDirection === 'in') {
-      point.handleIn = null;
-    } else {
-      point.handleOut = null;
-    }
-
-    if (point.segment?.type === 'arc') {
-      point.segment = { type: 'line' };
-      point.nodeType = 'corner';
-    }
-
-    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
-    editorStore.getState().setSelection({
-      layerIds: [target.layerId],
-      pointIds: [target.pointKey],
-    });
-    return true;
-  }
-
-  if (subPath.points.length <= 1) return false;
-
-  subPath.points.splice(pointIdx, 1);
-  const nextIndex = Math.max(0, pointIdx - 1);
-
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
-  editorStore.getState().setSelection({
-    layerIds: [target.layerId],
-    pointIds: [`${subPathIdx}:${Math.min(nextIndex, subPath.points.length - 1)}`],
-  });
-  return true;
+  return deleteSelectionEntries(target.iconId, target.stateId, target.layerId, target.pathD, [
+    {
+      rawPointKey: target.handleDirection
+        ? `${target.pointKey}@${target.handleDirection}`
+        : target.pointKey,
+      pointKey: target.pointKey,
+      handleDirection: target.handleDirection,
+    },
+  ]);
 }
 
 export function deleteSelectedPoints(): boolean {
   const target = getMultiSelectionTarget(1);
   if (!target) return false;
-
-  const editable = parseSvgPath(target.pathD);
-  const grouped = new Map<number, number[]>();
-
-  for (const key of target.pointKeys) {
-    const [subPathIdxRaw, pointIdxRaw] = key.split(':');
-    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
-    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
-    if (!Number.isInteger(subPathIdx) || !Number.isInteger(pointIdx)) continue;
-    const indices = grouped.get(subPathIdx) ?? [];
-    indices.push(pointIdx);
-    grouped.set(subPathIdx, indices);
-  }
-
-  let changed = false;
-  grouped.forEach((pointIndices, subPathIdx) => {
-    const subPath = editable.subPaths[subPathIdx];
-    if (!subPath) return;
-    const sorted = [...new Set(pointIndices)].sort((a, b) => b - a);
-    for (const pointIdx of sorted) {
-      if (subPath.points.length <= 1) continue;
-      if (pointIdx < 0 || pointIdx >= subPath.points.length) continue;
-      subPath.points.splice(pointIdx, 1);
-      changed = true;
-    }
-  });
-
-  if (!changed) return false;
-
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
-  editorStore.getState().setSelection({
-    layerIds: [target.layerId],
-    pointIds: [],
-  });
-  return true;
+  return deleteSelectionEntries(
+    target.iconId,
+    target.stateId,
+    target.layerId,
+    target.pathD,
+    target.rawPointKeys.map((rawPointKey) => ({
+      rawPointKey,
+      ...parseSelectionPointKey(rawPointKey),
+    })),
+  );
 }
 
 export function toggleSelectedPointType(): boolean {
@@ -188,7 +140,10 @@ export function toggleSelectedPointType(): boolean {
   const resolved = resolvePoint(target.pathD, target.pointKey);
   if (!resolved) return false;
   const { editable } = resolved;
-  const nextType = resolved.point.nodeType === 'corner' ? 'smooth' : 'corner';
+  const nextType =
+    resolved.point.nodeType === 'smooth' || resolved.point.nodeType === 'symmetric'
+      ? 'static'
+      : 'smooth';
   applyPointNodeType(resolved.subPath, resolved.pointIdx, nextType);
 
   patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
@@ -232,7 +187,7 @@ export function insertPointAfterSelection(): boolean {
     },
     handleIn: null,
     handleOut: null,
-    nodeType: 'corner' as const,
+    nodeType: 'static' as const,
     segment: { type: 'line' as const },
   };
 
@@ -386,11 +341,17 @@ function applyPointNodeType(
   const point = subPath.points[pointIdx];
   if (!point) return;
 
-  if (nodeType === 'corner') {
+  if (nodeType === 'static') {
     point.handleIn = null;
     point.handleOut = null;
-    point.nodeType = 'corner';
+    point.nodeType = 'static';
     point.segment = { type: 'line' };
+    return;
+  }
+
+  if (nodeType === 'corner') {
+    point.nodeType = 'corner';
+    point.segment = point.handleIn || point.handleOut ? { type: 'cubic' } : { type: 'line' };
     return;
   }
 
@@ -425,6 +386,96 @@ function applyPointNodeType(
     y: point.position.y + tangent.y * baseLength,
   };
   point.nodeType = 'symmetric';
+  point.segment = { type: 'cubic' };
+}
+
+function deleteSelectionEntries(
+  iconId: string,
+  stateId: string,
+  layerId: string,
+  pathD: string,
+  selections: Array<{
+    rawPointKey: string;
+    pointKey: string;
+    handleDirection: 'in' | 'out' | null;
+  }>,
+): boolean {
+  const editable = parseSvgPath(pathD);
+  const pointDeletes = new Map<number, Set<number>>();
+  const handleOnlySelections = new Set<string>();
+  let changed = false;
+
+  for (const selection of selections) {
+    const resolved = resolvePointInEditable(editable, selection.pointKey);
+    if (!resolved) continue;
+
+    if (selection.handleDirection) {
+      const handleKey = selection.handleDirection === 'in' ? 'handleIn' : 'handleOut';
+      const previousSegmentType = resolved.point.segment?.type ?? null;
+      const hadHandle = Boolean(resolved.point[handleKey]);
+      resolved.point[handleKey] = null;
+      const adjacentPoint = getNeighborPoint(
+        resolved.subPath,
+        resolved.pointIdx,
+        selection.handleDirection === 'in' ? -1 : 1,
+      );
+      if (adjacentPoint) {
+        if (selection.handleDirection === 'in') {
+          adjacentPoint.handleOut = null;
+        } else {
+          adjacentPoint.handleIn = null;
+        }
+        normalizePointAfterHandleMutation(adjacentPoint);
+      }
+      normalizePointAfterHandleMutation(resolved.point);
+      handleOnlySelections.add(selection.pointKey);
+      changed =
+        changed ||
+        hadHandle ||
+        previousSegmentType === 'arc' ||
+        previousSegmentType === 'quadratic';
+      continue;
+    }
+
+    const indices = pointDeletes.get(resolved.subPathIdx) ?? new Set<number>();
+    indices.add(resolved.pointIdx);
+    pointDeletes.set(resolved.subPathIdx, indices);
+  }
+
+  pointDeletes.forEach((pointIndices, subPathIdx) => {
+    const subPath = editable.subPaths[subPathIdx];
+    if (!subPath) return;
+    const sorted = [...pointIndices].sort((a, b) => b - a);
+    for (const pointIdx of sorted) {
+      if (subPath.points.length <= 1) continue;
+      if (pointIdx < 0 || pointIdx >= subPath.points.length) continue;
+      subPath.points.splice(pointIdx, 1);
+      changed = true;
+    }
+  });
+
+  if (!changed) return false;
+
+  patchPath(iconId, stateId, layerId, serializePath(editable));
+  editorStore.getState().setSelection({
+    layerIds: [layerId],
+    pointIds: pointDeletes.size > 0 ? [] : [...handleOnlySelections],
+  });
+  return true;
+}
+
+function normalizePointAfterHandleMutation(point: PathPoint): void {
+  if (!point.handleIn && !point.handleOut) {
+    point.nodeType = 'static';
+    point.segment = { type: 'line' };
+    return;
+  }
+
+  point.nodeType = 'corner';
+  if (point.segment?.type === 'arc' || point.segment?.type === 'quadratic') {
+    point.segment = { type: 'line' };
+    return;
+  }
   point.segment = { type: 'cubic' };
 }
 

@@ -78,33 +78,83 @@ This document tracks implementation progress against the planned architecture an
 
 ## Remaining roadmap
 
-### Phase 2 - Stateful icons + runtime MVP
-- [ ] Build `runtime-core` state machine, transition resolver, scheduler.
-- [ ] Build `runtime-dom` renderer/drivers for track transitions.
-- [ ] Build `runtime-react` (`<VibeIcon />`, hook wrapper).
-- [ ] Add hamburger ↔ close reference icon + integration test.
+Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-library-implementation-plan.md), [docs/plans/2026-03-08-runtime-json-export-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-json-export-design.md), [docs/plans/2026-03-08-sf-symbols-style-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-sf-symbols-style-export-plan.md), [docs/plans/2026-03-08-target-codebase-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-target-codebase-export-plan.md), and [docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md).
 
-### Phase 3 - Variants + rendering modes + tokens
-- [ ] Variant coverage (12/16/24/48) + per-variant guides.
-- [ ] Rendering modes across editor + runtime.
-- [ ] Token resolution consistency + runtime-json exporter.
+### Phase R0 - Repo preparation
+- [ ] Replace placeholder package metadata with real package naming.
+- [ ] Formalize the active test runner/scripts used by the repo.
+- [ ] Add shared runtime payload types for exporter + runtime modules.
+- [ ] Define in-repo module boundaries for `runtime-core`, `runtime-dom`, and `runtime-react`.
 
-### Phase 4 - Morphing + topology lock
-- [ ] Topology contract compute/validate in editor.
-- [ ] Strict morph + best-guess morph + quality-based fallback.
+### Phase R1 - Runtime JSON exporter
+- [ ] Implement `lib/export/export-runtime-json.ts`.
+- [ ] Emit deterministic `index.json`, `meta.json`, and per-variant payload files.
+- [ ] Add explicit Draw annotation export from editor guide points.
+- [ ] Add Variable Draw participation export for draw-capable layers.
+- [ ] Add Magic Replace continuity metadata for preserved enclosure layers.
+- [ ] Preserve gradient paint descriptors in runtime payloads.
+- [ ] Materialize only valid icon-level transitions/effects per variant.
+- [ ] Add exporter diagnostics for invalid runtime transitions.
+- [ ] Add deterministic export coverage for runtime-json.
 
-### Phase 5 - Export + integrations
-- [ ] Dedicated exporter packages (svg/react/runtime-json/lottie flag).
-- [ ] Figma bridge/plugin payload/sync metadata.
-- [ ] GitHub export PR automation.
-- [ ] Desktop shell with bridge + file APIs.
+### Phase R2 - Runtime core
+- [ ] Build `IconRuntime` state machine and frame scheduler.
+- [ ] Execute Draw On / Draw Off from exported annotation data.
+- [ ] Support Variable Draw progress on participating layers.
+- [ ] Support Magic Replace continuity with preserved enclosures.
+- [ ] Implement `replace` and `track` transition strategies.
+- [ ] Support named easings and cubic-bezier parsing.
+- [ ] Add effect playback and snapshot composition.
+- [ ] Add frame checkpoint tests for state changes and interruptions.
+
+### Phase R3 - Runtime DOM
+- [ ] Build SVG renderer for runtime snapshots.
+- [ ] Support efficient DOM updates across animated frames.
+- [ ] Add browser-level tests for mount/update/unmount behavior.
+
+### Phase R4 - Runtime React
+- [ ] Build `<Icon />` and `useIcon` on top of the runtime store.
+- [ ] Wire `useSyncExternalStore` subscriptions and prop-driven state changes.
+- [ ] Add integration coverage for controlled and uncontrolled animation flows.
+- [ ] Add a demo icon path in the app for end-to-end validation.
+
+### Phase R5 - Platform capability layer
+- [ ] Define target platform, delivery mode, capability, and export-outcome types.
+- [ ] Add explicit downgrade reporting for unsupported target features.
+- [ ] Separate adapter transforms from sync connectors.
+
+### Phase R6 - React adapter family
+- [ ] Generate icons into generic React repos from runtime-json.
+- [ ] Vendor or import runtime helpers for React hosts.
+- [ ] Add thin host integrations such as Storybook or CMS previews on top of the generic React adapter.
+- [ ] Add deterministic stale-file cleanup and generated file manifests.
+
+### Phase R7 - Sync connectors
+- [ ] Add target export config to project schema.
+- [ ] Build editor-side export / connections UI.
+- [ ] Implement local-directory sync into downstream repos.
+- [ ] Implement Git PR-based sync flow.
+- [ ] Add optional package/registry connectors later.
+
+### Phase R8 - Swift and Flutter adapter design
+- [ ] Define Swift adapter capability mapping and runtime boundary.
+- [ ] Define Flutter adapter capability mapping and runtime boundary.
+- [ ] Decide v1 downgrade rules for non-React targets.
+
+### Phase R9 - Morphing and advanced transitions
+- [ ] Add topology contract validation in the editor.
+- [ ] Implement strict and best-guess morph execution.
+- [ ] Fallback invalid morphs to deterministic replace behavior.
 
 ---
 
 ## Suggested next implementation sequence
 
-1. Stand up `runtime-core` with `track` + `replace` transition execution.
-2. Add `runtime-dom` and `runtime-react` adapters with a single end-to-end stateful demo (hamburger/close).
-3. Lock runtime-json/runtime SVG behavior with deterministic export snapshots.
-4. Extend variant/rendering-mode/token workflows beyond the current editor/export groundwork.
-5. Implement topology-locked morphing, then exporter/integration packages.
+1. Complete Phase R0 so runtime work has stable scripts, types, and module boundaries.
+2. Build Phase R1 first: lock the runtime-json export contract, especially Draw / Variable Draw / Magic Replace metadata, before runtime rendering work.
+3. Stand up Phase R2 + R3 with Draw-capable exported payloads first, then add generic `track` and `replace` transitions.
+4. Add Phase R4 React adapters with a single end-to-end stateful demo icon.
+5. Add the platform capability layer before adapter work hardens.
+6. Build one generic React adapter family, then sync connectors.
+7. Design Swift and Flutter adapters from explicit capability contracts before implementing them.
+8. Add morphing after the platform boundaries are stable.

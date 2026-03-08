@@ -11,7 +11,7 @@ const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
 const DEFAULT_GUIDE_COLOR = 'rgba(34,211,238,0.9)';
 const SELECTED_GUIDE_COLOR = 'rgba(8,145,178,0.98)';
 const DEFAULT_GUIDE_WIDTH = 1;
-const SELECTED_GUIDE_WIDTH = 3;
+const SELECTED_GUIDE_WIDTH = 4;
 
 type DragState = {
   kind: 'hline' | 'vline';

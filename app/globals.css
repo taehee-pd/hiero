@@ -4,47 +4,47 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.965 0.016 78);
-  --foreground: oklch(0.29 0.02 30);
-  --card: oklch(0.992 0.01 85);
-  --card-foreground: oklch(0.27 0.02 30);
-  --popover: oklch(0.992 0.01 85);
-  --popover-foreground: oklch(0.27 0.02 30);
-  --primary: oklch(0.66 0.18 33);
-  --primary-foreground: oklch(0.985 0.01 85);
-  --secondary: oklch(0.94 0.015 80);
-  --secondary-foreground: oklch(0.31 0.02 30);
-  --muted: oklch(0.93 0.01 78);
-  --muted-foreground: oklch(0.54 0.015 38);
-  --accent: oklch(0.71 0.07 165);
-  --accent-foreground: oklch(0.17 0.02 160);
+  --background: oklch(0.985 0.004 255);
+  --foreground: oklch(0.21 0.012 264);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.012 264);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.012 264);
+  --primary: oklch(0.55 0.17 259);
+  --primary-foreground: oklch(0.985 0.002 255);
+  --secondary: oklch(0.97 0.004 255);
+  --secondary-foreground: oklch(0.3 0.012 264);
+  --muted: oklch(0.968 0.004 255);
+  --muted-foreground: oklch(0.52 0.014 264);
+  --accent: oklch(0.965 0.006 255);
+  --accent-foreground: oklch(0.24 0.012 264);
   --destructive: oklch(0.57 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.85 0.02 70);
-  --input: oklch(0.9 0.012 76);
-  --ring: oklch(0.66 0.18 33);
-  --chart-1: oklch(0.66 0.18 33);
-  --chart-2: oklch(0.71 0.07 165);
-  --chart-3: oklch(0.74 0.12 94);
-  --chart-4: oklch(0.56 0.17 16);
-  --chart-5: oklch(0.63 0.12 255);
-  --radius: 1rem;
-  --sidebar: oklch(0.955 0.014 76);
-  --sidebar-foreground: oklch(0.3 0.02 30);
-  --sidebar-primary: oklch(0.66 0.18 33);
-  --sidebar-primary-foreground: oklch(0.985 0.01 85);
-  --sidebar-accent: oklch(0.9 0.01 75);
-  --sidebar-accent-foreground: oklch(0.28 0.02 28);
-  --sidebar-border: oklch(0.84 0.02 70);
-  --sidebar-ring: oklch(0.66 0.18 33);
+  --border: oklch(0.92 0.004 255);
+  --input: oklch(0.94 0.004 255);
+  --ring: oklch(0.55 0.17 259);
+  --chart-1: oklch(0.55 0.17 259);
+  --chart-2: oklch(0.62 0.15 208);
+  --chart-3: oklch(0.58 0.15 145);
+  --chart-4: oklch(0.64 0.18 36);
+  --chart-5: oklch(0.6 0.14 314);
+  --radius: 0.875rem;
+  --sidebar: oklch(0.99 0.003 255);
+  --sidebar-foreground: oklch(0.24 0.012 264);
+  --sidebar-primary: oklch(0.55 0.17 259);
+  --sidebar-primary-foreground: oklch(0.985 0.002 255);
+  --sidebar-accent: oklch(0.965 0.006 255);
+  --sidebar-accent-foreground: oklch(0.24 0.012 264);
+  --sidebar-border: oklch(0.92 0.004 255);
+  --sidebar-ring: oklch(0.55 0.17 259);
   /* Editor-specific tokens */
-  --canvas-bg: oklch(0.94 0.012 78);
-  --canvas-grid: oklch(0.84 0.018 70);
-  --selection: oklch(0.66 0.18 33);
-  --handle: oklch(0.28 0.02 30);
-  --toolbar-bg: oklch(0.97 0.012 85 / 88%);
+  --canvas-bg: oklch(0.982 0.003 255);
+  --canvas-grid: oklch(0.91 0.004 255);
+  --selection: oklch(0.55 0.17 259);
+  --handle: oklch(0.24 0.012 264);
+  --toolbar-bg: oklch(1 0 0 / 76%);
   --type-family-default: var(--font-geist-sans);
-  --type-family-display: 'Work Sans', var(--font-geist-sans), sans-serif;
+  --type-family-display: var(--font-geist-sans);
   --type-family-mono: var(--font-geist-mono);
   --type-weight-default: 450;
   --type-weight-medium: 450;
@@ -53,38 +53,38 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.01 45);
-  --foreground: oklch(0.93 0.01 85);
-  --card: oklch(0.2 0.012 42);
-  --card-foreground: oklch(0.93 0.01 85);
-  --popover: oklch(0.2 0.012 42);
-  --popover-foreground: oklch(0.93 0.01 85);
-  --primary: oklch(0.72 0.16 39);
-  --primary-foreground: oklch(0.18 0.015 45);
-  --secondary: oklch(0.25 0.012 42);
-  --secondary-foreground: oklch(0.91 0.01 85);
-  --muted: oklch(0.24 0.01 44);
-  --muted-foreground: oklch(0.73 0.01 72);
-  --accent: oklch(0.74 0.08 165);
-  --accent-foreground: oklch(0.14 0.015 165);
+  --background: oklch(0.145 0.01 264);
+  --foreground: oklch(0.94 0.004 255);
+  --card: oklch(0.18 0.01 264);
+  --card-foreground: oklch(0.94 0.004 255);
+  --popover: oklch(0.18 0.01 264);
+  --popover-foreground: oklch(0.94 0.004 255);
+  --primary: oklch(0.72 0.16 259);
+  --primary-foreground: oklch(0.18 0.01 264);
+  --secondary: oklch(0.21 0.01 264);
+  --secondary-foreground: oklch(0.92 0.004 255);
+  --muted: oklch(0.2 0.01 264);
+  --muted-foreground: oklch(0.72 0.01 264);
+  --accent: oklch(0.22 0.01 264);
+  --accent-foreground: oklch(0.93 0.004 255);
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.31 0.014 42);
-  --input: oklch(0.27 0.012 42);
-  --ring: oklch(0.72 0.16 39);
-  --sidebar: oklch(0.15 0.012 42);
-  --sidebar-foreground: oklch(0.91 0.01 85);
-  --sidebar-primary: oklch(0.72 0.16 39);
-  --sidebar-primary-foreground: oklch(0.18 0.015 45);
-  --sidebar-accent: oklch(0.25 0.012 42);
-  --sidebar-accent-foreground: oklch(0.91 0.01 85);
-  --sidebar-border: oklch(0.31 0.014 42);
-  --sidebar-ring: oklch(0.72 0.16 39);
-  --canvas-bg: oklch(0.18 0.012 42);
-  --canvas-grid: oklch(0.29 0.012 45);
-  --selection: oklch(0.72 0.16 39);
-  --handle: oklch(0.94 0.01 85);
-  --toolbar-bg: oklch(0.18 0.012 42 / 88%);
+  --border: oklch(0.27 0.01 264);
+  --input: oklch(0.22 0.01 264);
+  --ring: oklch(0.72 0.16 259);
+  --sidebar: oklch(0.16 0.01 264);
+  --sidebar-foreground: oklch(0.93 0.004 255);
+  --sidebar-primary: oklch(0.72 0.16 259);
+  --sidebar-primary-foreground: oklch(0.18 0.01 264);
+  --sidebar-accent: oklch(0.22 0.01 264);
+  --sidebar-accent-foreground: oklch(0.93 0.004 255);
+  --sidebar-border: oklch(0.27 0.01 264);
+  --sidebar-ring: oklch(0.72 0.16 259);
+  --canvas-bg: oklch(0.17 0.01 264);
+  --canvas-grid: oklch(0.24 0.01 264);
+  --selection: oklch(0.72 0.16 259);
+  --handle: oklch(0.94 0.004 255);
+  --toolbar-bg: oklch(0.18 0.01 264 / 78%);
 }
 
 @theme inline {
@@ -172,9 +172,8 @@
     font-family: var(--type-family-default);
     font-weight: var(--type-weight-default);
     background-image:
-      radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 30%),
-      radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 12%, transparent) 0%, transparent 34%),
-      linear-gradient(180deg, color-mix(in oklab, var(--background) 94%, white 6%) 0%, var(--background) 100%);
+      radial-gradient(circle at top center, color-mix(in oklab, var(--primary) 8%, transparent) 0%, transparent 30%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 98%, white 2%) 0%, var(--background) 100%);
     min-height: 100vh;
   }
 
@@ -186,23 +185,28 @@
   }
 
   .swift-surface {
-    background: color-mix(in oklab, var(--background) 97%, black 3%);
+    background: color-mix(in oklab, var(--background) 99%, black 1%);
   }
 
   .dark .swift-surface {
-    background: color-mix(in oklab, var(--background) 94%, white 6%);
+    background: color-mix(in oklab, var(--background) 96%, white 4%);
   }
 }
 
 @layer components {
   .studio-panel {
     background: var(--card);
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--background) 84%, transparent) inset;
+    backdrop-filter: blur(12px);
   }
 
   .dark .studio-panel {
-    box-shadow: 0 1px 2px color-mix(in oklab, black 26%, transparent);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, black 28%, transparent),
+      0 0 0 1px color-mix(in oklab, white 2%, transparent) inset;
   }
 
   .studio-card {
@@ -268,9 +272,12 @@
   .workspace-header {
     position: relative;
     z-index: 10;
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    background: var(--card);
-    box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 5%, transparent);
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
+    background: color-mix(in oklab, var(--toolbar-bg) 100%, transparent);
+    box-shadow:
+      0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--background) 84%, transparent) inset;
+    backdrop-filter: blur(18px);
   }
 
   .workspace-panel-header {
@@ -292,11 +299,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.45rem;
-    min-height: 1.75rem;
+    min-height: 1.6rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    background: color-mix(in oklab, var(--background) 98%, black 2%);
-    padding: 0.28rem 0.72rem;
+    border: 1px solid color-mix(in oklab, var(--border) 98%, transparent);
+    background: color-mix(in oklab, var(--background) 100%, black 0%);
+    padding: 0.22rem 0.62rem;
     font-family: var(--type-family-default);
     font-size: 0.5625rem;
     line-height: 0.875rem;
@@ -318,9 +325,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    border-radius: 0.625rem;
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    background: color-mix(in oklab, var(--background) 99%, black 1%);
+    border-radius: 0.875rem;
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
+    background: color-mix(in oklab, var(--background) 100%, black 0%);
     padding: 0.25rem;
   }
 
@@ -330,8 +337,8 @@
   }
 
   .workspace-tool-button:hover {
-    border-color: color-mix(in oklab, var(--border) 92%, transparent);
-    background: color-mix(in oklab, var(--background) 96%, black 4%);
+    border-color: color-mix(in oklab, var(--border) 92%, var(--foreground) 8%);
+    background: color-mix(in oklab, var(--accent) 86%, transparent);
   }
 
   .workspace-tool-button[data-active='true'] {
@@ -347,8 +354,8 @@
   .workspace-canvas-shell {
     position: relative;
     overflow: hidden;
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    background: color-mix(in oklab, var(--background) 98%, black 2%);
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
+    background: color-mix(in oklab, var(--canvas-bg) 100%, transparent);
   }
 
   .dark .workspace-canvas-shell {
@@ -356,9 +363,9 @@
   }
 
   .workspace-stage {
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
     background: white;
-    box-shadow: 0 4px 12px color-mix(in oklab, var(--foreground) 8%, transparent);
+    box-shadow: 0 12px 40px color-mix(in oklab, var(--foreground) 10%, transparent);
   }
 
   .dark .workspace-stage {
@@ -409,22 +416,22 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    border-radius: 0.625rem;
-    border: 1px solid color-mix(in oklab, var(--border) 92%, transparent);
-    background: var(--card);
-    padding: 0.8rem 0.9rem;
+    border-radius: 0.875rem;
+    border: 1px solid color-mix(in oklab, var(--border) 96%, transparent);
+    background: color-mix(in oklab, var(--background) 100%, black 0%);
+    padding: 0.72rem 0.9rem;
     text-align: left;
     transition: border-color 160ms ease, background 160ms ease;
   }
 
   .workspace-nav-button:hover {
-    border-color: color-mix(in oklab, var(--foreground) 14%, var(--border));
-    background: color-mix(in oklab, var(--background) 98%, black 2%);
+    border-color: color-mix(in oklab, var(--foreground) 10%, var(--border));
+    background: color-mix(in oklab, var(--accent) 88%, transparent);
   }
 
   .workspace-nav-button[data-active='true'] {
-    border-color: color-mix(in oklab, var(--foreground) 18%, var(--border));
-    background: color-mix(in oklab, var(--foreground) 6%, transparent);
+    border-color: color-mix(in oklab, var(--primary) 28%, var(--border));
+    background: color-mix(in oklab, var(--primary) 10%, transparent);
   }
 
   .workspace-status-strip {

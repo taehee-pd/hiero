@@ -9,9 +9,11 @@ import { LayerPanel } from './LayerPanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { Canvas } from './Canvas';
 import { InspectorPanel } from './InspectorPanel';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
@@ -39,31 +41,31 @@ function CurrentDocumentPanel() {
 
   return (
     <div className="flex items-start justify-between gap-3 px-4 py-4">
-      <div className="min-w-0 space-y-2">
-        <div>
-          <p className="workspace-kicker">Current icon</p>
-          <p className="truncate text-base font-semibold text-foreground">
-            {icon?.name ?? 'No icon selected'}
-          </p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') || 'Select an icon'}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="workspace-badge">
+      <div className="min-w-0">
+        <p className="truncate text-base font-semibold tracking-tight text-foreground">
+          {icon?.name ?? 'No icon selected'}
+        </p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') || 'select an icon'}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
             <Layers2 className="size-3.5" />
             {layerCount} layers
-          </span>
-          {currentVariant ? <span className="workspace-badge">{currentVariant.size}px</span> : null}
+          </Badge>
+          {currentVariant ? (
+            <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
+              {currentVariant.size}px
+            </Badge>
+          ) : null}
         </div>
       </div>
-      <Link
-        href="/"
-        className="inline-flex h-9 items-center gap-1 rounded-xl border border-border bg-background px-3 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="size-3.5" />
-        Back
-      </Link>
+      <Button asChild variant="outline" size="sm" className="rounded-xl">
+        <Link href="/">
+          <ChevronLeft className="size-3.5" />
+          library
+        </Link>
+      </Button>
     </div>
   );
 }
@@ -127,17 +129,14 @@ function VariantPickerBar() {
   };
 
   return (
-    <div className="flex flex-col gap-3 border-b border-border/70 px-3 pb-3">
+    <div className="flex flex-col gap-3 px-3 pb-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="workspace-kicker">Canvas</p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {currentVariant ? `${formatVariantLabel(currentVariant)}px master` : 'No variant selected'}
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-medium text-foreground">
+            {currentVariant ? `${formatVariantLabel(currentVariant)}px` : 'No variant selected'}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {currentVariant
-              ? `Editing ${currentVariant.size}px variant`
-              : 'Select an icon variant to edit'}
+            {currentVariant ? 'variant' : 'select a variant'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -157,9 +156,7 @@ function VariantPickerBar() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">New variant</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Presets are shortcuts. You can enter any size.
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Presets or any size.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[12, 16, 20, 24, 32, 48].map((size) => (
@@ -174,10 +171,7 @@ function VariantPickerBar() {
                   ))}
                 </div>
                 <div className="space-y-2">
-                  <label
-                    htmlFor="variant-custom-size"
-                    className="text-xs font-medium text-muted-foreground"
-                  >
+                  <label htmlFor="variant-custom-size" className="text-xs font-medium text-muted-foreground">
                     Custom size
                   </label>
                   <div className="flex gap-2">
@@ -217,6 +211,8 @@ function VariantPickerBar() {
         </div>
       </div>
 
+      <Separator className="bg-border/70" />
+
       <div className="flex flex-wrap gap-2">
         {variants.map((variant) => {
           const isActive = variant.id === currentVariantId;
@@ -227,8 +223,8 @@ function VariantPickerBar() {
               onClick={() => setCurrentVariant(variant.id)}
               className={
                 isActive
-                  ? 'rounded-xl border border-primary/40 bg-primary/8 px-3 py-2 text-sm font-semibold text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
-                  : 'rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-foreground/20 hover:text-foreground'
+                  ? 'rounded-xl border border-primary/35 bg-primary/[0.08] px-3 py-2 text-sm font-medium text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
+                  : 'rounded-xl border border-border/80 bg-background px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground'
               }
             >
               {formatVariantLabel(variant)}
@@ -310,7 +306,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   return (
     <div className="swift-surface flex h-dvh w-full flex-col overflow-hidden text-foreground">
       <Toolbar />
-      <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[16rem_minmax(0,1fr)_19rem]">
+      <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
         <aside className="flex min-h-0 flex-col gap-3">
           <section className="studio-panel overflow-hidden rounded-xl">
             <CurrentDocumentPanel />

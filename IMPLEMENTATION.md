@@ -78,7 +78,7 @@ This document tracks implementation progress against the planned architecture an
 
 ## Remaining roadmap
 
-Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-library-implementation-plan.md), [docs/plans/2026-03-08-runtime-json-export-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-json-export-design.md), and [docs/plans/2026-03-08-sf-symbols-style-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-sf-symbols-style-export-plan.md).
+Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-library-implementation-plan.md), [docs/plans/2026-03-08-runtime-json-export-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-json-export-design.md), [docs/plans/2026-03-08-sf-symbols-style-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-sf-symbols-style-export-plan.md), and [docs/plans/2026-03-08-target-codebase-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-target-codebase-export-plan.md).
 
 ### Phase R0 - Repo preparation
 - [ ] Replace placeholder package metadata with real package naming.
@@ -118,21 +118,24 @@ Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-im
 - [ ] Add integration coverage for controlled and uncontrolled animation flows.
 - [ ] Add a demo icon path in the app for end-to-end validation.
 
-### Phase R5 - Generator and static outputs
-- [ ] Create a generator CLI for runtime-json -> package artifacts.
-- [ ] Generate typed icon entrypoints and static SVG exports.
+### Phase R5 - Target codebase generation
+- [ ] Generate icons directly into a target repo from runtime-json.
+- [ ] Add Storybook adapter output for generated components and stories.
+- [ ] Add Sanity adapter output for generated components and preview registries.
+- [ ] Vendor or generate local runtime helpers into the target repo.
+- [ ] Add deterministic stale-file cleanup and generated file manifests.
+
+### Phase R6 - Repo sync and host integration
+- [ ] Add target export config to project schema.
+- [ ] Build editor-side target export / connections UI.
+- [ ] Implement local-directory export into checked-out target repos.
+- [ ] Implement Git PR-based sync flow against the target repo.
+
+### Phase R7 - Optional package mode
+- [ ] Add package-generation mode for teams that want a standalone icon library.
+- [ ] Extract proven runtime modules into `packages/*` only if needed.
 - [ ] Add package export-map generation and tree-shaking verification.
-
-### Phase R6 - Package extraction
-- [ ] Extract proven runtime modules into `packages/*`.
-- [ ] Add workspace/build wiring after APIs are stable.
-- [ ] Keep the editor consuming local runtime packages during extraction.
-
-### Phase R7 - Sync and publishing
-- [ ] Add sync config to project schema.
-- [ ] Build editor-side connections/publish settings UI.
-- [ ] Implement Git PR-based publish flow and CI templates.
-- [ ] Add optional direct registry publish path.
+- [ ] Add optional registry publish path.
 
 ### Phase R8 - Morphing and advanced transitions
 - [ ] Add topology contract validation in the editor.
@@ -147,4 +150,4 @@ Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-im
 2. Build Phase R1 first: lock the runtime-json export contract, especially Draw / Variable Draw / Magic Replace metadata, before runtime rendering work.
 3. Stand up Phase R2 + R3 with Draw-capable exported payloads first, then add generic `track` and `replace` transitions.
 4. Add Phase R4 React adapters with a single end-to-end stateful demo icon.
-5. Move to package generation/extraction only after runtime behavior is proven locally, then add sync/publish and morphing.
+5. Move to target-codebase generation and repo sync after runtime behavior is proven locally; keep package mode secondary, then add morphing.

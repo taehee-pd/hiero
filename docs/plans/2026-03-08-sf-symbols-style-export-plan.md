@@ -220,7 +220,8 @@ The repo should treat the export feature as the first major runtime milestone, w
 4. Magic Replace continuity export
 5. gradients in runtime payload
 6. runtime execution
-7. packaging and sync
+7. target-codebase generation for Storybook, Sanity, and React repos
+8. optional package publishing
 
 That is the cleaner implementation path for an SF Symbols-style system.
 

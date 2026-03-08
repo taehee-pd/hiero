@@ -2,12 +2,12 @@
 
 ## Goal
 
-Turn the current editor-first repo into the source of truth for a publishable animated icon system:
+Turn the current editor-first repo into the source of truth for an animated icon system that can be exported directly into a target application codebase:
 
 - editor authors icon states, transitions, and effects
 - exporter materializes deterministic `runtime-json`
-- runtime packages render animated SVG from exported data
-- generator and sync tooling publish typed npm artifacts
+- target adapters generate host-ready files inside Storybook, Sanity, or other React repos
+- optional package publishing remains available later, but is not the primary path
 
 This plan reflects the external runtime-library architecture document, adjusted to match decisions already made in this repo:
 
@@ -15,6 +15,7 @@ This plan reflects the external runtime-library architecture document, adjusted 
 - icon-level transitions and effects remain editor-authored, then are validated and materialized per variant at export time
 - the current repo is a single Next.js application, so package extraction must be staged rather than assumed
 - SF Symbols-style export semantics are prioritized ahead of a generic effects library
+- target-codebase export is prioritized ahead of standalone package publishing
 
 ## Constraints From Current Repo
 
@@ -50,17 +51,18 @@ Follow the direction captured in [2026-03-08-sf-symbols-style-export-plan.md](/U
 - Magic Replace begins as enclosure-preserving continuity metadata, not as arbitrary global morphing
 - gradients stay in runtime payloads rather than being flattened away
 
-### Package Strategy
+### Delivery Strategy
 
-Do not split the repo into a full monorepo immediately.
+Do not optimize first for a standalone icon package.
 
-Stage package extraction like this:
+Stage delivery like this:
 
 1. implement the exporter and runtime modules inside the existing repo
-2. prove the API and tests locally
-3. extract to `packages/*` only after the boundaries are stable
+2. generate files directly into a target codebase
+3. prove the adapter flow against Storybook and Sanity-style targets
+4. add standalone package generation only as an optional later output mode
 
-This keeps the first runtime milestone small and avoids spending time on build tooling before the data contract is proven.
+This keeps the first production path aligned with how consuming teams actually review and ship code.
 
 ### Runtime Scope for MVP
 
@@ -111,7 +113,7 @@ Responsibilities:
 - validate icon-level transitions against each variant
 - emit deterministic runtime-json files and manifest
 
-### Layer 3: Runtime Library
+### Layer 3: Runtime Layer
 
 Target package boundaries after extraction:
 
@@ -127,15 +129,21 @@ Near-term in-repo boundaries can begin as:
 
 The runtime must consume exported files only, never raw editor project JSON.
 
-### Layer 4: Generator and Sync
+### Layer 4: Target Adapters and Sync
 
-Target later-stage packages:
+Primary later-stage modules:
+
+- `lib/export/generate-target-codebase.ts`
+- `lib/export/targets/storybook-react.ts`
+- `lib/export/targets/sanity-studio.ts`
+- repo write/sync helpers
+
+Optional later-stage modules:
 
 - `packages/cli`
-- generated `@scope/icons` package output
-- CI and Git integration
+- generated npm package output
 
-This is intentionally later than the external document suggests because the current repo does not yet have a package workspace or release pipeline.
+This is intentionally different from the earlier package-first framing because the target host repo is now the primary delivery artifact.
 
 ## Implementation Phases
 
@@ -271,64 +279,60 @@ Tests:
 
 Exit criteria:
 
-- the editor app or a demo page can render exported icons through the same React surface intended for consumers
+- the editor app or a demo page can render exported icons through the same React surface intended for target-codebase generation
 
-### Phase R5 - Static Fallback and Code Generation
-
-Objective:
-
-- generate publishable package artifacts from exported runtime-json
-
-Tasks:
-
-- add a generator CLI
-- generate typed icon entrypoints from `index.json`, `meta.json`, and variant payloads
-- generate static SVG React exports alongside animated exports
-- add package export map generation
-- choose bundling tool only after output shape is stable
-
-Planning note:
-
-- the external document suggests `tsup` immediately; that is fine later, but should not block the runtime contract work
-
-Exit criteria:
-
-- sample exported icons can be turned into a local package-shaped output with tree-shakeable icon entrypoints
-
-### Phase R6 - Repo Extraction to Packages
+### Phase R5 - Target Codebase Generation
 
 Objective:
 
-- extract proven runtime pieces into package boundaries without rewriting behavior
+- generate host-ready source files directly into target repositories from exported runtime-json
 
 Tasks:
 
-- move stable runtime modules into `packages/runtime-core`, `packages/runtime-dom`, and `packages/runtime-react`
-- add workspace config
-- wire local package builds and type-checks
-- keep the editor consuming those local packages
+- add target adapter generation entrypoints
+- generate vendored runtime helpers for host repos
+- generate typed icon data files and React wrappers
+- generate Storybook stories where applicable
+- generate Sanity preview/registry helpers where applicable
+- add stale-file cleanup and deterministic file manifesting
 
 Exit criteria:
 
-- editor still works while runtime packages build independently
+- sample exported icons can be written into a local Storybook or Sanity-style repo with runnable generated files
 
-### Phase R7 - Sync and Publish Pipeline
+### Phase R6 - Repo Sync and Host Integration
 
 Objective:
 
-- connect editor publish actions to a generated icon library repo or registry
+- connect target-codebase generation to real repo write and review flows
 
 Tasks:
 
-- add sync config to project schema
-- add connections UI in the editor
-- implement git branch + PR flow
-- add CI templates for generate, test, build, and publish
-- optionally add direct registry publish
+- add target export config to the project schema
+- add local directory export flow
+- add branch/commit automation against the target repo
+- add host-repo validation hooks and generated-file summaries
 
 Exit criteria:
 
-- publishing from the editor creates reviewable or directly publishable package updates
+- exporting from the editor can update a checked-out target repo in a reviewable way
+
+### Phase R7 - Optional Package Mode
+
+Objective:
+
+- add standalone package generation for teams that want a reusable library after the direct-export flow is already working
+
+Tasks:
+
+- extract stable runtime pieces into package boundaries if useful
+- add generator CLI packaging mode
+- add package export maps and publish metadata
+- optionally add registry publish flow
+
+Exit criteria:
+
+- the same runtime-json source can produce either direct target-codebase output or package output
 
 ### Phase R8 - Morphing and Advanced Animation
 
@@ -356,12 +360,12 @@ Build in this order:
 3. R2 runtime-core
 4. R3 runtime-dom
 5. R4 runtime-react
-6. R5 generator/static outputs
-7. R6 package extraction
-8. R7 sync/publish
+6. R5 target-codebase generation
+7. R6 repo sync and host integration
+8. R7 optional package mode
 9. R8 morphing
 
-This differs from the external document mainly by moving exporter work earlier and pushing package/sync concerns later. That is deliberate and matches the current repo maturity.
+This differs from the earlier package-first framing by moving direct target-codebase output ahead of package generation. That is deliberate and matches the requested delivery model.
 
 ## First Concrete Milestone
 

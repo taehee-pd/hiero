@@ -528,6 +528,18 @@ export class PathEditor {
     if (!pathD || !isPathDirectlyEditable(pathD)) return false;
 
     const editable = parseSvgPath(pathD);
+    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
+    const layerTransformX = layer?.transform?.x ?? 0;
+    const layerTransformY = layer?.transform?.y ?? 0;
+    if (layerTransformX !== 0 || layerTransformY !== 0) {
+      editable.subPaths.forEach((subPath) => {
+        subPath.points.forEach((point) => {
+          translatePathPoint(point, layerTransformX, layerTransformY);
+        });
+      });
+    }
+
+    const normalizedBasePathD = serializePath(editable);
     const keys: string[] = [];
     editable.subPaths.forEach((subPath, subPathIndex) => {
       subPath.points.forEach((_, pointIndex) => {
@@ -548,7 +560,7 @@ export class PathEditor {
     this.dragLayerId = layerId;
     this.dragStartX = e.clientX;
     this.dragStartY = e.clientY;
-    this.originalPathD = pathD;
+    this.originalPathD = normalizedBasePathD;
     this.selectionTransformPlacement = {
       layerId,
       pointerId: e.pointerId,
@@ -557,8 +569,19 @@ export class PathEditor {
       bounds: bbox,
       mode: 'resize',
       handle,
-      basePathD: pathD,
+      basePathD: normalizedBasePathD,
     };
+
+    if (layerTransformX !== 0 || layerTransformY !== 0) {
+      state.patchLayer(iconId, stateId, layerId, {
+        path: { ...(layer?.path ?? { d: '' }), d: normalizedBasePathD },
+        transform: {
+          ...(layer?.transform ?? {}),
+          x: 0,
+          y: 0,
+        },
+      });
+    }
 
     state.setPointTransformLabel({
       width: bbox.maxX - bbox.minX,
@@ -1118,8 +1141,8 @@ export class PathEditor {
       },
       transform: {
         ...(layer.transform ?? {}),
-        x: this.originalTransform.x,
-        y: this.originalTransform.y,
+        x: 0,
+        y: 0,
       },
     });
   }
@@ -1365,10 +1388,14 @@ export class PathEditor {
     if (!variant) return null;
 
     const [vx, vy, vw, vh] = variant.viewBox;
-    const root = ((this.svg as Element & { closest?: (selector: string) => Element | null }).closest?.('[data-canvas-root]') as HTMLElement | null) ?? this.container;
+    const root =
+      ((this.svg as Element & { closest?: (selector: string) => Element | null }).closest?.(
+        '[data-canvas-root]',
+      ) as HTMLElement | null) ?? this.container;
     const containerRect = root.getBoundingClientRect();
     const svgRect = this.svg.getBoundingClientRect();
-    const canUseContainer = containerRect.width > 0 && containerRect.height > 0 && root !== this.svg;
+    const canUseContainer =
+      containerRect.width > 0 && containerRect.height > 0 && root !== this.svg;
 
     if (!canUseContainer) {
       if (svgRect.width <= 0 || svgRect.height <= 0) return null;
@@ -1378,17 +1405,19 @@ export class PathEditor {
       };
     }
 
-    const renderSize = vw * state.viewport.zoom;
-    if (!Number.isFinite(renderSize) || renderSize <= 0) return null;
+    const renderWidth = vw * state.viewport.zoom;
+    const renderHeight = vh * state.viewport.zoom;
+    if (!Number.isFinite(renderWidth) || !Number.isFinite(renderHeight)) return null;
+    if (renderWidth <= 0 || renderHeight <= 0) return null;
 
     const cx = containerRect.width / 2 + state.viewport.panX;
     const cy = containerRect.height / 2 + state.viewport.panY;
-    const left = cx - renderSize / 2;
-    const top = cy - renderSize / 2;
+    const left = cx - renderWidth / 2;
+    const top = cy - renderHeight / 2;
 
     return {
-      x: vx + ((clientX - containerRect.left - left) / renderSize) * vw,
-      y: vy + ((clientY - containerRect.top - top) / renderSize) * vh,
+      x: vx + ((clientX - containerRect.left - left) / renderWidth) * vw,
+      y: vy + ((clientY - containerRect.top - top) / renderHeight) * vh,
     };
   }
 

@@ -244,7 +244,7 @@ export function Canvas() {
         outline.setAttribute('height', `${Math.max(bounds.height, 0.001)}`);
         outline.setAttribute('fill', 'rgba(14,165,233,0.08)');
         outline.setAttribute('stroke', 'rgba(14,165,233,0.95)');
-        outline.setAttribute('stroke-width', `${Math.max(1 / Math.max(viewport.zoom, 0.01), 0.5)}`);
+        outline.setAttribute('stroke-width', `${1 / Math.max(viewport.zoom, 0.01)}`);
         outline.setAttribute('stroke-dasharray', `${4 / Math.max(viewport.zoom, 0.01)} ${3 / Math.max(viewport.zoom, 0.01)}`);
         outline.setAttribute('data-editor-handle', 'true');
         outline.setAttribute('data-handle-type', 'selection-bbox');
@@ -291,7 +291,7 @@ export function Canvas() {
           visible.setAttribute('r', `${handleRadius}`);
           visible.setAttribute('fill', '#ffffff');
           visible.setAttribute('stroke', '#0ea5e9');
-          visible.setAttribute('stroke-width', `${Math.max(1 / Math.max(viewport.zoom, 0.01), 0.5)}`);
+          visible.setAttribute('stroke-width', `${1 / Math.max(viewport.zoom, 0.01)}`);
           visible.setAttribute('data-editor-handle', 'true');
           visible.setAttribute('data-handle-type', 'selection-resize-visible');
           visible.style.pointerEvents = 'none';

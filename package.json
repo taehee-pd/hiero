@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "compile:icons": "bun scripts/compile-icons.ts"
   },
   "dependencies": {
     "@fontsource/work-sans": "^5.2.8",

@@ -1,0 +1,135 @@
+{
+  "$schema": "https://icophone.dev/schemas/compiled-icon/1.0.0",
+  "id": "icon-chevron",
+  "name": "Chevron Right",
+  "componentName": "IcChevronRight",
+  "meta": {
+    "category": "navigation",
+    "tags": ["arrow", "chevron"],
+    "updatedAt": "2026-03-09T09:00:00.000Z",
+    "version": "1.2.0",
+    "contentHash": "sha256:abc123"
+  },
+  "variants": {
+    "24": {
+      "size": 24,
+      "viewBox": [0, 0, 24, 24],
+      "states": {
+        "default": {
+          "modes": {
+            "monochrome": {
+              "layers": [
+                {
+                  "id": "chevron",
+                  "role": "primary",
+                  "path": {
+                    "d": "M8 5l8 7-8 7",
+                    "fillRule": "nonzero"
+                  },
+                  "style": {
+                    "fill": "currentColor",
+                    "fillOpacity": 1,
+                    "stroke": "none",
+                    "strokeOpacity": 1,
+                    "strokeWidth": 0,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  },
+                  "transform": {
+                    "x": 0,
+                    "y": 0,
+                    "rotate": 0,
+                    "scaleX": 1,
+                    "scaleY": 1
+                  }
+                }
+              ]
+            },
+            "hierarchical": {
+              "layers": [
+                {
+                  "id": "chevron",
+                  "role": "primary",
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": "#111111",
+                    "fillOpacity": 1,
+                    "stroke": "none",
+                    "strokeOpacity": 1,
+                    "strokeWidth": 0
+                  }
+                }
+              ]
+            },
+            "palette": {
+              "layers": [
+                {
+                  "id": "chevron",
+                  "role": "primary",
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": "#0f172a",
+                    "fillOpacity": 1,
+                    "stroke": "none",
+                    "strokeOpacity": 1,
+                    "strokeWidth": 0
+                  }
+                }
+              ]
+            },
+            "multicolor": {
+              "layers": [
+                {
+                  "id": "chevron",
+                  "role": "primary",
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": "#2563eb",
+                    "fillOpacity": 1,
+                    "stroke": "none",
+                    "strokeOpacity": 1,
+                    "strokeWidth": 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "transitions": [
+    {
+      "from": "default",
+      "to": "active",
+      "durationMs": 180,
+      "easing": "ease-in-out",
+      "strategy": "track",
+      "bindings": [
+        {
+          "fromLayerId": "chevron",
+          "toLayerId": "chevron",
+          "tracks": [
+            {
+              "property": "opacity",
+              "keyframes": [0.4, 1]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "kind": "pulse",
+      "durationMs": 600,
+      "easing": "ease-out",
+      "params": {
+        "loops": 2,
+        "amplitude": 0.2,
+        "enabled": true,
+        "profile": "soft"
+      }
+    }
+  ]
+}

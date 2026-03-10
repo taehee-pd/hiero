@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "E2E Compiler Fixture",
+    "createdAt": "2026-03-10T00:00:00.000Z",
+    "updatedAt": "2026-03-10T00:00:00.000Z"
+  },
+  "icons": {
+    "icon-chev": {
+      "id": "icon-chev",
+      "name": "Chevron",
+      "category": "navigation",
+      "tags": ["arrow", "chevron"],
+      "variants": {
+        "v24": {
+          "id": "v24",
+          "size": 24,
+          "viewBox": [0, 0, 24, 24],
+          "defaultState": "default",
+          "states": {
+            "default": {
+              "id": "default",
+              "layers": {
+                "chev": {
+                  "id": "chev",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            },
+            "active": {
+              "id": "active",
+              "layers": {
+                "chev": {
+                  "id": "chev",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M7 4l9 8-9 8" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "v32": {
+          "id": "v32",
+          "size": 32,
+          "viewBox": [0, 0, 32, 32],
+          "defaultState": "default",
+          "states": {
+            "default": {
+              "id": "default",
+              "layers": {
+                "chev": {
+                  "id": "chev",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M11 7l10 9-10 9" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "fixed", "value": "#2563eb" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "transitions": {
+        "default-active": {
+          "id": "default-active",
+          "from": "default",
+          "to": "active",
+          "strategy": "track",
+          "durationMs": 200,
+          "easing": "ease-in-out",
+          "layerBindings": [
+            {
+              "fromLayerId": "chev",
+              "toLayerId": "chev",
+              "tracks": [{ "property": "opacity", "keyframes": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "effects": {
+        "pulse": {
+          "id": "pulse",
+          "kind": "pulse",
+          "durationMs": 300,
+          "easing": "ease-out"
+        }
+      }
+    }
+  },
+  "tokenSet": {
+    "colors": {
+      "accent": "#38bdf8"
+    }
+  }
+}

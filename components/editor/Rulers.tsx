@@ -5,7 +5,7 @@ import { useEditorActions } from '@/lib/editor-store/hooks';
 import type { GuideItem } from '@/lib/schema/types';
 
 const RULER_SIZE = 24;
-const HIT_SIZE = 10;
+const HIT_SIZE = 16;
 const DRAG_THRESHOLD_PX = 4;
 const TICK_STEPS = [0.5, 1, 2, 4, 5, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128];
 const DEFAULT_GUIDE_COLOR = 'rgba(34,211,238,0.9)';

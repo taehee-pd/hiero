@@ -37,6 +37,11 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
       if (id) existing.set(id, el);
     },
   );
+  const existingHit = new Map<string, SVGPathElement>();
+  target.querySelectorAll<SVGPathElement>('path[data-layer-hit-id]').forEach((el) => {
+    const id = el.getAttribute('data-layer-hit-id');
+    if (id) existingHit.set(id, el);
+  });
 
   const layers = Object.keys(state.layers)
     .sort((a, b) => a.localeCompare(b))
@@ -76,15 +81,59 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     applyTransform(pathEl, layer);
 
     applyClipPath(pathEl, layer, layerById, defs);
+
+    let hitPathEl = existingHit.get(layer.id);
+    if (!hitPathEl) {
+      hitPathEl = document.createElementNS(SVG_NS, 'path');
+      hitPathEl.setAttribute('data-layer-hit-id', layer.id);
+      target.insertBefore(hitPathEl, pathEl);
+    }
+    applyHitPathStyle(hitPathEl, pathEl, layer);
   }
 
   // Remove stale elements
   existing.forEach((el, id) => {
     if (!rendered.has(id)) el.remove();
   });
+  existingHit.forEach((el, id) => {
+    if (!rendered.has(id)) el.remove();
+  });
 
   if (defs.childNodes.length === 0) {
     defs.remove();
+  }
+}
+
+
+function applyHitPathStyle(hitEl: SVGPathElement, sourcePathEl: SVGPathElement, layer: Layer): void {
+  hitEl.setAttribute('d', layer.path?.d ?? '');
+  const strokeWidth = Math.max(layer.style.strokeWidth ?? 0, 8);
+  hitEl.setAttribute('fill', 'none');
+  hitEl.setAttribute('stroke', 'transparent');
+  hitEl.setAttribute('stroke-width', String(strokeWidth));
+  hitEl.setAttribute('vector-effect', 'non-scaling-stroke');
+  hitEl.style.pointerEvents = 'stroke';
+  hitEl.style.cursor = 'move';
+
+  const fillRule = sourcePathEl.getAttribute('fill-rule');
+  if (fillRule) {
+    hitEl.setAttribute('fill-rule', fillRule);
+  } else {
+    hitEl.removeAttribute('fill-rule');
+  }
+
+  const transform = sourcePathEl.getAttribute('transform');
+  if (transform) {
+    hitEl.setAttribute('transform', transform);
+  } else {
+    hitEl.removeAttribute('transform');
+  }
+
+  const clipPath = sourcePathEl.getAttribute('clip-path');
+  if (clipPath) {
+    hitEl.setAttribute('clip-path', clipPath);
+  } else {
+    hitEl.removeAttribute('clip-path');
   }
 }
 

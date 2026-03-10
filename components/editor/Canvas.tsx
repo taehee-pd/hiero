@@ -22,9 +22,11 @@ import { cn } from '@/lib/utils';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const HANDLE_RADIUS_PX = 3;
 const HANDLE_STROKE_PX = 1;
-const HANDLE_HIT_RADIUS_PX = 18;
+const HANDLE_HIT_RADIUS_PX = 20;
 const CONTROL_HANDLE_SIZE_PX = 6;
 const CONTROL_HIT_RADIUS_PX = 14;
+const SELECTION_HANDLE_RADIUS_PX = 5;
+const SELECTION_HANDLE_HIT_RADIUS_PX = 14;
 const ANCHOR_STROKE = '#0ea5e9';
 const ANCHOR_FILL = '#ffffff';
 const ACTIVE_ANCHOR_STROKE = '#ffffff';
@@ -218,13 +220,88 @@ export function Canvas() {
 
     svg.querySelectorAll('[data-editor-handle="true"]').forEach((el) => el.remove());
 
-    if (tool !== 'direct-select' && tool !== 'pen') return;
+    if (tool !== 'direct-select' && tool !== 'pen' && tool !== 'select') return;
     const activeLayerId = selection.layerIds[0];
     if (!activeLayerId || !currentState) return;
 
     const layer = currentState.layers[activeLayerId];
     const d = layer?.path?.d;
     if (!d) return;
+
+    if (tool === 'select') {
+      const selectedPath = svg.querySelector<SVGPathElement>(
+        `path[data-layer-id="${CSS.escape(activeLayerId)}"]`,
+      );
+      if (!selectedPath) return;
+      try {
+        const bounds = selectedPath.getBBox();
+        if (!Number.isFinite(bounds.x + bounds.y + bounds.width + bounds.height)) return;
+
+        const outline = document.createElementNS(SVG_NS, 'rect');
+        outline.setAttribute('x', `${bounds.x}`);
+        outline.setAttribute('y', `${bounds.y}`);
+        outline.setAttribute('width', `${Math.max(bounds.width, 0.001)}`);
+        outline.setAttribute('height', `${Math.max(bounds.height, 0.001)}`);
+        outline.setAttribute('fill', 'rgba(14,165,233,0.08)');
+        outline.setAttribute('stroke', 'rgba(14,165,233,0.95)');
+        outline.setAttribute('stroke-width', `${Math.max(1 / Math.max(viewport.zoom, 0.01), 0.5)}`);
+        outline.setAttribute('stroke-dasharray', `${4 / Math.max(viewport.zoom, 0.01)} ${3 / Math.max(viewport.zoom, 0.01)}`);
+        outline.setAttribute('data-editor-handle', 'true');
+        outline.setAttribute('data-handle-type', 'selection-bbox');
+        outline.setAttribute('data-layer-id', activeLayerId);
+        outline.style.pointerEvents = 'all';
+        outline.style.cursor = 'move';
+        svg.appendChild(outline);
+
+        const midX = bounds.x + bounds.width / 2;
+        const midY = bounds.y + bounds.height / 2;
+        const handles: Array<[string, number, number]> = [
+          ['nw', bounds.x, bounds.y],
+          ['n', midX, bounds.y],
+          ['ne', bounds.x + bounds.width, bounds.y],
+          ['e', bounds.x + bounds.width, midY],
+          ['se', bounds.x + bounds.width, bounds.y + bounds.height],
+          ['s', midX, bounds.y + bounds.height],
+          ['sw', bounds.x, bounds.y + bounds.height],
+          ['w', bounds.x, midY],
+        ];
+
+        const handleRadius = SELECTION_HANDLE_RADIUS_PX / Math.max(viewport.zoom, 0.01);
+        const handleHitRadius = SELECTION_HANDLE_HIT_RADIUS_PX / Math.max(viewport.zoom, 0.01);
+
+        handles.forEach(([handle, x, y]) => {
+          const hit = document.createElementNS(SVG_NS, 'circle');
+          hit.setAttribute('cx', `${x}`);
+          hit.setAttribute('cy', `${y}`);
+          hit.setAttribute('r', `${handleHitRadius}`);
+          hit.setAttribute('fill', 'rgba(0,0,0,0)');
+          hit.setAttribute('data-editor-handle', 'true');
+          hit.setAttribute('data-handle-type', 'selection-resize-hit');
+          hit.setAttribute('data-layer-id', activeLayerId);
+          hit.setAttribute('data-selection-handle', handle);
+          hit.style.pointerEvents = 'all';
+          hit.style.cursor = handle === 'n' || handle === 's' ? 'ns-resize' :
+            handle === 'e' || handle === 'w' ? 'ew-resize' :
+            handle === 'ne' || handle === 'sw' ? 'nesw-resize' : 'nwse-resize';
+          svg.appendChild(hit);
+
+          const visible = document.createElementNS(SVG_NS, 'circle');
+          visible.setAttribute('cx', `${x}`);
+          visible.setAttribute('cy', `${y}`);
+          visible.setAttribute('r', `${handleRadius}`);
+          visible.setAttribute('fill', '#ffffff');
+          visible.setAttribute('stroke', '#0ea5e9');
+          visible.setAttribute('stroke-width', `${Math.max(1 / Math.max(viewport.zoom, 0.01), 0.5)}`);
+          visible.setAttribute('data-editor-handle', 'true');
+          visible.setAttribute('data-handle-type', 'selection-resize-visible');
+          visible.style.pointerEvents = 'none';
+          svg.appendChild(visible);
+        });
+      } catch {
+        // Ignore non-renderable path geometry.
+      }
+      return;
+    }
 
     if (!isPathDirectlyEditable(d)) return;
 
@@ -244,9 +321,14 @@ export function Canvas() {
         const handleIn = getControlHandlePosition(subPath, pointIndex, 'in');
         const handleOut = getControlHandlePosition(subPath, pointIndex, 'out');
 
+        const transformX = layer.transform?.x ?? 0;
+        const transformY = layer.transform?.y ?? 0;
+        const anchorX = point.position.x + transformX;
+        const anchorY = point.position.y + transformY;
+
         const hitTarget = document.createElementNS(SVG_NS, 'circle');
-        hitTarget.setAttribute('cx', `${point.position.x}`);
-        hitTarget.setAttribute('cy', `${point.position.y}`);
+        hitTarget.setAttribute('cx', `${anchorX}`);
+        hitTarget.setAttribute('cy', `${anchorY}`);
         hitTarget.setAttribute('r', `${hitRadius}`);
         hitTarget.setAttribute('fill', 'rgba(0, 0, 0, 0)');
         hitTarget.setAttribute('data-editor-handle', 'true');
@@ -259,8 +341,8 @@ export function Canvas() {
         svg.appendChild(hitTarget);
 
         const handleOuter = document.createElementNS(SVG_NS, 'circle');
-        handleOuter.setAttribute('cx', `${point.position.x}`);
-        handleOuter.setAttribute('cy', `${point.position.y}`);
+        handleOuter.setAttribute('cx', `${anchorX}`);
+        handleOuter.setAttribute('cy', `${anchorY}`);
         handleOuter.setAttribute('r', `${handleRadius}`);
         handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
         handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
@@ -277,8 +359,8 @@ export function Canvas() {
           svg,
           activeLayerId,
           pointKey,
-          point.position,
-          handleIn,
+          { x: anchorX, y: anchorY },
+          handleIn ? { x: handleIn.x + transformX, y: handleIn.y + transformY } : null,
           'in',
           controlSize,
           controlHitRadius,
@@ -288,8 +370,8 @@ export function Canvas() {
           svg,
           activeLayerId,
           pointKey,
-          point.position,
-          handleOut,
+          { x: anchorX, y: anchorY },
+          handleOut ? { x: handleOut.x + transformX, y: handleOut.y + transformY } : null,
           'out',
           controlSize,
           controlHitRadius,
@@ -304,7 +386,10 @@ export function Canvas() {
     const svg = svgRef.current;
     if (!svg) return;
 
-    const editor = new PathEditor(svg);
+    const container = containerRef.current;
+    if (!container) return;
+
+    const editor = new PathEditor(svg, container);
     return () => editor.destroy();
   }, []);
 
@@ -545,6 +630,7 @@ export function Canvas() {
 
       <svg
         ref={svgRef}
+        data-editor-canvas="true"
         className="pointer-events-auto cursor-crosshair"
         style={{
           width: `${iconWidth * scale}px`,

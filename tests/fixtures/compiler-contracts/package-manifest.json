@@ -1,0 +1,37 @@
+{
+  "$schema": "https://icophone.dev/schemas/manifest/1.0.0",
+  "package": {
+    "name": "@icophone/icons",
+    "version": "1.2.0",
+    "builtAt": "2026-03-09T09:00:00.000Z",
+    "iconSchemaVersion": "1.0.0",
+    "iconCount": 1,
+    "gitSha": "abcdef123456",
+    "gitBranch": "main"
+  },
+  "icons": {
+    "icon-chevron": {
+      "id": "icon-chevron",
+      "name": "Chevron Right",
+      "componentName": "IcChevronRight",
+      "category": "navigation",
+      "tags": ["arrow", "chevron"],
+      "version": "1.2.0",
+      "updatedAt": "2026-03-09T09:00:00.000Z",
+      "contentHash": "sha256:abc123",
+      "supportedSizes": [24],
+      "supportedModes": ["monochrome", "hierarchical", "palette", "multicolor"],
+      "states": ["default", "active"],
+      "hasAnimation": true,
+      "hasMorphTransition": false,
+      "compiledPath": "icons/icon-chevron.compiled.json"
+    }
+  },
+  "collections": {
+    "navigation": {
+      "name": "Navigation",
+      "description": "Directional and nav controls",
+      "iconIds": ["icon-chevron"]
+    }
+  }
+}

@@ -52,3 +52,29 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - The overlay canvas is editor-only; it does not affect SVG export output.
 - Geometry source-of-truth remains SVG `d` path data in the schema layer model.
+
+## Compiler Pipeline (end-to-end)
+
+Data flow is intentionally linear and deterministic:
+
+1. **Editor model (`Project`)** -> `exportCompiledIconFile` (one file per icon)
+2. **Compiled icons** -> `generatePackageManifestFile` (`icons.manifest.json`)
+3. **Compiled icons + manifest** -> `generateReactIconComponents` (runtime-ready React files)
+4. Optional: **previous compiled build + current compiled build** -> `diffCompiledIcons` (`IconChangeRecord` files)
+
+Use the integrated command:
+
+```bash
+bun scripts/compile-icons.ts \
+  --project tests/fixtures/e2e/compiler-project.json \
+  --out ./.artifacts/icons \
+  --package-name @icophone/icons \
+  --package-version 1.0.0 \
+  --generate-react
+```
+
+### Schema evolution notes
+
+- Breaking compiled schema changes must bump the `$schema` **major** version.
+- Runtime loader migration is selected by schema version (manifest/package schema context + compiled `$schema`), then routed through the migration hook in `parseCompiledIconJson`.
+- Mixed compiled icon schema versions in one manifest are rejected.

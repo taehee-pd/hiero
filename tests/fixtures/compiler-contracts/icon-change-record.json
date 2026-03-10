@@ -1,0 +1,33 @@
+{
+  "$schema": "https://icophone.dev/schemas/change-record/1.0.0",
+  "iconId": "icon-chevron",
+  "iconName": "Chevron Right",
+  "componentName": "IcChevronRight",
+  "fromVersion": "1.1.0",
+  "toVersion": "1.2.0",
+  "publishedAt": "2026-03-09T09:00:00.000Z",
+  "bump": "minor",
+  "isBreaking": false,
+  "designerNote": "Adjusted geometry for optical balance.",
+  "changes": [
+    {
+      "kind": "geometry",
+      "summary": "Refined the chevron angle.",
+      "breaking": false,
+      "scope": {
+        "variantSize": 24,
+        "stateId": "default",
+        "layerId": "chevron",
+        "renderingMode": "monochrome"
+      }
+    },
+    {
+      "kind": "animation-changed",
+      "summary": "Updated track easing curve.",
+      "breaking": false,
+      "scope": {
+        "effectKind": "pulse"
+      }
+    }
+  ]
+}

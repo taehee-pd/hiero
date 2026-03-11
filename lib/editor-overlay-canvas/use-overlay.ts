@@ -4,12 +4,16 @@ import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { Layer, GuideItem, GuideSet } from '@/lib/schema/types';
 import { loadPaperGlobal, type PaperGlobal } from '@/lib/editor-core/paper-runtime';
 
+type OverlayGuideSet = GuideSet & {
+  viewBox?: [number, number, number, number];
+};
+
 export type OverlayOptions = {
   viewport: ViewportState;
   selection: SelectionState;
   layers: Record<string, Layer>;
   viewBox: [number, number, number, number];
-  guideSet?: GuideSet;
+  guideSet?: OverlayGuideSet;
   guidesVisible?: boolean;
   guideStyle?: 'subtle' | 'strong';
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
@@ -104,7 +108,14 @@ export function useCanvasOverlay(
       }
 
       if (guidesVisible !== false && guideSet?.items?.length) {
-        drawGuideItems(scope, guideSet.items, viewBox, toScreen, guideStyle ?? 'subtle');
+        drawGuideItems(
+          scope,
+          guideSet.items,
+          viewBox,
+          guideSet.viewBox,
+          toScreen,
+          guideStyle ?? 'subtle',
+        );
       }
       const boundary = new scope.Path.Rectangle({
         rectangle: new scope.Rectangle(left, top, renderWidth, renderHeight),
@@ -362,10 +373,16 @@ function drawGuideItems(
   scope: any,
   items: GuideItem[],
   viewBox: [number, number, number, number],
+  guideViewBox: [number, number, number, number] | undefined,
   toScreen: (x: number, y: number) => any,
   guideStyle: 'subtle' | 'strong',
 ) {
   const [vx, vy, vw, vh] = viewBox;
+  const [guideX, guideY, guideW, guideH] = guideViewBox ?? viewBox;
+  const scaleX = guideW > 0 ? vw / guideW : 1;
+  const scaleY = guideH > 0 ? vh / guideH : 1;
+  const mapX = (x: number) => vx + (x - guideX) * scaleX;
+  const mapY = (y: number) => vy + (y - guideY) * scaleY;
   const guideStroke = new scope.Color(
     guideStyle === 'strong' ? 'rgba(148,163,184,0.45)' : 'rgba(148,163,184,0.18)',
   );
@@ -375,8 +392,9 @@ function drawGuideItems(
   for (const item of items) {
     switch (item.kind) {
       case 'hline': {
-        const a = toScreen(vx, item.y);
-        const b = toScreen(vx + vw, item.y);
+        const y = mapY(item.y);
+        const a = toScreen(vx, y);
+        const b = toScreen(vx + vw, y);
         const line = new scope.Path.Line(a, b);
         line.strokeColor = guideStroke;
         line.strokeWidth = 1;
@@ -384,8 +402,9 @@ function drawGuideItems(
         break;
       }
       case 'vline': {
-        const a = toScreen(item.x, vy);
-        const b = toScreen(item.x, vy + vh);
+        const x = mapX(item.x);
+        const a = toScreen(x, vy);
+        const b = toScreen(x, vy + vh);
         const line = new scope.Path.Line(a, b);
         line.strokeColor = guideStroke;
         line.strokeWidth = 1;
@@ -393,8 +412,8 @@ function drawGuideItems(
         break;
       }
       case 'rect': {
-        const p = toScreen(item.x, item.y);
-        const q = toScreen(item.x + item.width, item.y + item.height);
+        const p = toScreen(mapX(item.x), mapY(item.y));
+        const q = toScreen(mapX(item.x + item.width), mapY(item.y + item.height));
         const rect = new scope.Path.Rectangle({
           from: p,
           to: q,
@@ -406,9 +425,11 @@ function drawGuideItems(
         break;
       }
       case 'ellipse': {
-        const center = toScreen(item.cx, item.cy);
-        const rx = Math.abs(toScreen(item.cx + item.rx, item.cy).x - center.x);
-        const ry = Math.abs(toScreen(item.cx, item.cy + item.ry).y - center.y);
+        const centerX = mapX(item.cx);
+        const centerY = mapY(item.cy);
+        const center = toScreen(centerX, centerY);
+        const rx = Math.abs(toScreen(mapX(item.cx + item.rx), centerY).x - center.x);
+        const ry = Math.abs(toScreen(centerX, mapY(item.cy + item.ry)).y - center.y);
         const ellipse = new scope.Path.Ellipse({
           center,
           radius: new scope.Size(rx, ry),

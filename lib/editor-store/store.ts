@@ -7,6 +7,7 @@ import type {
   GuideSet,
   GuideItem,
   Variant,
+  RenderingMode,
 } from '@/lib/schema/types';
 import type {
   Tool,
@@ -33,6 +34,7 @@ export type EditorState = {
   guideStyle: 'subtle' | 'strong';
   viewport: ViewportState;
   tool: Tool;
+  renderingMode: RenderingMode;
   shapeSubTool: ShapeType;
   shapePolygonSides: number;
   shapeStarPoints: number;
@@ -44,13 +46,9 @@ export type EditorActions = {
   loadProject(project: ProjectInput): void;
   newProject(): void;
   insertIcon(icon: Icon): void;
-  addVariant(
-    iconId: string,
-    size: number,
-    viewBox: [number, number, number, number],
-    options?: { name?: string; guideMasterId?: string; sourceVariantId?: string },
-  ): void;
+  addVariant(iconId: string, variant: VariantInput): void;
   removeVariant(iconId: string, variantId: string): void;
+  patchVariant(iconId: string, variantId: string, patch: VariantPatch): void;
   duplicateLayersToVariant(
     iconId: string,
     fromVariantId: string,
@@ -98,6 +96,20 @@ export type EditorActions = {
 
 export type EditorStore = EditorState & EditorActions;
 
+export type VariantInput = {
+  id?: string;
+  name?: string;
+  size: number;
+  viewBox?: [number, number, number, number];
+  renderingMode?: RenderingMode;
+  guideMasterId?: string;
+  sourceVariantId?: string;
+  defaultState?: string;
+  states?: Record<string, State>;
+};
+
+export type VariantPatch = Partial<Pick<Variant, 'size' | 'viewBox' | 'renderingMode'>>;
+
 type LegacyVariant = Variant & {
   guideSetId?: string;
   states?: Record<string, State>;
@@ -140,6 +152,7 @@ const initialState: EditorState = {
   guideStyle: 'subtle',
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
+  renderingMode: 'multicolor',
   shapeSubTool: 'rectangle',
   shapePolygonSides: 5,
   shapeStarPoints: 5,
@@ -176,9 +189,15 @@ function pushHistorySnapshot(project: Project | null) {
 }
 
 function applySnapshot(snapshot: TemporalSnapshot) {
+  const variant = getVariantById(
+    snapshot.project,
+    currentState.currentIconId,
+    currentState.currentVariantId,
+  );
   currentState = {
     ...currentState,
     project: snapshot.project,
+    renderingMode: getResolvedRenderingMode(variant),
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
     pointMarquee: null,
@@ -548,6 +567,12 @@ function replaceVariantState(
   };
 }
 
+function getResolvedRenderingMode(
+  variant: Pick<Variant, 'renderingMode'> | null | undefined,
+): RenderingMode {
+  return variant?.renderingMode ?? 'multicolor';
+}
+
 function createActions(): EditorActions {
   return {
     loadProject(project) {
@@ -564,6 +589,9 @@ function createActions(): EditorActions {
         currentIconId: firstIconId,
         currentVariantId: firstVariantId,
         currentStateId: firstStateId,
+        renderingMode: getResolvedRenderingMode(
+          firstVariantId ? firstIcon?.variants[firstVariantId] : null,
+        ),
         selectedIconGuideIndex: null,
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
@@ -628,6 +656,9 @@ function createActions(): EditorActions {
           currentIconId: nextIconId,
           currentVariantId: nextVariantId,
           currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(
+            nextVariantId ? nextIcon.variants[nextVariantId] : null,
+          ),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
@@ -636,44 +667,53 @@ function createActions(): EditorActions {
       });
     },
 
-    addVariant(iconId, size, viewBox, options) {
+    addVariant(iconId, variantInput) {
       editorStoreApi.setState((s) => {
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon) return s;
+        if (!Number.isFinite(variantInput.size) || variantInput.size <= 0) return s;
 
         const sourceVariantId =
-          options?.sourceVariantId ??
+          variantInput.sourceVariantId ??
           (s.currentIconId === iconId ? s.currentVariantId : null) ??
           Object.keys(icon.variants)[0] ??
           null;
         const sourceVariant = sourceVariantId ? icon.variants[sourceVariantId] : null;
         if (!sourceVariant) return s;
 
-        const nextVariantId = buildVariantId(size, Object.keys(icon.variants));
+        const nextVariantId = variantInput.id
+          ? ensureUniqueRecordId(variantInput.id, Object.keys(icon.variants))
+          : buildVariantId(variantInput.size, Object.keys(icon.variants));
         const nextVariantName = buildVariantName(
-          size,
+          variantInput.size,
           Object.values(icon.variants).map((variant) => variant.name ?? String(variant.size)),
-          options?.name,
+          variantInput.name,
         );
-        const nextStates = cloneStateRecord(sourceVariant.states);
-        const nextViewBox = scaleViewBoxToSize(
-          viewBox[2] > 0 && viewBox[3] > 0 ? viewBox : sourceVariant.viewBox,
-          size,
-        );
+        const nextStates = cloneStateRecord(variantInput.states ?? sourceVariant.states);
+        const nextViewBox =
+          variantInput.viewBox && variantInput.viewBox[2] > 0 && variantInput.viewBox[3] > 0
+            ? variantInput.viewBox
+            : scaleViewBoxToSize(sourceVariant.viewBox, variantInput.size);
 
         const nextVariant: Variant = {
           id: nextVariantId,
           name: nextVariantName,
-          size,
+          size: variantInput.size,
           viewBox: nextViewBox,
+          renderingMode:
+            variantInput.renderingMode ?? sourceVariant.renderingMode ?? s.renderingMode,
           guideMasterId:
-            options?.guideMasterId ??
+            variantInput.guideMasterId ??
             sourceVariant.guideMasterId ??
             Object.values(s.project.guideMasters ?? {}).find(
-              (master) => master.targetSize === size,
+              (master) => master.targetSize === variantInput.size,
             )?.id,
-          defaultState: sourceVariant.defaultState,
+          defaultState:
+            variantInput.defaultState ??
+            sourceVariant.defaultState ??
+            Object.keys(nextStates)[0] ??
+            'default',
           states: nextStates,
         };
 
@@ -699,6 +739,7 @@ function createActions(): EditorActions {
             nextVariant.defaultState ??
             Object.keys(nextVariant.states)[0] ??
             null,
+          renderingMode: getResolvedRenderingMode(nextVariant),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           selectedIconGuideIndex: null,
@@ -746,12 +787,66 @@ function createActions(): EditorActions {
           },
           currentVariantId: fallbackVariantId,
           currentStateId: fallbackStateId,
+          renderingMode: getResolvedRenderingMode(fallbackVariant),
           selection: s.currentVariantId === variantId ? { layerIds: [], pointIds: [] } : s.selection,
           activeSnapGuides: s.currentVariantId === variantId ? [] : s.activeSnapGuides,
           selectedIconGuideIndex: s.currentVariantId === variantId ? null : s.selectedIconGuideIndex,
           pointMarquee: s.currentVariantId === variantId ? null : s.pointMarquee,
           pointTransformLabel:
             s.currentVariantId === variantId ? null : s.pointTransformLabel,
+        };
+      });
+    },
+
+    patchVariant(iconId, variantId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[variantId];
+        if (!icon || !variant) return s;
+
+        const nextSize =
+          patch.size !== undefined && Number.isFinite(patch.size) && patch.size > 0
+            ? patch.size
+            : variant.size;
+        const nextViewBox =
+          patch.viewBox && patch.viewBox[2] > 0 && patch.viewBox[3] > 0
+            ? patch.viewBox
+            : variant.viewBox;
+        const nextRenderingMode = patch.renderingMode ?? variant.renderingMode;
+
+        if (
+          nextSize === variant.size &&
+          nextViewBox === variant.viewBox &&
+          nextRenderingMode === variant.renderingMode
+        ) {
+          return s;
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [variantId]: {
+                    ...variant,
+                    size: nextSize,
+                    viewBox: nextViewBox,
+                    renderingMode: nextRenderingMode,
+                  },
+                },
+              },
+            },
+          },
+          renderingMode:
+            s.currentIconId === iconId && s.currentVariantId === variantId
+              ? getResolvedRenderingMode({ renderingMode: nextRenderingMode })
+              : s.renderingMode,
         };
       });
     },
@@ -812,6 +907,9 @@ function createActions(): EditorActions {
           currentStateId: nextVariantId
             ? Object.keys(icon.variants[nextVariantId]?.states ?? {})[0] ?? null
             : null,
+          renderingMode: getResolvedRenderingMode(
+            nextVariantId ? icon.variants[nextVariantId] : null,
+          ),
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
@@ -835,6 +933,7 @@ function createActions(): EditorActions {
         return {
           currentVariantId: id,
           currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(variant),
           activeSnapGuides: [],
           pointMarquee: null,
           selectedIconGuideIndex: null,

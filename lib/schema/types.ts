@@ -26,6 +26,7 @@ export type Variant = {
   name?: string;
   size: number;
   viewBox: [number, number, number, number];
+  renderingMode?: RenderingMode;
   guideMasterId?: string;
   defaultState: string;
   states: Record<string, State>;
@@ -180,6 +181,7 @@ export type GuideItem =
     };
 
 export type TokenSet = {
+  // Named slots such as primary, secondary, and tertiary are used by palette rendering.
   colors?: Record<string, string>;
 };
 
@@ -205,7 +207,6 @@ export type Effect = {
   easing?: string;
 };
 
-// Rendering modes for icon display
 export type RenderingMode =
   | 'monochrome'
   | 'hierarchical'

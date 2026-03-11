@@ -123,7 +123,11 @@ function VariantPickerBar() {
 
   const handleCreateVariant = (size: number) => {
     if (!icon || !currentVariant || !Number.isFinite(size) || size <= 0) return;
-    addVariant(icon.id, size, scaleViewBox(currentVariant.viewBox, size));
+    addVariant(icon.id, {
+      size,
+      viewBox: scaleViewBox(currentVariant.viewBox, size),
+      sourceVariantId: currentVariant.id,
+    });
     setCreateOpen(false);
     setCustomSize(String(size));
   };

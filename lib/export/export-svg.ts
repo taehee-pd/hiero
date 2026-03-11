@@ -1,4 +1,8 @@
-import type { Icon, Layer, PaintRef } from '@/lib/schema/types';
+import type { Icon, Layer, PaintRef, RenderingMode } from '@/lib/schema/types';
+import {
+  resolveLayerStyleForRendering,
+  resolveVariantRenderingMode,
+} from '@/lib/rendering/resolve-layer-style';
 
 /**
  * Generate a clean SVG string for export.
@@ -10,10 +14,14 @@ export function exportSvgString(
   variantId: string,
   stateId: string,
   tokens?: Record<string, string>,
+  renderingMode?: RenderingMode,
 ): string {
   const variant = icon.variants[variantId];
   const state = variant?.states[stateId];
   if (!variant || !state) return '';
+  const effectiveRenderingMode = resolveVariantRenderingMode(
+    renderingMode ?? variant.renderingMode,
+  );
 
   const [vx, vy, vw, vh] = variant.viewBox;
   const lines: string[] = [];
@@ -39,15 +47,21 @@ export function exportSvgString(
       attrs.push(`fill-rule="${layer.path.fillRule}"`);
     }
 
+    const resolvedStyle = resolveLayerStyleForRendering(
+      layer,
+      effectiveRenderingMode,
+      tokens,
+    );
+
     // Fill
-    const fill = resolvePaint(layer.style.fill, layer.id, 'fill', defs, tokens);
+    const fill = resolvePaint(resolvedStyle.fill, layer.id, 'fill', defs, tokens);
     if (fill !== 'none') {
       attrs.push(`fill="${escapeAttr(fill)}"`);
     }
 
     // Stroke
     const stroke = resolvePaint(
-      layer.style.stroke,
+      resolvedStyle.stroke,
       layer.id,
       'stroke',
       defs,
@@ -57,20 +71,20 @@ export function exportSvgString(
       attrs.push(`stroke="${escapeAttr(stroke)}"`);
     }
 
-    if (layer.style.strokeWidth !== undefined) {
-      attrs.push(`stroke-width="${layer.style.strokeWidth}"`);
+    if (resolvedStyle.strokeWidth !== undefined) {
+      attrs.push(`stroke-width="${resolvedStyle.strokeWidth}"`);
     }
-    if (layer.style.fillOpacity !== undefined) {
-      attrs.push(`fill-opacity="${layer.style.fillOpacity}"`);
+    if (resolvedStyle.fillOpacity !== undefined) {
+      attrs.push(`fill-opacity="${resolvedStyle.fillOpacity}"`);
     }
-    if (layer.style.strokeOpacity !== undefined) {
-      attrs.push(`stroke-opacity="${layer.style.strokeOpacity}"`);
+    if (resolvedStyle.strokeOpacity !== undefined) {
+      attrs.push(`stroke-opacity="${resolvedStyle.strokeOpacity}"`);
     }
-    if (layer.style.lineCap) {
-      attrs.push(`stroke-linecap="${layer.style.lineCap}"`);
+    if (resolvedStyle.lineCap) {
+      attrs.push(`stroke-linecap="${resolvedStyle.lineCap}"`);
     }
-    if (layer.style.lineJoin) {
-      attrs.push(`stroke-linejoin="${layer.style.lineJoin}"`);
+    if (resolvedStyle.lineJoin) {
+      attrs.push(`stroke-linejoin="${resolvedStyle.lineJoin}"`);
     }
 
     // Transform

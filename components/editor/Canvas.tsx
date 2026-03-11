@@ -72,8 +72,13 @@ export function Canvas() {
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
+  const renderingMode = useEditorStore((s) => s.renderingMode);
   const activeGuideSet = activeGuideMaster
-    ? { id: activeGuideMaster.id, items: activeGuideMaster.items }
+    ? {
+        id: activeGuideMaster.id,
+        items: activeGuideMaster.items,
+        viewBox: activeGuideMaster.viewBox,
+      }
     : undefined;
   const pointBBox = useEditorStore(() => {
     if (tool !== 'direct-select' || pointMarquee) return null;
@@ -197,11 +202,12 @@ export function Canvas() {
         icon,
         variantId: variant.id,
         stateId: currentState.id,
+        renderingMode,
         tokens: project?.tokenSet?.colors,
       },
       svg,
     );
-  }, [icon, variant, currentState, project?.tokenSet?.colors]);
+  }, [icon, variant, currentState, renderingMode, project?.tokenSet?.colors]);
 
   // Draw editable handles on the active layer for direct-select and pen workflows.
   useEffect(() => {
@@ -632,6 +638,7 @@ export function Canvas() {
         ref={svgRef}
         data-editor-canvas="true"
         className="pointer-events-auto cursor-crosshair"
+        viewBox={vb.join(' ')}
         style={{
           width: `${iconWidth * scale}px`,
           height: `${iconHeight * scale}px`,

@@ -23,6 +23,7 @@ import {
   Squircle,
   VenetianMask,
   ScissorsLineDashed,
+  Plus,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
@@ -43,9 +44,9 @@ import {
   useSelection,
 } from '@/lib/editor-store/hooks';
 import { selectCurrentState } from '@/lib/editor-store/selectors';
-import { editorStore } from '@/lib/editor-store/store';
+import { editorStore, VARIANT_SIZE_PRESETS } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
-import type { GradientStop, Layer, PaintRef } from '@/lib/schema/types';
+import type { GradientStop, Layer, PaintRef, Variant } from '@/lib/schema/types';
 import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 import { cn } from '@/lib/utils';
@@ -100,8 +101,20 @@ export function InspectorPanel() {
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
   const shapeStarPoints = useEditorStore((s) => s.shapeStarPoints);
+  const currentIcon = useEditorStore((s) =>
+    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+  );
+  const currentVariantId = useEditorStore((s) => s.currentVariantId);
+  const currentVariant = useEditorStore((s) =>
+    s.currentIconId && s.currentVariantId
+      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      : null,
+  );
   const selection = useSelection();
   const {
+    addVariant,
+    removeVariant,
+    setCurrentVariant,
     setShapePolygonSides,
     setShapeStarPoints,
     setShapeSubTool,
@@ -116,6 +129,14 @@ export function InspectorPanel() {
     (s) => s.project?.tokenSet?.colors ?? {},
   );
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
+  const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
+
+  const variants = Object.values(currentIcon?.variants ?? {}).sort((a, b) => {
+    if (a.size !== b.size) return a.size - b.size;
+    return a.id.localeCompare(b.id);
+  });
+  const selectedVariantSize = Number.parseInt(newVariantSize, 10);
+  const variantSizeTaken = variants.some((variant) => variant.size === selectedVariantSize);
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const layer =
@@ -180,8 +201,22 @@ export function InspectorPanel() {
     if (!layer) return;
     releaseClipMask(layer.id);
   }, [layer, releaseClipMask]);
+  const handleAddVariant = useCallback(() => {
+    if (!currentIcon || !Number.isFinite(selectedVariantSize) || selectedVariantSize <= 0) return;
+    addVariant(currentIcon.id, {
+      size: selectedVariantSize,
+      viewBox: scaleVariantViewBox(currentVariant?.viewBox, selectedVariantSize),
+      sourceVariantId: currentVariantId ?? undefined,
+    });
+  }, [addVariant, currentIcon, currentVariant?.viewBox, currentVariantId, selectedVariantSize]);
 
-  if (!layer && !showShapeToolSettings) {
+  useEffect(() => {
+    if (currentVariant) {
+      setNewVariantSize(String(currentVariant.size));
+    }
+  }, [currentVariant]);
+
+  if (!currentIcon && !layer && !showShapeToolSettings) {
     return (
       <div className="flex h-full flex-col bg-transparent">
         <div className="px-4 pt-4 pb-3">
@@ -205,11 +240,91 @@ export function InspectorPanel() {
       <div className="px-4 pt-4 pb-3">
         <span className="workspace-kicker">Inspect</span>
         <p className="mt-2 text-base font-semibold text-foreground">
-          {layer ? layer.id : 'Shape tool'}
+          {layer ? layer.id : showShapeToolSettings ? 'Shape tool' : currentVariant?.id ?? 'Inspector'}
         </p>
       </div>
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-5 px-4 pb-4">
+          {currentIcon ? (
+            <>
+              <Section title="Variants">
+                <div className="grid gap-2">
+                  {variants.map((variant) => {
+                    const isActive = variant.id === currentVariantId;
+                    const isOnlyVariant = variants.length <= 1;
+
+                    return (
+                      <div key={variant.id} className="flex items-stretch gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentVariant(variant.id)}
+                          className={cn(
+                            'flex min-w-0 flex-1 flex-col rounded-xl border px-3 py-2 text-left transition',
+                            isActive
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
+                              : 'border-border/70 bg-background/70 text-foreground hover:bg-accent/40',
+                          )}
+                        >
+                          <span className="truncate text-sm font-semibold">{variant.id}</span>
+                          <span className="mt-1 text-xs text-muted-foreground">
+                            {variant.size}px
+                          </span>
+                          <span className="truncate font-mono text-[11px] text-muted-foreground">
+                            {formatVariantViewBox(variant)}
+                          </span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isOnlyVariant}
+                          onClick={() => removeVariant(currentIcon.id, variant.id)}
+                          className="h-auto rounded-xl px-3 text-xs"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+                  <Label htmlFor="variant-size-preset" className="text-xs uppercase text-muted-foreground">
+                    Preset Size
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      id="variant-size-preset"
+                      value={newVariantSize}
+                      onChange={(event) => setNewVariantSize(event.target.value)}
+                      className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                    >
+                      {VARIANT_SIZE_PRESETS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}px
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddVariant}
+                      disabled={!currentIcon || !Number.isFinite(selectedVariantSize) || variantSizeTaken}
+                      className="rounded-xl"
+                    >
+                      <Plus className="size-4" />
+                      Add Variant
+                    </Button>
+                  </div>
+                  {variantSizeTaken ? (
+                    <InlineMessage>A variant for {selectedVariantSize}px already exists.</InlineMessage>
+                  ) : null}
+                </div>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
+
           {showShapeToolSettings && (
             <>
               <Section title="Shape Tool">
@@ -253,7 +368,16 @@ export function InspectorPanel() {
             </>
           )}
 
-          {!layer ? null : (
+          {!layer ? (
+            !showShapeToolSettings ? (
+              <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+                <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Variant switching stays available here so you can move between size masters before editing.
+                </p>
+              </div>
+            ) : null
+          ) : (
             <>
           <Section title="Layer">
             <ReadOnlyField label="ID" value={layer.id} />
@@ -1070,6 +1194,28 @@ function isVisualNodeTypeActive(
     return current === 'static' || current === 'corner';
   }
   return current === option;
+}
+
+function formatVariantViewBox(variant: Variant) {
+  return variant.viewBox.join(' ');
+}
+
+function scaleVariantViewBox(
+  sourceViewBox: [number, number, number, number] | undefined,
+  size: number,
+): [number, number, number, number] {
+  if (!sourceViewBox) {
+    return [0, 0, size, size];
+  }
+
+  const sourceSize = Math.max(sourceViewBox[2], sourceViewBox[3], 1);
+  const scale = size / sourceSize;
+  return [
+    Number((sourceViewBox[0] * scale).toFixed(3)),
+    Number((sourceViewBox[1] * scale).toFixed(3)),
+    Number((sourceViewBox[2] * scale).toFixed(3)),
+    Number((sourceViewBox[3] * scale).toFixed(3)),
+  ];
 }
 
 function Section({

@@ -66,6 +66,7 @@ export function useEditorActions() {
       insertIcon: state.insertIcon,
       addVariant: state.addVariant,
       removeVariant: state.removeVariant,
+      patchVariant: state.patchVariant,
       duplicateLayersToVariant: state.duplicateLayersToVariant,
       setCurrentIcon: state.setCurrentIcon,
       setCurrentVariant: state.setCurrentVariant,

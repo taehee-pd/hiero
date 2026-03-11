@@ -168,7 +168,7 @@ export function useCanvasOverlay(
           const selectionRect = new scope.Path.Rectangle({
             rectangle: rectToDraw,
             strokeColor,
-            strokeWidth: 1.5,
+            strokeWidth: 1,
             dashArray: [4, 3],
           });
           selectionRect.fillColor = null;
@@ -281,7 +281,7 @@ function drawPointSelectionBoundingBox(
   const outline = new scope.Path.Rectangle({
     rectangle: new scope.Rectangle(toScreen(bbox.minX, bbox.minY), toScreen(bbox.maxX, bbox.maxY)),
     strokeColor,
-    strokeWidth: 1.5,
+    strokeWidth: 1,
   });
   outline.fillColor = null;
 

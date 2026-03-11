@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { Icon, State, Transition } from '../lib/schema';
+import { strictMorph } from '../lib/runtime-core';
 import { DomRenderer } from '../lib/runtime-dom';
 
 class MockStyle {
@@ -284,7 +285,7 @@ describe('runtime dom renderer', () => {
     const renderer = new DomRenderer(container, makeIcon());
 
     renderer.mount('v24');
-    renderer.applyFrame('idle', {
+    renderer.applyFrame('idle', 0.5, {
       base: {
         opacity: 0.4,
         rotate: 12,
@@ -302,6 +303,79 @@ describe('runtime dom renderer', () => {
     );
     expect(path?.style.strokeDasharray).toBe(String(path?.getAttribute('d')?.length ?? 1));
     expect(path?.style.strokeDashoffset).toBe(String((path?.getAttribute('d')?.length ?? 1) * 0.75));
+
+    renderer.unmount();
+  });
+
+  test('applyFrame updates path geometry when a morph binding is active', () => {
+    const container = createMockContainer();
+    const icon = makeIcon();
+    const renderer = new DomRenderer(container, icon);
+    const fromLayer = icon.variants.v24.states.idle!.layers.base!;
+    const toLayer = {
+      ...fromLayer,
+      path: { d: 'M4 4 H20 V20 H4 Z', fillRule: 'evenodd' as const },
+    };
+
+    renderer.mount('v24');
+    renderer.applyFrame(
+      'active',
+      0.5,
+      {},
+      {
+        strategy: 'strictMorph',
+        durationMs: 120,
+        easing: 'linear',
+        layerBindings: [
+          {
+            fromLayer,
+            toLayer,
+            tracks: [],
+            morph: strictMorph(fromLayer.path!.d, toLayer.path.d),
+          },
+        ],
+      },
+    );
+
+    const path = container.querySelector<SVGPathElement>('path[data-layer-id="base"]');
+    expect(path?.getAttribute('d')).toBe('M3 3 H21 V21 H3 Z');
+
+    renderer.unmount();
+  });
+
+  test('applyFrame crossfades source and target paths when morph fallback is requested', () => {
+    const container = createMockContainer();
+    const icon = makeIcon();
+    const renderer = new DomRenderer(container, icon);
+    const fromLayer = icon.variants.v24.states.idle!.layers.base!;
+    const toLayer = icon.variants.v24.states.active!.layers.badge!;
+
+    renderer.mount('v24');
+    renderer.applyFrame(
+      'active',
+      0.25,
+      {},
+      {
+        strategy: 'bestGuessMorph',
+        durationMs: 120,
+        easing: 'linear',
+        layerBindings: [
+          {
+            fromLayer,
+            toLayer,
+            tracks: [],
+            fallback: 'crossfade',
+          },
+        ],
+      },
+    );
+
+    const source = container.querySelector<SVGPathElement>('path[data-layer-id="base"]');
+    const target = container
+      .querySelectorAll<SVGPathElement>('path[data-layer-id="badge"]')
+      .find((element) => element.getAttribute('data-transition-role') === 'to');
+    expect(source?.style.opacity).toBe('0.75');
+    expect(target?.style.opacity).toBe('0.25');
 
     renderer.unmount();
   });

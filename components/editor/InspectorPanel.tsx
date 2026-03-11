@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LoaderCircle,
   AlignCenterHorizontal,
@@ -31,11 +31,14 @@ import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { TransitionPanel } from './TransitionPanel';
 import {
   alignLayers,
+  computeTopology,
   alignSelectedPoints,
   distributeLayers,
   distributeSelectedPoints,
+  lockTopology,
   setSelectedPointType,
 } from '@/lib/editor-core';
 import {
@@ -115,6 +118,7 @@ export function InspectorPanel() {
     addVariant,
     removeVariant,
     setCurrentVariant,
+    setStateTopology,
     setShapePolygonSides,
     setShapeStarPoints,
     setShapeSubTool,
@@ -146,6 +150,11 @@ export function InspectorPanel() {
   const pointContext = layer
     ? getSelectedPointContext(layer, selection.pointIds)
     : getSelectedPointContext(null, []);
+  const currentTopology = useMemo(
+    () => (currentState ? computeTopology(currentState) : null),
+    [currentState],
+  );
+  const isTopologyLocked = currentState?.topology?.locked === true;
   const multipleLayersSelected = selection.layerIds.length > 1;
   const enoughLayersToDistribute = selection.layerIds.length > 2;
   const showShapeToolSettings = tool === 'shape';
@@ -209,6 +218,14 @@ export function InspectorPanel() {
       sourceVariantId: currentVariantId ?? undefined,
     });
   }, [addVariant, currentIcon, currentVariant?.viewBox, currentVariantId, selectedVariantSize]);
+  const handleLockTopology = useCallback(() => {
+    if (!currentIconId || !currentStateId || !currentState) return;
+    setStateTopology(currentIconId, currentStateId, lockTopology(currentState));
+  }, [currentIconId, currentState, currentStateId, setStateTopology]);
+  const handleUnlockTopology = useCallback(() => {
+    if (!currentIconId || !currentStateId) return;
+    setStateTopology(currentIconId, currentStateId, undefined);
+  }, [currentIconId, currentStateId, setStateTopology]);
 
   useEffect(() => {
     if (currentVariant) {
@@ -322,6 +339,8 @@ export function InspectorPanel() {
                 </div>
               </Section>
               <Separator />
+              <TransitionPanel />
+              <Separator />
             </>
           ) : null}
 
@@ -367,6 +386,73 @@ export function InspectorPanel() {
               {layer && <Separator />}
             </>
           )}
+
+          {currentState && currentTopology ? (
+            <>
+              <Section title="Topology">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {currentTopology.layerPairs.length} tracked layer
+                      {currentTopology.layerPairs.length === 1 ? '' : 's'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Subpath counts are captured per path layer.
+                    </p>
+                  </div>
+                  {isTopologyLocked ? (
+                    <span className="rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      Locked
+                    </span>
+                  ) : null}
+                </div>
+
+                {currentTopology.layerPairs.length > 0 ? (
+                  <div className="grid gap-2">
+                    {currentTopology.layerPairs.map((pair) => (
+                      <div
+                        key={pair.layerId}
+                        className="rounded-xl border border-border/70 bg-background/70 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-foreground">{pair.layerId}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {pair.subpathCount} subpath{pair.subpathCount === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineMessage>No path layers are available in this state.</InlineMessage>
+                )}
+
+                <div className="flex gap-2">
+                  {isTopologyLocked ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleUnlockTopology}
+                      className="rounded-xl"
+                    >
+                      Unlock
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleLockTopology}
+                      className="rounded-xl"
+                    >
+                      Lock Topology
+                    </Button>
+                  )}
+                </div>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
 
           {!layer ? (
             !showShapeToolSettings ? (

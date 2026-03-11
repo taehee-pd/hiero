@@ -92,10 +92,9 @@ export class TransitionScheduler {
   }
 
   private emitFrame(progress: number): void {
-    const easedProgress = this.easing(clamp01(progress));
     this.onFrameCallback(
       clamp01(progress),
-      buildInterpolatedValues(this.transition.layerBindings, easedProgress),
+      interpolateTransitionValues(this.transition, progress),
     );
   }
 
@@ -105,6 +104,14 @@ export class TransitionScheduler {
       listener();
     }
   }
+}
+
+export function interpolateTransitionValues(
+  transition: ResolvedTransition,
+  progress: number,
+): InterpolatedValues {
+  const easing = getEasingFunction(transition.easing);
+  return buildInterpolatedValues(transition.layerBindings, easing(clamp01(progress)));
 }
 
 function buildInterpolatedValues(

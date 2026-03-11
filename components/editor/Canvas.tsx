@@ -9,6 +9,10 @@ import {
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
+import {
+  applyTransitionPreview,
+  clearTransitionPreview,
+} from '@/lib/editor-renderer-svg/preview-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { Rulers } from './Rulers';
@@ -73,6 +77,7 @@ export function Canvas() {
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
   const renderingMode = useEditorStore((s) => s.renderingMode);
+  const transitionPreview = useEditorStore((s) => s.transitionPreview);
   const activeGuideSet = activeGuideMaster
     ? {
         id: activeGuideMaster.id,
@@ -192,7 +197,12 @@ export function Canvas() {
     const svg = svgRef.current;
     if (!svg) return;
 
-    if (!icon || !variant || !currentState) {
+    const renderedState =
+      transitionPreview?.baseStateId && variant?.states[transitionPreview.baseStateId]
+        ? variant.states[transitionPreview.baseStateId]
+        : currentState;
+
+    if (!icon || !variant || !renderedState) {
       svg.innerHTML = '';
       return;
     }
@@ -201,13 +211,44 @@ export function Canvas() {
       {
         icon,
         variantId: variant.id,
-        stateId: currentState.id,
+        stateId: renderedState.id,
         renderingMode,
         tokens: project?.tokenSet?.colors,
       },
       svg,
     );
-  }, [icon, variant, currentState, renderingMode, project?.tokenSet?.colors]);
+  }, [
+    icon,
+    variant,
+    currentState,
+    renderingMode,
+    project?.tokenSet?.colors,
+    transitionPreview?.baseStateId,
+  ]);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !variant) return;
+
+    const renderedState =
+      transitionPreview?.baseStateId && variant.states[transitionPreview.baseStateId]
+        ? variant.states[transitionPreview.baseStateId]
+        : currentState;
+    if (!renderedState) return;
+
+    clearTransitionPreview(svg, renderedState);
+    if (!transitionPreview) return;
+
+    applyTransitionPreview(svg, {
+      baseState: renderedState,
+      targetState: variant.states[transitionPreview.targetStateId] ?? null,
+      progress: transitionPreview.progress,
+      resolvedTransition: transitionPreview.resolvedTransition,
+      interpolatedValues: transitionPreview.interpolatedValues,
+      renderingMode,
+      tokens: project?.tokenSet?.colors,
+    });
+  }, [currentState, project?.tokenSet?.colors, renderingMode, transitionPreview, variant]);
 
   // Draw editable handles on the active layer for direct-select and pen workflows.
   useEffect(() => {

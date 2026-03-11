@@ -3,6 +3,8 @@ import type {
   Icon,
   Layer,
   State,
+  TopologyContract,
+  Transition,
   GuideMaster,
   GuideSet,
   GuideItem,
@@ -19,7 +21,9 @@ import type {
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
+import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
+import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
 
 export type EditorState = {
   project: Project | null;
@@ -40,6 +44,16 @@ export type EditorState = {
   shapeStarPoints: number;
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
+  transitionPreview: TransitionPreview | null;
+};
+
+export type TransitionPreview = {
+  transitionId: string;
+  baseStateId: string;
+  targetStateId: string;
+  progress: number;
+  resolvedTransition: ResolvedTransition;
+  interpolatedValues: InterpolatedValues;
 };
 
 export type EditorActions = {
@@ -49,6 +63,9 @@ export type EditorActions = {
   addVariant(iconId: string, variant: VariantInput): void;
   removeVariant(iconId: string, variantId: string): void;
   patchVariant(iconId: string, variantId: string, patch: VariantPatch): void;
+  addTransition(iconId: string, transition: Transition): void;
+  removeTransition(iconId: string, transitionId: string): void;
+  patchTransition(iconId: string, transitionId: string, patch: Partial<Transition>): void;
   duplicateLayersToVariant(
     iconId: string,
     fromVariantId: string,
@@ -58,6 +75,7 @@ export type EditorActions = {
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
+  setStateTopology(iconId: string, stateId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
@@ -76,6 +94,7 @@ export type EditorActions = {
   setShapeStarPoints(points: number): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
+  setTransitionPreview(preview: TransitionPreview | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
   addGuideMaster(master: GuideMaster): void;
   updateGuideMaster(id: string, patch: Partial<GuideMaster>): void;
@@ -158,6 +177,7 @@ const initialState: EditorState = {
   shapeStarPoints: 5,
   pointMarquee: null,
   pointTransformLabel: null,
+  transitionPreview: null,
 };
 
 let currentState: EditorStore;
@@ -201,6 +221,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
     pointMarquee: null,
+    transitionPreview: null,
   };
   emit();
 }
@@ -601,6 +622,7 @@ function createActions(): EditorActions {
         viewport: { zoom: 12, panX: 0, panY: 0 },
         pointMarquee: null,
         pointTransformLabel: null,
+        transitionPreview: null,
       });
       resetHistoryForLoadedDocument();
     },
@@ -663,6 +685,7 @@ function createActions(): EditorActions {
           activeSnapGuides: [],
           pointMarquee: null,
           pointTransformLabel: null,
+          transitionPreview: null,
         };
       });
     },
@@ -851,6 +874,101 @@ function createActions(): EditorActions {
       });
     },
 
+    addTransition(iconId, transition) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const nextTransitionId = ensureUniqueRecordId(
+          transition.id,
+          Object.keys(icon.transitions),
+        );
+        const nextTransition =
+          nextTransitionId === transition.id
+            ? transition
+            : {
+                ...transition,
+                id: nextTransitionId,
+              };
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: {
+                  ...icon.transitions,
+                  [nextTransition.id]: nextTransition,
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeTransition(iconId, transitionId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.transitions[transitionId]) return s;
+
+        const nextTransitions = { ...icon.transitions };
+        delete nextTransitions[transitionId];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: nextTransitions,
+              },
+            },
+          },
+          transitionPreview:
+            s.transitionPreview?.transitionId === transitionId ? null : s.transitionPreview,
+        };
+      });
+    },
+
+    patchTransition(iconId, transitionId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const transition = icon?.transitions[transitionId];
+        if (!icon || !transition) return s;
+
+        const { id: _ignoredId, ...safePatch } = patch;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: {
+                  ...icon.transitions,
+                  [transitionId]: {
+                    ...transition,
+                    ...safePatch,
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
     duplicateLayersToVariant(iconId, fromVariantId, toVariantId, stateId) {
       editorStoreApi.setState((s) => {
         if (!s.project) return s;
@@ -914,6 +1032,7 @@ function createActions(): EditorActions {
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
+          transitionPreview: null,
         };
       });
     },
@@ -938,6 +1057,7 @@ function createActions(): EditorActions {
           pointMarquee: null,
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
+          transitionPreview: null,
         };
       });
     },
@@ -949,6 +1069,32 @@ function createActions(): EditorActions {
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
         pointMarquee: null,
+        transitionPreview: null,
+      });
+    },
+
+    setStateTopology(iconId, stateId, topology) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[stateId];
+        if (!icon || !variant || !state) return s;
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...replaceVariantState(icon, s.currentVariantId, stateId, {
+                  ...state,
+                  topology,
+                }),
+              },
+            },
+          },
+        };
       });
     },
 
@@ -968,6 +1114,23 @@ function createActions(): EditorActions {
         const layer = state?.layers[layerId];
         if (!icon || !variant || !state || !layer) return s;
 
+        const nextLayer = { ...layer, ...patch };
+        const nextState = {
+          ...state,
+          layers: {
+            ...state.layers,
+            [layerId]: nextLayer,
+          },
+        };
+
+        if (state.topology?.locked && patch.path) {
+          const nextTopology = computeTopology(nextState);
+          const compatibility = areTopologiesCompatible(state.topology, nextTopology);
+          if (!compatibility.compatible) {
+            throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
+          }
+        }
+
         return {
           project: {
             ...s.project,
@@ -975,11 +1138,7 @@ function createActions(): EditorActions {
               ...s.project.icons,
               [iconId]: {
                 ...replaceVariantState(icon, s.currentVariantId, stateId, {
-                  ...state,
-                  layers: {
-                    ...state.layers,
-                    [layerId]: { ...layer, ...patch },
-                  },
+                  ...nextState,
                 }),
               },
             },
@@ -1214,6 +1373,10 @@ function createActions(): EditorActions {
 
     setPointTransformLabel(label) {
       editorStoreApi.setState({ pointTransformLabel: label });
+    },
+
+    setTransitionPreview(preview) {
+      editorStoreApi.setState({ transitionPreview: preview });
     },
 
     updateProjectMeta(patch) {

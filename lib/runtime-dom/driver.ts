@@ -54,8 +54,8 @@ export function createIconDriver(
 
     const resolved = resolveTransition(transition, fromState, toState);
     const scheduler = new TransitionScheduler(resolved, {
-      onFrame: (_progress, interpolatedValues: InterpolatedValues) => {
-        renderer.applyFrame(state.id, interpolatedValues);
+      onFrame: (progress, interpolatedValues: InterpolatedValues) => {
+        renderer.applyFrame(state.id, progress, interpolatedValues, resolved);
       },
     });
 

@@ -1,5 +1,5 @@
 import type { Icon, Layer, PaintRef, Variant } from '../schema';
-import type { InterpolatedValues } from '../runtime-core';
+import type { InterpolatedValues, ResolvedTransition } from '../runtime-core';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MANAGED_DEFS_ATTR = 'data-managed-by';
@@ -20,6 +20,8 @@ export class DomRenderer {
   private variant: Variant | null = null;
   private renderedStateId: string | null = null;
   private layerElements = new Map<string, LayerRenderEntry>();
+  private transitionLayerElements = new Map<string, LayerRenderEntry>();
+  private activeTransitionStateId: string | null = null;
 
   constructor(container: HTMLElement, icon: Icon) {
     this.container = container;
@@ -50,14 +52,28 @@ export class DomRenderer {
     this.setState(variant.defaultState);
   }
 
-  applyFrame(stateId: string, interpolatedValues: InterpolatedValues): void {
+  applyFrame(
+    stateId: string,
+    progress: number,
+    interpolatedValues: InterpolatedValues,
+    transition?: ResolvedTransition,
+  ): void {
     this.ensureMounted();
+    const hasTransitionVisuals = hasVisualTransitionBindings(transition);
 
     if (
       this.renderedStateId !== stateId &&
+      !hasTransitionVisuals &&
       (Object.keys(interpolatedValues).length === 0 || !this.hasRenderedLayerValues(interpolatedValues))
     ) {
       this.setState(stateId);
+    }
+
+    if (transition && hasTransitionVisuals) {
+      this.ensureTransitionElements(stateId, transition);
+      this.applyMorphBindings(progress, transition);
+    } else {
+      this.clearTransitionElements();
     }
 
     for (const [layerId, values] of Object.entries(interpolatedValues)) {
@@ -66,30 +82,11 @@ export class DomRenderer {
         continue;
       }
 
-      if (values.opacity !== undefined) {
-        entry.element.style.opacity = String(values.opacity);
-      }
+      applyAnimatedValues(entry, values);
+    }
 
-      const transform = buildAnimatedTransform(entry.baseTransform, values);
-      if (transform) {
-        entry.element.style.transform = transform;
-        entry.element.style.transformBox = 'fill-box';
-        entry.element.style.transformOrigin = 'center';
-      } else {
-        entry.element.style.removeProperty('transform');
-        entry.element.style.removeProperty('transform-box');
-        entry.element.style.removeProperty('transform-origin');
-      }
-
-      if (values.pathLength !== undefined) {
-        const normalized = clamp01(values.pathLength);
-        const pathLength = entry.pathLength;
-        entry.element.style.strokeDasharray = String(pathLength);
-        entry.element.style.strokeDashoffset = String(pathLength * (1 - normalized));
-      } else {
-        entry.element.style.removeProperty('stroke-dasharray');
-        entry.element.style.removeProperty('stroke-dashoffset');
-      }
+    if (transition && hasTransitionVisuals) {
+      this.applyCrossfadeBindings(progress, transition);
     }
   }
 
@@ -104,6 +101,7 @@ export class DomRenderer {
     const svg = this.svg!;
     const defs = ensureManagedDefs(svg);
     defs.replaceChildren();
+    this.clearTransitionElements();
 
     for (const entry of this.layerElements.values()) {
       entry.element.remove();
@@ -114,13 +112,13 @@ export class DomRenderer {
     const layerById = new Map(layers.map((layer) => [layer.id, layer]));
 
     for (const layer of layers) {
-      const pathEl = this.doc.createElementNS(SVG_NS, 'path');
-      pathEl.setAttribute('data-layer-id', layer.id);
-      applyLayerGeometry(pathEl, layer);
-      applyLayerStyle(pathEl, layer, defs);
-      applyTransformAttribute(pathEl, layer);
-      applyClipPath(pathEl, layer, layerById, defs);
-
+      const pathEl = createLayerElement(
+        this.doc,
+        layer,
+        defs,
+        layerById,
+        layer.id,
+      );
       svg.appendChild(pathEl);
       this.layerElements.set(layer.id, {
         element: pathEl,
@@ -138,6 +136,7 @@ export class DomRenderer {
   }
 
   unmount(): void {
+    this.clearTransitionElements();
     if (this.svg) {
       this.svg.remove();
     }
@@ -155,6 +154,101 @@ export class DomRenderer {
 
   private hasRenderedLayerValues(interpolatedValues: InterpolatedValues): boolean {
     return Object.keys(interpolatedValues).some((layerId) => this.layerElements.has(layerId));
+  }
+
+  private ensureTransitionElements(stateId: string, transition: ResolvedTransition) {
+    if (!this.svg || !this.variant) {
+      return;
+    }
+
+    if (this.activeTransitionStateId !== stateId) {
+      this.clearTransitionElements();
+      this.activeTransitionStateId = stateId;
+    }
+
+    const defs = ensureManagedDefs(this.svg);
+    const targetState = this.variant.states[stateId];
+    const targetLayers = getRenderableLayers(targetState?.layers ?? {});
+    const targetLayerById = new Map(targetLayers.map((layer) => [layer.id, layer]));
+
+    transition.layerBindings.forEach((binding, index) => {
+      if (binding.fallback !== 'crossfade' || !binding.toLayer?.path?.d) {
+        return;
+      }
+
+      const key = buildTransitionBindingKey(binding, index);
+      if (this.transitionLayerElements.has(key)) {
+        return;
+      }
+
+      const pathEl = createLayerElement(
+        this.doc,
+        binding.toLayer,
+        defs,
+        targetLayerById,
+        `${key}-${binding.toLayer.id}`,
+      );
+      pathEl.setAttribute('data-transition-role', 'to');
+      pathEl.style.opacity = '0';
+
+      this.svg!.appendChild(pathEl);
+      this.transitionLayerElements.set(key, {
+        element: pathEl,
+        layer: binding.toLayer,
+        baseTransform: buildAttributeTransform(binding.toLayer),
+        pathLength: getPathLength(pathEl),
+      });
+    });
+  }
+
+  private applyMorphBindings(progress: number, transition: ResolvedTransition) {
+    for (const binding of transition.layerBindings) {
+      if (!binding.morph) {
+        continue;
+      }
+
+      const sourceId = binding.fromLayer?.id ?? binding.toLayer?.id;
+      if (!sourceId) {
+        continue;
+      }
+
+      const entry = this.layerElements.get(sourceId);
+      if (!entry) {
+        continue;
+      }
+
+      entry.element.setAttribute('d', binding.morph(progress));
+      entry.pathLength = getPathLength(entry.element);
+    }
+  }
+
+  private applyCrossfadeBindings(progress: number, transition: ResolvedTransition) {
+    transition.layerBindings.forEach((binding, index) => {
+      if (binding.fallback !== 'crossfade') {
+        return;
+      }
+
+      const sourceId = binding.fromLayer?.id;
+      if (sourceId) {
+        const entry = this.layerElements.get(sourceId);
+        if (entry) {
+          entry.element.style.opacity = String(1 - clamp01(progress));
+        }
+      }
+
+      const targetEntry = this.transitionLayerElements.get(buildTransitionBindingKey(binding, index));
+      if (targetEntry) {
+        targetEntry.element.style.opacity = String(clamp01(progress));
+      }
+    });
+  }
+
+  private clearTransitionElements() {
+    for (const entry of this.transitionLayerElements.values()) {
+      entry.element.remove();
+    }
+    this.transitionLayerElements.clear();
+    this.activeTransitionStateId = null;
   }
 }
 
@@ -174,10 +268,15 @@ function applyLayerGeometry(el: SVGPathElement, layer: Layer): void {
   }
 }
 
-function applyLayerStyle(el: SVGPathElement, layer: Layer, defs: SVGDefsElement): void {
+function applyLayerStyle(
+  el: SVGPathElement,
+  layer: Layer,
+  defs: SVGDefsElement,
+  paintKey = layer.id,
+): void {
   const s = layer.style;
-  el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs));
-  el.setAttribute('stroke', resolvePaint(s.stroke, layer.id, 'stroke', defs));
+  el.setAttribute('fill', resolvePaint(s.fill, paintKey, 'fill', defs));
+  el.setAttribute('stroke', resolvePaint(s.stroke, paintKey, 'stroke', defs));
 
   if (s.strokeWidth !== undefined) {
     el.setAttribute('stroke-width', String(s.strokeWidth));
@@ -254,6 +353,7 @@ function applyClipPath(
   layer: Layer,
   layerById: Map<string, Layer>,
   defs: SVGDefsElement,
+  clipKey = layer.id,
 ): void {
   if (!layer.clipPathLayerId) {
     el.removeAttribute('clip-path');
@@ -266,9 +366,65 @@ function applyClipPath(
     return;
   }
 
-  const clipPathId = buildClipPathId(layer.id);
+  const clipPathId = buildClipPathId(clipKey);
   defs.appendChild(createClipPath(defs.ownerDocument, clipPathId, maskLayer));
   el.setAttribute('clip-path', `url(#${clipPathId})`);
+}
+
+function createLayerElement(
+  doc: Document,
+  layer: Layer,
+  defs: SVGDefsElement,
+  layerById: Map<string, Layer>,
+  assetKey: string,
+): SVGPathElement {
+  const pathEl = doc.createElementNS(SVG_NS, 'path');
+  pathEl.setAttribute('data-layer-id', layer.id);
+  applyLayerGeometry(pathEl, layer);
+  applyLayerStyle(pathEl, layer, defs, assetKey);
+  applyTransformAttribute(pathEl, layer);
+  applyClipPath(pathEl, layer, layerById, defs, assetKey);
+  return pathEl;
+}
+
+function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, number>) {
+  if (values.opacity !== undefined) {
+    entry.element.style.opacity = String(values.opacity);
+  }
+
+  const transform = buildAnimatedTransform(entry.baseTransform, values);
+  if (transform) {
+    entry.element.style.transform = transform;
+    entry.element.style.transformBox = 'fill-box';
+    entry.element.style.transformOrigin = 'center';
+  } else {
+    entry.element.style.removeProperty('transform');
+    entry.element.style.removeProperty('transform-box');
+    entry.element.style.removeProperty('transform-origin');
+  }
+
+  if (values.pathLength !== undefined) {
+    const normalized = clamp01(values.pathLength);
+    const pathLength = entry.pathLength;
+    entry.element.style.strokeDasharray = String(pathLength);
+    entry.element.style.strokeDashoffset = String(pathLength * (1 - normalized));
+  } else {
+    entry.element.style.removeProperty('stroke-dasharray');
+    entry.element.style.removeProperty('stroke-dashoffset');
+  }
+}
+
+function hasVisualTransitionBindings(transition: ResolvedTransition | undefined): boolean {
+  return Boolean(
+    transition?.layerBindings.some((binding) => binding.morph || binding.fallback === 'crossfade'),
+  );
+}
+
+function buildTransitionBindingKey(
+  binding: ResolvedTransition['layerBindings'][number],
+  index: number,
+) {
+  return `transition-${index}-${binding.fromLayer?.id ?? 'none'}-${binding.toLayer?.id ?? 'none'}`;
 }
 
 function ensureManagedDefs(target: SVGSVGElement): SVGDefsElement {

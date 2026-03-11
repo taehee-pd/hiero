@@ -104,6 +104,8 @@ export class PathEditor {
   private dragMode: DragMode = null;
   private dragStartX = 0;
   private dragStartY = 0;
+  private dragStartSvg: { x: number; y: number } | null = null;
+  private activePointerId: number | null = null;
   private dragLayerId: string | null = null;
   private dragPointKey: string | null = null;
   private dragControlDirection: ControlDirection | null = null;
@@ -151,6 +153,24 @@ export class PathEditor {
     };
   }
 
+  private capturePointer(pointerId: number) {
+    this.svg.setPointerCapture?.(pointerId);
+    this.activePointerId = pointerId;
+  }
+
+  private releasePointer(pointerId?: number) {
+    const id = pointerId ?? this.activePointerId;
+    if (id === null || id === undefined) return;
+    try {
+      this.svg.releasePointerCapture?.(id);
+    } catch {
+      // ignore release failures for already-released pointers.
+    }
+    if (pointerId === undefined || this.activePointerId === id) {
+      this.activePointerId = null;
+    }
+  }
+
   private onPointerDown(e: PointerEvent) {
     const state = editorStore.getState();
     const tool = state.tool;
@@ -187,7 +207,7 @@ export class PathEditor {
       const placement = this.beginShapePlacement(e);
       if (placement) {
         state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       }
       return;
     }
@@ -196,30 +216,30 @@ export class PathEditor {
       if (layerId && pointKey && controlDirection) {
         state.setSelection({ layerIds: [layerId], pointIds: [`${pointKey}@${controlDirection}`] });
         this.startControlDrag(layerId, pointKey, controlDirection, e.clientX, e.clientY);
-        (target as Element).setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (layerId && pointKey) {
         state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
         this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
-        (target as Element).setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (this.beginSelectionBoundsDrag(e)) {
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (this.beginPointMarquee(e, layerId, 'direct-select')) {
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       }
       return;
     }
 
     if (tool === 'select') {
       if (selectionHandle && this.beginLayerBoundsResize(e, selectionHandle)) {
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (this.beginLayerBoundsMove(e)) {
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (layerId) {
         state.setSelection({ layerIds: [layerId], pointIds: [] });
         this.startLayerDrag(layerId, e.clientX, e.clientY);
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       } else if (this.beginPointMarquee(e, null, 'select')) {
-        this.svg.setPointerCapture?.(e.pointerId);
+        this.capturePointer(e.pointerId);
       }
     }
   }
@@ -406,6 +426,7 @@ export class PathEditor {
     this.dragLayerId = layerId;
     this.dragStartX = clientX;
     this.dragStartY = clientY;
+    this.dragStartSvg = this.clientToSvg(clientX, clientY);
     this.originalTransform = {
       x: layer.transform?.x ?? 0,
       y: layer.transform?.y ?? 0,
@@ -811,22 +832,29 @@ export class PathEditor {
 
   private dragLayer(e: PointerEvent) {
     if (!this.originalTransform || !this.dragLayerId) return;
-    const svgPerPx = this.svgUnitsPerScreenPx();
-    const dx = (e.clientX - this.dragStartX) * svgPerPx;
-    const dy = (e.clientY - this.dragStartY) * svgPerPx;
+    const startSvg = this.dragStartSvg ?? this.clientToSvg(this.dragStartX, this.dragStartY);
+    const currentSvg = this.clientToSvg(e.clientX, e.clientY);
+    if (!startSvg || !currentSvg) return;
+
+    const dx = currentSvg.x - startSvg.x;
+    const dy = currentSvg.y - startSvg.y;
 
     const layerId = this.dragLayerId;
     const newX = this.originalTransform.x + dx;
     const newY = this.originalTransform.y + dy;
 
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-    this.animFrameId = requestAnimationFrame(() => {
-      const pathEl = this.svg.querySelector(
-        `[data-layer-id="${layerId}"]`,
-      ) as SVGPathElement | null;
-      if (!pathEl) return;
+    const pathEl = this.svg.querySelector(
+      `[data-layer-id="${layerId}"]`,
+    ) as SVGPathElement | null;
+    const hitPathEl = this.svg.querySelector(
+      `[data-layer-hit-id="${layerId}"]`,
+    ) as SVGPathElement | null;
+    if (pathEl) {
       pathEl.setAttribute('transform', `translate(${newX}, ${newY})`);
-    });
+    }
+    if (hitPathEl) {
+      hitPathEl.setAttribute('transform', `translate(${newX}, ${newY})`);
+    }
   }
 
   private dragPoint(e: PointerEvent) {
@@ -845,15 +873,18 @@ export class PathEditor {
     this.translatePoint(context.subPath, context.pointIdx, dx, dy);
 
     const nextD = serializePath(editable);
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-    this.animFrameId = requestAnimationFrame(() => {
-      const pathEl = this.svg.querySelector(
-        `[data-layer-id="${this.dragLayerId}"]`,
-      ) as SVGPathElement | null;
-      if (!pathEl) return;
-      pathEl.setAttribute('d', nextD);
-      this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
-    });
+    const pathEl = this.svg.querySelector(
+      `[data-layer-id="${this.dragLayerId}"]`,
+    ) as SVGPathElement | null;
+    const hitPathEl = this.svg.querySelector(
+      `[data-layer-hit-id="${this.dragLayerId}"]`,
+    ) as SVGPathElement | null;
+    if (!pathEl) return;
+    pathEl.setAttribute('d', nextD);
+    if (hitPathEl) {
+      hitPathEl.setAttribute('d', nextD);
+    }
+    this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
   }
 
   private dragControl(e: PointerEvent) {
@@ -877,21 +908,24 @@ export class PathEditor {
     if (!controlPosition) return;
 
     const nextD = serializePath(editable);
-    if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
-    this.animFrameId = requestAnimationFrame(() => {
-      const pathEl = this.svg.querySelector(
-        `[data-layer-id="${this.dragLayerId}"]`,
-      ) as SVGPathElement | null;
-      if (!pathEl) return;
-      pathEl.setAttribute('d', nextD);
-      this.updateDraggedControlHandle(
-        this.dragLayerId!,
-        this.dragPointKey!,
-        this.dragControlDirection!,
-        controlPosition,
-        context.point.position,
-      );
-    });
+    const pathEl = this.svg.querySelector(
+      `[data-layer-id="${this.dragLayerId}"]`,
+    ) as SVGPathElement | null;
+    const hitPathEl = this.svg.querySelector(
+      `[data-layer-hit-id="${this.dragLayerId}"]`,
+    ) as SVGPathElement | null;
+    if (!pathEl) return;
+    pathEl.setAttribute('d', nextD);
+    if (hitPathEl) {
+      hitPathEl.setAttribute('d', nextD);
+    }
+    this.updateDraggedControlHandle(
+      this.dragLayerId!,
+      this.dragPointKey!,
+      this.dragControlDirection!,
+      controlPosition,
+      context.point.position,
+    );
   }
 
   private updatePenCurvePreview(e: PointerEvent) {
@@ -946,7 +980,8 @@ export class PathEditor {
     });
   }
 
-  private onPointerCancel() {
+  private onPointerCancel(e: PointerEvent) {
+    this.releasePointer(e.pointerId);
     this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
@@ -1010,6 +1045,8 @@ export class PathEditor {
   }
 
   private onPointerUp(e: PointerEvent) {
+    this.releasePointer(e.pointerId);
+
     if (this.penPlacement && e.pointerId === this.penPlacement.pointerId) {
       this.commitPenPlacement(e);
       resumeHistory();
@@ -1114,9 +1151,12 @@ export class PathEditor {
     if (!this.originalTransform || !this.dragLayerId) return;
 
     const state = editorStore.getState();
-    const svgPerPx = this.svgUnitsPerScreenPx();
-    const dx = (e.clientX - this.dragStartX) * svgPerPx;
-    const dy = (e.clientY - this.dragStartY) * svgPerPx;
+    const startSvg = this.dragStartSvg ?? this.clientToSvg(this.dragStartX, this.dragStartY);
+    const currentSvg = this.clientToSvg(e.clientX, e.clientY);
+    if (!startSvg || !currentSvg) return;
+
+    const dx = currentSvg.x - startSvg.x;
+    const dy = currentSvg.y - startSvg.y;
 
     if (Math.abs(dx) <= 0.01 && Math.abs(dy) <= 0.01) return;
 
@@ -1563,9 +1603,11 @@ export class PathEditor {
     editorStore.getState().setPointMarquee(null);
     this.isDragging = false;
     this.dragMode = null;
+    this.releasePointer();
     this.dragLayerId = null;
     this.dragPointKey = null;
     this.dragControlDirection = null;
+    this.dragStartSvg = null;
     this.originalTransform = null;
     this.originalPathD = null;
     this.shapePlacement = null;
@@ -1575,6 +1617,7 @@ export class PathEditor {
 
   destroy() {
     this.clearActiveSnapGuides();
+    this.releasePointer();
     this.cleanup?.();
   }
 

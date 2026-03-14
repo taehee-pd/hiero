@@ -22,6 +22,7 @@ import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 
 export type EditorState = {
   project: Project | null;
+  isDirty: boolean;
   currentIconId: string | null;
   currentVariantId: string | null;
   currentStateId: string | null;
@@ -41,8 +42,9 @@ export type EditorState = {
 };
 
 export type EditorActions = {
-  loadProject(project: ProjectInput): void;
+  loadProject(project: ProjectInput, options?: LoadProjectOptions): void;
   newProject(): void;
+  markSaved(updatedAt?: string): void;
   insertIcon(icon: Icon): void;
   addVariant(
     iconId: string,
@@ -113,7 +115,12 @@ type ProjectInput = Omit<Project, 'icons'> & {
   icons: Record<string, LegacyIcon>;
 };
 
-type TemporalSnapshot = { project: Project | null };
+type LoadProjectOptions = {
+  resetHistory?: boolean;
+  markDirty?: boolean;
+};
+
+type TemporalSnapshot = { project: Project | null; isDirty: boolean };
 
 type TemporalState = {
   pastStates: TemporalSnapshot[];
@@ -129,6 +136,7 @@ type TemporalState = {
 
 const initialState: EditorState = {
   project: null,
+  isDirty: false,
   currentIconId: null,
   currentVariantId: null,
   currentStateId: null,
@@ -153,7 +161,7 @@ const listeners = new Set<() => void>();
 const MAX_HISTORY = 100;
 export const VARIANT_SIZE_PRESETS = [12, 16, 20, 24, 32, 48] as const;
 let tracking = true;
-let transactionBase: Project | null | undefined;
+let transactionBase: TemporalSnapshot | undefined;
 const pastStates: TemporalSnapshot[] = [];
 const futureStates: TemporalSnapshot[] = [];
 
@@ -169,8 +177,8 @@ function normalizeSelection(selection: SelectionState): Required<SelectionState>
   };
 }
 
-function pushHistorySnapshot(project: Project | null) {
-  pastStates.push({ project });
+function pushHistorySnapshot(project: Project | null, isDirty: boolean) {
+  pastStates.push({ project, isDirty });
   if (pastStates.length > MAX_HISTORY) pastStates.shift();
   futureStates.length = 0;
 }
@@ -179,6 +187,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
   currentState = {
     ...currentState,
     project: snapshot.project,
+    isDirty: snapshot.isDirty,
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
     pointMarquee: null,
@@ -193,7 +202,7 @@ const temporalState: TemporalState = {
     const prev = pastStates.pop();
     if (!prev) return;
 
-    futureStates.push({ project: currentState.project });
+    futureStates.push({ project: currentState.project, isDirty: currentState.isDirty });
     applySnapshot(prev);
   },
 
@@ -201,7 +210,7 @@ const temporalState: TemporalState = {
     const next = futureStates.pop();
     if (!next) return;
 
-    pastStates.push({ project: currentState.project });
+    pastStates.push({ project: currentState.project, isDirty: currentState.isDirty });
     applySnapshot(next);
   },
 
@@ -225,7 +234,8 @@ const temporalState: TemporalState = {
     if (transactionBase === undefined) return;
     currentState = {
       ...currentState,
-      project: transactionBase,
+      project: transactionBase.project,
+      isDirty: transactionBase.isDirty,
     };
     tracking = true;
     transactionBase = undefined;
@@ -234,8 +244,11 @@ const temporalState: TemporalState = {
 
   commit(_label?: string) {
     if (transactionBase === undefined) return;
-    if (transactionBase !== currentState.project) {
-      pushHistorySnapshot(transactionBase);
+    if (
+      transactionBase.project !== currentState.project ||
+      transactionBase.isDirty !== currentState.isDirty
+    ) {
+      pushHistorySnapshot(transactionBase.project, transactionBase.isDirty);
     }
     transactionBase = undefined;
   },
@@ -249,15 +262,20 @@ const editorStoreApi = {
   ) => {
     const prev = currentState;
     const nextPatch = typeof updater === 'function' ? updater(prev) : updater;
-    const next = replace
+    const hasExplicitDirty = Object.prototype.hasOwnProperty.call(nextPatch, 'isDirty');
+    let next = replace
       ? (nextPatch as EditorStore)
       : ({ ...prev, ...nextPatch } as EditorStore);
 
+    if (prev.project !== next.project && !hasExplicitDirty) {
+      next = { ...next, isDirty: true };
+    }
+
     if (prev.project !== next.project) {
       if (tracking) {
-        pushHistorySnapshot(prev.project);
+        pushHistorySnapshot(prev.project, prev.isDirty);
       } else if (transactionBase === undefined) {
-        transactionBase = prev.project;
+        transactionBase = { project: prev.project, isDirty: prev.isDirty };
       }
     }
 
@@ -550,7 +568,8 @@ function replaceVariantState(
 
 function createActions(): EditorActions {
   return {
-    loadProject(project) {
+    loadProject(project, options) {
+      const { resetHistory = true, markDirty = false } = options ?? {};
       const migratedProject = migrateProjectForGuideMasters(project);
       const firstIconId = Object.keys(project.icons)[0] ?? null;
       const firstIcon = firstIconId ? migratedProject.icons[firstIconId] : null;
@@ -561,6 +580,7 @@ function createActions(): EditorActions {
 
       editorStoreApi.setState({
         project: migratedProject,
+        isDirty: markDirty,
         currentIconId: firstIconId,
         currentVariantId: firstVariantId,
         currentStateId: firstStateId,
@@ -574,7 +594,9 @@ function createActions(): EditorActions {
         pointMarquee: null,
         pointTransformLabel: null,
       });
-      resetHistoryForLoadedDocument();
+      if (resetHistory) {
+        resetHistoryForLoadedDocument();
+      }
     },
 
     newProject() {
@@ -588,8 +610,17 @@ function createActions(): EditorActions {
           [defaultGuideMaster.id]: defaultGuideMaster,
         },
       };
-      editorStoreApi.setState({ ...initialState, project });
+      editorStoreApi.setState({ ...initialState, project, isDirty: false });
       resetHistoryForLoadedDocument();
+    },
+
+    markSaved(_updatedAt) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        return {
+          isDirty: false,
+        };
+      });
     },
 
     insertIcon(icon) {

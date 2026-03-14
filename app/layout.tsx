@@ -6,6 +6,7 @@ import { GeistMono } from 'geist/font/mono';
 import '@fontsource/work-sans/400.css';
 import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
+import { DesktopCommandBridge } from '@/components/platform/DesktopCommandBridge';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
@@ -52,6 +53,7 @@ export default function RootLayout({
         className={`${GeistSans.variable} ${GeistMono.variable} overflow-hidden font-sans antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <DesktopCommandBridge />
           {children}
           <Analytics />
         </ThemeProvider>

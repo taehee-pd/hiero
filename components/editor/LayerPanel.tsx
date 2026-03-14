@@ -8,6 +8,7 @@ import {
   useEditorStore,
   useEditorActions,
 } from '@/lib/editor-store/hooks';
+import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,11 @@ export function LayerPanel() {
                     : 'border-border/80 bg-background/80 hover:border-foreground/12 hover:bg-background',
                 )}
                 onClick={() => setSelection({ layerIds: [layer.id], pointIds: [] })}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setSelection({ layerIds: [layer.id], pointIds: [] });
+                  void showNativeContextMenu('layerPanel', { layerId: layer.id });
+                }}
                 role="button"
                 tabIndex={0}
                 aria-selected={isSelected}

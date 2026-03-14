@@ -8,6 +8,7 @@ export type Project = {
   guideMasters?: Record<string, GuideMaster>;
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];
+  collections?: Record<string, Collection>;
 };
 
 export type Icon = {
@@ -19,6 +20,7 @@ export type Icon = {
   variants: Record<string, Variant>;
   transitions: Record<string, Transition>;
   effects?: Record<string, Effect>;
+  components?: Record<string, SymbolComponent>;
 };
 
 export type Variant = {
@@ -28,6 +30,8 @@ export type Variant = {
   viewBox: [number, number, number, number];
   renderingMode?: RenderingMode;
   guideMasterId?: string;
+  weight?: SymbolWeight;
+  scale?: SymbolScale;
   defaultState: string;
   states: Record<string, State>;
 };
@@ -180,6 +184,38 @@ export type GuideItem =
       direction?: 'forward' | 'reverse';
     };
 
+
+export type Collection = {
+  id: string;
+  name: string;
+  iconIds: string[];
+  description?: string;
+};
+
+export type SymbolWeight =
+  | 'ultralight'
+  | 'thin'
+  | 'light'
+  | 'regular'
+  | 'medium'
+  | 'semibold'
+  | 'bold'
+  | 'heavy'
+  | 'black';
+
+export type SymbolScale = 'small' | 'medium' | 'large';
+
+export type SymbolComponent = {
+  kind: 'badge' | 'slash' | 'enclosure';
+  layerIds: string[];
+  position?:
+    | 'topLeading'
+    | 'topTrailing'
+    | 'bottomLeading'
+    | 'bottomTrailing'
+    | 'center';
+};
+
 export type TokenSet = {
   // Named slots such as primary, secondary, and tertiary are used by palette rendering.
   colors?: Record<string, string>;
@@ -200,11 +236,16 @@ export type Effect = {
     | 'wiggle'
     | 'rotate'
     | 'scale'
+    | 'appear'
+    | 'disappear'
     | 'variableColor'
     | 'lineDrawOn'
     | 'lineDrawOff';
   durationMs: number;
   easing?: string;
+  delay?: number;
+  repeat?: number | 'infinite';
+  direction?: 'normal' | 'reverse' | 'alternate';
 };
 
 export type RenderingMode =

@@ -53,6 +53,7 @@ export function TransitionPanel() {
     patchTransition,
     removeTransition,
     setTransitionPreview,
+    setSelectedTransitionId,
   } = useEditorActions();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formFrom, setFormFrom] = useState('');
@@ -207,6 +208,7 @@ export function TransitionPanel() {
         resolved,
       };
 
+      setSelectedTransitionId(transition.id);
       setActivePreview(nextPreview);
       applyPreviewFrame(nextPreview, 0);
       startScheduler(nextPreview, 0, nextPreview.speed);
@@ -291,8 +293,9 @@ export function TransitionPanel() {
         setActivePreview(null);
       }
       removeTransition(currentIcon.id, transitionId);
+      setSelectedTransitionId(null);
     },
-    [activePreview?.transitionId, clearPreview, currentIcon, removeTransition],
+    [activePreview?.transitionId, clearPreview, currentIcon, removeTransition, setSelectedTransitionId],
   );
 
   const handleAddTransition = useCallback(() => {
@@ -434,6 +437,7 @@ export function TransitionPanel() {
             return (
               <div
                 key={transition.id}
+                onClick={() => setSelectedTransitionId(transition.id)}
                 className={cn(
                   'rounded-xl border border-border/70 bg-background/70 p-3',
                   isActive && 'border-primary/30 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]',

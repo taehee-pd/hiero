@@ -49,7 +49,7 @@ import {
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore, VARIANT_SIZE_PRESETS } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
-import type { GradientStop, Layer, PaintRef, Variant } from '@/lib/schema/types';
+import type { GradientStop, Layer, PaintRef, SymbolScale, SymbolWeight, Variant } from '@/lib/schema/types';
 import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 import { cn } from '@/lib/utils';
@@ -93,6 +93,9 @@ const POINT_DISTRIBUTE_ACTIONS = [
   { label: 'Distribute points vertically', axis: 'y', rotate: 'rotate-90' },
 ] as const;
 
+const SYMBOL_WEIGHT_OPTIONS: SymbolWeight[] = ['ultralight', 'thin', 'light', 'regular', 'medium', 'semibold', 'bold', 'heavy', 'black'];
+const SYMBOL_SCALE_OPTIONS: SymbolScale[] = ['small', 'medium', 'large'];
+
 const NODE_TYPE_OPTIONS = [
   { value: 'static', label: 'Corner', glyph: '∟' },
   { value: 'smooth', label: 'Smooth', glyph: '∿' },
@@ -124,6 +127,9 @@ export function InspectorPanel() {
     setShapeSubTool,
     setClipMask,
     releaseClipMask,
+    generateVariantMatrix,
+    upsertSymbolComponent,
+    removeSymbolComponent,
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
@@ -134,6 +140,9 @@ export function InspectorPanel() {
   );
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
   const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
+  const [matrixSizes, setMatrixSizes] = useState<number[]>([16, 24]);
+  const [matrixWeights, setMatrixWeights] = useState<SymbolWeight[]>(['regular', 'bold']);
+  const [matrixScales, setMatrixScales] = useState<SymbolScale[]>(['small', 'medium', 'large']);
 
   const variants = Object.values(currentIcon?.variants ?? {}).sort((a, b) => {
     if (a.size !== b.size) return a.size - b.size;
@@ -227,6 +236,41 @@ export function InspectorPanel() {
     setStateTopology(currentIconId, currentStateId, undefined);
   }, [currentIconId, currentStateId, setStateTopology]);
 
+
+
+  const toggleMatrixSize = useCallback((size: number) => {
+    setMatrixSizes((prev) => (prev.includes(size) ? prev.filter((value) => value !== size) : [...prev, size].sort((a, b) => a - b)));
+  }, []);
+
+  const toggleMatrixWeight = useCallback((weight: SymbolWeight) => {
+    setMatrixWeights((prev) => (prev.includes(weight) ? prev.filter((value) => value !== weight) : [...prev, weight]));
+  }, []);
+
+  const toggleMatrixScale = useCallback((scale: SymbolScale) => {
+    setMatrixScales((prev) => (prev.includes(scale) ? prev.filter((value) => value !== scale) : [...prev, scale]));
+  }, []);
+
+  const handleGenerateVariantMatrix = useCallback(() => {
+    if (!currentIcon) return;
+    generateVariantMatrix(currentIcon.id, {
+      sizes: matrixSizes,
+      weights: matrixWeights,
+      scales: matrixScales,
+      sourceVariantId: currentVariantId ?? undefined,
+    });
+  }, [currentIcon, currentVariantId, generateVariantMatrix, matrixScales, matrixSizes, matrixWeights]);
+
+  const applyComponentTag = useCallback(
+    (kind: 'badge' | 'slash' | 'enclosure') => {
+      if (!currentIcon || selection.layerIds.length === 0) return;
+      upsertSymbolComponent(currentIcon.id, {
+        kind,
+        layerIds: selection.layerIds,
+        position: 'center',
+      });
+    },
+    [currentIcon, selection.layerIds, upsertSymbolComponent],
+  );
   useEffect(() => {
     if (currentVariant) {
       setNewVariantSize(String(currentVariant.size));
@@ -305,6 +349,48 @@ export function InspectorPanel() {
                   })}
                 </div>
 
+
+                {currentVariant ? (
+                  <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+                    <Label className="text-xs uppercase text-muted-foreground">Weight</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
+                        <button
+                          key={weight}
+                          type="button"
+                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { weight })}
+                          className={cn(
+                            'rounded-lg border px-2 py-1 text-[11px] font-medium',
+                            currentVariant.weight === weight
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground'
+                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {weight}
+                        </button>
+                      ))}
+                    </div>
+                    <Label className="text-xs uppercase text-muted-foreground">Scale</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SYMBOL_SCALE_OPTIONS.map((scale) => (
+                        <button
+                          key={scale}
+                          type="button"
+                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { scale })}
+                          className={cn(
+                            'rounded-lg border px-2 py-1 text-xs font-medium',
+                            currentVariant.scale === scale
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground'
+                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {scale}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
                   <Label htmlFor="variant-size-preset" className="text-xs uppercase text-muted-foreground">
                     Preset Size
@@ -336,6 +422,85 @@ export function InspectorPanel() {
                   {variantSizeTaken ? (
                     <InlineMessage>A variant for {selectedVariantSize}px already exists.</InlineMessage>
                   ) : null}
+                </div>
+
+                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+                  <Label className="text-xs uppercase text-muted-foreground">Generate Variant Matrix</Label>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Sizes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VARIANT_SIZE_PRESETS.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleMatrixSize(size)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixSizes.includes(size) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Weights</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
+                        <button
+                          key={weight}
+                          type="button"
+                          onClick={() => toggleMatrixWeight(weight)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixWeights.includes(weight) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {weight}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Scales</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SYMBOL_SCALE_OPTIONS.map((scale) => (
+                        <button
+                          key={scale}
+                          type="button"
+                          onClick={() => toggleMatrixScale(scale)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixScales.includes(scale) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {scale}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateVariantMatrix}
+                    disabled={!currentIcon || matrixSizes.length === 0 || matrixWeights.length === 0 || matrixScales.length === 0}
+                  >
+                    Generate Variant Matrix
+                  </Button>
+                </div>
+              </Section>
+              <Separator />
+              <Section title="Components">
+                <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">Tag selected layers as symbol components.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('badge')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Badge</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('slash')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Slash</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('enclosure')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Enclosure</Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(['badge','slash','enclosure'] as const).map((kind) => {
+                      const count = currentIcon?.components?.[kind]?.layerIds.length ?? 0;
+                      return (
+                        <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => currentIcon && removeSymbolComponent(currentIcon.id, kind)} disabled={!currentIcon?.components?.[kind]}>
+                          {kind} ({count}) remove
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
               </Section>
               <Separator />

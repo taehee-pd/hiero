@@ -25,7 +25,11 @@ import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { isProject } from '@/lib/schema/guards';
 import { exportSvgString } from '@/lib/export/export-svg';
+import { exportSvgPackage } from '@/lib/export/export-svg-package';
 import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
+import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
+import { createZipBlob } from '@/lib/export/export-react/zip';
+import { GitHubSyncPanel } from '@/components/export/GitHubSyncPanel';
 import { importSvgFileIntoEditor } from '@/lib/import';
 import {
   selectCurrentIcon,
@@ -145,6 +149,21 @@ export function Toolbar() {
     URL.revokeObjectURL(url);
   }, []);
 
+
+  const handleExportSvgPackage = useCallback(() => {
+    const { project } = editorStore.getState();
+    if (!project) return;
+
+    const fileMap = exportSvgPackage(project);
+    const zipBlob = createZipBlob(fileMap);
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
   const handleExportRuntimeJson = useCallback(() => {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
@@ -159,6 +178,23 @@ export function Toolbar() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${icon.name.replace(/\s+/g, '-').toLowerCase()}.runtime.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportReactLibrary = useCallback(() => {
+    const { project } = editorStore.getState();
+    if (!project) return;
+
+    const fileMap = generateIconLibrary(project, {
+      packageName: `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-icons`,
+      typescript: true,
+    });
+    const zipBlob = createZipBlob(fileMap);
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-library.zip`;
     a.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -223,7 +259,10 @@ export function Toolbar() {
           </DropdownMenu>
           <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
           <ToolbarButton icon={Download} label="Export SVG" onClick={handleExportSvg} />
+          <ToolbarButton icon={Download} label="Export SVG Package" onClick={handleExportSvgPackage} />
           <ToolbarButton icon={Download} label="Export Runtime JSON" onClick={handleExportRuntimeJson} />
+          <ToolbarButton icon={Download} label="Export React Library" onClick={handleExportReactLibrary} />
+          <GitHubSyncPanel />
         </ToolbarGroup>
 
         <ToolbarGroup>

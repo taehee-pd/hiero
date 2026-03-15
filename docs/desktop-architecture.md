@@ -23,3 +23,30 @@ Desktop-only capabilities cross the Bun/webview boundary through a typed RPC con
 - The web app consumes these capabilities through `lib/platform/bridge.ts`, which hides the environment detection and falls back to browser file APIs when Electrobun is unavailable.
 
 This keeps the toolbar and editor features shared across web and desktop without scattering `if (desktop)` checks through the UI code.
+
+## Local Dev Workflow
+
+Use [package.json](/Users/taehee/IconStudio/package.json) `desktop:dev` from the repo root for local desktop work.
+
+That script:
+
+- starts the Next dev server only when `localhost:3000` is not already running
+- launches the desktop shell from the `desktop/` package
+- keeps the desktop app pointed at the same web app dev server used by the browser workflow
+
+## Electrobun Patch Note
+
+The current repo carries a local Electrobun compatibility patch in [desktop/scripts/patch-electrobun-wrapper.cjs](/Users/taehee/IconStudio/desktop/scripts/patch-electrobun-wrapper.cjs).
+
+This is needed because the published `electrobun` package currently has two issues that block this project:
+
+- the shipped wrapper can fail with a non-diagnostic `Bundle failed` error in local `dev` and `build`
+- the shipped source CLI is missing source-side modules that it imports at runtime
+
+The patch script repairs the installed package after `pnpm install` by:
+
+- redirecting the wrapper to the working source CLI
+- recreating the missing source-side modules from the packaged equivalents
+- applying a small cleanup fix so local `build` works reliably on macOS
+
+This patch is intended as a repo-local vendor compatibility shim, not as product logic.

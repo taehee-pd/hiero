@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "compile:icons": "bun scripts/compile-icons.ts",
-    "desktop:dev": "sh -c 'pnpm dev & pnpm --dir desktop dev & wait'",
+    "desktop:dev": "sh scripts/start-desktop-dev.sh",
     "desktop:build": "bun run desktop/scripts/build-production.ts",
     "desktop:dist": "bun run desktop/scripts/build-production.ts --dist"
   },

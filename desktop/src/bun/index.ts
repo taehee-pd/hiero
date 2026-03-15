@@ -31,6 +31,12 @@ const SETTINGS_FILE = join(Utils.paths.userData, 'settings.json');
 const DEFAULT_SETTINGS: DesktopSettings = {
   autoSaveEnabled: false,
 };
+const DEFAULT_WINDOW_FRAME = {
+  x: 80,
+  y: 72,
+  width: 1360,
+  height: 880,
+};
 
 const runtimeMode = process.env['ELECTROBUN_BUILD_ENV'] ?? process.env['ICOPHONE_DESKTOP_MODE'] ?? 'dev';
 const isDev = runtimeMode === 'dev';
@@ -39,6 +45,7 @@ let allowNextQuit = false;
 let quitFlowInProgress = false;
 let updateCheckStarted = false;
 let updateInstallInProgress = false;
+let correctingWindowFrame = false;
 let pendingQuitResolver: ((decision: 'quit' | 'discard' | 'cancel') => void) | null = null;
 let pendingLaunchProject = await readLaunchProjectFromArgv(process.argv);
 const windowState = {
@@ -57,20 +64,20 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         await addRecent(selectedPath, parseProjectName(data));
         return { path: selectedPath, data };
       },
-      saveProject: async ({ data, path }) => {
+      saveProject: async ({ data, path }: any) => {
         if (!path) {
           return await saveProjectAs(data);
         }
 
         await writeFile(path, data);
         await addRecent(path, parseProjectName(data));
-        rpc.send('projectSaved', { path });
+        sendToWebview('projectSaved', { path });
         return { path };
       },
-      saveProjectAs: async ({ data }) => {
+      saveProjectAs: async ({ data }: any) => {
         return await saveProjectAs(data);
       },
-      exportSvg: async ({ svg, defaultName }) => {
+      exportSvg: async ({ svg, defaultName }: any) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -78,14 +85,14 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         await writeFile(filePath, svg);
         return { path: filePath };
       },
-      exportReactLibrary: async ({ files }) => {
+      exportReactLibrary: async ({ files }: any) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
         await writeFiles(targetDirectory, files);
         return { path: targetDirectory };
       },
-      exportSvgPackage: async ({ files }) => {
+      exportSvgPackage: async ({ files }: any) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -114,7 +121,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
       getRecentProjects: async () => {
         return await getRecent();
       },
-      compileExportBundle: async ({ project, generateReact }) => {
+      compileExportBundle: async ({ project, generateReact }: any) => {
         const parsed = JSON.parse(project) as unknown;
         if (!isProject(parsed)) {
           return null;
@@ -133,14 +140,14 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
           files: Object.fromEntries(result.files.map((file) => [file.path, file.contents])),
         };
       },
-      openExternal: async ({ url }) => {
+      openExternal: async ({ url }: any) => {
         return Utils.openExternal(url);
       },
-      showContextMenu: async ({ menu, payload }) => {
+      showContextMenu: async ({ menu, payload }: any) => {
         ContextMenu.showContextMenu(buildContextMenu(menu, payload));
         return null;
       },
-      setWindowTitle: async ({ projectName, isDirty }) => {
+      setWindowTitle: async ({ projectName, isDirty }: any) => {
         windowState.projectName = projectName?.trim() || 'Icophone';
         windowState.isDirty = isDirty;
         updateWindowTitle();
@@ -157,7 +164,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         });
         return response === 0 ? 'save' : response === 1 ? 'discard' : 'cancel';
       },
-      resolveQuitDecision: async ({ decision }) => {
+      resolveQuitDecision: async ({ decision }: any) => {
         pendingQuitResolver?.(decision);
         return null;
       },
@@ -171,21 +178,18 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
     messages: {
       webviewReady: () => {
         webviewIsReady = true;
+        revealMainWindow();
         void flushPendingLaunchProject();
         void checkForUpdatesInBackground();
       },
     },
   },
-});
+} as any) as ReturnType<typeof defineElectrobunRPC<IcophoneRPC>>;
+const sendToWebview = rpc.send as (channel: string, payload?: unknown) => void;
 
 const mainWindow = new BrowserWindow({
   title: 'Icophone',
-  frame: {
-    x: 0,
-    y: 0,
-    width: 1440,
-    height: 900,
-  },
+  frame: DEFAULT_WINDOW_FRAME,
   renderer: 'native',
   titleBarStyle: 'default',
   url: isDev ? 'http://localhost:3000' : 'views://mainview/index.html',
@@ -208,12 +212,27 @@ Electrobun.events.on('before-quit', (event) => {
   event.response = { allow: false };
   void requestQuitWithGuard('quit');
 });
-mainWindow.show();
+mainWindow.on('resize', (event: any) => {
+  const { width, height } = event?.data ?? {};
+  if (correctingWindowFrame) return;
+  if (typeof width !== 'number' || typeof height !== 'number') return;
+  if (width >= 600 && height >= 300) return;
+
+  correctingWindowFrame = true;
+  try {
+    revealMainWindow();
+  } finally {
+    correctingWindowFrame = false;
+  }
+});
+revealMainWindow();
 updateWindowTitle();
 if (webviewIsReady) {
   void flushPendingLaunchProject();
   void checkForUpdatesInBackground();
 }
+setTimeout(revealMainWindow, 150);
+setTimeout(revealMainWindow, 600);
 
 function setApplicationMenu() {
   ApplicationMenu.setApplicationMenu([
@@ -300,7 +319,7 @@ function readMenuEvent(event: unknown): { action: string; payload?: Record<strin
 }
 
 function dispatchMenuAction(action: string, payload?: Record<string, unknown>) {
-  rpc.send('menuTriggered', { action, payload });
+  sendToWebview('menuTriggered', { action, payload });
 
   switch (action) {
     case 'file.quit':
@@ -347,7 +366,7 @@ async function saveProjectAs(data: string) {
   const filePath = join(targetDirectory, getProjectFileName(data));
   await writeFile(filePath, data);
   await addRecent(filePath, parseProjectName(data));
-  rpc.send('projectSaved', { path: filePath });
+  sendToWebview('projectSaved', { path: filePath });
   return { path: filePath };
 }
 
@@ -391,7 +410,7 @@ async function writeFiles(targetDirectory: string, files: Record<string, string>
 async function flushPendingLaunchProject() {
   if (!webviewIsReady || !pendingLaunchProject) return;
 
-  rpc.send('projectOpenedFromDisk', pendingLaunchProject);
+  sendToWebview('projectOpenedFromDisk', pendingLaunchProject);
   pendingLaunchProject = null;
 }
 
@@ -426,7 +445,7 @@ async function requestQuitWithGuard(reason: 'quit' | 'windowClose') {
 
     const decision = await new Promise<'quit' | 'discard' | 'cancel'>((resolve) => {
       pendingQuitResolver = resolve;
-      rpc.send('confirmQuit', { reason });
+      sendToWebview('confirmQuit', { reason });
     });
 
     if (decision === 'quit' || decision === 'discard') {
@@ -443,6 +462,20 @@ function updateWindowTitle() {
   const name = windowState.projectName.trim() || 'Icophone';
   const title = windowState.isDirty ? `${name} (unsaved) — Icophone` : `${name} — Icophone`;
   mainWindow.setTitle(title);
+}
+
+function revealMainWindow() {
+  // Electrobun occasionally leaves the initial macOS window collapsed to a
+  // title-bar strip. Reapplying the full frame during startup keeps it visible.
+  mainWindow.setFrame(
+    DEFAULT_WINDOW_FRAME.x,
+    DEFAULT_WINDOW_FRAME.y,
+    DEFAULT_WINDOW_FRAME.width,
+    DEFAULT_WINDOW_FRAME.height,
+  );
+  mainWindow.unminimize();
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 async function readLaunchProjectFromArgv(argv: string[]): Promise<PendingLaunchProject | null> {
@@ -515,7 +548,7 @@ async function checkForUpdatesInBackground() {
     }
 
     const releaseNotes = await readLatestReleaseNotes(updateInfo.version);
-    rpc.send('updateAvailable', {
+    sendToWebview('updateAvailable', {
       version: updateInfo.version || 'unknown',
       releaseNotes,
     });

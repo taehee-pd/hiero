@@ -235,10 +235,14 @@ function buildCompiledEffects(icon: Icon): CompiledEffect[] {
 
   return Object.keys(icon.effects)
     .sort((a, b) => a.localeCompare(b))
-    .map((effectId) => toCompiledEffect(icon.effects?.[effectId]!));
+    .map((effectId) => toCompiledEffect(icon.effects?.[effectId]!))
+    .filter((effect): effect is CompiledEffect => effect !== null);
 }
 
-function toCompiledEffect(effect: Effect): CompiledEffect {
+function toCompiledEffect(effect: Effect): CompiledEffect | null {
+  if (effect.kind === 'appear' || effect.kind === 'disappear') {
+    return null;
+  }
   return {
     kind: effect.kind,
     durationMs: effect.durationMs,

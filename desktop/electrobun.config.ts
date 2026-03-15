@@ -72,7 +72,7 @@ const config: ExtendedElectrobunConfig = {
     copy: {
       '.generated/mainview': 'app/views/mainview',
     },
-    targets: 'all',
+    targets: process.env['ELECTROBUN_BUILD_ENV'] === 'stable' ? 'all' : 'current',
     mac: {
       codesign: Boolean(process.env['APPLE_DEVELOPER_IDENTITY']),
       notarize: Boolean(process.env['APPLE_NOTARIZATION_APPLE_ID']),

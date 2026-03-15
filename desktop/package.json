@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "electrobun dev",
+    "postinstall": "node scripts/patch-electrobun-wrapper.cjs",
+    "dev": "sh scripts/dev-with-next.sh",
+    "dev:electrobun": "electrobun dev",
+    "open-dev": "sh scripts/open-dev-app.sh",
     "build": "electrobun build",
     "dist": "electrobun build --env=stable"
   },

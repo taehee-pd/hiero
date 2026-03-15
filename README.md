@@ -37,6 +37,37 @@ Open [http://localhost:3000](http://localhost:3000).
 - `corepack pnpm build` - production build
 - `corepack pnpm start` - run production server
 - `corepack pnpm lint` - run ESLint (requires eslint to be installed/configured)
+- `corepack pnpm desktop:dev` - start the web dev server if needed and launch the Electrobun desktop app
+- `corepack pnpm desktop:build` - build the desktop app bundle
+- `corepack pnpm desktop:dist` - build desktop distribution artifacts
+
+## Desktop Development
+
+The desktop shell lives under `desktop/` and wraps the same app with native menus, file dialogs, and desktop file I/O.
+
+Use:
+
+```bash
+corepack pnpm desktop:dev
+```
+
+That command:
+
+- reuses an existing Next dev server on `http://localhost:3000` when present
+- otherwise starts the Next dev server
+- launches the desktop app through the repaired Electrobun CLI path
+
+### Electrobun vendor patch
+
+This repo currently applies a small postinstall patch in [desktop/scripts/patch-electrobun-wrapper.cjs](/Users/taehee/IconStudio/desktop/scripts/patch-electrobun-wrapper.cjs).
+
+Why it exists:
+
+- the published `electrobun` package's binary wrapper was failing for this project with opaque `Bundle failed` errors
+- the published source CLI also ships missing source-side modules needed for `dev` and `build`
+- the patch restores those missing pieces and reroutes the wrapper to the working source CLI
+
+The patch is reapplied automatically on `pnpm --dir desktop install`.
 
 ## Project Structure
 
@@ -47,6 +78,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `lib/editor-overlay-canvas/` - editor-only overlay drawing (grid, selection, guides)
 - `lib/schema/` - canonical project/icon schema types and sample project
 - `public/vendor/paper-core.min.js` - Paper.js browser runtime loaded by overlay hook
+- `desktop/` - Electrobun shell, native bridge, and desktop build scripts
 
 ## Notes
 

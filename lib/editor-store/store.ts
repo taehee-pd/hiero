@@ -23,6 +23,7 @@ import type {
   ShapeType,
   PointMarqueeState,
   PointTransformLabelState,
+  PendingPenHandleState,
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
@@ -50,6 +51,7 @@ export type EditorState = {
   shapeStarPoints: number;
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
+  pendingPenHandle: PendingPenHandleState | null;
   transitionPreview: TransitionPreview | null;
   selectedTransitionId: string | null;
   favorites: string[];
@@ -106,6 +108,7 @@ export type EditorActions = {
   setShapeStarPoints(points: number): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
+  setPendingPenHandle(handle: PendingPenHandleState | null): void;
   setTransitionPreview(preview: TransitionPreview | null): void;
   setSelectedTransitionId(transitionId: string | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
@@ -210,6 +213,7 @@ const initialState: EditorState = {
   shapeStarPoints: 5,
   pointMarquee: null,
   pointTransformLabel: null,
+  pendingPenHandle: null,
   transitionPreview: null,
   selectedTransitionId: null,
   favorites: [],
@@ -257,6 +261,8 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
     pointMarquee: null,
+    pendingPenHandle: null,
+    transitionPreview: null,
     transitionPreview: null,
   };
   emit();
@@ -669,8 +675,11 @@ function createActions(): EditorActions {
         viewport: { zoom: 12, panX: 0, panY: 0 },
         pointMarquee: null,
         pointTransformLabel: null,
+        pendingPenHandle: null,
+        pendingPenHandle: null,
         transitionPreview: null,
         favorites: [],
+        selectedTransitionId: null,
       });
       if (resetHistory) {
         resetHistoryForLoadedDocument();
@@ -1470,6 +1479,7 @@ function createActions(): EditorActions {
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
+        pendingPenHandle: null,
       });
     },
 
@@ -1505,6 +1515,7 @@ function createActions(): EditorActions {
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
+        pendingPenHandle: null,
       });
     },
 
@@ -1526,6 +1537,10 @@ function createActions(): EditorActions {
 
     setPointTransformLabel(label) {
       editorStoreApi.setState({ pointTransformLabel: label });
+    },
+
+    setPendingPenHandle(handle) {
+      editorStoreApi.setState({ pendingPenHandle: handle });
     },
 
     setTransitionPreview(preview) {

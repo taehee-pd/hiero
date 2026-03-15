@@ -24,3 +24,11 @@ export type PointMarqueeState = {
   maxX: number;
   maxY: number;
 };
+
+export type PendingPenHandleState = {
+  layerId: string;
+  pointKey: string;
+  anchor: { x: number; y: number };
+  handleIn: { x: number; y: number } | null;
+  handleOut: { x: number; y: number } | null;
+};

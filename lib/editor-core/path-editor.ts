@@ -42,6 +42,11 @@ type PenPlacement = {
   pointerId: number;
   basePathD: string;
 };
+type PenHandlePreview = {
+  anchor: { x: number; y: number };
+  handleIn: { x: number; y: number } | null;
+  handleOut: { x: number; y: number } | null;
+};
 type ShapePlacement = {
   layerId: string;
   pointerId: number;
@@ -99,7 +104,7 @@ function getActiveVariantState(
  */
 export class PathEditor {
   private svg: SVGSVGElement;
-  private container: HTMLElement;
+  private container: HTMLElement | SVGSVGElement;
   private isDragging = false;
   private dragMode: DragMode = null;
   private dragStartX = 0;
@@ -119,7 +124,7 @@ export class PathEditor {
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
 
-  constructor(svg: SVGSVGElement, container?: HTMLElement) {
+  constructor(svg: SVGSVGElement, container?: HTMLElement | SVGSVGElement) {
     this.svg = svg;
     const svgRoot = (svg as Element & { closest?: (selector: string) => Element | null }).closest?.('[data-canvas-root]') as HTMLElement | null;
     this.container = container ?? svgRoot ?? svg.parentElement ?? svg;
@@ -375,6 +380,7 @@ export class PathEditor {
       };
     });
 
+    this.clearPendingPenHandle();
     return nextLayerId;
   }
 
@@ -399,6 +405,7 @@ export class PathEditor {
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
     if (!subPath) return null;
+    this.materializePendingPenHandle(editable, layerId);
 
     const firstPoint = subPath.points[0]?.position;
     const canClose = !!firstPoint && subPath.points.length >= 3 && !subPath.closed;
@@ -407,6 +414,7 @@ export class PathEditor {
       const dy = firstPoint.y - snappedPoint.y;
       if (dx * dx + dy * dy <= PEN_CLOSE_DIST_SQ) {
         subPath.closed = true;
+        this.clearPendingPenHandle();
         state.patchLayer(iconId, stateId, layerId, {
           path: { ...layer.path, d: serializePath(editable) },
         });
@@ -993,7 +1001,6 @@ export class PathEditor {
     const editable = parseSvgPath(this.penPlacement.basePathD);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
-
     const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
     const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
     const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
@@ -1001,48 +1008,18 @@ export class PathEditor {
     if (!subPath) return;
 
     const prev = subPath.points[pointIdx - 1] ?? null;
-    let dx = snappedPoint.x - this.penPlacement.anchor.x;
-    let dy = snappedPoint.y - this.penPlacement.anchor.y;
-
-    // Shift-constrain handle to 45° increments
-    if (e.shiftKey) {
-      const constrained = constrainAngle(this.penPlacement.anchor, snappedPoint);
-      dx = constrained.x - this.penPlacement.anchor.x;
-      dy = constrained.y - this.penPlacement.anchor.y;
-    }
-
-    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+    const previewPoint = e.shiftKey
+      ? constrainAngle(this.penPlacement.anchor, snappedPoint)
+      : snappedPoint;
+    const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
+    applyPenPreviewToPoint(point, preview);
 
     if (prev) {
-      if (moved) {
-        // Alt key: only create handleOut on prev, no handleIn on current point
-        // This creates a corner/cusp point (like Figma/Illustrator Alt behavior)
-        if (e.altKey) {
-          prev.handleOut = {
-            x: this.penPlacement.anchor.x + dx,
-            y: this.penPlacement.anchor.y + dy,
-          };
-          prev.nodeType = 'corner';
-          point.handleIn = null;
-          point.nodeType = 'static';
-        } else {
-          prev.handleOut = {
-            x: this.penPlacement.anchor.x + dx,
-            y: this.penPlacement.anchor.y + dy,
-          };
-          prev.nodeType = 'smooth';
-          point.handleIn = {
-            x: this.penPlacement.anchor.x - dx,
-            y: this.penPlacement.anchor.y - dy,
-          };
-          point.nodeType = 'smooth';
-        }
-      } else {
-        prev.handleOut = null;
-        point.handleIn = null;
-        point.nodeType = 'static';
-      }
+      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
     }
+
+    this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
 
     const nextD = serializePath(editable);
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
@@ -1050,8 +1027,15 @@ export class PathEditor {
       const pathEl = this.svg.querySelector(
         `[data-layer-id="${this.penPlacement?.layerId}"]`,
       ) as SVGPathElement | null;
-      if (!pathEl) return;
-      pathEl.setAttribute('d', nextD);
+      const hitPathEl = this.svg.querySelector(
+        `[data-layer-hit-id="${this.penPlacement?.layerId}"]`,
+      ) as SVGPathElement | null;
+      if (pathEl) {
+        pathEl.setAttribute('d', nextD);
+      }
+      if (hitPathEl) {
+        hitPathEl.setAttribute('d', nextD);
+      }
     });
   }
 
@@ -1060,6 +1044,7 @@ export class PathEditor {
     this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
+      this.clearPendingPenHandle();
       this.penPlacement = null;
     }
 
@@ -1092,6 +1077,7 @@ export class PathEditor {
     this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
+      this.clearPendingPenHandle();
       this.penPlacement = null;
       return;
     }
@@ -1193,51 +1179,21 @@ export class PathEditor {
     const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
     const subPath = editable.subPaths[subPathIdx];
     const prev = subPath?.points[pointIdx - 1] ?? null;
-
-    let dx = snappedPoint.x - this.penPlacement.anchor.x;
-    let dy = snappedPoint.y - this.penPlacement.anchor.y;
-
-    if (e.shiftKey) {
-      const constrained = constrainAngle(this.penPlacement.anchor, snappedPoint);
-      dx = constrained.x - this.penPlacement.anchor.x;
-      dy = constrained.y - this.penPlacement.anchor.y;
-    }
-
-    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+    const previewPoint = e.shiftKey
+      ? constrainAngle(this.penPlacement.anchor, snappedPoint)
+      : snappedPoint;
+    const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
+    applyPenPreviewToPoint(point, preview);
 
     if (prev) {
-      if (moved) {
-        if (e.altKey) {
-          // Alt: corner point - only outgoing handle on prev
-          prev.handleOut = {
-            x: this.penPlacement.anchor.x + dx,
-            y: this.penPlacement.anchor.y + dy,
-          };
-          prev.nodeType = 'corner';
-          point.handleIn = null;
-          point.nodeType = 'static';
-        } else {
-          prev.handleOut = {
-            x: this.penPlacement.anchor.x + dx,
-            y: this.penPlacement.anchor.y + dy,
-          };
-          prev.nodeType = 'smooth';
-          point.handleIn = {
-            x: this.penPlacement.anchor.x - dx,
-            y: this.penPlacement.anchor.y - dy,
-          };
-          point.nodeType = 'smooth';
-        }
-      } else {
-        prev.handleOut = null;
-        point.handleIn = null;
-        point.nodeType = 'static';
-      }
+      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
     }
 
     state.patchLayer(iconId, stateId, this.penPlacement.layerId, {
       path: { ...layer.path, d: serializePath(editable) },
     });
+    this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
   }
 
   private commitLayerDrag(e: PointerEvent) {
@@ -1787,6 +1743,92 @@ export class PathEditor {
     this.selectionTransformPlacement = null;
   }
 
+  private buildPenHandlePreview(
+    snappedPoint: { x: number; y: number },
+    options?: { altKey?: boolean },
+  ): PenHandlePreview {
+    const dx = snappedPoint.x - this.penPlacement!.anchor.x;
+    const dy = snappedPoint.y - this.penPlacement!.anchor.y;
+    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+
+    if (!moved) {
+      return {
+        anchor: this.penPlacement!.anchor,
+        handleIn: null,
+        handleOut: null,
+      };
+    }
+
+    if (options?.altKey) {
+      return {
+        anchor: this.penPlacement!.anchor,
+        handleIn: null,
+        handleOut: null,
+      };
+    }
+
+    return {
+      anchor: this.penPlacement!.anchor,
+      handleIn: {
+        x: this.penPlacement!.anchor.x - dx,
+        y: this.penPlacement!.anchor.y - dy,
+      },
+      handleOut: {
+        x: this.penPlacement!.anchor.x + dx,
+        y: this.penPlacement!.anchor.y + dy,
+      },
+    };
+  }
+
+  private publishPendingPenHandle(
+    layerId: string,
+    pointKey: string,
+    preview: PenHandlePreview,
+  ) {
+    const hasVisibleHandle = Boolean(preview.handleIn || preview.handleOut);
+    editorStore
+      .getState()
+      .setPendingPenHandle(
+        hasVisibleHandle
+          ? {
+              layerId,
+              pointKey,
+              anchor: preview.anchor,
+              handleIn: preview.handleIn,
+              handleOut: preview.handleOut,
+            }
+          : null,
+      );
+  }
+
+  private clearPendingPenHandle() {
+    editorStore.getState().setPendingPenHandle(null);
+  }
+
+  private materializePendingPenHandle(
+    editable: ReturnType<typeof parseSvgPath>,
+    layerId: string,
+  ) {
+    const pending = editorStore.getState().pendingPenHandle;
+    if (!pending || pending.layerId !== layerId || !pending.handleOut) return;
+
+    const context = this.resolvePointContext(editable, pending.pointKey);
+    if (!context) {
+      this.clearPendingPenHandle();
+      return;
+    }
+
+    const isTerminalPoint = context.pointIdx === context.subPath.points.length - 1;
+    if (!isTerminalPoint) {
+      this.clearPendingPenHandle();
+      return;
+    }
+
+    context.point.handleOut = { ...pending.handleOut };
+    context.point.nodeType = context.point.handleIn ? 'smooth' : 'corner';
+    this.clearPendingPenHandle();
+  }
+
   destroy() {
     this.clearActiveSnapGuides();
     this.releasePointer();
@@ -2239,6 +2281,22 @@ function translatePathPoint(point: PathPoint, dx: number, dy: number): void {
     point.handleOut.x += dx;
     point.handleOut.y += dy;
   }
+}
+
+function applyPenPreviewToPoint(
+  point: PathPoint,
+  preview: PenHandlePreview,
+): void {
+  point.handleIn = preview.handleIn ? { ...preview.handleIn } : null;
+  point.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+  if (point.handleIn || point.handleOut) {
+    point.nodeType = 'smooth';
+    point.segment = { type: 'cubic' };
+    return;
+  }
+
+  point.nodeType = 'static';
+  point.segment = { type: 'line' };
 }
 
 function getPathBoundsFromEditable(editable: ReturnType<typeof parseSvgPath>): SelectionBounds | null {

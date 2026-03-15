@@ -73,6 +73,7 @@ export function Canvas() {
   const tool = useEditorStore((s) => s.tool);
   const pointMarquee = useEditorStore((s) => s.pointMarquee);
   const pointTransformLabel = useEditorStore((s) => s.pointTransformLabel);
+  const pendingPenHandle = useEditorStore((s) => s.pendingPenHandle);
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
@@ -369,10 +370,23 @@ export function Canvas() {
       subPath.points.forEach((point, pointIndex) => {
         const pointKey = `${spIndex}:${pointIndex}`;
         const isActive = selectedPointKeys.has(pointKey);
-        // Show control handles for all selected points, not just the first one
         const showControls = isActive || selectedPointKeys.size === 0;
-        const handleIn = showControls ? getControlHandlePosition(subPath, pointIndex, 'in') : null;
-        const handleOut = showControls ? getControlHandlePosition(subPath, pointIndex, 'out') : null;
+        const pendingHandleForPoint =
+          tool === 'pen' &&
+          pendingPenHandle?.layerId === activeLayerId &&
+          pendingPenHandle?.pointKey === pointKey
+            ? pendingPenHandle
+            : null;
+        const handleIn =
+          showControls
+            ? pendingHandleForPoint?.handleIn ??
+              getControlHandlePosition(subPath, pointIndex, 'in')
+            : null;
+        const handleOut =
+          showControls
+            ? pendingHandleForPoint?.handleOut ??
+              getControlHandlePosition(subPath, pointIndex, 'out')
+            : null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;
@@ -478,7 +492,7 @@ export function Canvas() {
         );
       });
     });
-  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom]);
+  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom, pendingPenHandle]);
 
   // Imperative pointer interaction engine.
   useEffect(() => {

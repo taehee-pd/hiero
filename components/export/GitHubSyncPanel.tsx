@@ -6,10 +6,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { editorStore } from '@/lib/editor-store/store';
+import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { syncIconsToGitHub, type SyncOptions, type SyncResult } from '@/lib/integrations/github/sync-icons';
 
-type PersistedSettings = {
+type SyncPanelProps = {
+  iconSetId?: string | null;
+  triggerLabel?: string;
+  triggerVariant?: 'default' | 'outline' | 'ghost' | 'secondary';
+  triggerSize?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm';
+  className?: string;
+};
+
+type SyncSettings = {
   owner: string;
   repo: string;
   baseBranch: string;
@@ -17,9 +25,7 @@ type PersistedSettings = {
   exportFormat: SyncOptions['exportFormat'];
 };
 
-const STORAGE_KEY = 'icophone.github.sync.settings';
-
-const DEFAULT_SETTINGS: PersistedSettings = {
+const DEFAULT_SETTINGS: SyncSettings = {
   owner: '',
   repo: '',
   baseBranch: 'main',
@@ -27,54 +33,58 @@ const DEFAULT_SETTINGS: PersistedSettings = {
   exportFormat: 'both',
 };
 
-export function GitHubSyncPanel() {
+export function GitHubSyncPanel({
+  iconSetId,
+  triggerLabel = 'Sync to GitHub',
+  triggerVariant = 'ghost',
+  triggerSize = 'sm',
+  className,
+}: SyncPanelProps) {
+  const resolvedIconSetId = useEditorStore((s) => iconSetId ?? s.activeIconSetId);
+  const iconSet = useEditorStore((s) => (resolvedIconSetId ? s.workspace?.iconSets[resolvedIconSetId] ?? null : null));
+  const { updateIconSetSync } = useEditorActions();
   const [open, setOpen] = useState(false);
-  const [settings, setSettings] = useState<PersistedSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<SyncSettings>(DEFAULT_SETTINGS);
   const [token, setToken] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [result, setResult] = useState<SyncResult | null>(null);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as Partial<PersistedSettings>;
-      setSettings({
-        owner: parsed.owner ?? DEFAULT_SETTINGS.owner,
-        repo: parsed.repo ?? DEFAULT_SETTINGS.repo,
-        baseBranch: parsed.baseBranch ?? DEFAULT_SETTINGS.baseBranch,
-        packagePath: parsed.packagePath ?? DEFAULT_SETTINGS.packagePath,
-        exportFormat: parsed.exportFormat ?? DEFAULT_SETTINGS.exportFormat,
-      });
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
+    setSettings({
+      owner: iconSet?.sync?.owner ?? DEFAULT_SETTINGS.owner,
+      repo: iconSet?.sync?.repo ?? DEFAULT_SETTINGS.repo,
+      baseBranch: iconSet?.sync?.baseBranch ?? DEFAULT_SETTINGS.baseBranch,
+      packagePath: iconSet?.sync?.packagePath ?? DEFAULT_SETTINGS.packagePath,
+      exportFormat: iconSet?.sync?.exportFormat ?? DEFAULT_SETTINGS.exportFormat,
+    });
+  }, [iconSet]);
 
   const canSync = useMemo(() => {
-    return Boolean(settings.owner && settings.repo && settings.baseBranch && settings.packagePath && token);
-  }, [settings, token]);
+    return Boolean(iconSet && resolvedIconSetId && settings.owner && settings.repo && settings.baseBranch && settings.packagePath && token);
+  }, [iconSet, resolvedIconSetId, settings, token]);
+
+  const patchSettings = (patch: Partial<SyncSettings>) => {
+    const nextSettings = { ...settings, ...patch };
+    setSettings(nextSettings);
+    if (resolvedIconSetId) {
+      updateIconSetSync(resolvedIconSetId, nextSettings);
+    }
+  };
 
   const handleSync = async () => {
-    const project = editorStore.getState().project;
-    if (!project) {
-      setStatus('No project loaded.');
+    if (!iconSet || !resolvedIconSetId) {
+      setStatus('No icon set selected.');
       return;
     }
 
     setSyncing(true);
-    setStatus('Preparing GitHub sync...');
+    setStatus('Syncing files and opening pull request...');
     setResult(null);
 
     try {
-      setStatus('Syncing files and opening pull request...');
       const response = await syncIconsToGitHub({
-        project,
+        project: iconSet,
         owner: settings.owner,
         repo: settings.repo,
         baseBranch: settings.baseBranch,
@@ -95,26 +105,26 @@ export function GitHubSyncPanel() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="workspace-tool-button h-9 rounded-xl px-3 text-foreground">
-          Sync to GitHub
+        <Button variant={triggerVariant} size={triggerSize} className={className}>
+          {triggerLabel}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sync Icons to GitHub</DialogTitle>
+          <DialogTitle>Sync {iconSet?.meta.name ?? 'Icon Set'} to GitHub</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-3">
           <Field label="Owner">
-            <Input value={settings.owner} onChange={(event) => setSettings((prev) => ({ ...prev, owner: event.target.value }))} placeholder="acme" />
+            <Input value={settings.owner} onChange={(event) => patchSettings({ owner: event.target.value })} placeholder="acme" />
           </Field>
 
           <Field label="Repository">
-            <Input value={settings.repo} onChange={(event) => setSettings((prev) => ({ ...prev, repo: event.target.value }))} placeholder="icon-pack" />
+            <Input value={settings.repo} onChange={(event) => patchSettings({ repo: event.target.value })} placeholder="icon-pack" />
           </Field>
 
           <Field label="Base Branch">
-            <Input value={settings.baseBranch} onChange={(event) => setSettings((prev) => ({ ...prev, baseBranch: event.target.value }))} placeholder="main" />
+            <Input value={settings.baseBranch} onChange={(event) => patchSettings({ baseBranch: event.target.value })} placeholder="main" />
           </Field>
 
           <Field label="Token">
@@ -122,16 +132,11 @@ export function GitHubSyncPanel() {
           </Field>
 
           <Field label="Package Path">
-            <Input value={settings.packagePath} onChange={(event) => setSettings((prev) => ({ ...prev, packagePath: event.target.value }))} placeholder="packages/icons" />
+            <Input value={settings.packagePath} onChange={(event) => patchSettings({ packagePath: event.target.value })} placeholder="packages/icons" />
           </Field>
 
           <Field label="Export Format">
-            <Select
-              value={settings.exportFormat}
-              onValueChange={(value: SyncOptions['exportFormat']) =>
-                setSettings((prev) => ({ ...prev, exportFormat: value }))
-              }
-            >
+            <Select value={settings.exportFormat} onValueChange={(value: SyncOptions['exportFormat']) => patchSettings({ exportFormat: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose export format" />
               </SelectTrigger>

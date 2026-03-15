@@ -1,4 +1,5 @@
 import type { Project } from './types';
+import { createWorkspaceFromProject } from './workspace';
 
 /**
  * Sample project with a simple chevron-right icon for dev/testing.
@@ -118,3 +119,5 @@ export const SAMPLE_PROJECT: Project = {
     },
   },
 };
+
+export const SAMPLE_WORKSPACE = createWorkspaceFromProject(SAMPLE_PROJECT, 'starter');

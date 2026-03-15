@@ -1,15 +1,22 @@
 const STATIC_EXPORT_MODE = process.env.NEXT_PUBLIC_OUTPUT_MODE === 'export';
 
-export function buildEditorRoute(iconId?: string | null) {
-  if (!iconId) {
-    return '/editor';
-  }
+export function buildEditorRoute(iconId?: string | null, iconSetId?: string | null) {
+  const search = new URLSearchParams();
+  if (iconId) search.set('icon', iconId);
+  if (iconSetId) search.set('set', iconSetId);
+  const query = search.toString();
+
+  if (!iconId && !iconSetId) return '/editor';
 
   if (STATIC_EXPORT_MODE) {
-    return `/editor?icon=${encodeURIComponent(iconId)}`;
+    return `/editor${query ? `?${query}` : ''}`;
   }
 
-  return `/editor/${iconId}`;
+  if (iconId) {
+    return `/editor/${iconId}${iconSetId ? `?set=${encodeURIComponent(iconSetId)}` : ''}`;
+  }
+
+  return `/editor${query ? `?${query}` : ''}`;
 }
 
 export function parseEditorSearchParam(value: string | string[] | undefined) {

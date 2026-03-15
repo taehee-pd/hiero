@@ -31,9 +31,10 @@ import {
   subscribeToMenuActions,
   type DesktopCommand,
 } from '@/lib/platform/bridge';
-import { isProject } from '@/lib/schema/guards';
+import { isProject, isWorkspace } from '@/lib/schema/guards';
 import type { Layer, Project } from '@/lib/schema/types';
 import { buildEditorRoute } from '@/lib/platform/routes';
+import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 
 const DOCUMENTATION_URL = 'https://github.com/taehee-pd/icon-authoring-tool#readme';
 
@@ -205,7 +206,11 @@ async function handleDesktopCommand(
       }
 
       if (lastImportedIconId) {
-        router.push(buildEditorRoute(lastImportedIconId));
+        const activeIconSetId = editorStore.getState().activeIconSetId;
+        if (activeIconSetId) {
+          editorStore.getState().openIconTab(activeIconSetId, lastImportedIconId);
+        }
+        router.push(buildEditorRoute(lastImportedIconId, activeIconSetId));
       }
       return;
     }
@@ -305,7 +310,11 @@ async function handleDesktopCommand(
       const iconId = getStringPayload(command.payload, 'iconId');
       if (!iconId) return;
       editorStore.getState().setCurrentIcon(iconId);
-      router.push(buildEditorRoute(iconId));
+      const activeIconSetId = editorStore.getState().activeIconSetId;
+      if (activeIconSetId) {
+        editorStore.getState().openIconTab(activeIconSetId, iconId);
+      }
+      router.push(buildEditorRoute(iconId, activeIconSetId));
       return;
     }
     case 'context.explorer.addCollection':
@@ -326,14 +335,14 @@ async function handleDesktopCommand(
 }
 
 function serializeCurrentProject() {
-  const project = editorStore.getState().project;
-  if (!project) return null;
+  const workspace = editorStore.getState().workspace;
+  if (!workspace) return null;
 
   const updatedAt = new Date().toISOString();
   const updated = {
-    ...project,
+    ...workspace,
     meta: {
-      ...project.meta,
+      ...workspace.meta,
       updatedAt,
     },
   };
@@ -346,6 +355,10 @@ function serializeCurrentProject() {
 function loadProjectFromJson(data: string) {
   try {
     const parsed = JSON.parse(data) as unknown;
+    if (isWorkspace(parsed)) {
+      editorStore.getState().loadWorkspace(parsed);
+      return true;
+    }
     if (!isProject(parsed)) {
       throw new Error('Invalid project');
     }
@@ -399,11 +412,10 @@ async function handleQuitConfirmation() {
 }
 
 function getEditorRoute(iconId?: string | null) {
-  if (iconId) return buildEditorRoute(iconId);
-
   const state = editorStore.getState();
+  if (iconId) return buildEditorRoute(iconId, state.activeIconSetId);
   const currentIconId = state.currentIconId ?? Object.keys(state.project?.icons ?? {})[0];
-  return buildEditorRoute(currentIconId ?? null);
+  return buildEditorRoute(currentIconId ?? null, state.activeIconSetId);
 }
 
 async function exportCurrentIconSvg() {
@@ -586,17 +598,20 @@ function deleteExplorerIcon(
   });
 
   const nextIconId = editorStore.getState().currentIconId;
-  router.push(nextIconId ? buildEditorRoute(nextIconId) : '/');
+  router.push(nextIconId ? buildEditorRoute(nextIconId, editorStore.getState().activeIconSetId) : '/');
 }
 
 function mutateProject(mutator: (project: Project) => void, nextIconId?: string | null) {
   const state = editorStore.getState();
   const project = state.project;
-  if (!project) return;
+  if (!project || !state.workspace || !state.activeIconSetId) return;
 
   const nextProject = structuredClone(project);
   mutator(nextProject);
-  state.loadProject(nextProject, { resetHistory: false, markDirty: true });
+  const nextWorkspace = replaceWorkspaceIconSet(state.workspace, state.activeIconSetId, nextProject);
+  if (!nextWorkspace) return;
+  state.loadWorkspace(nextWorkspace, { resetHistory: false, markDirty: true, keepTabs: true });
+  editorStore.getState().setActiveIconSet(state.activeIconSetId);
 
   const preferredIconId =
     nextIconId ??
@@ -615,7 +630,16 @@ function mutateCurrentStateLayers(
 ) {
   const state = editorStore.getState();
   const project = state.project;
-  if (!project || !state.currentIconId || !state.currentVariantId || !state.currentStateId) return;
+  if (
+    !project ||
+    !state.workspace ||
+    !state.activeIconSetId ||
+    !state.currentIconId ||
+    !state.currentVariantId ||
+    !state.currentStateId
+  ) {
+    return;
+  }
 
   const nextProject = structuredClone(project);
   const currentState =
@@ -623,7 +647,10 @@ function mutateCurrentStateLayers(
   if (!currentState) return;
 
   currentState.layers = mutate(currentState.layers);
-  state.loadProject(nextProject, { resetHistory: false, markDirty: true });
+  const nextWorkspace = replaceWorkspaceIconSet(state.workspace, state.activeIconSetId, nextProject);
+  if (!nextWorkspace) return;
+  state.loadWorkspace(nextWorkspace, { resetHistory: false, markDirty: true, keepTabs: true });
+  editorStore.getState().setActiveIconSet(state.activeIconSetId);
 
   const nextState = editorStore.getState();
   nextState.setCurrentIcon(state.currentIconId);

@@ -2,20 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Check, Grid3X3, Heart, Import, Search } from 'lucide-react';
+import { ArrowUpRight, Check, FolderKanban, Grid3X3, Heart, Import, Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
+import { GitHubSyncPanel } from '@/components/export/GitHubSyncPanel';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
+import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { clearCurrentProjectPath, showNativeContextMenu } from '@/lib/platform/bridge';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
+import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 import { cn } from '@/lib/utils';
 
 export type ExplorerIcon = {
@@ -54,9 +56,21 @@ function categorizeIcons(icons: ExplorerIcon[]) {
 }
 
 export function ExplorerShell() {
+  const workspace = useEditorStore((s) => s.workspace);
   const project = useEditorStore((s) => s.project);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const favorites = useEditorStore((s) => s.favorites);
-  const { addCollection, removeCollection, renameCollection, toggleFavorite } = useEditorActions();
+  const {
+    addCollection,
+    removeCollection,
+    renameCollection,
+    toggleFavorite,
+    addIconSet,
+    removeIconSet,
+    renameIconSet,
+    setActiveIconSet,
+    openIconTab,
+  } = useEditorActions();
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
@@ -65,9 +79,9 @@ export function ExplorerShell() {
 
   useEffect(() => {
     const state = editorStore.getState();
-    if (!state.project) {
+    if (!state.workspace) {
       clearCurrentProjectPath();
-      state.loadProject(SAMPLE_PROJECT);
+      state.loadWorkspace(SAMPLE_WORKSPACE);
     }
   }, []);
 
@@ -86,7 +100,20 @@ export function ExplorerShell() {
   const groups = useMemo(() => categorizeIcons(filtered), [filtered]);
   const selectionSet = useMemo(() => new Set(selection), [selection]);
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
-  const projectName = project?.meta.name ?? 'Icophone';
+  const workspaceName = workspace?.meta.name ?? 'Icophone Workspace';
+  const projectName = project?.meta.name ?? 'Untitled Set';
+  const iconSets = useMemo(
+    () =>
+      Object.entries(workspace?.iconSets ?? {})
+        .map(([id, iconSet]) => ({
+          id,
+          name: iconSet.meta.name,
+          iconCount: Object.keys(iconSet.icons).length,
+          syncLabel: iconSet.sync ? `${iconSet.sync.owner}/${iconSet.sync.repo}` : null,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [workspace?.iconSets],
+  );
   const collections = useMemo(
     () => Object.values(project?.collections ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [project?.collections],
@@ -110,9 +137,42 @@ export function ExplorerShell() {
     }
   }, [activeFilter, project?.collections]);
 
+  useEffect(() => {
+    setSelection([]);
+    setActiveFilter({ kind: 'all' });
+  }, [activeIconSetId]);
+
+  const exportIconsToZip = (iconIds: string[], suffix: string) => {
+    if (!project || iconIds.length === 0) return;
+    const files: Record<string, string> = {};
+    for (const iconId of iconIds) {
+      const icon = project.icons[iconId];
+      if (!icon) continue;
+      const variantId = Object.keys(icon.variants)[0];
+      const variant = variantId ? icon.variants[variantId] : undefined;
+      const stateId = variant?.defaultState;
+      if (!variant || !stateId) continue;
+      files[`icons/${toKebab(icon.name || icon.id)}.svg`] = exportSvgString(
+        icon,
+        variant.id,
+        stateId,
+        project.tokenSet?.colors,
+        variant.renderingMode,
+      );
+    }
+    const blob = createZipBlob(files);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${toKebab(workspaceName)}-${toKebab(project.meta.name)}-${suffix}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const assignCategory = () => {
+    const state = editorStore.getState();
     const nextCategory = categoryInput.trim();
-    if (!project || !nextCategory || selection.length === 0) return;
+    if (!project || !workspace || !activeIconSetId || !nextCategory || selection.length === 0) return;
 
     const nextProject = structuredClone(project);
     for (const iconId of selection) {
@@ -120,7 +180,10 @@ export function ExplorerShell() {
       if (icon) icon.category = nextCategory;
     }
 
-    editorStore.getState().loadProject(nextProject, { resetHistory: false, markDirty: true });
+    const nextWorkspace = replaceWorkspaceIconSet(workspace, activeIconSetId, nextProject);
+    if (!nextWorkspace) return;
+    state.loadWorkspace(nextWorkspace, { resetHistory: false, markDirty: true, keepTabs: true });
+    state.setActiveIconSet(activeIconSetId);
     setSelection([]);
     setCategoryInput('');
   };
@@ -156,38 +219,31 @@ export function ExplorerShell() {
     event.target.value = '';
   };
 
-  const handleExportSelected = () => {
-    if (!project || selection.length === 0) return;
-    const files: Record<string, string> = {};
-    for (const iconId of selection) {
-      const icon = project.icons[iconId];
-      if (!icon) continue;
-      const variantId = Object.keys(icon.variants)[0];
-      const variant = variantId ? icon.variants[variantId] : undefined;
-      const stateId = variant?.defaultState;
-      if (!variant || !stateId) continue;
-      files[`icons/${toKebab(icon.name || icon.id)}.svg`] = exportSvgString(
-        icon,
-        variant.id,
-        stateId,
-        project.tokenSet?.colors,
-        variant.renderingMode,
-      );
-    }
-    const blob = createZipBlob(files);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-selected-icons.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handleExportSelected = () => exportIconsToZip(selection, 'selected-icons');
+  const handleExportIconSet = () => exportIconsToZip(Object.keys(project?.icons ?? {}), 'icon-set');
 
   const createCollection = () => {
     const name = prompt('Collection name');
     if (!name?.trim()) return;
     const id = toKebab(name);
     addCollection({ id, name: name.trim(), iconIds: [] });
+  };
+
+  const createIconSet = () => {
+    const name = prompt('Project name');
+    if (!name?.trim()) return;
+    addIconSet(name.trim());
+  };
+
+  const handleIconSetContext = (event: React.MouseEvent, iconSetId: string) => {
+    event.preventDefault();
+    const action = prompt('Type "rename" or "delete"');
+    if (action === 'rename') {
+      const name = prompt('New project name');
+      if (name?.trim()) renameIconSet(iconSetId, name.trim());
+    } else if (action === 'delete') {
+      removeIconSet(iconSetId);
+    }
   };
 
   const handleCollectionContext = (event: React.MouseEvent, collectionId: string) => {
@@ -206,9 +262,12 @@ export function ExplorerShell() {
       <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="mr-auto min-w-0">
-            <p className="truncate text-lg font-semibold tracking-tight text-foreground">{projectName}</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              {workspaceName}
+            </p>
+            <p className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground">{projectName}</p>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>library</span>
+              <span>project</span>
               <span className="text-border">/</span>
               <span>{icons.length} icons</span>
               {selection.length > 0 ? (
@@ -233,6 +292,16 @@ export function ExplorerShell() {
               <Import className="size-4" />
               Import SVG
             </Button>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
+              Export Set
+            </Button>
+            <GitHubSyncPanel
+              iconSetId={activeIconSetId}
+              triggerLabel="Sync Set"
+              triggerVariant="outline"
+              triggerSize="sm"
+              className="rounded-xl"
+            />
             {selection.length > 0 ? (
               <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportSelected}>
                 Export Selected
@@ -248,6 +317,43 @@ export function ExplorerShell() {
       <main className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <aside className="studio-panel min-h-0 overflow-hidden rounded-xl p-3">
           <div className="space-y-5">
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</h3>
+                <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={createIconSet}>
+                  <Plus className="mr-1 size-3.5" />
+                  New
+                </Button>
+              </div>
+              <div className="grid gap-1.5">
+                {iconSets.map((iconSet) => (
+                  <button
+                    key={iconSet.id}
+                    type="button"
+                    data-active={activeIconSetId === iconSet.id ? 'true' : 'false'}
+                    onClick={() => setActiveIconSet(iconSet.id)}
+                    onContextMenu={(event) => handleIconSetContext(event, iconSet.id)}
+                    className="workspace-nav-button min-h-12 rounded-xl px-3 py-2 text-left"
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <FolderKanban className="size-3.5 text-muted-foreground" />
+                          <span className="truncate">{iconSet.name}</span>
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                          {iconSet.syncLabel ?? 'No GitHub sync'}
+                        </span>
+                      </span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {iconSet.iconCount}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filters</h3>
               <div className="grid gap-1.5">
@@ -306,8 +412,11 @@ export function ExplorerShell() {
         <section className="studio-panel min-h-0 overflow-hidden rounded-xl">
           <div className="workspace-panel-header flex items-center justify-between gap-3 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-foreground">Icon grid</p>
-              <p className="text-xs text-muted-foreground">{visibleIcons.length} shown</p>
+              <p className="text-sm font-semibold text-foreground">Icons</p>
+              <p className="text-xs text-muted-foreground">
+                {visibleIcons.length} shown
+                {project?.sync ? ` / ${project.sync.owner}/${project.sync.repo}` : ' / local only'}
+              </p>
             </div>
             {selection.length > 0 ? (
               <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
@@ -391,8 +500,13 @@ export function ExplorerShell() {
                     </div>
 
                     <Link
-                      href={buildEditorRoute(icon.id)}
-                      onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
+                      href={buildEditorRoute(icon.id, activeIconSetId)}
+                      onClick={() => {
+                        editorStore.getState().setCurrentIcon(icon.id);
+                        if (activeIconSetId) {
+                          openIconTab(activeIconSetId, icon.id);
+                        }
+                      }}
                       className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                     >
                       <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-[1.25rem] border border-border/80 bg-muted/30 transition group-hover:border-border group-hover:bg-muted/50">

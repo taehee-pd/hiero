@@ -32,9 +32,7 @@ export function exportSvgString(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vx} ${vy} ${vw} ${vh}" width="${variant.size}" height="${variant.size}" fill="none">`,
   );
 
-  const layers = Object.keys(state.layers)
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => state.layers[id]);
+  const layers = Object.values(state.layers);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
   for (const layer of layers) {
     if (layer.visible === false || !layer.path?.d || layer.isClipMask) continue;

@@ -1,5 +1,6 @@
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
+import { isDesktop } from '@/lib/platform/bridge';
 import type { Tool } from '@/lib/editor-store/types';
 import { alignLayers } from './layer-arrange';
 import {
@@ -46,6 +47,18 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
 
   const key = e.key.toLowerCase();
   const mod = e.metaKey || e.ctrlKey;
+  const desktop = isDesktop();
+
+  if (desktop) {
+    const handledByNativeMenu =
+      (mod &&
+        ['z', 'y', 'n', 'o', 's', 'e', 'i', '0', '=', '-'].includes(key)) ||
+      (!mod && ['v', 'a', 'p', 'g', ';'].includes(key));
+
+    if (handledByNativeMenu) {
+      return;
+    }
+  }
 
   // Undo / Redo
   if (mod && key === 'z') {

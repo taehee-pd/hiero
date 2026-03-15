@@ -12,6 +12,8 @@ import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportSvgString } from '@/lib/export/export-svg';
+import { clearCurrentProjectPath, showNativeContextMenu } from '@/lib/platform/bridge';
+import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
 import { cn } from '@/lib/utils';
@@ -63,7 +65,10 @@ export function ExplorerShell() {
 
   useEffect(() => {
     const state = editorStore.getState();
-    if (!state.project) state.loadProject(SAMPLE_PROJECT);
+    if (!state.project) {
+      clearCurrentProjectPath();
+      state.loadProject(SAMPLE_PROJECT);
+    }
   }, []);
 
   const icons = useMemo(
@@ -115,7 +120,7 @@ export function ExplorerShell() {
       if (icon) icon.category = nextCategory;
     }
 
-    editorStore.getState().loadProject(nextProject);
+    editorStore.getState().loadProject(nextProject, { resetHistory: false, markDirty: true });
     setSelection([]);
     setCategoryInput('');
   };
@@ -336,6 +341,13 @@ export function ExplorerShell() {
                 return (
                   <article
                     key={icon.id}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      void showNativeContextMenu('explorerIcon', {
+                        iconId: icon.id,
+                        favorite,
+                      });
+                    }}
                     className={cn(
                       'studio-card group rounded-2xl bg-card p-3 transition-all duration-150',
                       active && 'border-primary/35 bg-primary/[0.05] shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_26%,transparent)]',
@@ -379,7 +391,7 @@ export function ExplorerShell() {
                     </div>
 
                     <Link
-                      href={`/editor/${icon.id}`}
+                      href={buildEditorRoute(icon.id)}
                       onClick={() => editorStore.getState().setCurrentIcon(icon.id)}
                       className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                     >

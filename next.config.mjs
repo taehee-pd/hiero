@@ -1,3 +1,7 @@
+const isExportMode = process.env.NEXT_OUTPUT_MODE === 'export';
+const exportAssetPrefix = '';
+const exportBasePath = '';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -6,6 +10,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-}
+  env: {
+    NEXT_PUBLIC_OUTPUT_MODE: process.env.NEXT_OUTPUT_MODE ?? '',
+  },
+  output: isExportMode ? 'export' : undefined,
+  basePath: isExportMode ? exportBasePath : undefined,
+  assetPrefix: isExportMode ? exportAssetPrefix : undefined,
+};
 
-export default nextConfig
+export default nextConfig;

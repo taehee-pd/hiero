@@ -19,6 +19,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
+import { clearCurrentProjectPath } from '@/lib/platform/bridge';
+import { parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 
@@ -251,18 +253,27 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
+  const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const previousGuidesVisibleRef = useRef(guidesVisible);
+  const requestedIconId = initialIconId ?? searchIconId;
+
+  useEffect(() => {
+    setSearchIconId(
+      parseEditorSearchParam(new URLSearchParams(window.location.search).get('icon') ?? undefined),
+    );
+  }, []);
 
   useEffect(() => {
     const state = editorStore.getState();
     if (!state.project) {
+      clearCurrentProjectPath();
       state.loadProject(SAMPLE_PROJECT);
     }
 
-    if (initialIconId && state.project?.icons[initialIconId]) {
-      state.setCurrentIcon(initialIconId);
+    if (requestedIconId && state.project?.icons[requestedIconId]) {
+      state.setCurrentIcon(requestedIconId);
     }
-  }, [initialIconId]);
+  }, [requestedIconId]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleEditorKeyDown);

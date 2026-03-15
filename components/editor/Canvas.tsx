@@ -21,6 +21,7 @@ import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
+import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -640,6 +641,10 @@ export function Canvas() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        void showNativeContextMenu('canvas');
+      }}
     >
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"

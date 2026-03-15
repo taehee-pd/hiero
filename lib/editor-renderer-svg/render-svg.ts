@@ -50,9 +50,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     if (id) existingHit.set(id, el);
   });
 
-  const layers = Object.keys(state.layers)
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => state.layers[id]);
+  const layers = Object.values(state.layers);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
   const rendered = new Set<string>();
 

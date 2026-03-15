@@ -68,6 +68,7 @@ export function Canvas() {
   const tool = useEditorStore((s) => s.tool);
   const pointMarquee = useEditorStore((s) => s.pointMarquee);
   const pointTransformLabel = useEditorStore((s) => s.pointTransformLabel);
+  const pendingPenHandle = useEditorStore((s) => s.pendingPenHandle);
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
@@ -318,8 +319,18 @@ export function Canvas() {
       subPath.points.forEach((point, pointIndex) => {
         const pointKey = `${spIndex}:${pointIndex}`;
         const isActive = selectedPointKey === pointKey;
-        const handleIn = getControlHandlePosition(subPath, pointIndex, 'in');
-        const handleOut = getControlHandlePosition(subPath, pointIndex, 'out');
+        const pendingHandleForPoint =
+          tool === 'pen' &&
+          pendingPenHandle?.layerId === activeLayerId &&
+          pendingPenHandle?.pointKey === pointKey
+            ? pendingPenHandle
+            : null;
+        const handleIn =
+          pendingHandleForPoint?.handleIn ??
+          getControlHandlePosition(subPath, pointIndex, 'in');
+        const handleOut =
+          pendingHandleForPoint?.handleOut ??
+          getControlHandlePosition(subPath, pointIndex, 'out');
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;
@@ -379,7 +390,7 @@ export function Canvas() {
         );
       });
     });
-  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom]);
+  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom, pendingPenHandle]);
 
   // Imperative pointer interaction engine.
   useEffect(() => {

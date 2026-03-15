@@ -61,6 +61,7 @@ export function useEditorActions() {
 
   return useMemo(
     () => ({
+      loadWorkspace: state.loadWorkspace,
       loadProject: state.loadProject,
       newProject: state.newProject,
       insertIcon: state.insertIcon,
@@ -115,6 +116,14 @@ export function useEditorActions() {
       addIconToCollection: state.addIconToCollection,
       removeIconFromCollection: state.removeIconFromCollection,
       toggleFavorite: state.toggleFavorite,
+      addIconSet: state.addIconSet,
+      removeIconSet: state.removeIconSet,
+      renameIconSet: state.renameIconSet,
+      setActiveIconSet: state.setActiveIconSet,
+      updateIconSetSync: state.updateIconSetSync,
+      openIconTab: state.openIconTab,
+      closeIconTab: state.closeIconTab,
+      setActiveTab: state.setActiveTab,
       generateVariantMatrix: state.generateVariantMatrix,
       upsertSymbolComponent: state.upsertSymbolComponent,
       removeSymbolComponent: state.removeSymbolComponent,

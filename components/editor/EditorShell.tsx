@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Layers2, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Layers2, Plus, Trash2, X } from 'lucide-react';
 import { Toolbar } from './Toolbar';
 import { ToolPanel } from './ToolPanel';
 import { LayerPanel } from './LayerPanel';
@@ -18,11 +18,12 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions } from '@/lib/editor-store/hooks';
-import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
+import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { clearCurrentProjectPath } from '@/lib/platform/bridge';
 import { parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { useEditorStore } from '@/lib/editor-store/hooks';
+import { cn } from '@/lib/utils';
 
 function CurrentDocumentPanel() {
   const icon = useEditorStore((s) =>
@@ -244,6 +245,52 @@ function VariantPickerBar() {
   );
 }
 
+function EditorDocumentTabs() {
+  const openTabs = useEditorStore((s) => s.openTabs);
+  const activeTabId = useEditorStore((s) => s.activeTabId);
+  const workspace = useEditorStore((s) => s.workspace);
+  const { setActiveTab, closeIconTab } = useEditorActions();
+
+  if (openTabs.length === 0) return null;
+
+  return (
+    <div className="mx-3 mb-3 flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-background/75 px-3 py-2">
+      {openTabs.map((tab) => {
+        const iconSet = workspace?.iconSets[tab.iconSetId];
+        const icon = iconSet?.icons[tab.iconId];
+        const isActive = tab.id === activeTabId;
+
+        return (
+          <div
+            key={tab.id}
+            className={cn(
+              'flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2',
+              isActive
+                ? 'border-primary/35 bg-primary/[0.08] shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
+                : 'border-border/70 bg-card',
+            )}
+          >
+            <button type="button" onClick={() => setActiveTab(tab.id)} className="min-w-0 text-left">
+              <p className="truncate text-sm font-medium text-foreground">{icon?.name ?? tab.iconId}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{iconSet?.meta.name ?? tab.iconSetId}</p>
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-lg text-muted-foreground hover:text-foreground"
+              onClick={() => closeIconTab(tab.id)}
+              aria-label={`Close ${icon?.name ?? tab.iconId}`}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
@@ -254,26 +301,38 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
+  const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
 
   useEffect(() => {
-    setSearchIconId(
-      parseEditorSearchParam(new URLSearchParams(window.location.search).get('icon') ?? undefined),
-    );
+    const search = new URLSearchParams(window.location.search);
+    setSearchIconId(parseEditorSearchParam(search.get('icon') ?? undefined));
+    setSearchIconSetId(parseEditorSearchParam(search.get('set') ?? undefined));
   }, []);
 
   useEffect(() => {
-    const state = editorStore.getState();
-    if (!state.project) {
+    let state = editorStore.getState();
+    if (!state.workspace) {
       clearCurrentProjectPath();
-      state.loadProject(SAMPLE_PROJECT);
+      state.loadWorkspace(SAMPLE_WORKSPACE);
+      state = editorStore.getState();
     }
 
+    if (searchIconSetId && state.workspace?.iconSets[searchIconSetId]) {
+      state.setActiveIconSet(searchIconSetId);
+      state = editorStore.getState();
+    }
     if (requestedIconId && state.project?.icons[requestedIconId]) {
       state.setCurrentIcon(requestedIconId);
+      const nextIconSetId =
+        (searchIconSetId && state.workspace?.iconSets[searchIconSetId] ? searchIconSetId : state.activeIconSetId) ??
+        null;
+      if (nextIconSetId) {
+        state.openIconTab(nextIconSetId, requestedIconId);
+      }
     }
-  }, [requestedIconId]);
+  }, [requestedIconId, searchIconSetId]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleEditorKeyDown);
@@ -323,6 +382,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   return (
     <div className="swift-surface flex h-dvh w-full flex-col overflow-hidden text-foreground">
       <Toolbar />
+      <EditorDocumentTabs />
       <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
         <aside className="flex min-h-0 flex-col gap-3">
           <section className="studio-panel overflow-hidden rounded-xl">

@@ -1,7 +1,15 @@
 // Icophone Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
-export type Project = {
+export type GitHubSyncSettings = {
+  owner: string;
+  repo: string;
+  baseBranch: string;
+  packagePath: string;
+  exportFormat: 'react' | 'svg' | 'both';
+};
+
+export type IconSet = {
   version: '1.0';
   meta: { name: string; createdAt: string; updatedAt: string };
   icons: Record<string, Icon>;
@@ -9,6 +17,16 @@ export type Project = {
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];
   collections?: Record<string, Collection>;
+  sync?: GitHubSyncSettings;
+};
+
+export type Project = IconSet;
+
+export type Workspace = {
+  version: '2.0';
+  meta: { name: string; createdAt: string; updatedAt: string };
+  iconSets: Record<string, IconSet>;
+  activeIconSetId?: string;
 };
 
 export type Icon = {

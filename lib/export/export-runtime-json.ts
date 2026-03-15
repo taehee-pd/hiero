@@ -59,7 +59,7 @@ type RuntimeJsonExportIcon = Icon & {
 };
 
 export function exportRuntimeJson(
-  icon: Icon,
+  icon: RuntimeJsonExportIcon,
   options?: { variants?: string[]; states?: string[] },
 ): string {
   const variantIds = resolveFilteredVariantIds(icon, options?.variants);

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import './helpers/dom-parser';
 import { editorStore } from '../lib/editor-store/store';
 import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 import { createImportedIcon } from '../lib/import/import-svg-file';

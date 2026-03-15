@@ -23,7 +23,7 @@ import {
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
-import { isProject } from '@/lib/schema/guards';
+import { isProject, isWorkspace } from '@/lib/schema/guards';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { exportSvgPackage } from '@/lib/export/export-svg-package';
 import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
@@ -80,11 +80,13 @@ export function Toolbar() {
 
     try {
       const json = JSON.parse(result.data);
-      if (isProject(json)) {
+      if (isWorkspace(json)) {
+        editorStore.getState().loadWorkspace(json);
+      } else if (isProject(json)) {
         editorStore.getState().loadProject(json);
       } else {
         clearCurrentProjectPath();
-        window.alert('Invalid Icophone project file.');
+        window.alert('Invalid Icophone workspace file.');
       }
     } catch {
       clearCurrentProjectPath();
@@ -106,14 +108,13 @@ export function Toolbar() {
     }
   }, []);
 
-  const serializeProject = useCallback(() => {
-    const { project } = editorStore.getState();
-    if (!project) return null;
-
+  const serializeWorkspace = useCallback(() => {
+    const { workspace } = editorStore.getState();
+    if (!workspace) return null;
     const updatedAt = new Date().toISOString();
     const updated = {
-      ...project,
-      meta: { ...project.meta, updatedAt },
+      ...workspace,
+      meta: { ...workspace.meta, updatedAt },
     };
     return {
       data: JSON.stringify(updated, null, 2),
@@ -122,14 +123,14 @@ export function Toolbar() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    const payload = serializeProject();
+    const payload = serializeWorkspace();
     if (!payload) return;
 
     const result = await saveProject(payload.data);
     if (result) {
       editorStore.getState().markSaved(payload.updatedAt);
     }
-  }, [serializeProject]);
+  }, [serializeWorkspace]);
 
   const handleExportSvg = useCallback(async () => {
     const state = editorStore.getState();

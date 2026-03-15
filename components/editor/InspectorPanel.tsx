@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LoaderCircle,
   AlignCenterHorizontal,
@@ -23,6 +23,7 @@ import {
   Squircle,
   VenetianMask,
   ScissorsLineDashed,
+  Plus,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
@@ -30,11 +31,14 @@ import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { TransitionPanel } from './TransitionPanel';
 import {
   alignLayers,
+  computeTopology,
   alignSelectedPoints,
   distributeLayers,
   distributeSelectedPoints,
+  lockTopology,
   setSelectedPointType,
 } from '@/lib/editor-core';
 import {
@@ -43,9 +47,9 @@ import {
   useSelection,
 } from '@/lib/editor-store/hooks';
 import { selectCurrentState } from '@/lib/editor-store/selectors';
-import { editorStore } from '@/lib/editor-store/store';
+import { editorStore, VARIANT_SIZE_PRESETS } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
-import type { GradientStop, Layer, PaintRef } from '@/lib/schema/types';
+import type { GradientStop, Layer, PaintRef, SymbolScale, SymbolWeight, Variant } from '@/lib/schema/types';
 import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
 import { cn } from '@/lib/utils';
@@ -89,6 +93,9 @@ const POINT_DISTRIBUTE_ACTIONS = [
   { label: 'Distribute points vertically', axis: 'y', rotate: 'rotate-90' },
 ] as const;
 
+const SYMBOL_WEIGHT_OPTIONS: SymbolWeight[] = ['ultralight', 'thin', 'light', 'regular', 'medium', 'semibold', 'bold', 'heavy', 'black'];
+const SYMBOL_SCALE_OPTIONS: SymbolScale[] = ['small', 'medium', 'large'];
+
 const NODE_TYPE_OPTIONS = [
   { value: 'static', label: 'Corner', glyph: '∟' },
   { value: 'smooth', label: 'Smooth', glyph: '∿' },
@@ -100,13 +107,29 @@ export function InspectorPanel() {
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
   const shapeStarPoints = useEditorStore((s) => s.shapeStarPoints);
+  const currentIcon = useEditorStore((s) =>
+    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+  );
+  const currentVariantId = useEditorStore((s) => s.currentVariantId);
+  const currentVariant = useEditorStore((s) =>
+    s.currentIconId && s.currentVariantId
+      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      : null,
+  );
   const selection = useSelection();
   const {
+    addVariant,
+    removeVariant,
+    setCurrentVariant,
+    setStateTopology,
     setShapePolygonSides,
     setShapeStarPoints,
     setShapeSubTool,
     setClipMask,
     releaseClipMask,
+    generateVariantMatrix,
+    upsertSymbolComponent,
+    removeSymbolComponent,
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
@@ -116,6 +139,17 @@ export function InspectorPanel() {
     (s) => s.project?.tokenSet?.colors ?? {},
   );
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
+  const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
+  const [matrixSizes, setMatrixSizes] = useState<number[]>([16, 24]);
+  const [matrixWeights, setMatrixWeights] = useState<SymbolWeight[]>(['regular', 'bold']);
+  const [matrixScales, setMatrixScales] = useState<SymbolScale[]>(['small', 'medium', 'large']);
+
+  const variants = Object.values(currentIcon?.variants ?? {}).sort((a, b) => {
+    if (a.size !== b.size) return a.size - b.size;
+    return a.id.localeCompare(b.id);
+  });
+  const selectedVariantSize = Number.parseInt(newVariantSize, 10);
+  const variantSizeTaken = variants.some((variant) => variant.size === selectedVariantSize);
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const layer =
@@ -125,6 +159,11 @@ export function InspectorPanel() {
   const pointContext = layer
     ? getSelectedPointContext(layer, selection.pointIds)
     : getSelectedPointContext(null, []);
+  const currentTopology = useMemo(
+    () => (currentState ? computeTopology(currentState) : null),
+    [currentState],
+  );
+  const isTopologyLocked = currentState?.topology?.locked === true;
   const multipleLayersSelected = selection.layerIds.length > 1;
   const enoughLayersToDistribute = selection.layerIds.length > 2;
   const showShapeToolSettings = tool === 'shape';
@@ -180,8 +219,65 @@ export function InspectorPanel() {
     if (!layer) return;
     releaseClipMask(layer.id);
   }, [layer, releaseClipMask]);
+  const handleAddVariant = useCallback(() => {
+    if (!currentIcon || !Number.isFinite(selectedVariantSize) || selectedVariantSize <= 0) return;
+    addVariant(currentIcon.id, {
+      size: selectedVariantSize,
+      viewBox: scaleVariantViewBox(currentVariant?.viewBox, selectedVariantSize),
+      sourceVariantId: currentVariantId ?? undefined,
+    });
+  }, [addVariant, currentIcon, currentVariant?.viewBox, currentVariantId, selectedVariantSize]);
+  const handleLockTopology = useCallback(() => {
+    if (!currentIconId || !currentStateId || !currentState) return;
+    setStateTopology(currentIconId, currentStateId, lockTopology(currentState));
+  }, [currentIconId, currentState, currentStateId, setStateTopology]);
+  const handleUnlockTopology = useCallback(() => {
+    if (!currentIconId || !currentStateId) return;
+    setStateTopology(currentIconId, currentStateId, undefined);
+  }, [currentIconId, currentStateId, setStateTopology]);
 
-  if (!layer && !showShapeToolSettings) {
+
+
+  const toggleMatrixSize = useCallback((size: number) => {
+    setMatrixSizes((prev) => (prev.includes(size) ? prev.filter((value) => value !== size) : [...prev, size].sort((a, b) => a - b)));
+  }, []);
+
+  const toggleMatrixWeight = useCallback((weight: SymbolWeight) => {
+    setMatrixWeights((prev) => (prev.includes(weight) ? prev.filter((value) => value !== weight) : [...prev, weight]));
+  }, []);
+
+  const toggleMatrixScale = useCallback((scale: SymbolScale) => {
+    setMatrixScales((prev) => (prev.includes(scale) ? prev.filter((value) => value !== scale) : [...prev, scale]));
+  }, []);
+
+  const handleGenerateVariantMatrix = useCallback(() => {
+    if (!currentIcon) return;
+    generateVariantMatrix(currentIcon.id, {
+      sizes: matrixSizes,
+      weights: matrixWeights,
+      scales: matrixScales,
+      sourceVariantId: currentVariantId ?? undefined,
+    });
+  }, [currentIcon, currentVariantId, generateVariantMatrix, matrixScales, matrixSizes, matrixWeights]);
+
+  const applyComponentTag = useCallback(
+    (kind: 'badge' | 'slash' | 'enclosure') => {
+      if (!currentIcon || selection.layerIds.length === 0) return;
+      upsertSymbolComponent(currentIcon.id, {
+        kind,
+        layerIds: selection.layerIds,
+        position: 'center',
+      });
+    },
+    [currentIcon, selection.layerIds, upsertSymbolComponent],
+  );
+  useEffect(() => {
+    if (currentVariant) {
+      setNewVariantSize(String(currentVariant.size));
+    }
+  }, [currentVariant]);
+
+  if (!currentIcon && !layer && !showShapeToolSettings) {
     return (
       <div className="flex h-full flex-col bg-transparent">
         <div className="px-4 pt-4 pb-3">
@@ -205,11 +301,214 @@ export function InspectorPanel() {
       <div className="px-4 pt-4 pb-3">
         <span className="workspace-kicker">Inspect</span>
         <p className="mt-2 text-base font-semibold text-foreground">
-          {layer ? layer.id : 'Shape tool'}
+          {layer ? layer.id : showShapeToolSettings ? 'Shape tool' : currentVariant?.id ?? 'Inspector'}
         </p>
       </div>
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-5 px-4 pb-4">
+          {currentIcon ? (
+            <>
+              <Section title="Variants">
+                <div className="grid gap-2">
+                  {variants.map((variant) => {
+                    const isActive = variant.id === currentVariantId;
+                    const isOnlyVariant = variants.length <= 1;
+
+                    return (
+                      <div key={variant.id} className="flex items-stretch gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentVariant(variant.id)}
+                          className={cn(
+                            'flex min-w-0 flex-1 flex-col rounded-xl border px-3 py-2 text-left transition',
+                            isActive
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
+                              : 'border-border/70 bg-background/70 text-foreground hover:bg-accent/40',
+                          )}
+                        >
+                          <span className="truncate text-sm font-semibold">{variant.id}</span>
+                          <span className="mt-1 text-xs text-muted-foreground">
+                            {variant.size}px
+                          </span>
+                          <span className="truncate font-mono text-[11px] text-muted-foreground">
+                            {formatVariantViewBox(variant)}
+                          </span>
+                        </button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isOnlyVariant}
+                          onClick={() => removeVariant(currentIcon.id, variant.id)}
+                          className="h-auto rounded-xl px-3 text-xs"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+
+                {currentVariant ? (
+                  <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+                    <Label className="text-xs uppercase text-muted-foreground">Weight</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
+                        <button
+                          key={weight}
+                          type="button"
+                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { weight })}
+                          className={cn(
+                            'rounded-lg border px-2 py-1 text-[11px] font-medium',
+                            currentVariant.weight === weight
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground'
+                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {weight}
+                        </button>
+                      ))}
+                    </div>
+                    <Label className="text-xs uppercase text-muted-foreground">Scale</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {SYMBOL_SCALE_OPTIONS.map((scale) => (
+                        <button
+                          key={scale}
+                          type="button"
+                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { scale })}
+                          className={cn(
+                            'rounded-lg border px-2 py-1 text-xs font-medium',
+                            currentVariant.scale === scale
+                              ? 'border-primary/40 bg-primary/[0.08] text-foreground'
+                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {scale}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+                  <Label htmlFor="variant-size-preset" className="text-xs uppercase text-muted-foreground">
+                    Preset Size
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      id="variant-size-preset"
+                      value={newVariantSize}
+                      onChange={(event) => setNewVariantSize(event.target.value)}
+                      className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                    >
+                      {VARIANT_SIZE_PRESETS.map((size) => (
+                        <option key={size} value={size}>
+                          {size}px
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleAddVariant}
+                      disabled={!currentIcon || !Number.isFinite(selectedVariantSize) || variantSizeTaken}
+                      className="rounded-xl"
+                    >
+                      <Plus className="size-4" />
+                      Add Variant
+                    </Button>
+                  </div>
+                  {variantSizeTaken ? (
+                    <InlineMessage>A variant for {selectedVariantSize}px already exists.</InlineMessage>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+                  <Label className="text-xs uppercase text-muted-foreground">Generate Variant Matrix</Label>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Sizes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {VARIANT_SIZE_PRESETS.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleMatrixSize(size)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixSizes.includes(size) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Weights</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
+                        <button
+                          key={weight}
+                          type="button"
+                          onClick={() => toggleMatrixWeight(weight)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixWeights.includes(weight) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {weight}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <p className="text-[11px] text-muted-foreground">Scales</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SYMBOL_SCALE_OPTIONS.map((scale) => (
+                        <button
+                          key={scale}
+                          type="button"
+                          onClick={() => toggleMatrixScale(scale)}
+                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixScales.includes(scale) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                        >
+                          {scale}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateVariantMatrix}
+                    disabled={!currentIcon || matrixSizes.length === 0 || matrixWeights.length === 0 || matrixScales.length === 0}
+                  >
+                    Generate Variant Matrix
+                  </Button>
+                </div>
+              </Section>
+              <Separator />
+              <Section title="Components">
+                <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">Tag selected layers as symbol components.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('badge')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Badge</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('slash')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Slash</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('enclosure')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Enclosure</Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(['badge','slash','enclosure'] as const).map((kind) => {
+                      const count = currentIcon?.components?.[kind]?.layerIds.length ?? 0;
+                      return (
+                        <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => currentIcon && removeSymbolComponent(currentIcon.id, kind)} disabled={!currentIcon?.components?.[kind]}>
+                          {kind} ({count}) remove
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Section>
+              <Separator />
+              <TransitionPanel />
+              <Separator />
+            </>
+          ) : null}
+
           {showShapeToolSettings && (
             <>
               <Section title="Shape Tool">
@@ -253,7 +552,83 @@ export function InspectorPanel() {
             </>
           )}
 
-          {!layer ? null : (
+          {currentState && currentTopology ? (
+            <>
+              <Section title="Topology">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {currentTopology.layerPairs.length} tracked layer
+                      {currentTopology.layerPairs.length === 1 ? '' : 's'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Subpath counts are captured per path layer.
+                    </p>
+                  </div>
+                  {isTopologyLocked ? (
+                    <span className="rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      Locked
+                    </span>
+                  ) : null}
+                </div>
+
+                {currentTopology.layerPairs.length > 0 ? (
+                  <div className="grid gap-2">
+                    {currentTopology.layerPairs.map((pair) => (
+                      <div
+                        key={pair.layerId}
+                        className="rounded-xl border border-border/70 bg-background/70 px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-foreground">{pair.layerId}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {pair.subpathCount} subpath{pair.subpathCount === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <InlineMessage>No path layers are available in this state.</InlineMessage>
+                )}
+
+                <div className="flex gap-2">
+                  {isTopologyLocked ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleUnlockTopology}
+                      className="rounded-xl"
+                    >
+                      Unlock
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleLockTopology}
+                      className="rounded-xl"
+                    >
+                      Lock Topology
+                    </Button>
+                  )}
+                </div>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
+
+          {!layer ? (
+            !showShapeToolSettings ? (
+              <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+                <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Variant switching stays available here so you can move between size masters before editing.
+                </p>
+              </div>
+            ) : null
+          ) : (
             <>
           <Section title="Layer">
             <ReadOnlyField label="ID" value={layer.id} />
@@ -1070,6 +1445,28 @@ function isVisualNodeTypeActive(
     return current === 'static' || current === 'corner';
   }
   return current === option;
+}
+
+function formatVariantViewBox(variant: Variant) {
+  return variant.viewBox.join(' ');
+}
+
+function scaleVariantViewBox(
+  sourceViewBox: [number, number, number, number] | undefined,
+  size: number,
+): [number, number, number, number] {
+  if (!sourceViewBox) {
+    return [0, 0, size, size];
+  }
+
+  const sourceSize = Math.max(sourceViewBox[2], sourceViewBox[3], 1);
+  const scale = size / sourceSize;
+  return [
+    Number((sourceViewBox[0] * scale).toFixed(3)),
+    Number((sourceViewBox[1] * scale).toFixed(3)),
+    Number((sourceViewBox[2] * scale).toFixed(3)),
+    Number((sourceViewBox[3] * scale).toFixed(3)),
+  ];
 }
 
 function Section({

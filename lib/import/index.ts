@@ -1,6 +1,7 @@
 export { importSvg } from './import-svg';
 export {
   createImportedIcon,
+  importSvgContentIntoEditor,
   importSvgFile,
   importSvgFileIntoEditor,
   isSvgFile,

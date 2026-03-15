@@ -22,6 +22,16 @@ export async function importSvgFileIntoEditor(file: File): Promise<string> {
   return editorStore.getState().currentIconId ?? icon.id;
 }
 
+export async function importSvgContentIntoEditor(
+  svgString: string,
+  sourceName = 'Imported SVG',
+): Promise<string> {
+  const existingIconIds = Object.keys(editorStore.getState().project?.icons ?? {});
+  const icon = createImportedIcon(svgString, { existingIconIds, sourceName });
+  editorStore.getState().insertIcon(icon);
+  return editorStore.getState().currentIconId ?? icon.id;
+}
+
 export function createImportedIcon(
   svgString: string,
   options: ImportSvgIconOptions = {},

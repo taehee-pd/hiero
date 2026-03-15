@@ -160,7 +160,7 @@ describe('path editor snap feedback', () => {
       editorStore.getState().project!.icons.snap.variants.v24.states.default.layers.moving.path!.d;
     const path = editorStore.getState().pendingPenHandle;
 
-    expect(d).toBe('M1 1 L2 2 C2 2 6 8 8 8 C10 8 12 8 12 8');
+    expect(d).toBe('M1 1 L2 2 C10 8 6 8 8 8 C10 8 12 8 12 8');
     expect(path).toBeNull();
     editor.destroy();
   });

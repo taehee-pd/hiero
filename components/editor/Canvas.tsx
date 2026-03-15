@@ -9,6 +9,10 @@ import {
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
+import {
+  applyTransitionPreview,
+  clearTransitionPreview,
+} from '@/lib/editor-renderer-svg/preview-svg';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { Rulers } from './Rulers';
@@ -17,6 +21,7 @@ import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
+import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -73,8 +78,14 @@ export function Canvas() {
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
+  const renderingMode = useEditorStore((s) => s.renderingMode);
+  const transitionPreview = useEditorStore((s) => s.transitionPreview);
   const activeGuideSet = activeGuideMaster
-    ? { id: activeGuideMaster.id, items: activeGuideMaster.items }
+    ? {
+        id: activeGuideMaster.id,
+        items: activeGuideMaster.items,
+        viewBox: activeGuideMaster.viewBox,
+      }
     : undefined;
   const pointBBox = useEditorStore(() => {
     if (tool !== 'direct-select' || pointMarquee) return null;
@@ -188,7 +199,12 @@ export function Canvas() {
     const svg = svgRef.current;
     if (!svg) return;
 
-    if (!icon || !variant || !currentState) {
+    const renderedState =
+      transitionPreview?.baseStateId && variant?.states[transitionPreview.baseStateId]
+        ? variant.states[transitionPreview.baseStateId]
+        : currentState;
+
+    if (!icon || !variant || !renderedState) {
       svg.innerHTML = '';
       return;
     }
@@ -197,12 +213,44 @@ export function Canvas() {
       {
         icon,
         variantId: variant.id,
-        stateId: currentState.id,
+        stateId: renderedState.id,
+        renderingMode,
         tokens: project?.tokenSet?.colors,
       },
       svg,
     );
-  }, [icon, variant, currentState, project?.tokenSet?.colors]);
+  }, [
+    icon,
+    variant,
+    currentState,
+    renderingMode,
+    project?.tokenSet?.colors,
+    transitionPreview?.baseStateId,
+  ]);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !variant) return;
+
+    const renderedState =
+      transitionPreview?.baseStateId && variant.states[transitionPreview.baseStateId]
+        ? variant.states[transitionPreview.baseStateId]
+        : currentState;
+    if (!renderedState) return;
+
+    clearTransitionPreview(svg, renderedState);
+    if (!transitionPreview) return;
+
+    applyTransitionPreview(svg, {
+      baseState: renderedState,
+      targetState: variant.states[transitionPreview.targetStateId] ?? null,
+      progress: transitionPreview.progress,
+      resolvedTransition: transitionPreview.resolvedTransition,
+      interpolatedValues: transitionPreview.interpolatedValues,
+      renderingMode,
+      tokens: project?.tokenSet?.colors,
+    });
+  }, [currentState, project?.tokenSet?.colors, renderingMode, transitionPreview, variant]);
 
   // Draw editable handles on the active layer for direct-select and pen workflows.
   useEffect(() => {
@@ -312,13 +360,17 @@ export function Canvas() {
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
     const controlSize = CONTROL_HANDLE_SIZE_PX / zoom;
     const controlHitRadius = CONTROL_HIT_RADIUS_PX / zoom;
-    const selectedPointKey = selection.pointIds[0]?.split('@')[0] ?? null;
+    // Build a set of all selected point keys (strip @in/@out suffixes)
+    const selectedPointKeys = new Set(
+      selection.pointIds.map((id) => id.split('@')[0]).filter(Boolean),
+    );
 
     const editable = parseSvgPath(d);
     editable.subPaths.forEach((subPath, spIndex) => {
       subPath.points.forEach((point, pointIndex) => {
         const pointKey = `${spIndex}:${pointIndex}`;
-        const isActive = selectedPointKey === pointKey;
+        const isActive = selectedPointKeys.has(pointKey);
+        const showControls = isActive || selectedPointKeys.size === 0;
         const pendingHandleForPoint =
           tool === 'pen' &&
           pendingPenHandle?.layerId === activeLayerId &&
@@ -326,11 +378,15 @@ export function Canvas() {
             ? pendingPenHandle
             : null;
         const handleIn =
-          pendingHandleForPoint?.handleIn ??
-          getControlHandlePosition(subPath, pointIndex, 'in');
+          showControls
+            ? pendingHandleForPoint?.handleIn ??
+              getControlHandlePosition(subPath, pointIndex, 'in')
+            : null;
         const handleOut =
-          pendingHandleForPoint?.handleOut ??
-          getControlHandlePosition(subPath, pointIndex, 'out');
+          showControls
+            ? pendingHandleForPoint?.handleOut ??
+              getControlHandlePosition(subPath, pointIndex, 'out')
+            : null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;
@@ -351,20 +407,66 @@ export function Canvas() {
         hitTarget.style.cursor = 'default';
         svg.appendChild(hitTarget);
 
-        const handleOuter = document.createElementNS(SVG_NS, 'circle');
-        handleOuter.setAttribute('cx', `${anchorX}`);
-        handleOuter.setAttribute('cy', `${anchorY}`);
-        handleOuter.setAttribute('r', `${handleRadius}`);
-        handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
-        handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
-        handleOuter.setAttribute('stroke-width', `${handleStroke}`);
-        handleOuter.setAttribute('data-editor-handle', 'true');
-        handleOuter.setAttribute('data-handle-type', 'anchor');
-        handleOuter.setAttribute('data-layer-id', activeLayerId);
-        handleOuter.setAttribute('data-point-key', pointKey);
-        handleOuter.setAttribute('data-handle-role', 'visible');
-        handleOuter.style.pointerEvents = 'none';
-        svg.appendChild(handleOuter);
+        // Visual node type differentiation:
+        // - smooth/symmetric: circle (default)
+        // - corner: square (rotated 0°)
+        // - static: diamond (rotated 45°)
+        const nodeType = point.nodeType;
+        if (nodeType === 'corner') {
+          // Corner points: square
+          const rectSize = handleRadius * 2;
+          const handleRect = document.createElementNS(SVG_NS, 'rect');
+          handleRect.setAttribute('x', `${-rectSize / 2}`);
+          handleRect.setAttribute('y', `${-rectSize / 2}`);
+          handleRect.setAttribute('width', `${rectSize}`);
+          handleRect.setAttribute('height', `${rectSize}`);
+          handleRect.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleRect.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleRect.setAttribute('stroke-width', `${handleStroke}`);
+          handleRect.setAttribute('transform', `translate(${anchorX} ${anchorY})`);
+          handleRect.setAttribute('data-editor-handle', 'true');
+          handleRect.setAttribute('data-handle-type', 'anchor');
+          handleRect.setAttribute('data-layer-id', activeLayerId);
+          handleRect.setAttribute('data-point-key', pointKey);
+          handleRect.setAttribute('data-handle-role', 'visible');
+          handleRect.style.pointerEvents = 'none';
+          svg.appendChild(handleRect);
+        } else if (nodeType === 'static') {
+          // Static/line points: diamond (rotated square)
+          const rectSize = handleRadius * 1.8;
+          const handleDiamond = document.createElementNS(SVG_NS, 'rect');
+          handleDiamond.setAttribute('x', `${-rectSize / 2}`);
+          handleDiamond.setAttribute('y', `${-rectSize / 2}`);
+          handleDiamond.setAttribute('width', `${rectSize}`);
+          handleDiamond.setAttribute('height', `${rectSize}`);
+          handleDiamond.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleDiamond.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleDiamond.setAttribute('stroke-width', `${handleStroke}`);
+          handleDiamond.setAttribute('transform', `translate(${anchorX} ${anchorY}) rotate(45)`);
+          handleDiamond.setAttribute('data-editor-handle', 'true');
+          handleDiamond.setAttribute('data-handle-type', 'anchor');
+          handleDiamond.setAttribute('data-layer-id', activeLayerId);
+          handleDiamond.setAttribute('data-point-key', pointKey);
+          handleDiamond.setAttribute('data-handle-role', 'visible');
+          handleDiamond.style.pointerEvents = 'none';
+          svg.appendChild(handleDiamond);
+        } else {
+          // Smooth/symmetric: circle
+          const handleOuter = document.createElementNS(SVG_NS, 'circle');
+          handleOuter.setAttribute('cx', `${anchorX}`);
+          handleOuter.setAttribute('cy', `${anchorY}`);
+          handleOuter.setAttribute('r', `${handleRadius}`);
+          handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleOuter.setAttribute('stroke-width', `${handleStroke}`);
+          handleOuter.setAttribute('data-editor-handle', 'true');
+          handleOuter.setAttribute('data-handle-type', 'anchor');
+          handleOuter.setAttribute('data-layer-id', activeLayerId);
+          handleOuter.setAttribute('data-point-key', pointKey);
+          handleOuter.setAttribute('data-handle-role', 'visible');
+          handleOuter.style.pointerEvents = 'none';
+          svg.appendChild(handleOuter);
+        }
 
         renderControlHandle(
           svg,
@@ -604,6 +706,10 @@ export function Canvas() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        void showNativeContextMenu('canvas');
+      }}
     >
       <div
         className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
@@ -643,6 +749,7 @@ export function Canvas() {
         ref={svgRef}
         data-editor-canvas="true"
         className="pointer-events-auto cursor-crosshair"
+        viewBox={vb.join(' ')}
         style={{
           width: `${iconWidth * scale}px`,
           height: `${iconHeight * scale}px`,

@@ -9,14 +9,18 @@ import { LayerPanel } from './LayerPanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { Canvas } from './Canvas';
 import { InspectorPanel } from './InspectorPanel';
+import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
+import { clearCurrentProjectPath } from '@/lib/platform/bridge';
+import { parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 
@@ -123,7 +127,11 @@ function VariantPickerBar() {
 
   const handleCreateVariant = (size: number) => {
     if (!icon || !currentVariant || !Number.isFinite(size) || size <= 0) return;
-    addVariant(icon.id, size, scaleViewBox(currentVariant.viewBox, size));
+    addVariant(icon.id, {
+      size,
+      viewBox: scaleViewBox(currentVariant.viewBox, size),
+      sourceVariantId: currentVariant.id,
+    });
     setCreateOpen(false);
     setCustomSize(String(size));
   };
@@ -245,18 +253,27 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
+  const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const previousGuidesVisibleRef = useRef(guidesVisible);
+  const requestedIconId = initialIconId ?? searchIconId;
+
+  useEffect(() => {
+    setSearchIconId(
+      parseEditorSearchParam(new URLSearchParams(window.location.search).get('icon') ?? undefined),
+    );
+  }, []);
 
   useEffect(() => {
     const state = editorStore.getState();
     if (!state.project) {
+      clearCurrentProjectPath();
       state.loadProject(SAMPLE_PROJECT);
     }
 
-    if (initialIconId && state.project?.icons[initialIconId]) {
-      state.setCurrentIcon(initialIconId);
+    if (requestedIconId && state.project?.icons[requestedIconId]) {
+      state.setCurrentIcon(requestedIconId);
     }
-  }, [initialIconId]);
+  }, [requestedIconId]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleEditorKeyDown);
@@ -333,7 +350,22 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         </main>
 
         <aside className="studio-panel min-h-0 overflow-hidden rounded-xl">
-          <InspectorPanel />
+          <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col">
+            <TabsList className="mx-3 mt-3 grid grid-cols-2">
+              <TabsTrigger value="inspector">Inspector</TabsTrigger>
+              <TabsTrigger value="animation">Animation</TabsTrigger>
+            </TabsList>
+            <TabsContent value="inspector" className="min-h-0 flex-1 data-[state=active]:flex">
+              <div className="min-h-0 w-full">
+                <InspectorPanel />
+              </div>
+            </TabsContent>
+            <TabsContent value="animation" className="min-h-0 flex-1 data-[state=active]:flex">
+              <div className="min-h-0 w-full">
+                <AnimationStudioPanel />
+              </div>
+            </TabsContent>
+          </Tabs>
         </aside>
       </div>
     </div>

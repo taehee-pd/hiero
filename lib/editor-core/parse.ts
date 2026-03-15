@@ -114,11 +114,13 @@ export function parseSvgPath(d: string): EditablePath {
             currentSubPath?.points[currentSubPath.points.length - 1];
           if (prev) {
             prev.handleOut = { x: x1, y: y1 };
-            prev.nodeType = 'smooth';
+            // Infer node type based on existing handleIn/handleOut alignment
+            prev.nodeType = inferNodeType(prev.position, prev.handleIn, { x: x1, y: y1 });
           }
 
           const pt = makePoint(x, y, { type: 'cubic' });
           pt.handleIn = { x: x2, y: y2 };
+          // Node type will be set when we encounter the next curve segment
           pt.nodeType = 'smooth';
           currentSubPath?.points.push(pt);
 
@@ -199,6 +201,15 @@ export function parseSvgPath(d: string): EditablePath {
     }
   }
 
+  // Post-parse: infer accurate node types for points with both handles
+  for (const sp of path.subPaths) {
+    for (const pt of sp.points) {
+      if (pt.handleIn && pt.handleOut) {
+        pt.nodeType = inferNodeType(pt.position, pt.handleIn, pt.handleOut);
+      }
+    }
+  }
+
   return path;
 }
 
@@ -264,6 +275,44 @@ function makePoint(x: number, y: number, segment: PathSegment | null = null): Pa
     nodeType: 'static',
     segment,
   };
+}
+
+/**
+ * Infer the node type from handle positions.
+ * - If handles are collinear and equidistant → symmetric
+ * - If handles are collinear but different lengths → smooth
+ * - Otherwise → corner
+ */
+function inferNodeType(
+  position: { x: number; y: number },
+  handleIn: { x: number; y: number } | null,
+  handleOut: { x: number; y: number } | null,
+): PathPoint['nodeType'] {
+  if (!handleIn || !handleOut) return 'smooth';
+
+  const inDx = handleIn.x - position.x;
+  const inDy = handleIn.y - position.y;
+  const outDx = handleOut.x - position.x;
+  const outDy = handleOut.y - position.y;
+  const inLen = Math.hypot(inDx, inDy);
+  const outLen = Math.hypot(outDx, outDy);
+
+  if (inLen < 0.001 || outLen < 0.001) return 'smooth';
+
+  // Check collinearity: handles should point in opposite directions
+  const dot = (inDx / inLen) * (outDx / outLen) + (inDy / inLen) * (outDy / outLen);
+
+  if (dot > -0.99) {
+    // Not collinear → corner
+    return 'corner';
+  }
+
+  // Collinear. Check if lengths match → symmetric
+  if (Math.abs(inLen - outLen) < 0.01) {
+    return 'symmetric';
+  }
+
+  return 'smooth';
 }
 
 function inferSegment(prev: PathPoint, pt: PathPoint): PathSegment {

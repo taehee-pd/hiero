@@ -16,6 +16,7 @@ export {
   distributeSelectedPoints,
   getSelectedPointsBoundingBox,
   setSelectedPointType,
+  splitSegmentAtPoint,
 } from './vector-commands';
 export type { PathPoint, PathSegment, SubPath, EditablePath, NodeType } from './path-model';
 export { computeSnap, SnapEngine } from './snap-engine';

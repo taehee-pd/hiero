@@ -167,7 +167,7 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  if (nudgeSelectedPointByArrow(e.key)) {
+  if (nudgeSelectedPointByArrow(e.key, e.shiftKey)) {
     e.preventDefault();
     return;
   }

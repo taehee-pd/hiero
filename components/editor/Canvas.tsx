@@ -359,15 +359,20 @@ export function Canvas() {
     const hitRadius = HANDLE_HIT_RADIUS_PX / zoom;
     const controlSize = CONTROL_HANDLE_SIZE_PX / zoom;
     const controlHitRadius = CONTROL_HIT_RADIUS_PX / zoom;
-    const selectedPointKey = selection.pointIds[0]?.split('@')[0] ?? null;
+    // Build a set of all selected point keys (strip @in/@out suffixes)
+    const selectedPointKeys = new Set(
+      selection.pointIds.map((id) => id.split('@')[0]).filter(Boolean),
+    );
 
     const editable = parseSvgPath(d);
     editable.subPaths.forEach((subPath, spIndex) => {
       subPath.points.forEach((point, pointIndex) => {
         const pointKey = `${spIndex}:${pointIndex}`;
-        const isActive = selectedPointKey === pointKey;
-        const handleIn = getControlHandlePosition(subPath, pointIndex, 'in');
-        const handleOut = getControlHandlePosition(subPath, pointIndex, 'out');
+        const isActive = selectedPointKeys.has(pointKey);
+        // Show control handles for all selected points, not just the first one
+        const showControls = isActive || selectedPointKeys.size === 0;
+        const handleIn = showControls ? getControlHandlePosition(subPath, pointIndex, 'in') : null;
+        const handleOut = showControls ? getControlHandlePosition(subPath, pointIndex, 'out') : null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;
@@ -388,20 +393,66 @@ export function Canvas() {
         hitTarget.style.cursor = 'default';
         svg.appendChild(hitTarget);
 
-        const handleOuter = document.createElementNS(SVG_NS, 'circle');
-        handleOuter.setAttribute('cx', `${anchorX}`);
-        handleOuter.setAttribute('cy', `${anchorY}`);
-        handleOuter.setAttribute('r', `${handleRadius}`);
-        handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
-        handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
-        handleOuter.setAttribute('stroke-width', `${handleStroke}`);
-        handleOuter.setAttribute('data-editor-handle', 'true');
-        handleOuter.setAttribute('data-handle-type', 'anchor');
-        handleOuter.setAttribute('data-layer-id', activeLayerId);
-        handleOuter.setAttribute('data-point-key', pointKey);
-        handleOuter.setAttribute('data-handle-role', 'visible');
-        handleOuter.style.pointerEvents = 'none';
-        svg.appendChild(handleOuter);
+        // Visual node type differentiation:
+        // - smooth/symmetric: circle (default)
+        // - corner: square (rotated 0°)
+        // - static: diamond (rotated 45°)
+        const nodeType = point.nodeType;
+        if (nodeType === 'corner') {
+          // Corner points: square
+          const rectSize = handleRadius * 2;
+          const handleRect = document.createElementNS(SVG_NS, 'rect');
+          handleRect.setAttribute('x', `${-rectSize / 2}`);
+          handleRect.setAttribute('y', `${-rectSize / 2}`);
+          handleRect.setAttribute('width', `${rectSize}`);
+          handleRect.setAttribute('height', `${rectSize}`);
+          handleRect.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleRect.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleRect.setAttribute('stroke-width', `${handleStroke}`);
+          handleRect.setAttribute('transform', `translate(${anchorX} ${anchorY})`);
+          handleRect.setAttribute('data-editor-handle', 'true');
+          handleRect.setAttribute('data-handle-type', 'anchor');
+          handleRect.setAttribute('data-layer-id', activeLayerId);
+          handleRect.setAttribute('data-point-key', pointKey);
+          handleRect.setAttribute('data-handle-role', 'visible');
+          handleRect.style.pointerEvents = 'none';
+          svg.appendChild(handleRect);
+        } else if (nodeType === 'static') {
+          // Static/line points: diamond (rotated square)
+          const rectSize = handleRadius * 1.8;
+          const handleDiamond = document.createElementNS(SVG_NS, 'rect');
+          handleDiamond.setAttribute('x', `${-rectSize / 2}`);
+          handleDiamond.setAttribute('y', `${-rectSize / 2}`);
+          handleDiamond.setAttribute('width', `${rectSize}`);
+          handleDiamond.setAttribute('height', `${rectSize}`);
+          handleDiamond.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleDiamond.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleDiamond.setAttribute('stroke-width', `${handleStroke}`);
+          handleDiamond.setAttribute('transform', `translate(${anchorX} ${anchorY}) rotate(45)`);
+          handleDiamond.setAttribute('data-editor-handle', 'true');
+          handleDiamond.setAttribute('data-handle-type', 'anchor');
+          handleDiamond.setAttribute('data-layer-id', activeLayerId);
+          handleDiamond.setAttribute('data-point-key', pointKey);
+          handleDiamond.setAttribute('data-handle-role', 'visible');
+          handleDiamond.style.pointerEvents = 'none';
+          svg.appendChild(handleDiamond);
+        } else {
+          // Smooth/symmetric: circle
+          const handleOuter = document.createElementNS(SVG_NS, 'circle');
+          handleOuter.setAttribute('cx', `${anchorX}`);
+          handleOuter.setAttribute('cy', `${anchorY}`);
+          handleOuter.setAttribute('r', `${handleRadius}`);
+          handleOuter.setAttribute('fill', isActive ? ACTIVE_ANCHOR_FILL : ANCHOR_FILL);
+          handleOuter.setAttribute('stroke', isActive ? ACTIVE_ANCHOR_STROKE : ANCHOR_STROKE);
+          handleOuter.setAttribute('stroke-width', `${handleStroke}`);
+          handleOuter.setAttribute('data-editor-handle', 'true');
+          handleOuter.setAttribute('data-handle-type', 'anchor');
+          handleOuter.setAttribute('data-layer-id', activeLayerId);
+          handleOuter.setAttribute('data-point-key', pointKey);
+          handleOuter.setAttribute('data-handle-role', 'visible');
+          handleOuter.style.pointerEvents = 'none';
+          svg.appendChild(handleOuter);
+        }
 
         renderControlHandle(
           svg,

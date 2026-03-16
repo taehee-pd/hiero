@@ -1,8 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Check, FolderKanban, Grid3X3, Heart, Import, Plus, Search } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  FolderOpen,
+  Grid3X3,
+  Heart,
+  Import,
+  LayoutGrid,
+  Plus,
+  Search,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +29,8 @@ import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
 import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
+import { TitleTabBar } from '@/components/platform/TitleTabBar';
+import { isDesktop } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 
 export type ExplorerIcon = {
@@ -32,6 +45,10 @@ type ActiveFilter =
   | { kind: 'favorites' }
   | { kind: 'category'; id: string }
   | { kind: 'collection'; id: string };
+
+type ExplorerView =
+  | { level: 'workspace' }
+  | { level: 'project'; iconSetId: string };
 
 export function filterIconsByQuery(icons: ExplorerIcon[], query: string) {
   const normalized = query.trim().toLowerCase();
@@ -55,6 +72,8 @@ function categorizeIcons(icons: ExplorerIcon[]) {
   return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 }
 
+/* ─── Main Shell ─────────────────────────────────────────────── */
+
 export function ExplorerShell() {
   const workspace = useEditorStore((s) => s.workspace);
   const project = useEditorStore((s) => s.project);
@@ -71,11 +90,18 @@ export function ExplorerShell() {
     setActiveIconSet,
     openIconTab,
   } = useEditorActions();
+
+  const [view, setView] = useState<ExplorerView>({ level: 'workspace' });
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({ kind: 'all' });
+  const [desktop, setDesktop] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setDesktop(isDesktop());
+  }, []);
 
   useEffect(() => {
     const state = editorStore.getState();
@@ -84,6 +110,28 @@ export function ExplorerShell() {
       state.loadWorkspace(SAMPLE_WORKSPACE);
     }
   }, []);
+
+  const workspaceName = workspace?.meta.name ?? 'Icophone Workspace';
+
+  /* ─── Workspace-level data ────────────────── */
+
+  const iconSets = useMemo(
+    () =>
+      Object.entries(workspace?.iconSets ?? {})
+        .map(([id, iconSet]) => ({
+          id,
+          name: iconSet.meta.name,
+          iconCount: Object.keys(iconSet.icons).length,
+          syncLabel: iconSet.sync ? `${iconSet.sync.owner}/${iconSet.sync.repo}` : null,
+          updatedAt: iconSet.meta.updatedAt,
+          icons: Object.values(iconSet.icons).slice(0, 6),
+          tokenColors: iconSet.tokenSet?.colors,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [workspace?.iconSets],
+  );
+
+  /* ─── Project-level data ────────────────── */
 
   const icons = useMemo(
     () =>
@@ -100,20 +148,7 @@ export function ExplorerShell() {
   const groups = useMemo(() => categorizeIcons(filtered), [filtered]);
   const selectionSet = useMemo(() => new Set(selection), [selection]);
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
-  const workspaceName = workspace?.meta.name ?? 'Icophone Workspace';
   const projectName = project?.meta.name ?? 'Untitled Set';
-  const iconSets = useMemo(
-    () =>
-      Object.entries(workspace?.iconSets ?? {})
-        .map(([id, iconSet]) => ({
-          id,
-          name: iconSet.meta.name,
-          iconCount: Object.keys(iconSet.icons).length,
-          syncLabel: iconSet.sync ? `${iconSet.sync.owner}/${iconSet.sync.repo}` : null,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [workspace?.iconSets],
-  );
   const collections = useMemo(
     () => Object.values(project?.collections ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [project?.collections],
@@ -141,6 +176,28 @@ export function ExplorerShell() {
     setSelection([]);
     setActiveFilter({ kind: 'all' });
   }, [activeIconSetId]);
+
+  /* ─── Navigation ─────────────────────────── */
+
+  const enterProject = useCallback(
+    (iconSetId: string) => {
+      setActiveIconSet(iconSetId);
+      setView({ level: 'project', iconSetId });
+      setQuery('');
+      setSelection([]);
+      setActiveFilter({ kind: 'all' });
+    },
+    [setActiveIconSet],
+  );
+
+  const goBackToWorkspace = useCallback(() => {
+    setView({ level: 'workspace' });
+    setQuery('');
+    setSelection([]);
+    setActiveFilter({ kind: 'all' });
+  }, []);
+
+  /* ─── Actions ─────────────────────────────── */
 
   const exportIconsToZip = (iconIds: string[], suffix: string) => {
     if (!project || iconIds.length === 0) return;
@@ -237,6 +294,7 @@ export function ExplorerShell() {
 
   const handleIconSetContext = (event: React.MouseEvent, iconSetId: string) => {
     event.preventDefault();
+    event.stopPropagation();
     const action = prompt('Type "rename" or "delete"');
     if (action === 'rename') {
       const name = prompt('New project name');
@@ -257,283 +315,124 @@ export function ExplorerShell() {
     }
   };
 
+  /* ─── Workspace-level search (filter projects by name) ─── */
+
+  const filteredIconSets = useMemo(() => {
+    if (!query.trim()) return iconSets;
+    const q = query.trim().toLowerCase();
+    return iconSets.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.syncLabel?.toLowerCase().includes(q),
+    );
+  }, [iconSets, query]);
+
+  /* ─── Render ──────────────────────────────── */
+
   return (
-    <div className="swift-surface flex h-dvh flex-col overflow-hidden text-foreground">
-      <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="mr-auto min-w-0">
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              {workspaceName}
-            </p>
-            <p className="mt-1 truncate text-lg font-semibold tracking-tight text-foreground">{projectName}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <span>project</span>
-              <span className="text-border">/</span>
-              <span>{icons.length} icons</span>
-              {selection.length > 0 ? (
-                <>
-                  <span className="text-border">/</span>
-                  <span>{selection.length} selected</span>
-                </>
-              ) : null}
-            </div>
-          </div>
-          <div className="relative min-w-[16rem] flex-1 lg:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search icons"
-              className="h-9 rounded-xl border-border/80 bg-background/80 pl-10 shadow-none"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => importRef.current?.click()}>
-              <Import className="size-4" />
-              Import SVG
+    <div className="swift-surface flex h-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+      {desktop && <TitleTabBar onNavigateExplorer={goBackToWorkspace} />}
+      {/* ── Top bar ─────────────────────────────── */}
+      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-border/60 px-4">
+        {/* Breadcrumb */}
+        <nav className="flex min-w-0 items-center gap-1 text-sm">
+          <button
+            type="button"
+            onClick={goBackToWorkspace}
+            className={cn(
+              'truncate rounded-md px-1.5 py-0.5 font-medium transition',
+              view.level === 'workspace'
+                ? 'text-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+            )}
+          >
+            {workspaceName}
+          </button>
+          {view.level === 'project' && (
+            <>
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+              <span className="truncate font-medium text-foreground">{projectName}</span>
+            </>
+          )}
+        </nav>
+
+        <div className="flex-1" />
+
+        {/* Search */}
+        <div className="relative w-56">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={view.level === 'workspace' ? 'Search projects\u2026' : 'Search icons\u2026'}
+            className="h-7 rounded-lg border-border/60 bg-background/60 pl-8 text-xs shadow-none"
+          />
+        </div>
+
+        {/* Actions */}
+        {view.level === 'workspace' && (
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={createIconSet}>
+            <Plus className="size-3.5" />
+            New project
+          </Button>
+        )}
+        {view.level === 'project' && (
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={() => importRef.current?.click()}>
+              <Import className="size-3.5" />
+              Import
             </Button>
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
-              Export Set
+            <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
+              Export
             </Button>
             <GitHubSyncPanel
               iconSetId={activeIconSetId}
-              triggerLabel="Sync Set"
-              triggerVariant="outline"
+              triggerLabel="Sync"
+              triggerVariant="ghost"
               triggerSize="sm"
-              className="rounded-xl"
+              className="h-7 rounded-lg px-2.5 text-xs"
             />
-            {selection.length > 0 ? (
-              <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExportSelected}>
-                Export Selected
+            {selection.length > 0 && (
+              <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportSelected}>
+                Export {selection.length}
               </Button>
-            ) : null}
-            <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-              {visibleIcons.length} visible
-            </Badge>
+            )}
           </div>
-        </div>
+        )}
       </header>
 
-      <main className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="studio-panel min-h-0 overflow-hidden rounded-xl p-3">
-          <div className="space-y-5">
-            <section>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</h3>
-                <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={createIconSet}>
-                  <Plus className="mr-1 size-3.5" />
-                  New
-                </Button>
-              </div>
-              <div className="grid gap-1.5">
-                {iconSets.map((iconSet) => (
-                  <button
-                    key={iconSet.id}
-                    type="button"
-                    data-active={activeIconSetId === iconSet.id ? 'true' : 'false'}
-                    onClick={() => setActiveIconSet(iconSet.id)}
-                    onContextMenu={(event) => handleIconSetContext(event, iconSet.id)}
-                    className="workspace-nav-button min-h-12 rounded-xl px-3 py-2 text-left"
-                  >
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="min-w-0">
-                        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <FolderKanban className="size-3.5 text-muted-foreground" />
-                          <span className="truncate">{iconSet.name}</span>
-                        </span>
-                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                          {iconSet.syncLabel ?? 'No GitHub sync'}
-                        </span>
-                      </span>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                        {iconSet.iconCount}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filters</h3>
-              <div className="grid gap-1.5">
-                <CategoryButton label="All" count={filtered.length} active={activeFilter.kind === 'all'} onClick={() => setActiveFilter({ kind: 'all' })} />
-                <CategoryButton label="Favorites" count={filtered.filter((icon) => favoritesSet.has(icon.id)).length} active={activeFilter.kind === 'favorites'} onClick={() => setActiveFilter({ kind: 'favorites' })} />
-              </div>
-            </section>
-
-            <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Categories</h3>
-              <div className="grid gap-1.5">
-                {groups.map(([category, groupIcons]) => (
-                  <CategoryButton
-                    key={category}
-                    label={formatCategoryLabel(category)}
-                    count={groupIcons.length}
-                    active={activeFilter.kind === 'category' && activeFilter.id === category}
-                    onClick={() => setActiveFilter({ kind: 'category', id: category })}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Collections</h3>
-                <Button size="sm" variant="outline" className="h-7 rounded-lg px-2 text-xs" onClick={createCollection}>
-                  + New Collection
-                </Button>
-              </div>
-              <div className="grid gap-1.5">
-                {collections.length === 0 ? <p className="text-xs text-muted-foreground">No collections yet.</p> : null}
-                {collections.map((collection) => (
-                  <CategoryButton
-                    key={collection.id}
-                    label={collection.name}
-                    count={collection.iconIds.length}
-                    active={activeFilter.kind === 'collection' && activeFilter.id === collection.id}
-                    onClick={() => setActiveFilter({ kind: 'collection', id: collection.id })}
-                    onContextMenu={(event) => handleCollectionContext(event, collection.id)}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <section className="space-y-2 rounded-xl border border-border/80 bg-background/60 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Batch assign category</p>
-              <Input value={categoryInput} onChange={(e) => setCategoryInput(e.target.value)} placeholder="e.g. social" />
-              <Button size="sm" variant="outline" className="w-full rounded-xl" onClick={assignCategory} disabled={!categoryInput.trim() || selection.length === 0}>
-                Assign to selected
-              </Button>
-            </section>
-          </div>
-        </aside>
-
-        <section className="studio-panel min-h-0 overflow-hidden rounded-xl">
-          <div className="workspace-panel-header flex items-center justify-between gap-3 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Icons</p>
-              <p className="text-xs text-muted-foreground">
-                {visibleIcons.length} shown
-                {project?.sync ? ` / ${project.sync.owner}/${project.sync.repo}` : ' / local only'}
-              </p>
-            </div>
-            {selection.length > 0 ? (
-              <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-                {selection.length} selected
-              </Badge>
-            ) : null}
-          </div>
-
-          <ScrollArea className="workspace-scroll h-full">
-            <div className="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {visibleIcons.length === 0 ? (
-                <div className="workspace-empty-state col-span-full rounded-md px-4 py-10 text-center text-sm text-muted-foreground">
-                  No results
-                </div>
-              ) : null}
-              {visibleIcons.map((icon) => {
-                const iconDef = project?.icons[icon.id];
-                const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
-                const svg =
-                  iconDef && firstVariantId
-                    ? exportSvgString(
-                        iconDef,
-                        firstVariantId,
-                        iconDef.variants[firstVariantId]?.defaultState,
-                        project?.tokenSet?.colors,
-                      )
-                    : '';
-                const active = selectionSet.has(icon.id);
-                const favorite = favoritesSet.has(icon.id);
-
-                return (
-                  <article
-                    key={icon.id}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      void showNativeContextMenu('explorerIcon', {
-                        iconId: icon.id,
-                        favorite,
-                      });
-                    }}
-                    className={cn(
-                      'studio-card group rounded-2xl bg-card p-3 transition-all duration-150',
-                      active && 'border-primary/35 bg-primary/[0.05] shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_26%,transparent)]',
-                    )}
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <Badge
-                        variant="outline"
-                        className="max-w-[10rem] truncate rounded-full border-border/80 bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground"
-                      >
-                        {formatCategoryLabel(icon.category || 'uncategorized')}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => toggleFavorite(icon.id)}
-                          aria-label={favorite ? `Unfavorite ${icon.name}` : `Favorite ${icon.name}`}
-                          className={cn('rounded-xl border', favorite ? 'border-rose-300 bg-rose-100/70 text-rose-600 dark:border-rose-500/60 dark:bg-rose-500/10 dark:text-rose-300' : 'border-border/80 bg-background text-muted-foreground')}
-                        >
-                          <Heart className={cn('size-3.5', favorite && 'fill-current')} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => toggleSelection(icon.id)}
-                          aria-pressed={active}
-                          aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
-                          className={cn(
-                            'rounded-xl border transition',
-                            active
-                              ? 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/10'
-                              : 'border-border/80 bg-background text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground',
-                          )}
-                        >
-                          <Check className="size-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <Link
-                      href={buildEditorRoute(icon.id, activeIconSetId)}
-                      onClick={() => {
-                        editorStore.getState().setCurrentIcon(icon.id);
-                        if (activeIconSetId) {
-                          openIconTab(activeIconSetId, icon.id);
-                        }
-                      }}
-                      className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                    >
-                      <div className="studio-preview mb-3 flex aspect-square items-center justify-center rounded-[1.25rem] border border-border/80 bg-muted/30 transition group-hover:border-border group-hover:bg-muted/50">
-                        {svg ? (
-                          <div className="h-14 w-14 text-slate-900 transition-transform duration-150 group-hover:scale-[1.02] dark:text-slate-100" dangerouslySetInnerHTML={{ __html: svg }} />
-                        ) : (
-                          <Grid3X3 className="size-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{icon.name}</p>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{icon.id}</p>
-                        </div>
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition group-hover:text-foreground">
-                          edit
-                          <ArrowUpRight className="size-4 shrink-0" />
-                        </span>
-                      </div>
-                    </Link>
-                  </article>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </section>
-      </main>
+      {/* ── Content ─────────────────────────────── */}
+      {view.level === 'workspace' ? (
+        <WorkspaceView
+          iconSets={filteredIconSets}
+          workspace={workspace}
+          onEnterProject={enterProject}
+          onContextMenu={handleIconSetContext}
+        />
+      ) : (
+        <ProjectDetailView
+          project={project}
+          activeIconSetId={activeIconSetId}
+          visibleIcons={visibleIcons}
+          groups={groups}
+          filtered={filtered}
+          collections={collections}
+          selectionSet={selectionSet}
+          favoritesSet={favoritesSet}
+          activeFilter={activeFilter}
+          selection={selection}
+          categoryInput={categoryInput}
+          query={query}
+          onSetActiveFilter={setActiveFilter}
+          onToggleSelection={toggleSelection}
+          onToggleFavorite={toggleFavorite}
+          onSetCategoryInput={setCategoryInput}
+          onAssignCategory={assignCategory}
+          onCreateCollection={createCollection}
+          onCollectionContext={handleCollectionContext}
+          onOpenIconTab={openIconTab}
+        />
+      )}
 
       <input
         ref={importRef}
@@ -548,7 +447,414 @@ export function ExplorerShell() {
   );
 }
 
-function CategoryButton({
+/* ═══════════════════════════════════════════════════════════════
+   Workspace View — grid of project cards with icon thumbnails
+   ═══════════════════════════════════════════════════════════════ */
+
+type WorkspaceIconSet = {
+  id: string;
+  name: string;
+  iconCount: number;
+  syncLabel: string | null;
+  updatedAt: string;
+  icons: Array<{ id: string; name: string; variants: Record<string, any>; [key: string]: any }>;
+  tokenColors?: Record<string, string>;
+};
+
+function WorkspaceView({
+  iconSets,
+  workspace,
+  onEnterProject,
+  onContextMenu,
+}: {
+  iconSets: WorkspaceIconSet[];
+  workspace: any;
+  onEnterProject: (id: string) => void;
+  onContextMenu: (e: React.MouseEvent, id: string) => void;
+}) {
+  return (
+    <ScrollArea className="workspace-scroll flex-1">
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        {/* Section heading */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <LayoutGrid className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {iconSets.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Project grid */}
+        {iconSets.length === 0 ? (
+          <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
+            <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No projects yet</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">Create a new project to get started</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {iconSets.map((iconSet) => (
+              <ProjectCard
+                key={iconSet.id}
+                iconSet={iconSet}
+                onDoubleClick={() => onEnterProject(iconSet.id)}
+                onContextMenu={(e) => onContextMenu(e, iconSet.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
+
+/* ─── Project Card ─────────────────────────────────────────── */
+
+function ProjectCard({
+  iconSet,
+  onDoubleClick,
+  onContextMenu,
+}: {
+  iconSet: WorkspaceIconSet;
+  onDoubleClick: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+}) {
+  const thumbnailIcons = iconSet.icons.slice(0, 6);
+
+  return (
+    <button
+      type="button"
+      onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
+      className="studio-card group flex flex-col rounded-xl text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+    >
+      {/* Thumbnail area */}
+      <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/40">
+        {thumbnailIcons.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-center gap-4 p-5">
+            {thumbnailIcons.map((icon) => {
+              const firstVariantId = Object.keys(icon.variants)[0];
+              const variant = firstVariantId ? icon.variants[firstVariantId] : undefined;
+              const stateId = variant?.defaultState;
+              const svg =
+                firstVariantId && stateId
+                  ? exportSvgString(icon as any, firstVariantId, stateId, iconSet.tokenColors)
+                  : '';
+              return (
+                <div
+                  key={icon.id}
+                  className="flex size-10 shrink-0 items-center justify-center overflow-hidden text-foreground/80 transition-transform duration-100 group-hover:scale-105"
+                >
+                  {svg ? (
+                    <div className="size-8 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+                  ) : (
+                    <Grid3X3 className="size-5 text-muted-foreground/40" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <FolderOpen className="size-6 text-muted-foreground/30" />
+            <span className="text-[10px] text-muted-foreground/50">Empty</span>
+          </div>
+        )}
+      </div>
+
+      {/* Info area */}
+      <div className="flex flex-col gap-0.5 px-3.5 py-3">
+        <span className="truncate text-sm font-medium text-foreground">{iconSet.name}</span>
+        <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span>{iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}</span>
+          {iconSet.syncLabel && (
+            <>
+              <span className="text-border">·</span>
+              <span className="truncate">{iconSet.syncLabel}</span>
+            </>
+          )}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Project Detail View — icons within a project, with sidebar
+   ═══════════════════════════════════════════════════════════════ */
+
+function ProjectDetailView({
+  project,
+  activeIconSetId,
+  visibleIcons,
+  groups,
+  filtered,
+  collections,
+  selectionSet,
+  favoritesSet,
+  activeFilter,
+  selection,
+  categoryInput,
+  query,
+  onSetActiveFilter,
+  onToggleSelection,
+  onToggleFavorite,
+  onSetCategoryInput,
+  onAssignCategory,
+  onCreateCollection,
+  onCollectionContext,
+  onOpenIconTab,
+}: {
+  project: any;
+  activeIconSetId: string | null;
+  visibleIcons: ExplorerIcon[];
+  groups: [string, ExplorerIcon[]][];
+  filtered: ExplorerIcon[];
+  collections: any[];
+  selectionSet: Set<string>;
+  favoritesSet: Set<string>;
+  activeFilter: ActiveFilter;
+  selection: string[];
+  categoryInput: string;
+  query: string;
+  onSetActiveFilter: (f: ActiveFilter) => void;
+  onToggleSelection: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
+  onSetCategoryInput: (v: string) => void;
+  onAssignCategory: () => void;
+  onCreateCollection: () => void;
+  onCollectionContext: (e: React.MouseEvent, id: string) => void;
+  onOpenIconTab: (iconSetId: string, iconId: string) => void;
+}) {
+  return (
+    <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)]">
+      {/* ── Sidebar ────────────────── */}
+      <aside className="hidden min-h-0 overflow-y-auto border-r border-border/60 lg:block">
+        <div className="space-y-5 px-3 py-4">
+          {/* Filters */}
+          <section>
+            <h3 className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Filter
+            </h3>
+            <div className="grid gap-0.5">
+              <SidebarButton
+                label="All"
+                count={filtered.length}
+                active={activeFilter.kind === 'all'}
+                onClick={() => onSetActiveFilter({ kind: 'all' })}
+              />
+              <SidebarButton
+                label="Favorites"
+                count={filtered.filter((icon) => favoritesSet.has(icon.id)).length}
+                active={activeFilter.kind === 'favorites'}
+                onClick={() => onSetActiveFilter({ kind: 'favorites' })}
+              />
+            </div>
+          </section>
+
+          {/* Categories */}
+          {groups.length > 0 && (
+            <section>
+              <h3 className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Categories
+              </h3>
+              <div className="grid gap-0.5">
+                {groups.map(([category, groupIcons]) => (
+                  <SidebarButton
+                    key={category}
+                    label={formatCategoryLabel(category)}
+                    count={groupIcons.length}
+                    active={activeFilter.kind === 'category' && activeFilter.id === category}
+                    onClick={() => onSetActiveFilter({ kind: 'category', id: category })}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Collections */}
+          <section>
+            <div className="mb-1.5 flex items-center justify-between px-1">
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Collections
+              </h3>
+              <button
+                type="button"
+                onClick={onCreateCollection}
+                className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="size-3" />
+              </button>
+            </div>
+            <div className="grid gap-0.5">
+              {collections.length === 0 && (
+                <p className="px-1 text-[10px] text-muted-foreground/60">None</p>
+              )}
+              {collections.map((collection) => (
+                <SidebarButton
+                  key={collection.id}
+                  label={collection.name}
+                  count={collection.iconIds.length}
+                  active={activeFilter.kind === 'collection' && activeFilter.id === collection.id}
+                  onClick={() => onSetActiveFilter({ kind: 'collection', id: collection.id })}
+                  onContextMenu={(event) => onCollectionContext(event, collection.id)}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* Batch assign */}
+          {selection.length > 0 && (
+            <section className="space-y-1.5 rounded-lg border border-border/60 bg-background/60 p-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Assign category
+              </p>
+              <Input
+                value={categoryInput}
+                onChange={(e) => onSetCategoryInput(e.target.value)}
+                placeholder="e.g. social"
+                className="h-7 text-xs"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 w-full rounded-lg text-xs"
+                onClick={onAssignCategory}
+                disabled={!categoryInput.trim()}
+              >
+                Assign to {selection.length}
+              </Button>
+            </section>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Icon grid ───────────────── */}
+      <section className="min-h-0 overflow-hidden">
+        {/* Subheader */}
+        <div className="flex h-9 items-center justify-between border-b border-border/40 px-4">
+          <span className="text-xs text-muted-foreground">
+            {visibleIcons.length} icon{visibleIcons.length !== 1 ? 's' : ''}
+            {selection.length > 0 && (
+              <span className="ml-2 text-foreground">{selection.length} selected</span>
+            )}
+          </span>
+          {project?.sync && (
+            <span className="text-[10px] text-muted-foreground/70">
+              {project.sync.owner}/{project.sync.repo}
+            </span>
+          )}
+        </div>
+
+        <ScrollArea className="workspace-scroll h-full">
+          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+            {visibleIcons.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                <Grid3X3 className="mb-2 size-6 text-muted-foreground/30" />
+                <p className="text-xs text-muted-foreground">
+                  {query ? 'No matching icons' : 'No icons in this project'}
+                </p>
+              </div>
+            )}
+            {visibleIcons.map((icon) => {
+              const iconDef = project?.icons[icon.id];
+              const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
+              const svg =
+                iconDef && firstVariantId
+                  ? exportSvgString(
+                      iconDef,
+                      firstVariantId,
+                      iconDef.variants[firstVariantId]?.defaultState,
+                      project?.tokenSet?.colors,
+                    )
+                  : '';
+              const active = selectionSet.has(icon.id);
+              const favorite = favoritesSet.has(icon.id);
+
+              return (
+                <article
+                  key={icon.id}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    void showNativeContextMenu('explorerIcon', {
+                      iconId: icon.id,
+                      favorite,
+                    });
+                  }}
+                  className={cn(
+                    'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100',
+                    active
+                      ? 'border-primary/30 bg-primary/[0.06]'
+                      : 'hover:bg-accent/60',
+                  )}
+                >
+                  {/* Hover actions */}
+                  <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => onToggleFavorite(icon.id)}
+                      aria-label={favorite ? `Unfavorite ${icon.name}` : `Favorite ${icon.name}`}
+                      className={cn(
+                        'flex size-5 items-center justify-center rounded-md transition',
+                        favorite
+                          ? 'bg-rose-500/10 text-rose-500'
+                          : 'bg-background/80 text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <Heart className={cn('size-3', favorite && 'fill-current')} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onToggleSelection(icon.id)}
+                      aria-pressed={active}
+                      aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
+                      className={cn(
+                        'flex size-5 items-center justify-center rounded-md transition',
+                        active
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-background/80 text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <Check className="size-3" />
+                    </button>
+                  </div>
+
+                  <Link
+                    href={buildEditorRoute(icon.id, activeIconSetId)}
+                    onClick={() => {
+                      editorStore.getState().setCurrentIcon(icon.id);
+                      if (activeIconSetId) {
+                        onOpenIconTab(activeIconSetId, icon.id);
+                      }
+                    }}
+                    className="flex w-full flex-col items-center gap-2 focus-visible:outline-none"
+                  >
+                    <div className="flex aspect-square w-full items-center justify-center rounded-md">
+                      {svg ? (
+                        <div className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]" dangerouslySetInnerHTML={{ __html: svg }} />
+                      ) : (
+                        <Grid3X3 className="size-4 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="w-full text-center">
+                      <p className="truncate text-[11px] font-medium text-foreground">{icon.name}</p>
+                    </div>
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      </section>
+    </main>
+  );
+}
+
+/* ─── Sidebar Button ───────────────────────────────────────── */
+
+function SidebarButton({
   label,
   count,
   active,
@@ -564,16 +870,22 @@ function CategoryButton({
   return (
     <button
       type="button"
-      data-active={active ? 'true' : 'false'}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      className="workspace-nav-button h-10 rounded-xl px-3 py-2"
+      className={cn(
+        'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+        active
+          ? 'bg-accent text-foreground'
+          : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+      )}
     >
-      <span className="truncate text-sm font-medium text-foreground">{label}</span>
-      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{count}</span>
+      <span className="truncate">{label}</span>
+      <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
     </button>
   );
 }
+
+/* ─── Utilities ────────────────────────────────────────────── */
 
 function formatCategoryLabel(value: string) {
   if (value === 'all') return 'All';

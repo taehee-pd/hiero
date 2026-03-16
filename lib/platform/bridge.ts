@@ -30,6 +30,7 @@ export type DesktopAction =
   | 'view.fitCanvas'
   | 'view.toggleGrid'
   | 'view.toggleGuides'
+  | 'view.reload'
   | 'tool.select'
   | 'tool.directSelect'
   | 'tool.pen'

@@ -188,10 +188,10 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
 const sendToWebview = rpc.send as (channel: string, payload?: unknown) => void;
 
 const mainWindow = new BrowserWindow({
-  title: 'Icophone',
+  title: '',
   frame: DEFAULT_WINDOW_FRAME,
   renderer: 'native',
-  titleBarStyle: 'default',
+  titleBarStyle: 'hiddenInset',
   url: isDev ? 'http://localhost:3000' : 'views://mainview/index.html',
   rpc,
 });
@@ -272,6 +272,8 @@ function setApplicationMenu() {
         { label: 'Zoom In', action: 'view.zoomIn', accelerator: 'CmdOrCtrl+=' },
         { label: 'Zoom Out', action: 'view.zoomOut', accelerator: 'CmdOrCtrl+-' },
         { label: 'Fit to Canvas', action: 'view.fitCanvas', accelerator: 'CmdOrCtrl+0' },
+        { type: 'separator' },
+        { label: 'Reload', action: 'view.reload', accelerator: 'CmdOrCtrl+R' },
         { type: 'separator' },
         { label: 'Toggle Grid', action: 'view.toggleGrid', accelerator: 'G' },
         { label: 'Toggle Guides', action: 'view.toggleGuides', accelerator: ';' },
@@ -459,9 +461,10 @@ async function requestQuitWithGuard(reason: 'quit' | 'windowClose') {
 }
 
 function updateWindowTitle() {
-  const name = windowState.projectName.trim() || 'Icophone';
-  const title = windowState.isDirty ? `${name} (unsaved) — Icophone` : `${name} — Icophone`;
-  mainWindow.setTitle(title);
+  // With hiddenInset title bar, keep the title empty so native title text
+  // doesn't overlap the custom TitleTabBar. The app name ("Icophone") shows
+  // in the Dock and Cmd+Tab via the Electrobun app config.
+  mainWindow.setTitle('');
 }
 
 function revealMainWindow() {

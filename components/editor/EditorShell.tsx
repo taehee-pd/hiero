@@ -23,6 +23,8 @@ import { clearCurrentProjectPath } from '@/lib/platform/bridge';
 import { parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { useEditorStore } from '@/lib/editor-store/hooks';
+import { TitleTabBar } from '@/components/platform/TitleTabBar';
+import { isDesktop } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 
 function CurrentDocumentPanel() {
@@ -302,10 +304,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
+  const [desktop, setDesktop] = useState(false);
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
 
   useEffect(() => {
+    setDesktop(isDesktop());
     const search = new URLSearchParams(window.location.search);
     setSearchIconId(parseEditorSearchParam(search.get('icon') ?? undefined));
     setSearchIconSetId(parseEditorSearchParam(search.get('set') ?? undefined));
@@ -380,9 +384,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, [guidesVisible, leftPanelMode]);
 
   return (
-    <div className="swift-surface flex h-dvh w-full flex-col overflow-hidden text-foreground">
+    <div className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+      {desktop && <TitleTabBar />}
       <Toolbar />
-      <EditorDocumentTabs />
       <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
         <aside className="flex min-h-0 flex-col gap-3">
           <section className="studio-panel overflow-hidden rounded-xl">

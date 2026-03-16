@@ -270,6 +270,9 @@ async function handleDesktopCommand(
     case 'view.toggleGuides':
       editorStore.getState().toggleGuidesVisible();
       return;
+    case 'view.reload':
+      window.location.reload();
+      return;
     case 'tool.select':
       editorStore.getState().setTool('select');
       return;

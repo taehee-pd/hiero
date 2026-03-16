@@ -108,4 +108,54 @@ describe('icons production package pipeline', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test('fails validation when manifest iconCount is inconsistent', async () => {
+    const { root, outDir } = await createTempOutDir();
+
+    try {
+      await buildIconsPackage({
+        projectPath: FIXTURE_PROJECT,
+        outDir,
+        packageName: '@icophone/icons',
+        packageVersion: '4.0.0',
+      });
+
+      const manifestPath = path.join(outDir, 'icons.manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        package: { iconCount: number };
+      };
+      manifest.package.iconCount = manifest.package.iconCount + 1;
+      await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+      await expect(validateBuiltIconsPackage(outDir)).rejects.toThrow('iconCount');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('fails validation when collection references unknown icon', async () => {
+    const { root, outDir } = await createTempOutDir();
+
+    try {
+      await buildIconsPackage({
+        projectPath: FIXTURE_PROJECT,
+        outDir,
+        packageName: '@icophone/icons',
+        packageVersion: '5.0.0',
+      });
+
+      const manifestPath = path.join(outDir, 'icons.manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        collections: Record<string, { name: string; iconIds: string[] }>;
+      };
+      manifest.collections = {
+        invalid: { name: 'Invalid', iconIds: ['missing-icon'] },
+      };
+      await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+      await expect(validateBuiltIconsPackage(outDir)).rejects.toThrow('references unknown icon');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

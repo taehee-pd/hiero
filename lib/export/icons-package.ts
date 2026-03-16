@@ -72,9 +72,16 @@ export async function validateBuiltIconsPackage(
 ): Promise<void> {
   const manifest = await loadManifest(outDir);
   const generatedExports = await loadGeneratedExports(outDir);
+  const iconCountFromMap = Object.keys(manifest.icons).length;
 
-  if (manifest.package.iconCount <= 0 || Object.keys(manifest.icons).length === 0) {
+  if (manifest.package.iconCount <= 0 || iconCountFromMap === 0) {
     throw new Error('Validation failed: icon package is empty (manifest has no icons).');
+  }
+
+  if (manifest.package.iconCount !== iconCountFromMap) {
+    throw new Error(
+      `Validation failed: manifest iconCount (${manifest.package.iconCount}) does not match icon entries (${iconCountFromMap}).`,
+    );
   }
 
   if (expected?.packageName && manifest.package.name !== expected.packageName) {
@@ -106,10 +113,11 @@ export async function validateBuiltIconsPackage(
   }
 
   validateExportsShape(generatedExports);
+  validateCollections(manifest, generatedExports);
   validatePerSizeEntries(manifest, generatedExports);
 
   for (const [key, relativeTarget] of Object.entries(generatedExports)) {
-    const targetPath = path.join(outDir, relativeTarget.replace(/^\.\//, ''));
+    const targetPath = resolveExportTargetPath(outDir, relativeTarget, key);
     const targetExists = await pathExists(targetPath);
     if (!targetExists) {
       throw new Error(`Validation failed: export target for "${key}" is missing: ${relativeTarget}`);
@@ -119,7 +127,7 @@ export async function validateBuiltIconsPackage(
   const packageJsonPath = path.join(outDir, 'package.json');
   if (await pathExists(packageJsonPath)) {
     const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as Record<string, unknown>;
-    assertPackageJsonConsistency(packageJson, generatedExports);
+    assertPackageJsonConsistency(packageJson, generatedExports, expected);
   }
 }
 
@@ -255,9 +263,50 @@ function validatePerSizeEntries(manifest: PackageManifest, exportsMap: PackageEx
   }
 }
 
-function assertPackageJsonConsistency(packageJson: Record<string, unknown>, exportsMap: PackageExports): void {
+function validateCollections(manifest: PackageManifest, exportsMap: PackageExports): void {
+  for (const [collectionId, collection] of Object.entries(manifest.collections)) {
+    for (const iconId of collection.iconIds) {
+      if (!manifest.icons[iconId]) {
+        throw new Error(
+          `Validation failed: collection "${collectionId}" references unknown icon "${iconId}".`,
+        );
+      }
+    }
+
+    const collectionExportKey = `./collections/${collectionId}`;
+    if (!exportsMap[collectionExportKey]) {
+      throw new Error(`Validation failed: missing collection export key ${collectionExportKey}.`);
+    }
+  }
+}
+
+function assertPackageJsonConsistency(
+  packageJson: Record<string, unknown>,
+  exportsMap: PackageExports,
+  expected?: { packageName?: string; packageVersion?: string },
+): void {
   if (typeof packageJson.name !== 'string' || typeof packageJson.version !== 'string') {
     throw new Error('Validation failed: generated package.json must include string name/version.');
+  }
+
+  if (expected?.packageName && packageJson.name !== expected.packageName) {
+    throw new Error(
+      `Validation failed: generated package.json name mismatch (expected "${expected.packageName}", got "${packageJson.name}").`,
+    );
+  }
+
+  if (expected?.packageVersion && packageJson.version !== expected.packageVersion) {
+    throw new Error(
+      `Validation failed: generated package.json version mismatch (expected "${expected.packageVersion}", got "${packageJson.version}").`,
+    );
+  }
+
+  if (packageJson.type !== 'module') {
+    throw new Error('Validation failed: generated package.json must set "type": "module".');
+  }
+
+  if (packageJson.sideEffects !== false) {
+    throw new Error('Validation failed: generated package.json must set "sideEffects": false.');
   }
 
   const pkgExports = packageJson.exports;
@@ -270,6 +319,24 @@ function assertPackageJsonConsistency(packageJson: Record<string, unknown>, expo
       throw new Error(`Validation failed: package.json exports mismatch for key "${key}".`);
     }
   }
+
+  const manifestExport = (pkgExports as Record<string, unknown>)['./icons.manifest.json'];
+  if (manifestExport !== './icons.manifest.json') {
+    throw new Error('Validation failed: package.json must export ./icons.manifest.json.');
+  }
+}
+
+function resolveExportTargetPath(outDir: string, relativeTarget: string, exportKey: string): string {
+  const targetPath = path.resolve(outDir, relativeTarget.replace(/^\.\//, ''));
+  const normalizedOutDir = path.resolve(outDir);
+
+  if (!targetPath.startsWith(`${normalizedOutDir}${path.sep}`) && targetPath !== normalizedOutDir) {
+    throw new Error(
+      `Validation failed: export target for "${exportKey}" points outside output dir: ${relativeTarget}`,
+    );
+  }
+
+  return targetPath;
 }
 
 async function getCompiledIconSchemaVersions(

@@ -165,6 +165,8 @@
 
   html {
     @apply bg-background;
+    height: 100%;
+    overflow: hidden;
   }
 
   body {
@@ -174,7 +176,8 @@
     background-image:
       radial-gradient(circle at top center, color-mix(in oklab, var(--primary) 8%, transparent) 0%, transparent 30%),
       linear-gradient(180deg, color-mix(in oklab, var(--background) 98%, white 2%) 0%, var(--background) 100%);
-    min-height: 100vh;
+    height: 100%;
+    overflow: hidden;
   }
 
   code,

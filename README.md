@@ -110,3 +110,66 @@ bun scripts/compile-icons.ts \
 - Breaking compiled schema changes must bump the `$schema` **major** version.
 - Runtime loader migration is selected by schema version (manifest/package schema context + compiled `$schema`), then routed through the migration hook in `parseCompiledIconJson`.
 - Mixed compiled icon schema versions in one manifest are rejected.
+
+
+## Production Icon Package Sync
+
+The production sync flow builds a publishable icon package from source project data using the existing compile pipeline:
+
+1. `Project/Workspace` fixture or source JSON is compiled to `icons/*.compiled.json`.
+2. `icons.manifest.json` is generated and validated.
+3. React component entry files and `package.exports.generated.json` are generated.
+4. A publish-ready `dist/icons-package/package.json` is created with merged exports.
+
+Generated artifacts are written to `dist/icons-package/` by default.
+
+### Local build
+
+```bash
+ICONS_PACKAGE_VERSION=1.2.3 bun run build:icons:package
+```
+
+### Local validation
+
+```bash
+bun run validate:icons:package --package-name @icophone/icons --package-version 1.2.3
+```
+
+### Local release dry-run
+
+```bash
+bun run release:icons:dry-run --package-version 1.2.3 --package-name @icophone/icons
+```
+
+This dry-run builds, validates, and runs `npm pack --dry-run` against `dist/icons-package`.
+
+### CI publish flow
+
+Workflow: `.github/workflows/icons-package-release.yml`
+
+- Runs on push to `main` when compiler/export/release paths change.
+- Also supports manual dispatch with explicit `package_version`.
+- Always builds + validates before packaging.
+- Publishes only on manual dispatch when `publish=true` and `NPM_TOKEN` is available.
+
+### Versioning strategy
+
+This repository uses explicit version input for package publishing.
+
+- Local/CI build requires `ICONS_PACKAGE_VERSION` or `--package-version`.
+- Manual publish requires `package_version` workflow input.
+- No implicit/ambiguous auto-version publish path is allowed.
+
+### Consumer usage (React / Next.js)
+
+```tsx
+import { IcChevronRight } from '@icophone/icons';
+import Play24 from '@icophone/icons/sizes/24/IcPlay';
+import { IcPlay } from '@icophone/icons/collections/media';
+```
+
+Per-icon import:
+
+```tsx
+import IcChevronRight from '@icophone/icons/icons/IcChevronRight';
+```

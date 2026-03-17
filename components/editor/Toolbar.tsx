@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Undo2,
   Redo2,
@@ -30,11 +30,10 @@ import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
-import { importSvgContentIntoEditor } from '@/lib/import';
+import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
 import {
   clearCurrentProjectPath,
   exportSvg,
-  importSvgFiles,
   openProject,
   saveProject,
 } from '@/lib/platform/bridge';
@@ -94,19 +93,7 @@ export function Toolbar() {
     }
   }, []);
 
-  const handleImportSvg = useCallback(async () => {
-    const result = await importSvgFiles();
-    if (!result) return;
-
-    for (const file of result.files) {
-      try {
-        await importSvgContentIntoEditor(file.content, file.name);
-      } catch (error) {
-        window.alert(error instanceof Error ? error.message : 'Failed to import SVG file.');
-        break;
-      }
-    }
-  }, []);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const serializeWorkspace = useCallback(() => {
     const { workspace } = editorStore.getState();
@@ -222,6 +209,7 @@ export function Toolbar() {
   }, [currentIconId, currentVariantId]);
 
   return (
+    <>
     <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="mr-auto min-w-0">
@@ -252,9 +240,9 @@ export function Toolbar() {
                 <FolderOpen className="size-4" />
                 Open Project
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleImportSvg()}>
+              <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
                 <Import className="size-4" />
-                Import SVG
+                Import Icon
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -304,6 +292,8 @@ export function Toolbar() {
         </ToolbarGroup>
       </div>
     </header>
+      <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+    </>
   );
 }
 

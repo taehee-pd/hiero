@@ -35,6 +35,7 @@ const descriptor: ExternalIconSourceDescriptor = {
   id: ADAPTER_ID,
   capabilities: {
     inputModes: ['library-icon-name'],
+    sourceType: 'library',
     searchable: true,
     displayName: 'Lucide Icons',
     get libraryVersion() {
@@ -54,7 +55,7 @@ export const lucideAdapter: ExternalIconAdapter = {
   async fetch(request: ExternalIconImportRequest): Promise<ExternalIconImportResult> {
     if (request.mode !== 'library-icon-name') {
       throw new ExternalIconImportError({
-        code: 'UNSUPPORTED_MODE',
+        code: 'unsupported_source_format',
         message: `Lucide adapter only supports "library-icon-name" mode, got "${request.mode}"`,
         adapterId: ADAPTER_ID,
         request,
@@ -66,7 +67,7 @@ export const lucideAdapter: ExternalIconAdapter = {
 
     if (!iconData) {
       throw new ExternalIconImportError({
-        code: 'ICON_NOT_FOUND',
+        code: 'icon_not_found',
         message: `Lucide icon "${iconName}" not found. Check the icon name at lucide.dev/icons`,
         adapterId: ADAPTER_ID,
         request,
@@ -77,6 +78,7 @@ export const lucideAdapter: ExternalIconAdapter = {
     const warnings: ExternalIconWarning[] = [];
 
     return {
+      intermediate: { kind: 'svg-source', svgContent },
       svgContent,
       suggestedName: request.name ?? formatLucideName(iconName),
       suggestedTags: ['lucide'],

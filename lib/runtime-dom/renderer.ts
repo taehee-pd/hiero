@@ -172,7 +172,7 @@ export class DomRenderer {
     const targetLayerById = new Map(targetLayers.map((layer) => [layer.id, layer]));
 
     transition.layerBindings.forEach((binding, index) => {
-      if (binding.fallback !== 'crossfade' || !binding.toLayer?.path?.d) {
+      if (!binding.fallback || !binding.toLayer?.path?.d) {
         return;
       }
 
@@ -217,14 +217,15 @@ export class DomRenderer {
         continue;
       }
 
-      entry.element.setAttribute('d', binding.morph(progress));
+      const localProgress = getBindingProgress(progress, binding.delayMs ?? 0, binding.durationMs ?? transition.durationMs, transition.durationMs);
+      entry.element.setAttribute('d', binding.morph(localProgress));
       entry.pathLength = getPathLength(entry.element);
     }
   }
 
   private applyCrossfadeBindings(progress: number, transition: ResolvedTransition) {
     transition.layerBindings.forEach((binding, index) => {
-      if (binding.fallback !== 'crossfade') {
+      if (!binding.fallback) {
         return;
       }
 
@@ -232,13 +233,29 @@ export class DomRenderer {
       if (sourceId) {
         const entry = this.layerElements.get(sourceId);
         if (entry) {
-          entry.element.style.opacity = String(1 - clamp01(progress));
+          const localProgress = getBindingProgress(progress, binding.delayMs ?? 0, binding.durationMs ?? transition.durationMs, transition.durationMs);
+          entry.element.style.opacity = String(1 - clamp01(localProgress));
+          if (binding.fallback === 'scale-through') {
+            entry.element.style.transformOrigin = 'center';
+            entry.element.style.transformBox = 'fill-box';
+            entry.element.style.transform = `scale(${1 - 0.12 * localProgress})`;
+          } else if (binding.fallback === 'slide-through') {
+            entry.element.style.transform = `translate(${(-2 * localProgress).toFixed(2)}px, 0px)`;
+          }
         }
       }
 
       const targetEntry = this.transitionLayerElements.get(buildTransitionBindingKey(binding, index));
       if (targetEntry) {
-        targetEntry.element.style.opacity = String(clamp01(progress));
+        const localProgress = getBindingProgress(progress, binding.delayMs ?? 0, binding.durationMs ?? transition.durationMs, transition.durationMs);
+        targetEntry.element.style.opacity = String(clamp01(localProgress));
+        if (binding.fallback === 'scale-through') {
+          targetEntry.element.style.transformOrigin = 'center';
+          targetEntry.element.style.transformBox = 'fill-box';
+          targetEntry.element.style.transform = `scale(${0.88 + 0.12 * localProgress})`;
+        } else if (binding.fallback === 'slide-through') {
+          targetEntry.element.style.transform = `translate(${(2 * (1 - localProgress)).toFixed(2)}px, 0px)`;
+        }
       }
     });
   }
@@ -416,7 +433,7 @@ function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, num
 
 function hasVisualTransitionBindings(transition: ResolvedTransition | undefined): boolean {
   return Boolean(
-    transition?.layerBindings.some((binding) => binding.morph || binding.fallback === 'crossfade'),
+    transition?.layerBindings.some((binding) => binding.morph || binding.fallback),
   );
 }
 
@@ -589,6 +606,16 @@ function getLinearGradientVector(angle: number): [number, number, number, number
 function formatNumber(value: number): string {
   const rounded = Number(value.toFixed(6));
   return Object.is(rounded, -0) ? '0' : String(rounded);
+}
+
+
+function getBindingProgress(globalProgress: number, delayMs: number, durationMs: number, transitionDurationMs: number): number {
+  if (transitionDurationMs <= 0) {
+    return clamp01(globalProgress);
+  }
+  const elapsed = clamp01(globalProgress) * transitionDurationMs;
+  const localDuration = Math.max(durationMs, 1);
+  return clamp01((elapsed - delayMs) / localDuration);
 }
 
 function clamp01(value: number): number {

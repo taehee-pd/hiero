@@ -29,7 +29,7 @@ import { exportSvgPackage } from '@/lib/export/export-svg-package';
 import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
-import { GitHubSyncPanel } from '@/components/export/GitHubSyncPanel';
+import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { importSvgContentIntoEditor } from '@/lib/import';
 import {
   clearCurrentProjectPath,
@@ -263,7 +263,7 @@ export function Toolbar() {
           <ToolbarButton icon={Download} label="Export SVG Package" onClick={handleExportSvgPackage} />
           <ToolbarButton icon={Download} label="Export Runtime JSON" onClick={handleExportRuntimeJson} />
           <ToolbarButton icon={Download} label="Export React Library" onClick={handleExportReactLibrary} />
-          <GitHubSyncPanel />
+          <SyncPrPanel />
         </ToolbarGroup>
 
         <ToolbarGroup>

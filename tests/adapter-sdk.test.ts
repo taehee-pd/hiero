@@ -28,6 +28,7 @@ function createSearchableAdapter(id = 'test-lib'): ExternalIconAdapter {
       id,
       capabilities: {
         inputModes: ['library-icon-name'],
+        sourceType: 'library',
         searchable: true,
         displayName: 'Test Library',
         libraryVersion: '1.0.0',
@@ -37,14 +38,16 @@ function createSearchableAdapter(id = 'test-lib'): ExternalIconAdapter {
     async fetch(request: ExternalIconImportRequest): Promise<ExternalIconImportResult> {
       if (request.mode !== 'library-icon-name') {
         throw new ExternalIconImportError({
-          code: 'UNSUPPORTED_MODE',
+          code: 'unsupported_source_format',
           message: `Mode "${request.mode}" is not supported`,
           adapterId: id,
           request,
         });
       }
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2L2 22h20Z"/></svg>`;
       return {
-        svgContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2L2 22h20Z"/></svg>`,
+        intermediate: { kind: 'svg-source', svgContent },
+        svgContent,
         suggestedName: request.name ?? request.iconId,
         suggestedTags: ['test'],
         provenance: makeProvenance(id),
@@ -71,6 +74,7 @@ function createPasteAdapter(id = 'raw-svg'): ExternalIconAdapter {
       id,
       capabilities: {
         inputModes: ['raw-svg-string'],
+        sourceType: 'raw',
         searchable: false,
         displayName: 'Paste SVG',
       },
@@ -78,13 +82,14 @@ function createPasteAdapter(id = 'raw-svg'): ExternalIconAdapter {
     async fetch(request: ExternalIconImportRequest): Promise<ExternalIconImportResult> {
       if (request.mode !== 'raw-svg-string') {
         throw new ExternalIconImportError({
-          code: 'UNSUPPORTED_MODE',
+          code: 'unsupported_source_format',
           message: `Mode "${request.mode}" is not supported`,
           adapterId: id,
           request,
         });
       }
       return {
+        intermediate: { kind: 'svg-source', svgContent: request.svgContent },
         svgContent: request.svgContent,
         suggestedName: request.name ?? 'Pasted SVG',
         provenance: makeProvenance(id),
@@ -101,6 +106,7 @@ function createFileAdapter(id = 'svg-file'): ExternalIconAdapter {
       id,
       capabilities: {
         inputModes: ['svg-file'],
+        sourceType: 'file',
         searchable: false,
         displayName: 'Upload SVG File',
       },
@@ -108,7 +114,7 @@ function createFileAdapter(id = 'svg-file'): ExternalIconAdapter {
     async fetch(request: ExternalIconImportRequest): Promise<ExternalIconImportResult> {
       if (request.mode !== 'svg-file') {
         throw new ExternalIconImportError({
-          code: 'UNSUPPORTED_MODE',
+          code: 'unsupported_source_format',
           message: `Mode "${request.mode}" is not supported`,
           adapterId: id,
           request,
@@ -116,6 +122,7 @@ function createFileAdapter(id = 'svg-file'): ExternalIconAdapter {
       }
       const content = await request.file.text();
       return {
+        intermediate: { kind: 'svg-source', svgContent: content },
         svgContent: content,
         suggestedName: request.name ?? request.file.name.replace(/\.svg$/i, ''),
         provenance: makeProvenance(id),
@@ -132,14 +139,17 @@ function createMultiModeAdapter(id = 'multi'): ExternalIconAdapter {
       id,
       capabilities: {
         inputModes: ['library-icon-name', 'raw-svg-string', 'svg-file'],
+        sourceType: 'library',
         searchable: false,
         displayName: 'Multi-Mode Adapter',
       },
     },
     async fetch(request: ExternalIconImportRequest): Promise<ExternalIconImportResult> {
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>';
+      const svgContent = request.mode === 'raw-svg-string' ? request.svgContent : svg;
       return {
-        svgContent: request.mode === 'raw-svg-string' ? request.svgContent : svg,
+        intermediate: { kind: 'svg-source', svgContent },
+        svgContent,
         suggestedName: 'Multi',
         provenance: makeProvenance(id),
         warnings: [],
@@ -179,6 +189,12 @@ describe('ExternalIconAdapterRegistry', () => {
     const bad = createPasteAdapter('');
     (bad.descriptor as { id: string }).id = '';
     expect(() => registry.register(bad)).toThrow(/non-empty string/);
+  });
+
+  test('rejects adapter with missing sourceType', () => {
+    const bad = createPasteAdapter('missing-source-type');
+    (bad.descriptor.capabilities as { sourceType?: string }).sourceType = '';
+    expect(() => registry.register(bad)).toThrow(/sourceType/);
   });
 
   test('rejects searchable adapter without search() implementation', () => {
@@ -236,6 +252,16 @@ describe('ExternalIconAdapterRegistry', () => {
     expect(registry.getByInputMode('svg-file')).toEqual([]);
   });
 
+  test('getBySourceType resolves adapters by source classification', () => {
+    registry.register(createSearchableAdapter());
+    registry.register(createPasteAdapter());
+    registry.register(createFileAdapter());
+
+    expect(registry.getBySourceType('library').map((a) => a.descriptor.id)).toEqual(['test-lib']);
+    expect(registry.getBySourceType('raw').map((a) => a.descriptor.id)).toEqual(['raw-svg']);
+    expect(registry.getBySourceType('file').map((a) => a.descriptor.id)).toEqual(['svg-file']);
+  });
+
   // ---- Listing ----
 
   test('listDescriptors returns descriptors for all registered adapters', () => {
@@ -280,6 +306,8 @@ describe('Adapter contract: fetch()', () => {
       iconId: 'arrow-right',
     });
 
+    expect(result.intermediate.kind).toBe('svg-source');
+    expect(result.intermediate.svgContent).toContain('<svg');
     expect(result.svgContent).toContain('<svg');
     expect(result.svgContent).toContain('</svg>');
     expect(result.suggestedName).toBe('arrow-right');
@@ -297,6 +325,7 @@ describe('Adapter contract: fetch()', () => {
       name: 'My Icon',
     });
 
+    expect(result.intermediate.svgContent).toBe(inputSvg);
     expect(result.svgContent).toBe(inputSvg);
     expect(result.suggestedName).toBe('My Icon');
     expect(result.provenance.adapterId).toBe('raw-svg');
@@ -312,6 +341,7 @@ describe('Adapter contract: fetch()', () => {
       file,
     });
 
+    expect(result.intermediate.svgContent).toBe(svgContent);
     expect(result.svgContent).toBe(svgContent);
     expect(result.suggestedName).toBe('circle-icon');
     expect(result.provenance.adapterId).toBe('svg-file');
@@ -328,7 +358,7 @@ describe('Adapter contract: fetch()', () => {
     } catch (err) {
       expect(err).toBeInstanceOf(ExternalIconImportError);
       const importErr = err as ExternalIconImportError;
-      expect(importErr.code).toBe('UNSUPPORTED_MODE');
+      expect(importErr.code).toBe('unsupported_source_format');
       expect(importErr.adapterId).toBe('test-lib');
       expect(importErr.request?.mode).toBe('raw-svg-string');
     }
@@ -337,14 +367,14 @@ describe('Adapter contract: fetch()', () => {
   test('ExternalIconImportError preserves cause chain', () => {
     const cause = new TypeError('network failure');
     const err = new ExternalIconImportError({
-      code: 'FETCH_FAILED',
+      code: 'normalization_failed',
       message: 'Could not fetch icon',
       adapterId: 'test',
       cause,
     });
 
     expect(err.name).toBe('ExternalIconImportError');
-    expect(err.code).toBe('FETCH_FAILED');
+    expect(err.code).toBe('normalization_failed');
     expect(err.cause).toBe(cause);
     expect(err.message).toBe('Could not fetch icon');
   });
@@ -401,6 +431,8 @@ describe('Registry + adapter integration', () => {
       name: picked.name,
     });
 
+    expect(result.intermediate.kind).toBe('svg-source');
+    expect(result.intermediate.svgContent).toContain('<svg');
     expect(result.svgContent).toContain('<svg');
     expect(result.suggestedName).toBe('Arrow Left');
     expect(result.provenance.adapterId).toBe('test-lib');
@@ -418,6 +450,7 @@ describe('Registry + adapter integration', () => {
       expect(d.id).toBeTruthy();
       expect(d.capabilities.displayName).toBeTruthy();
       expect(d.capabilities.inputModes.length).toBeGreaterThanOrEqual(1);
+      expect(d.capabilities.sourceType).toBeTruthy();
     }
   });
 });

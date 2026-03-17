@@ -225,7 +225,7 @@ function createNodeFromElement(
   inheritedUnsupported: SvgUnsupportedFeature[],
   defs: DefRegistry,
   index: number,
-  _warnings: ExternalIconWarning[],
+  warnings: ExternalIconWarning[],
 ): NormalizedNode {
   const unsupported = [...inheritedUnsupported];
 
@@ -253,7 +253,18 @@ function createNodeFromElement(
 
   // Decompose transform
   const decomposed = decomposeSimpleTransform(transform);
+  if (!decomposed && !isIdentity(transform)) {
+    warnings.push(buildWarning('lossy_transform_flattening', 'Applied non-decomposable transform may lose fidelity', element, index));
+    unsupported.push({ kind: 'transformFlattening', value: element.getAttribute('transform') ?? undefined });
+  }
   const normalizedTransform: NormalizedTransform | undefined = decomposed ?? undefined;
+
+  for (const feature of unsupported) {
+    const mapped = mapUnsupportedFeatureToWarning(feature);
+    if (mapped) {
+      warnings.push(buildWarning(mapped.code, mapped.message, element, index));
+    }
+  }
 
   return {
     index,
@@ -466,6 +477,12 @@ function resolveGradient(
   }
 
   const tagName = record.element.tagName.toLowerCase();
+  const gradientTransform = record.element.getAttribute('gradientTransform');
+  if (gradientTransform) unsupported.push({ kind: 'gradientTransform', value: gradientTransform });
+  const gradientUnits = record.element.getAttribute('gradientUnits');
+  if (gradientUnits && gradientUnits !== 'objectBoundingBox') unsupported.push({ kind: 'gradientUnits', value: gradientUnits });
+  const spreadMethod = record.element.getAttribute('spreadMethod');
+  if (spreadMethod && spreadMethod !== 'pad') unsupported.push({ kind: 'gradientSpreadMethod', value: spreadMethod });
   if (tagName === 'lineargradient') {
     const baseAngle = base?.paint?.mode === 'linearGradient' ? base.paint.angle : 0;
     const x1 = parseCoordinate(record.element.getAttribute('x1'), 0);
@@ -489,6 +506,9 @@ function resolveGradient(
     const cx = parseCoordinate(record.element.getAttribute('cx'), basePaint?.cx ?? 0.5);
     const cy = parseCoordinate(record.element.getAttribute('cy'), basePaint?.cy ?? 0.5);
     const r = parseCoordinate(record.element.getAttribute('r'), basePaint?.r ?? 0.5);
+    const fx = record.element.getAttribute('fx');
+    const fy = record.element.getAttribute('fy');
+    if (fx || fy) unsupported.push({ kind: 'radialGradientFocus', value: [fx, fy].filter(Boolean).join(',') });
     const stops = parseGradientStops(record.element, base?.paint, baseRefId ? defs.gradients.get(baseRefId)?.element ?? null : null);
     return {
       paint: { mode: 'radialGradient', cx, cy, r, stops },
@@ -618,6 +638,19 @@ function collectUnsupportedFeatures(
     });
   }
 
+  const href = element.getAttribute('href') ?? element.getAttribute('xlink:href');
+  if (href && !href.startsWith('#')) {
+    next.push({ kind: 'externalHrefReference', value: href });
+  }
+
+  const unsupportedAttributes = collectUnsupportedAttributes(element);
+  if (unsupportedAttributes.length > 0) {
+    next.push({
+      kind: 'unsupportedAttribute',
+      attributes: Object.fromEntries(unsupportedAttributes.map((name) => [name, element.getAttribute(name) ?? ''])),
+    });
+  }
+
   return dedupeUnsupported(next);
 }
 
@@ -632,6 +665,66 @@ function buildRefUnsupported(
     value,
     refId: refId ?? undefined,
     raw: refId ? defs.rawById.get(refId) : undefined,
+  };
+}
+
+function collectUnsupportedAttributes(element: Element): string[] {
+  const supported = new Set([
+    'id', 'class', 'd', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'points',
+    'transform', 'fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity', 'stroke-linecap',
+    'stroke-linejoin', 'fill-rule', 'display', 'visibility', 'clip-path', 'mask', 'filter', 'href', 'xlink:href',
+  ]);
+  const attrs = element.attributes;
+  const names = (attrs && typeof attrs === 'object' && !(Symbol.iterator in attrs))
+    ? Object.keys(attrs as unknown as Record<string, string>)
+    : Array.from(attrs).map((a) => a.name);
+  return names.filter((name) => !supported.has(name.toLowerCase()));
+}
+
+function mapUnsupportedFeatureToWarning(feature: SvgUnsupportedFeature): { code: ExternalIconWarning['code']; message: string } | null {
+  switch (feature.kind) {
+    case 'clipPath':
+      return { code: 'clip_path_ignored', message: 'clipPath is not supported and was ignored' };
+    case 'mask':
+      return { code: 'mask_ignored', message: 'mask is not supported and was ignored' };
+    case 'filter':
+      return { code: 'filter_ignored', message: 'filter is not supported and was ignored' };
+    case 'cssClass':
+    case 'styleElement':
+      return { code: 'style_dependency_removed', message: 'CSS class/style dependency was removed' };
+    case 'gradientTransform':
+    case 'gradientUnits':
+    case 'gradientSpreadMethod':
+    case 'gradientHref':
+    case 'radialGradientFocus':
+      return { code: 'gradient_simplified', message: 'Gradient was simplified due to unsupported features' };
+    case 'pattern':
+    case 'unsupportedPaintReference':
+    case 'unsupportedAttribute':
+    case 'externalHrefReference':
+      return { code: 'unsupported_feature_dropped', message: `Unsupported feature dropped (${feature.kind})` };
+    default:
+      return null;
+  }
+}
+
+function buildWarning(
+  code: ExternalIconWarning['code'],
+  message: string,
+  element: Element,
+  nodeIndex: number,
+): ExternalIconWarning {
+  return {
+    code,
+    message,
+    severity: 'warning',
+    context: element.tagName.toLowerCase(),
+    nodeRef: {
+      tagName: element.tagName.toLowerCase(),
+      nodeId: element.getAttribute('id') ?? undefined,
+      className: element.getAttribute('class') ?? undefined,
+      nodeIndex,
+    },
   };
 }
 

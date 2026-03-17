@@ -33,6 +33,8 @@ export type ExternalIconInputMode = 'library-icon-name' | 'raw-svg-string' | 'sv
 export type ExternalIconAdapterCapabilities = {
   /** Which input modes this adapter can handle. At least one required. */
   inputModes: [ExternalIconInputMode, ...ExternalIconInputMode[]];
+  /** High-level source classification used for adapter discovery and routing. */
+  sourceType: 'library' | 'raw' | 'file' | string;
   /** Adapter supports `search()` for browsable icon discovery. */
   searchable: boolean;
   /** Human-readable label for the UI (e.g. "Lucide Icons"). */
@@ -114,6 +116,42 @@ export type ExternalIconProvenance = {
   importedAt: string;
 };
 
+export type ExternalIconDiagnosticSeverity = 'warning' | 'error';
+
+export type ExternalIconSourceLocation = {
+  line?: number;
+  column?: number;
+  offset?: number;
+};
+
+export type ExternalIconNodeReference = {
+  tagName?: string;
+  nodeId?: string;
+  className?: string;
+  nodeIndex?: number;
+};
+
+export type ExternalIconWarningCode =
+  | 'lossy_transform_flattening'
+  | 'unsupported_feature_dropped'
+  | 'style_dependency_removed'
+  | 'gradient_simplified'
+  | 'clip_path_ignored'
+  | 'mask_ignored'
+  | 'filter_ignored'
+  | string;
+
+export type ExternalIconErrorCode =
+  | 'invalid_source_input'
+  | 'parse_failed'
+  | 'unsupported_source_format'
+  | 'unsafe_svg_blocked'
+  | 'adapter_resolution_failed'
+  | 'icon_not_found'
+  | 'normalization_failed'
+  | 'internal_schema_mapping_failed'
+  | string;
+
 // ---------------------------------------------------------------------------
 // Warnings and errors
 // ---------------------------------------------------------------------------
@@ -126,11 +164,17 @@ export type ExternalIconProvenance = {
  */
 export type ExternalIconWarning = {
   /** Machine-readable warning code for programmatic handling. */
-  code: string;
+  code: ExternalIconWarningCode;
   /** Human-readable description for the import report UI. */
   message: string;
+  /** Diagnostic severity; warnings are always non-fatal. */
+  severity: 'warning';
   /** Optional reference to the element or attribute that triggered the warning. */
   context?: string;
+  /** Optional source location in the original input when available. */
+  sourceLocation?: ExternalIconSourceLocation;
+  /** Optional node-level reference for diagnostics and UI highlighting. */
+  nodeRef?: ExternalIconNodeReference;
 };
 
 /**
@@ -141,26 +185,37 @@ export type ExternalIconWarning = {
  */
 export class ExternalIconImportError extends Error {
   /** Machine-readable error code. */
-  readonly code: string;
+  readonly code: ExternalIconErrorCode;
+  /** Diagnostic severity; errors are always fatal. */
+  readonly severity: 'error';
   /** The adapter that produced the error. */
   readonly adapterId: string;
   /** The request that caused the error, if available. */
   readonly request?: ExternalIconImportRequest;
   /** The underlying error, if any. */
   readonly cause?: unknown;
+  /** Optional source location in the original input when available. */
+  readonly sourceLocation?: ExternalIconSourceLocation;
+  /** Optional node-level reference for diagnostics and UI highlighting. */
+  readonly nodeRef?: ExternalIconNodeReference;
 
   constructor(options: {
-    code: string;
+    code: ExternalIconErrorCode;
     message: string;
     adapterId: string;
     request?: ExternalIconImportRequest;
     cause?: unknown;
+    sourceLocation?: ExternalIconSourceLocation;
+    nodeRef?: ExternalIconNodeReference;
   }) {
     super(options.message);
     this.name = 'ExternalIconImportError';
     this.code = options.code;
+    this.severity = 'error';
     this.adapterId = options.adapterId;
     this.request = options.request;
+    this.sourceLocation = options.sourceLocation;
+    this.nodeRef = options.nodeRef;
     if (options.cause !== undefined) {
       this.cause = options.cause;
     }
@@ -171,6 +226,18 @@ export class ExternalIconImportError extends Error {
 // Import result (adapter output)
 // ---------------------------------------------------------------------------
 
+
+export type ExternalIconIntermediateRepresentation = {
+  /**
+   * Adapter output is constrained to normalized import IR boundaries.
+   *
+   * `svg-source` keeps parsing/normalization in the shared pipeline.
+   * Adapters MUST NOT emit internal editor schema types directly.
+   */
+  kind: 'svg-source';
+  svgContent: string;
+};
+
 /**
  * The normalised intermediate representation that every adapter returns.
  *
@@ -179,7 +246,12 @@ export class ExternalIconImportError extends Error {
  * sanitisation and normalisation boundaries are never bypassed.
  */
 export type ExternalIconImportResult = {
-  /** Raw SVG markup. Pipeline will sanitise and normalise this. */
+  /** Adapter output in normalized import IR form. */
+  intermediate: ExternalIconIntermediateRepresentation;
+  /**
+   * Legacy alias retained for compatibility with existing callers.
+   * New consumers should read `intermediate.svgContent`.
+   */
   svgContent: string;
   /** Suggested display name for the icon. */
   suggestedName: string;
@@ -189,6 +261,8 @@ export type ExternalIconImportResult = {
   provenance: ExternalIconProvenance;
   /** Non-fatal issues the user should review before confirming import. */
   warnings: ExternalIconWarning[];
+  /** Optional adapter-specific metadata for UI and observability. */
+  metadata?: Record<string, string | number | boolean>;
 };
 
 // ---------------------------------------------------------------------------

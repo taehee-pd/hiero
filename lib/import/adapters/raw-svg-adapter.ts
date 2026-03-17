@@ -21,6 +21,7 @@ const descriptor: ExternalIconSourceDescriptor = {
   id: ADAPTER_ID,
   capabilities: {
     inputModes: ['raw-svg-string', 'svg-file'],
+    sourceType: 'raw',
     searchable: false,
     displayName: 'Raw SVG',
   },
@@ -48,7 +49,7 @@ export const rawSvgAdapter: ExternalIconAdapter = {
         break;
       default:
         throw new ExternalIconImportError({
-          code: 'UNSUPPORTED_MODE',
+          code: 'unsupported_source_format',
           message: `Raw SVG adapter does not support input mode "${(request as { mode: string }).mode}"`,
           adapterId: ADAPTER_ID,
           request,
@@ -58,7 +59,7 @@ export const rawSvgAdapter: ExternalIconAdapter = {
     // Validate non-empty
     if (!rawContent.trim()) {
       throw new ExternalIconImportError({
-        code: 'EMPTY_SVG',
+        code: 'invalid_source_input',
         message: 'SVG content is empty',
         adapterId: ADAPTER_ID,
         request,
@@ -66,17 +67,29 @@ export const rawSvgAdapter: ExternalIconAdapter = {
     }
 
     // Sanitize
-    const { svg, warnings } = sanitizeSvg(rawContent);
+    let sanitized;
+    try {
+      sanitized = sanitizeSvg(rawContent);
+    } catch (cause) {
+      throw new ExternalIconImportError({
+        code: 'parse_failed',
+        message: 'Failed to parse or sanitize SVG input',
+        adapterId: ADAPTER_ID,
+        request,
+        cause,
+      });
+    }
 
     return {
-      svgContent: svg,
+      intermediate: { kind: 'svg-source', svgContent: sanitized.svg },
+      svgContent: sanitized.svg,
       suggestedName: sourceName,
       provenance: {
         adapterId: ADAPTER_ID,
         sourceLibrary: sourceType,
         importedAt: new Date().toISOString(),
       },
-      warnings,
+      warnings: sanitized.warnings,
     };
   },
 };

@@ -48,6 +48,11 @@ export interface ExternalIconAdapterRegistry {
   getByInputMode(mode: ExternalIconInputMode): ExternalIconAdapter[];
 
   /**
+   * Return all adapters for a high-level source type (library/raw/file/etc).
+   */
+  getBySourceType(sourceType: string): ExternalIconAdapter[];
+
+  /**
    * Return descriptors for every registered adapter.
    * The UI uses this to render the source picker without holding adapter
    * references directly.
@@ -95,6 +100,12 @@ class AdapterRegistry implements ExternalIconAdapterRegistry {
           'At least one input mode is required.',
       );
     }
+    if (!capabilities.sourceType || typeof capabilities.sourceType !== 'string') {
+      throw new Error(
+        `Adapter "${id}" declares no sourceType. ` +
+          'A sourceType string is required for source-based resolution.',
+      );
+    }
     if (capabilities.searchable && typeof adapter.search !== 'function') {
       throw new Error(
         `Adapter "${id}" declares searchable: true but does not implement search().`,
@@ -115,6 +126,11 @@ class AdapterRegistry implements ExternalIconAdapterRegistry {
   getByInputMode(mode: ExternalIconInputMode): ExternalIconAdapter[] {
     const all = Array.from(this.adapters.values());
     return all.filter((a) => a.descriptor.capabilities.inputModes.includes(mode));
+  }
+
+  getBySourceType(sourceType: string): ExternalIconAdapter[] {
+    const all = Array.from(this.adapters.values());
+    return all.filter((a) => a.descriptor.capabilities.sourceType === sourceType);
   }
 
   listDescriptors(): ExternalIconSourceDescriptor[] {

@@ -375,11 +375,10 @@ describe('normalizeSvg — options', () => {
   test('includes upstream warnings', () => {
     const result = normalizeSvg(svg('<path d="M0 0"/>'), {
       upstreamWarnings: [
-        { code: 'STRIPPED_STYLE', message: 'Stripped inline style' },
+        { code: 'style_dependency_removed', message: 'Stripped inline style', severity: 'warning' },
       ],
     });
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0]!.code).toBe('STRIPPED_STYLE');
+    expect(result.warnings.some((w) => w.code === 'style_dependency_removed')).toBe(true);
   });
 
   test('attaches provenance', () => {
@@ -408,5 +407,50 @@ describe('normalizeSvg — defs handling', () => {
     );
     expect(result.nodes).toHaveLength(1);
     expect(result.nodes[0]!.kind).toBe('path');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Unsupported/lossy warning mapping
+// ---------------------------------------------------------------------------
+
+describe('normalizeSvg — unsupported feature warnings', () => {
+  test('reports clipPath/mask/filter specific warnings', () => {
+    const result = normalize('<path d="M0 0" clip-path="url(#c)" mask="url(#m)" filter="url(#f)"/>');
+    expect(result.warnings.map((w) => w.code)).toEqual(expect.arrayContaining([
+      'clip_path_ignored',
+      'mask_ignored',
+      'filter_ignored',
+    ]));
+  });
+
+  test('reports style dependency and external href removal', () => {
+    const result = normalize(
+      '<defs><style>.x{fill:red;}</style></defs><path d="M0 0" class="x" href="https://example.com/a.svg#id"/>',
+    );
+    expect(result.warnings.map((w) => w.code)).toEqual(expect.arrayContaining([
+      'style_dependency_removed',
+      'unsupported_feature_dropped',
+    ]));
+  });
+
+  test('reports unsupported paint refs and unsupported attributes', () => {
+    const result = normalize('<path d="M0 0" fill="url(#p)" vector-effect="non-scaling-stroke"/>');
+    expect(result.warnings.map((w) => w.code)).toEqual(expect.arrayContaining([
+      'unsupported_feature_dropped',
+    ]));
+  });
+
+  test('reports gradient simplification limitations', () => {
+    const result = normalize(
+      '<defs><radialGradient id="g" gradientUnits="userSpaceOnUse" gradientTransform="rotate(20)" spreadMethod="reflect" fx="8" fy="9"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient></defs><path d="M0 0" fill="url(#g)"/>',
+    );
+    expect(result.warnings.some((w) => w.code === 'gradient_simplified')).toBe(true);
+  });
+
+  test('reports lossy transform flattening for skew transforms', () => {
+    const result = normalize('<path d="M0 0 L10 0" transform="skewX(30)"/>');
+    expect(result.warnings.some((w) => w.code === 'lossy_transform_flattening')).toBe(true);
   });
 });

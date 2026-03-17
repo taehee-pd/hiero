@@ -29,6 +29,15 @@ export type Workspace = {
   activeIconSetId?: string;
 };
 
+export type IconExternalImportMeta = {
+  adapterId: string;
+  sourceLibrary?: string;
+  sourceVersion?: string;
+  sourceIconId?: string;
+  sourceLicense?: string;
+  importedAt: string;
+};
+
 export type Icon = {
   id: string;
   name: string;
@@ -39,6 +48,9 @@ export type Icon = {
   transitions: Record<string, Transition>;
   effects?: Record<string, Effect>;
   components?: Record<string, SymbolComponent>;
+  meta?: {
+    externalImport?: IconExternalImportMeta;
+  };
 };
 
 export type Variant = {

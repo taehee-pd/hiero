@@ -331,7 +331,7 @@ describe('serializeNormalizedIcon', () => {
         importedAt: '2026-03-17T00:00:00.000Z',
       },
       warnings: [
-        { code: 'UNSUPPORTED_FILTER', message: 'Filter effects are not supported' },
+        { code: 'unsupported_feature_dropped', message: 'Filter effects are not supported', severity: 'warning' },
       ],
     });
 

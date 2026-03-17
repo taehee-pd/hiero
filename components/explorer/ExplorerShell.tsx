@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
-import { GitHubSyncPanel } from '@/components/export/GitHubSyncPanel';
+import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
@@ -385,9 +385,9 @@ export function ExplorerShell() {
             <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
               Export
             </Button>
-            <GitHubSyncPanel
+            <SyncPrPanel
               iconSetId={activeIconSetId}
-              triggerLabel="Sync"
+              triggerLabel="Create PR"
               triggerVariant="ghost"
               triggerSize="sm"
               className="h-7 rounded-lg px-2.5 text-xs"

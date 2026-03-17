@@ -13,15 +13,16 @@
  *
  * Usage:
  *   bun scripts/validate-source-export.ts --source <icons-dir>
- *     [--project <project.json>]   # optional: also validates compile pipeline
- *     [--summary <output.md>]      # optional: write CI-readable summary
+ *     [--summary <output.md>]         # optional: write CI-readable summary
+ *     [--preview-out <dir>]           # optional: copy preview SVGs to dir
+ *     [--job-summary <output.md>]     # optional: rich job summary with icon deltas
  *
  * Exit codes:
  *   0 — all checks pass
  *   1 — one or more checks failed
  */
 
-import { readdir, readFile, stat, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, readFile, stat, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -38,6 +39,7 @@ import {
   isValidIconDirName,
   containsPathTraversal,
 } from '../lib/sync-source/validate';
+import { generateJobSummaryMarkdown } from '../lib/sync-service/metadata';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,17 +63,22 @@ function getArg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const sourceDir = getArg('--source');
-  const projectPath = getArg('--project');
   const summaryPath = getArg('--summary');
+  const previewOutDir = getArg('--preview-out');
+  const jobSummaryPath = getArg('--job-summary');
 
   if (!sourceDir) {
     process.stderr.write(
-      'Usage: bun scripts/validate-source-export.ts --source <icons-dir> [--project <project.json>] [--summary <output.md>]\n',
+      'Usage: bun scripts/validate-source-export.ts --source <icons-dir> ' +
+      '[--summary <output.md>] [--preview-out <dir>] [--job-summary <output.md>]\n',
     );
     process.exit(1);
   }
 
   const results: CheckResult[] = [];
+
+  // 0. Source-of-truth check — fail fast if conflicting inputs exist
+  results.push(await checkSourceOfTruthGuard(sourceDir));
 
   // 1. Read icon source files
   const icons = await readIconSources(sourceDir);
@@ -95,21 +102,45 @@ async function main(): Promise<void> {
   // 7. Path safety
   results.push(checkPathSafety(icons));
 
-  // 8. Compile pipeline (optional)
-  if (projectPath) {
-    results.push(await checkCompilePipeline(projectPath));
-  }
+  // 8. Compile pipeline — uses the canonical source-to-project adapter
+  const compileResult = await checkCompileFromSource(sourceDir);
+  results.push(compileResult.check);
 
   // Print results
   const allPassed = results.every((r) => r.passed);
   printResults(results);
 
+  // Copy preview SVGs if requested
+  let previewPaths: string[] = [];
+  if (previewOutDir) {
+    previewPaths = await extractPreviewSvgs(icons, sourceDir, previewOutDir);
+    process.stdout.write(`\n${previewPaths.length} preview SVG(s) extracted to ${previewOutDir}\n`);
+  }
+
   // Write summary if requested
   if (summaryPath) {
-    const markdown = formatSummaryMarkdown(results);
+    const markdown = formatSummaryMarkdown(results, icons.length, compileResult.compiledIconCount);
     await mkdir(path.dirname(summaryPath), { recursive: true });
     await writeFile(summaryPath, markdown, 'utf8');
-    process.stdout.write(`\nSummary written to ${summaryPath}\n`);
+    process.stdout.write(`Summary written to ${summaryPath}\n`);
+  }
+
+  // Write rich job summary if requested
+  if (jobSummaryPath) {
+    const jobMd = generateJobSummaryMarkdown({
+      iconChanges: icons.map((i) => ({ iconDir: i.dirName, kind: 'updated' as const })),
+      changes: {
+        added: [],
+        updated: icons.map((i) => `icons/${i.dirName}/icon.json`),
+        deleted: [],
+      },
+      validationChecks: results,
+      compiledIconCount: compileResult.compiledIconCount,
+      previewPaths,
+    });
+    await mkdir(path.dirname(jobSummaryPath), { recursive: true });
+    await writeFile(jobSummaryPath, jobMd, 'utf8');
+    process.stdout.write(`Job summary written to ${jobSummaryPath}\n`);
   }
 
   process.exit(allPassed ? 0 : 1);
@@ -168,6 +199,37 @@ async function readManifest(sourceDir: string): Promise<SyncSourceManifest | nul
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Preview extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Copy all preview.svg files for every icon to the output directory.
+ * Flat naming: `<iconDir>.svg` for easy browsing.
+ */
+async function extractPreviewSvgs(
+  icons: IconEntry[],
+  sourceDir: string,
+  outDir: string,
+): Promise<string[]> {
+  await mkdir(outDir, { recursive: true });
+  const copied: string[] = [];
+
+  for (const entry of icons) {
+    if (!entry.rawJson) continue;
+    const srcPath = path.join(sourceDir, 'icons', entry.dirName, 'preview.svg');
+    const destPath = path.join(outDir, `${entry.dirName}.svg`);
+    try {
+      await copyFile(srcPath, destPath);
+      copied.push(`${entry.dirName}.svg`);
+    } catch {
+      // preview missing — already caught by checkPreviewPresence
+    }
+  }
+
+  return copied.sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -389,70 +451,112 @@ function checkPathSafety(icons: IconEntry[]): CheckResult {
   return { name: 'Path safety', passed: errors.length === 0, errors, warnings };
 }
 
-async function checkCompilePipeline(projectPath: string): Promise<CheckResult> {
+/**
+ * Source-of-truth guardrail: fail fast if both source export files and a
+ * project.json exist at the same level, preventing ambiguous build inputs.
+ */
+async function checkSourceOfTruthGuard(sourceDir: string): Promise<CheckResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
   try {
-    // Dynamic import to avoid loading compile pipeline when not needed
+    const { checkSourceOfTruth } = await import('../lib/sync-source/source-of-truth');
+    const result = await checkSourceOfTruth(sourceDir);
+
+    errors.push(...result.errors);
+    warnings.push(...result.warnings);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    errors.push(`Source-of-truth check failed: ${message}`);
+  }
+
+  return { name: 'Source-of-truth guard', passed: errors.length === 0, errors, warnings };
+}
+
+/**
+ * Compile pipeline check using the CANONICAL path: source export files
+ * are read via the adapter layer (projectFromSourceDir) and compiled.
+ * This validates the same code path that post-merge CI uses.
+ *
+ * Returns both the CheckResult and the compiled icon count for use in
+ * job summaries.
+ */
+async function checkCompileFromSource(
+  sourceDir: string,
+): Promise<{ check: CheckResult; compiledIconCount: number }> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  let compiledIconCount = 0;
+
+  try {
+    const { projectFromSourceDir } = await import('../lib/sync-source/source-to-project');
     const { compileProject } = await import('../lib/export/compile-pipeline');
-    const { isProject, isWorkspace } = await import('../lib/schema/guards');
-    const { getActiveIconSet } = await import('../lib/schema/workspace');
 
-    const rawProject = await readFile(projectPath, 'utf8');
-    const parsed = JSON.parse(rawProject) as unknown;
-    const project = isWorkspace(parsed)
-      ? getActiveIconSet(parsed, (parsed as { activeIconSetId: string }).activeIconSetId)
-      : isProject(parsed)
-        ? parsed
-        : null;
+    // Step 1: Reconstruct Project via the canonical adapter
+    const project = await projectFromSourceDir(sourceDir);
 
-    if (!project) {
-      errors.push(`Project file is not valid: ${projectPath}`);
-      return { name: 'Compile pipeline', passed: false, errors, warnings };
-    }
-
+    // Step 2: Compile from the reconstructed Project
+    const builtAt = new Date().toISOString();
     const result = compileProject(project, {
       package: {
         name: '@icophone/icons',
         version: '0.0.0-ci',
-        builtAt: new Date().toISOString(),
+        builtAt,
       },
       generateReact: true,
     });
 
+    compiledIconCount = result.compiledIcons.length;
+
     if (result.compiledIcons.length === 0) {
-      errors.push('Compile pipeline produced 0 icons.');
+      errors.push('Compile pipeline produced 0 icons from source export.');
     }
 
-    // Verify deterministic — compile again and compare
+    // Verify deterministic — compile again with same timestamp and compare
     const result2 = compileProject(project, {
       package: {
         name: '@icophone/icons',
         version: '0.0.0-ci',
-        builtAt: result.files.find((f) => f.path === 'icons.manifest.json')
-          ? new Date().toISOString()
-          : new Date().toISOString(),
+        builtAt,
       },
       generateReact: true,
     });
 
-    // Compare file counts (content may vary by builtAt timestamp)
     if (result.files.length !== result2.files.length) {
       errors.push(
         `Compile pipeline is nondeterministic: produced ${result.files.length} files then ${result2.files.length}.`,
       );
     }
 
+    // Compare actual file contents for determinism
+    for (let i = 0; i < result.files.length; i++) {
+      const a = result.files[i]!;
+      const b = result2.files[i]!;
+      if (a.path !== b.path || a.contents !== b.contents) {
+        errors.push(
+          `Compile pipeline is nondeterministic at file "${a.path}".`,
+        );
+        break;
+      }
+    }
+
     process.stdout.write(
-      `  Compiled ${result.compiledIcons.length} icons, ${result.files.length} files\n`,
+      `  Compiled ${result.compiledIcons.length} icons from source export, ${result.files.length} files\n`,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    errors.push(`Compile pipeline failed: ${message}`);
+    errors.push(`Compile from source failed: ${message}`);
   }
 
-  return { name: 'Compile pipeline', passed: errors.length === 0, errors, warnings };
+  return {
+    check: {
+      name: 'Compile pipeline (from source)',
+      passed: errors.length === 0,
+      errors,
+      warnings,
+    },
+    compiledIconCount,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -481,19 +585,37 @@ function printResults(results: CheckResult[]): void {
   process.stdout.write(`${totalErrors} error(s), ${totalWarnings} warning(s)\n`);
 }
 
-function formatSummaryMarkdown(results: CheckResult[]): string {
+function formatSummaryMarkdown(
+  results: CheckResult[],
+  totalIcons: number,
+  compiledIconCount: number,
+): string {
   const lines: string[] = [];
   const allPassed = results.every((r) => r.passed);
 
   lines.push('# Source Export Validation Report');
   lines.push('');
-  lines.push(allPassed ? 'All checks passed.' : 'Some checks failed.');
+  lines.push(allPassed ? '✅ All checks passed.' : '❌ Some checks failed.');
+  lines.push('');
+
+  // Metrics table
+  lines.push('| Metric | Value |');
+  lines.push('|--------|-------|');
+  lines.push(`| Icons validated | ${totalIcons} |`);
+  lines.push(`| Compiled icons | ${compiledIconCount} |`);
+  lines.push(`| Schema version | \`${ICON_SOURCE_SCHEMA_VERSION}\` |`);
+  lines.push(`| Manifest schema | \`${SYNC_SOURCE_MANIFEST_SCHEMA_VERSION}\` |`);
+  lines.push('');
+
+  // Check results
+  lines.push('## Checks');
   lines.push('');
   lines.push('| Check | Result |');
   lines.push('|-------|--------|');
 
   for (const result of results) {
-    lines.push(`| ${result.name} | ${result.passed ? 'Pass' : 'Fail'} |`);
+    const icon = result.passed ? '✅' : '❌';
+    lines.push(`| ${result.name} | ${icon} ${result.passed ? 'Pass' : 'Fail'} |`);
   }
 
   lines.push('');
@@ -518,7 +640,7 @@ function formatSummaryMarkdown(results: CheckResult[]): string {
     for (const result of withWarnings) {
       lines.push(`### ${result.name}`);
       for (const warn of result.warnings) {
-        lines.push(`- ${warn}`);
+        lines.push(`- ⚠️ ${warn}`);
       }
       lines.push('');
     }

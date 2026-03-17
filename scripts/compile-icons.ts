@@ -1,6 +1,17 @@
 #!/usr/bin/env bun
 
+/**
+ * Compile icons from a project/workspace JSON file.
+ *
+ * NOTE: This script is for LOCAL DEVELOPMENT and TEST FIXTURES only.
+ * Post-merge CI builds MUST use `compile-from-source.ts` instead,
+ * which reads from the canonical source export files (icons/ + manifest.json).
+ *
+ * See lib/sync-source/source-of-truth.ts for the full decision rationale.
+ */
+
 import { runCompileCommand } from '../lib/export/compile-pipeline';
+import { warnIfSourceExportExists } from '../lib/sync-source/source-of-truth';
 
 function getArg(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -20,6 +31,12 @@ async function main(): Promise<void> {
     throw new Error(
       'Usage: bun scripts/compile-icons.ts --project <project.json> --out <out-dir> --package-name <name> --package-version <version> [--previous-out <dir>] [--built-at <iso>] [--generate-react]',
     );
+  }
+
+  // Guard: warn if canonical source export files also exist alongside this project
+  const warning = await warnIfSourceExportExists(projectPath);
+  if (warning) {
+    process.stderr.write(`\n${warning}\n\n`);
   }
 
   const result = await runCompileCommand({

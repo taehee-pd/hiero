@@ -13,6 +13,7 @@ export type SyncErrorCode =
   | 'FILE_DELETE_FAILURE'
   | 'PR_CREATION_FAILURE'
   | 'VALIDATION_FAILURE'
+  | 'CONFLICT_DETECTED'
   | 'PROVIDER_ERROR';
 
 export class SyncError extends Error {
@@ -83,6 +84,13 @@ export class ValidationFailureError extends SyncError {
   constructor(message = 'Request payload validation failed.', cause?: unknown) {
     super('VALIDATION_FAILURE', message, 400, cause);
     this.name = 'ValidationFailureError';
+  }
+}
+
+export class ConflictDetectedError extends SyncError {
+  constructor(message = 'Conflicts detected — sync aborted without mutations.', cause?: unknown) {
+    super('CONFLICT_DETECTED', message, 409, cause);
+    this.name = 'ConflictDetectedError';
   }
 }
 

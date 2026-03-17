@@ -4,7 +4,7 @@
 
 import type { SourcePayloadFile } from '@/lib/sync-source/types';
 import type { SyncErrorCode } from './errors';
-import type { Conflict } from './conflicts';
+import type { Conflict, SuggestedAction } from './conflicts';
 import type { IconChange } from './diff-source';
 
 // ---------------------------------------------------------------------------
@@ -97,6 +97,14 @@ export type SyncConflictResponse = {
   remoteHeadSha: string;
   /** SHA the export was based on. */
   localBaseSha: string | null;
+  /**
+   * The up-to-date remote HEAD SHA the caller can use to retry
+   * without re-fetching. Null when the remote was unreachable
+   * (e.g. auth-expired).
+   */
+  refreshedBaseSha: string | null;
+  /** Deduplicated union of all suggested actions across conflicts. */
+  suggestedActions: SuggestedAction[];
   /** Per-icon classification of what the local diff would change. */
   iconChanges: IconChange[];
 };

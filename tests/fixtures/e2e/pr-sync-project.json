@@ -1,0 +1,170 @@
+{
+  "version": "1.0",
+  "meta": {
+    "name": "PR Sync E2E Fixture",
+    "createdAt": "2026-03-10T00:00:00.000Z",
+    "updatedAt": "2026-03-10T00:00:00.000Z"
+  },
+  "icons": {
+    "icon-chevron": {
+      "id": "icon-chevron",
+      "name": "Chevron",
+      "category": "navigation",
+      "tags": ["arrow", "chevron", "direction"],
+      "variants": {
+        "v24": {
+          "id": "v24",
+          "size": 24,
+          "viewBox": [0, 0, 24, 24],
+          "defaultState": "default",
+          "states": {
+            "default": {
+              "id": "default",
+              "layers": {
+                "path-main": {
+                  "id": "path-main",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "transitions": {},
+      "effects": {}
+    },
+    "icon-search": {
+      "id": "icon-search",
+      "name": "Search",
+      "category": "action",
+      "tags": ["find", "search", "magnifier"],
+      "variants": {
+        "v24": {
+          "id": "v24",
+          "size": 24,
+          "viewBox": [0, 0, 24, 24],
+          "defaultState": "default",
+          "states": {
+            "default": {
+              "id": "default",
+              "layers": {
+                "circle": {
+                  "id": "circle",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M11 3a8 8 0 100 16 8 8 0 000-16z" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                },
+                "handle": {
+                  "id": "handle",
+                  "role": "secondary",
+                  "visible": true,
+                  "path": { "d": "M16.65 16.65L21 21" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "transitions": {},
+      "effects": {}
+    },
+    "icon-star": {
+      "id": "icon-star",
+      "name": "Star",
+      "category": "feedback",
+      "tags": ["favorite", "star", "rating"],
+      "variants": {
+        "v24": {
+          "id": "v24",
+          "size": 24,
+          "viewBox": [0, 0, 24, 24],
+          "defaultState": "default",
+          "states": {
+            "default": {
+              "id": "default",
+              "layers": {
+                "outline": {
+                  "id": "outline",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z" },
+                  "style": {
+                    "fill": { "mode": "fixed", "value": "none" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            },
+            "filled": {
+              "id": "filled",
+              "layers": {
+                "outline": {
+                  "id": "outline",
+                  "role": "primary",
+                  "visible": true,
+                  "path": { "d": "M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z" },
+                  "style": {
+                    "fill": { "mode": "token", "token": "accent" },
+                    "stroke": { "mode": "token", "token": "accent" },
+                    "strokeWidth": 2,
+                    "lineCap": "round",
+                    "lineJoin": "round"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "transitions": {
+        "default-filled": {
+          "id": "default-filled",
+          "from": "default",
+          "to": "filled",
+          "strategy": "track",
+          "durationMs": 200,
+          "easing": "ease-in-out",
+          "layerBindings": [
+            {
+              "fromLayerId": "outline",
+              "toLayerId": "outline",
+              "tracks": [{ "property": "opacity", "keyframes": [0, 1] }]
+            }
+          ]
+        }
+      },
+      "effects": {}
+    }
+  },
+  "tokenSet": {
+    "colors": {
+      "accent": "#38bdf8"
+    }
+  }
+}

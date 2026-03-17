@@ -54,6 +54,37 @@ These modules support the editor UI but do not define the canonical document sha
 
 The export layer is already active and is not only a roadmap concern.
 
+### Sync and Source Export
+
+- `lib/sync-source/`: exports editor state into a versioned, deterministic canonical source format (`icon.json` + `manifest.json` + `preview.svg` per icon).
+- `lib/sync-service/`: orchestrates GitHub PR-based sync: source-level diff, conflict detection, branch creation, and file commits.
+- `lib/sync-source/source-to-project.ts`: adapter layer that reconstructs a `Project` from merged source files for compilation.
+- `lib/sync-source/source-of-truth.ts`: guardrails that prevent mixing input sources.
+
+#### Sync Service Internals
+
+The sync service (`lib/sync-service/`) is a layered module:
+
+| File | Responsibility |
+|------|---------------|
+| `git-provider.ts` | Abstract provider interface (GitHub, GitLab, etc.) |
+| `github-provider.ts` | GitHub REST API implementation (server-side only) |
+| `sync-pr.ts` | 11-step orchestrator: validate → diff → conflicts → branch → commit → PR |
+| `contracts.ts` | Request/response types and payload validation |
+| `diff-source.ts` | Byte-for-byte source-level diffing engine |
+| `conflicts.ts` | Optimistic concurrency (6 conflict kinds, machine-readable codes, suggested actions) |
+| `errors.ts` | 9 typed error classes with HTTP status codes and `classifyGitHubError` |
+| `metadata.ts` | PR title/body generation, CI summary, review comments |
+| `analytics.ts` | Structured observability: 10 events, pluggable sinks, debug mode, timeline diagnostics |
+| `permissions.ts` | Least-privilege audit, preflight permission checks, token format validation |
+| `feature-flags.ts` | Environment-variable-based rollout control (kill switch, dry-run, repo allow-list) |
+
+**Error handling boundary:** Steps 1-6 of the sync pipeline are read-only. Steps 7-10 mutate the remote and are individually wrapped with typed error classification. Partial failures (e.g., branch created but PR creation failed) report the orphan branch in the error response.
+
+**Token boundary:** The GitHub token is injected server-side via `GITHUB_SYNC_TOKEN`. It is never exposed to the client, never included in analytics events, and never logged. The `GitHubProvider` constructor rejects empty tokens.
+
+**Conflict model:** Optimistic concurrency using `baseSha` tracking. Before any mutations, the pipeline checks for base-SHA drift, remote icon changes, remote icon deletions, manifest conflicts, branch name collisions, and auth expiry. Each conflict carries a machine-readable error code and a list of suggested recovery actions.
+
 ### Runtime Consumption
 
 The repository contains multiple runtime-focused layers:
@@ -91,6 +122,14 @@ Import/export flow:
 3. Compile pipeline code writes deterministic files for downstream consumers.
 4. Runtime layers render authored or compiled icon data outside the editor.
 
+PR sync and post-merge build flow:
+
+1. Editor exports canonical source files via `lib/sync-source/export-source-payload.ts`.
+2. `lib/sync-service/sync-pr.ts` diffs, creates a branch, commits changed files, and opens a PR.
+3. After merge, `scripts/compile-from-source.ts` reads source files from the repo.
+4. `lib/sync-source/source-to-project.ts` reconstructs a `Project` via the adapter layer.
+5. `lib/export/compile-pipeline.ts` compiles the project into the runtime package.
+
 Desktop flow:
 
 1. The webview hosts the same UI as the browser app.
@@ -104,8 +143,38 @@ Desktop flow:
 - Deterministic outputs: compile and export code sorts and serializes data in stable ways for repeatable artifacts and tests.
 - Shared UI across web and desktop: native capabilities must route through the platform bridge instead of scattering platform checks across product code.
 - Desktop production build depends on a static Next export staged into the Electrobun mainview.
+- Single source of truth for builds: see "Schema Boundaries" below.
+
+## Schema Boundaries and Source of Truth
+
+Three distinct schema layers exist. Each has a clear owner and must not be used as a substitute for another:
+
+| Layer | Schema | Owner | Files |
+|-------|--------|-------|-------|
+| **Editor document** | `Project` / `Workspace` (`lib/schema/types.ts`) | Editor store | `.json` project files (editor-local, never committed to target repo) |
+| **Canonical source export** | `IconSourceFile` / `SyncSourceManifest` (`lib/sync-source/types.ts`) | PR sync pipeline | `icons/<name>/icon.json`, `icons/<name>/preview.svg`, `manifest.json` |
+| **Compiled runtime output** | `CompiledIcon` / `PackageManifest` (`lib/compiler-contracts/types.ts`) | Compile pipeline | `icons/*.compiled.json`, `icons.manifest.json`, `generated/*.tsx` |
+
+**Post-merge builds use source export files exclusively.** The adapter in `lib/sync-source/source-to-project.ts` reconstructs a `Project` in memory for the compile pipeline. No project/workspace JSON is read from or persisted in the target repo.
+
+Guardrails (`lib/sync-source/source-of-truth.ts`) enforce this at build time:
+- `compile-from-source.ts` fails fast if a `project.json` exists alongside source export files.
+- `compile-icons.ts` warns if source export files exist alongside the given project file.
+- `validate-source-export.ts` checks for conflicting input sources before running any validation.
 
 ## Known Conflicts / Notes
 
 - Some legacy docs describe runtime/export work as future phases, but the repository already contains real runtime and export implementations under `lib/export/` and `lib/runtime-*`.
 - Desktop architecture docs are broadly accurate, but naming in those docs still uses `Icophone` rather than a single settled product name.
+
+## Sync Pipeline Known Limitations
+
+The PR sync pipeline is designed for single-user-at-a-time icon publishing workflows. It is not a real-time collaboration system.
+
+- **No concurrent editing:** Two users editing the same icon set will conflict on the second sync. The first sync to push wins; the second must re-export.
+- **One commit per file:** The Contents API creates sequential commits. Large changesets produce many commits on the feature branch.
+- **Heuristic remote conflict detection:** Remote icon changes are detected by file-count comparison, not content hashing. False positives are possible.
+- **No automatic token refresh:** Short-lived tokens (GitHub App installation) must be rotated externally.
+- **Orphan branches on partial failure:** If steps 8-10 fail, the branch created in step 7 remains. The error response includes the branch name for cleanup.
+
+See `docs_canonical/SYNC_TROUBLESHOOTING.md` for the full troubleshooting guide and `README.md` for the operational runbook.

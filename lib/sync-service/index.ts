@@ -51,3 +51,17 @@ export {
   classifyGitHubError,
   type SyncErrorCode,
 } from './errors';
+export {
+  REQUIRED_PERMISSIONS,
+  METHOD_PERMISSION_MAP,
+  preflightPermissionCheck,
+  validateTokenFormat,
+  type PreflightResult,
+  type PreflightCheck,
+} from './permissions';
+export {
+  readSyncFlags,
+  checkSyncAllowed,
+  type SyncFeatureFlags,
+  type FlagCheckResult,
+} from './feature-flags';

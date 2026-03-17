@@ -45,6 +45,10 @@ async function main(): Promise<void> {
     );
   }
 
+  // Guard: fail fast if both source export and project.json exist (ambiguous input)
+  const { assertSourceExportIsCanonical } = await import('../lib/sync-source/source-of-truth');
+  await assertSourceExportIsCanonical(sourceDir);
+
   // Load optional token colors
   let tokenColors: Record<string, string> | undefined;
   if (tokenColorsPath) {

@@ -478,7 +478,7 @@ describe('generatePrTitle', () => {
 });
 
 describe('generatePrBody', () => {
-  test('includes markdown summary table', () => {
+  test('includes markdown summary table with counts', () => {
     const changes: ChangedFileSummary = {
       added: ['icons/play/icon.json'],
       updated: ['icons/chevron/icon.json'],
@@ -487,24 +487,59 @@ describe('generatePrBody', () => {
     const body = generatePrBody(changes, 'Alice');
     expect(body).toContain('## Icon Source Sync');
     expect(body).toContain('Alice');
-    expect(body).toContain('| Added | 1 |');
-    expect(body).toContain('| Updated | 1 |');
-    expect(body).toContain('| Deleted | 1 |');
-    expect(body).toContain('### Added');
-    expect(body).toContain('### Updated');
-    expect(body).toContain('### Deleted');
+    expect(body).toContain('| Files added | 1 |');
+    expect(body).toContain('| Files updated | 1 |');
+    expect(body).toContain('| Files deleted | 1 |');
+    expect(body).toContain('| Total files changed | 3 |');
+    expect(body).toContain('| Icons changed |');
   });
 
-  test('omits empty sections', () => {
+  test('includes schema version', () => {
+    const changes: ChangedFileSummary = { added: ['icons/play/icon.json'], updated: [], deleted: [] };
+    const body = generatePrBody(changes, 'Alice');
+    expect(body).toContain('**Schema version:**');
+    expect(body).toContain('icon `');
+    expect(body).toContain('manifest `');
+  });
+
+  test('includes validation checklist', () => {
+    const changes: ChangedFileSummary = { added: [], updated: ['icons/chevron/icon.json'], deleted: [] };
+    const body = generatePrBody(changes, 'Alice');
+    expect(body).toContain('### Validation Checklist');
+    expect(body).toContain('Schema compliance');
+    expect(body).toContain('Compile pipeline');
+  });
+
+  test('includes icon change table when iconChanges provided', () => {
+    const changes: ChangedFileSummary = {
+      added: ['icons/play/icon.json'],
+      updated: ['icons/chevron/icon.json'],
+      deleted: [],
+    };
+    const body = generatePrBody(changes, 'Alice', {
+      iconChanges: [
+        { iconDir: 'chevron', kind: 'updated' },
+        { iconDir: 'play', kind: 'added' },
+      ],
+    });
+    expect(body).toContain('### Icon Changes');
+    expect(body).toContain('`chevron`');
+    expect(body).toContain('`play`');
+    expect(body).toContain('Updated');
+    expect(body).toContain('Added');
+  });
+
+  test('file-level detail is in collapsed section', () => {
     const changes: ChangedFileSummary = {
       added: ['icons/play/icon.json'],
       updated: [],
       deleted: [],
     };
     const body = generatePrBody(changes, 'Bob');
-    expect(body).toContain('### Added');
-    expect(body).not.toContain('### Updated');
-    expect(body).not.toContain('### Deleted');
+    expect(body).toContain('<details>');
+    expect(body).toContain('**Added**');
+    expect(body).not.toContain('**Updated**');
+    expect(body).not.toContain('**Deleted**');
   });
 });
 
@@ -1325,7 +1360,7 @@ describe('syncPr error propagation', () => {
     );
   });
 
-  test('propagates file write failure', async () => {
+  test('propagates file write failure as error result', async () => {
     const failProvider: GitProvider = {
       getBranchRef: async (_o, _r, branch) => {
         if (branch !== 'main') throw new Error('404 not found');
@@ -1348,12 +1383,16 @@ describe('syncPr error propagation', () => {
     };
 
     const request = makeRequest();
-    await expect(syncPr(request, { provider: failProvider, now: FIXED_DATE })).rejects.toThrow(
-      FileWriteError,
-    );
+    const result = await syncPr(request, { provider: failProvider, now: FIXED_DATE });
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect(result.error).toBe('FILE_WRITE_FAILURE');
+      expect(result.message).toContain('Quota exceeded');
+      expect(result.orphanBranch).toBeDefined();
+    }
   });
 
-  test('propagates PR creation failure', async () => {
+  test('propagates PR creation failure as error result', async () => {
     const failProvider: GitProvider = {
       getBranchRef: async (_o, _r, branch) => {
         if (branch !== 'main') throw new Error('404 not found');
@@ -1370,8 +1409,12 @@ describe('syncPr error propagation', () => {
     };
 
     const request = makeRequest();
-    await expect(syncPr(request, { provider: failProvider, now: FIXED_DATE })).rejects.toThrow(
-      PrCreationError,
-    );
+    const result = await syncPr(request, { provider: failProvider, now: FIXED_DATE });
+    expect(result.kind).toBe('error');
+    if (result.kind === 'error') {
+      expect(result.error).toBe('PR_CREATION_FAILURE');
+      expect(result.message).toContain('PR limit reached');
+      expect(result.orphanBranch).toBeDefined();
+    }
   });
 });

@@ -18,16 +18,79 @@ export type ConflictKind =
   | 'icon-changed-remotely'
   | 'icon-deleted-remotely'
   | 'manifest-changed-remotely'
-  | 'branch-already-exists';
+  | 'branch-already-exists'
+  | 'auth-expired';
+
+/**
+ * Machine-readable error codes for each conflict category.
+ * These are stable identifiers that callers can switch on.
+ */
+export type ConflictErrorCode =
+  | 'STALE_BASE_REVISION'
+  | 'ICON_CHANGED_REMOTELY'
+  | 'ICON_DELETED_REMOTELY'
+  | 'MANIFEST_CONFLICT'
+  | 'BRANCH_NAME_COLLISION'
+  | 'AUTH_TOKEN_EXPIRED';
+
+export const CONFLICT_ERROR_CODES: Record<ConflictKind, ConflictErrorCode> = {
+  'base-sha-drift': 'STALE_BASE_REVISION',
+  'icon-changed-remotely': 'ICON_CHANGED_REMOTELY',
+  'icon-deleted-remotely': 'ICON_DELETED_REMOTELY',
+  'manifest-changed-remotely': 'MANIFEST_CONFLICT',
+  'branch-already-exists': 'BRANCH_NAME_COLLISION',
+  'auth-expired': 'AUTH_TOKEN_EXPIRED',
+};
+
+/**
+ * Suggested recovery actions the caller can present to the user.
+ */
+export type SuggestedAction =
+  | 'refresh-and-re-export'
+  | 'pull-remote-changes'
+  | 'force-sync'
+  | 'rename-branch'
+  | 're-authenticate'
+  | 'discard-deleted-icons'
+  | 'resolve-manifest';
+
+export const CONFLICT_SUGGESTED_ACTIONS: Record<ConflictKind, SuggestedAction[]> = {
+  'base-sha-drift': ['refresh-and-re-export', 'force-sync'],
+  'icon-changed-remotely': ['pull-remote-changes', 'refresh-and-re-export', 'force-sync'],
+  'icon-deleted-remotely': ['discard-deleted-icons', 'refresh-and-re-export', 'force-sync'],
+  'manifest-changed-remotely': ['resolve-manifest', 'refresh-and-re-export', 'force-sync'],
+  'branch-already-exists': ['rename-branch'],
+  'auth-expired': ['re-authenticate'],
+};
 
 export type Conflict = {
   kind: ConflictKind;
+  /** Machine-readable error code for programmatic handling. */
+  code: ConflictErrorCode;
+  /** Human-readable explanation of the conflict. */
   message: string;
+  /** Suggested recovery actions, ordered by preference. */
+  suggestedActions: SuggestedAction[];
   /** Icon directory names involved, if applicable. */
   iconDirs?: string[];
   /** Specific file paths involved. */
   files?: string[];
 };
+
+/** Build a Conflict with automatic code and suggestedActions from the kind. */
+function makeConflict(
+  kind: ConflictKind,
+  message: string,
+  extra?: { iconDirs?: string[]; files?: string[] },
+): Conflict {
+  return {
+    kind,
+    code: CONFLICT_ERROR_CODES[kind],
+    message,
+    suggestedActions: CONFLICT_SUGGESTED_ACTIONS[kind],
+    ...extra,
+  };
+}
 
 export type ConflictCheckResult = {
   /** True when no conflicts were detected. */
@@ -81,19 +144,41 @@ export async function checkConflicts(
 
   const conflicts: Conflict[] = [];
 
-  // 1. Resolve remote HEAD
-  const remoteRef = await provider.getBranchRef(owner, repo, baseBranch);
-  const remoteHeadSha = remoteRef.sha;
+  // 1. Resolve remote HEAD (also serves as auth/connectivity check)
+  let remoteHeadSha: string;
+  try {
+    const remoteRef = await provider.getBranchRef(owner, repo, baseBranch);
+    remoteHeadSha = remoteRef.sha;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('401') || message.includes('Bad credentials') || message.includes('token')) {
+      conflicts.push(
+        makeConflict(
+          'auth-expired',
+          'Authentication token has expired or been revoked. Re-authenticate and retry.',
+        ),
+      );
+      return {
+        ok: false,
+        conflicts,
+        remoteHeadSha: '',
+        localBaseSha: baseSha,
+      };
+    }
+    // Not an auth error — rethrow so caller gets a proper provider error
+    throw err;
+  }
 
   // 2. Base SHA drift — the branch moved since the export was generated
   if (baseSha && baseSha !== remoteHeadSha) {
-    conflicts.push({
-      kind: 'base-sha-drift',
-      message:
+    conflicts.push(
+      makeConflict(
+        'base-sha-drift',
         `Base branch "${baseBranch}" has advanced since export. ` +
         `Expected ${baseSha}, remote is now ${remoteHeadSha}. ` +
         `Re-export recommended to incorporate latest changes.`,
-    });
+      ),
+    );
 
     // If the branch moved, check which icons changed remotely
     const remoteConflicts = await detectRemoteIconConflicts(
@@ -140,10 +225,10 @@ async function detectBranchCollision(
   try {
     await provider.getBranchRef(owner, repo, targetBranch);
     // If it didn't throw, the branch exists
-    return {
-      kind: 'branch-already-exists',
-      message: `Branch "${targetBranch}" already exists. A unique branch name is required.`,
-    };
+    return makeConflict(
+      'branch-already-exists',
+      `Branch "${targetBranch}" already exists. A unique branch name is required.`,
+    );
   } catch {
     // Expected: branch doesn't exist yet
     return null;
@@ -213,18 +298,21 @@ async function detectRemoteIconConflicts(
   }
 
   if (deletedRemotely.length > 0) {
-    conflicts.push({
-      kind: 'icon-deleted-remotely',
-      message:
+    conflicts.push(
+      makeConflict(
+        'icon-deleted-remotely',
         `${deletedRemotely.length} icon(s) were deleted on the remote branch ` +
         `since your last sync: ${deletedRemotely.join(', ')}.`,
-      iconDirs: deletedRemotely.sort(),
-      files: deletedRemotely
-        .map((d) =>
-          packagePath ? `${packagePath}/icons/${d}/icon.json` : `icons/${d}/icon.json`,
-        )
-        .sort(),
-    });
+        {
+          iconDirs: deletedRemotely.sort(),
+          files: deletedRemotely
+            .map((d) =>
+              packagePath ? `${packagePath}/icons/${d}/icon.json` : `icons/${d}/icon.json`,
+            )
+            .sort(),
+        },
+      ),
+    );
   }
 
   // Check for icons that exist both locally and remotely but whose
@@ -262,27 +350,29 @@ async function detectRemoteIconConflicts(
   }
 
   if (changedRemotely.length > 0) {
-    conflicts.push({
-      kind: 'icon-changed-remotely',
-      message:
+    conflicts.push(
+      makeConflict(
+        'icon-changed-remotely',
         `${changedRemotely.length} icon(s) may have been modified on the remote branch ` +
         `since your last sync: ${changedRemotely.join(', ')}. ` +
         `Re-export to incorporate remote changes.`,
-      iconDirs: changedRemotely.sort(),
-    });
+        { iconDirs: changedRemotely.sort() },
+      ),
+    );
   }
 
   // Manifest conflict — check if manifest.json exists on remote
   // but wasn't in our previous export (different tool wrote it)
   const manifestPath = packagePath ? `${packagePath}/manifest.json` : 'manifest.json';
   if (remoteFiles.has(manifestPath) && !prevMap.has(manifestPath)) {
-    conflicts.push({
-      kind: 'manifest-changed-remotely',
-      message:
+    conflicts.push(
+      makeConflict(
+        'manifest-changed-remotely',
         'manifest.json exists on the remote branch but was not part of your previous sync. ' +
         'Another tool or user may have modified it.',
-      files: [manifestPath],
-    });
+        { files: [manifestPath] },
+      ),
+    );
   }
 
   return conflicts;

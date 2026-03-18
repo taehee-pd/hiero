@@ -45,7 +45,7 @@ export const HAMBURGER_CLOSE_ICON: Icon = {
           layers: {
             top: {
               id: 'top',
-              path: { d: 'M6 6L18 18' },
+              path: { d: 'M5 7H19' },
               style: SHARED_STROKE_STYLE,
               transform: { rotate: 45, y: 5 },
             },
@@ -57,7 +57,7 @@ export const HAMBURGER_CLOSE_ICON: Icon = {
             },
             bottom: {
               id: 'bottom',
-              path: { d: 'M6 18L18 6' },
+              path: { d: 'M5 17H19' },
               style: SHARED_STROKE_STYLE,
               transform: { rotate: -45, y: -5 },
             },

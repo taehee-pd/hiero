@@ -29,6 +29,9 @@ export type ResolvedLayerBinding = {
   durationMs?: number;
   easing?: string;
   diagnostics?: string[];
+  /** When true, this layer is preserved across a Magic Replace transition
+   *  and should not be crossfaded or removed/recreated. */
+  preserved?: boolean;
 };
 
 export type ResolvedTransition = {
@@ -39,16 +42,32 @@ export type ResolvedTransition = {
   diagnostics: string[];
 };
 
+export type ResolveTransitionOptions = {
+  /** Layer IDs that should be preserved across the transition (Magic Replace). */
+  preserveLayerIds?: string[];
+};
+
 export function resolveTransition(
   transition: Transition,
   fromState: State,
   toState: State,
+  options: ResolveTransitionOptions = {},
 ): ResolvedTransition {
   const diagnostics: string[] = [];
+  const preserveSet = new Set(options.preserveLayerIds ?? []);
   const plannedBindings = resolveBindings(transition, fromState, toState);
-  const layerBindings = plannedBindings.map((binding, index) =>
-    resolveLayerBinding(binding, transition, index, plannedBindings.length),
-  );
+  const layerBindings = plannedBindings.map((binding, index) => {
+    const resolved = resolveLayerBinding(binding, transition, index, plannedBindings.length);
+    // Mark preserved layers — skip crossfade/morph, keep stable
+    const layerId = resolved.fromLayer?.id ?? resolved.toLayer?.id;
+    if (layerId && preserveSet.has(layerId)) {
+      resolved.preserved = true;
+      resolved.fallback = undefined;
+      resolved.morph = undefined;
+      resolved.animationType = 'replace';
+    }
+    return resolved;
+  });
 
   return {
     strategy: transition.strategy,
@@ -113,11 +132,17 @@ function resolveBindings(
     resolved.push({ toLayerId: layer.id, toLayer: layer, fromLayer: undefined, source: 'fallback' });
   });
 
-  return resolved.sort((a, b) => {
+  // Sort auto-matched and fallback bindings deterministically, but preserve
+  // the authored order of explicit bindings so track keyframes stay aligned
+  // with the correct layers.
+  const explicit = resolved.filter((b) => b.source === 'explicit');
+  const auto = resolved.filter((b) => b.source !== 'explicit');
+  auto.sort((a, b) => {
     const aid = `${a.fromLayer?.id ?? ''}|${a.toLayer?.id ?? ''}`;
     const bid = `${b.fromLayer?.id ?? ''}|${b.toLayer?.id ?? ''}`;
     return aid.localeCompare(bid);
   });
+  return [...explicit, ...auto];
 }
 
 function resolveLayerBinding(
@@ -142,6 +167,14 @@ function resolveLayerBinding(
     easing: transition.easing ?? 'linear',
     diagnostics,
   };
+
+  // Track-strategy bindings with explicit tracks are animated via their track
+  // keyframes only. Path morphing would double-animate (morph + CSS transform).
+  // The path geometry snaps when setState is called after animation completion.
+  if (transition.strategy === 'track' && resolved.tracks.length > 0) {
+    resolved.animationType = 'replace';
+    return resolved;
+  }
 
   const fromD = fromLayer?.path?.d;
   const toD = toLayer?.path?.d;

@@ -62,6 +62,17 @@ This document tracks implementation progress against the planned architecture an
 ### `export`
 - [x] Deterministic SVG export exists.
 - [x] Token paint resolution, gradient defs, and clip-path emission are implemented.
+- [x] Deterministic runtime-json export exists for per-variant payloads, including transitions, effects, draw metadata, and diagnostics.
+
+### `runtime-core`
+- [x] Baseline runtime store exists for runtime-json payloads with transition stepping, effect playback, and interrupt-safe state changes.
+
+### `runtime-dom`
+- [x] Runtime snapshot SVG renderer exists with gradients, clip paths, and path-length playback support.
+
+### `runtime-react`
+- [x] `<Icon />` and `useIcon()` exist on top of the runtime store using `useSyncExternalStore`.
+- [x] A demo route exists for end-to-end runtime React validation.
 
 ### `apps/web`
 - [x] Editor shell layout with side panels and canvas is implemented.

@@ -48,7 +48,7 @@ export function resolveTransitionPlan(
   toState: string,
   transition: IconBaseProps['transition'],
 ): TransitionResolution {
-  if (!transition || transition === false || fromState === toState) {
+  if (!transition || fromState === toState) {
     return { mode: 'snap' };
   }
 

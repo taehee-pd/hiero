@@ -23,7 +23,8 @@
     "build:icons:package": "bun scripts/build-icons-package.ts",
     "validate:icons:package": "bun scripts/validate-icons-package.ts",
     "validate:source-export": "bun scripts/validate-source-export.ts --source .",
-    "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts"
+    "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts",
+    "check:runtime-size": "bun scripts/check-runtime-size.ts"
   },
   "dependencies": {
     "@fontsource/work-sans": "^5.2.8",

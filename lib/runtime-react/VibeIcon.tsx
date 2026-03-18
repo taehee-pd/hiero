@@ -12,6 +12,7 @@ export type VibeIconProps = {
   variant?: string | number;
   state?: string;
   animate?: boolean;
+  effect?: string | null;
   /** Accessible label. Sets role="img" + aria-label. Omit for decorative icons (aria-hidden). */
   label?: string;
   /** Motion preference: true=skip animations, false=always animate, 'system'=respect OS. */
@@ -27,6 +28,7 @@ export function VibeIcon({
   variant,
   state,
   animate = true,
+  effect = null,
   label,
   reduceMotion = 'system',
   size,
@@ -111,6 +113,13 @@ export function VibeIcon({
 
     driver.transitionTo(resolvedState);
   }, [animate, currentDriverState, icon, renderedSize, resolvedState, resolvedVariant.id]);
+
+  // Trigger named effect when requested.
+  useEffect(() => {
+    const driver = driverRef.current;
+    if (!driver || !effect || animate === false) return;
+    driver.triggerEffect(effect);
+  }, [animate, effect, resolvedState]);
 
   // Render static SVG with layers for SSR. The driver replaces this on hydration.
   const resolvedStateDef = resolvedVariant.states[resolvedState];

@@ -8,7 +8,6 @@ import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
 
 const chevronIcon = SAMPLE_PROJECT.icons['icon-chevron']!;
-
 export default function RuntimeDemoPage() {
   const hamburger = useIconState('open');
   const chevron = useIconState('default');

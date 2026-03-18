@@ -326,6 +326,7 @@ describe('runtime dom renderer', () => {
         strategy: 'strictMorph',
         durationMs: 120,
         easing: 'linear',
+        diagnostics: [],
         layerBindings: [
           {
             fromLayer,
@@ -359,6 +360,7 @@ describe('runtime dom renderer', () => {
         strategy: 'bestGuessMorph',
         durationMs: 120,
         easing: 'linear',
+        diagnostics: [],
         layerBindings: [
           {
             fromLayer,

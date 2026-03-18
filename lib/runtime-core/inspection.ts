@@ -31,7 +31,7 @@ export function inspectTransitionPlan(
       readinessScore: binding.readiness?.score,
       recommendedStrategy: binding.readiness?.recommendedStrategy,
       runtimeFallback: binding.fallback,
-      diagnostics: binding.diagnostics,
+      diagnostics: binding.diagnostics ?? [],
     })),
   };
 }

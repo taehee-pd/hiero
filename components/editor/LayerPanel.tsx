@@ -8,6 +8,7 @@ import {
   useEditorStore,
   useEditorActions,
 } from '@/lib/editor-store/hooks';
+import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,17 @@ export function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
   const selection = useSelection();
   const currentIconId = useEditorStore((s) => s.currentIconId);
+  const componentByLayerId = useEditorStore((s) => {
+    if (!s.currentIconId) return new Map<string, 'badge' | 'slash' | 'enclosure'>();
+    const icon = s.project?.icons[s.currentIconId];
+    const map = new Map<string, 'badge' | 'slash' | 'enclosure'>();
+    for (const component of Object.values(icon?.components ?? {})) {
+      for (const layerId of component.layerIds) {
+        map.set(layerId, component.kind);
+      }
+    }
+    return map;
+  });
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const { setSelection, setLayerVisibility } = useEditorActions();
 
@@ -38,6 +50,7 @@ export function LayerPanel() {
             const isSelected = selection.layerIds.includes(layer.id);
             const isVisible = layer.visible !== false;
             const isMask = layer.isClipMask === true;
+            const componentKind = componentByLayerId.get(layer.id);
 
             return (
               <div
@@ -49,6 +62,11 @@ export function LayerPanel() {
                     : 'border-border/80 bg-background/80 hover:border-foreground/12 hover:bg-background',
                 )}
                 onClick={() => setSelection({ layerIds: [layer.id], pointIds: [] })}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setSelection({ layerIds: [layer.id], pointIds: [] });
+                  void showNativeContextMenu('layerPanel', { layerId: layer.id });
+                }}
                 role="button"
                 tabIndex={0}
                 aria-selected={isSelected}
@@ -84,6 +102,11 @@ export function LayerPanel() {
                     {isMask ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
                         Mask
+                      </span>
+                    ) : null}
+                    {componentKind ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase text-primary">
+                        {componentKind}
                       </span>
                     ) : null}
                   </div>

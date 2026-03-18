@@ -1,0 +1,155 @@
+name: Validate Icon Source Export
+
+on:
+  pull_request:
+    paths:
+      - 'icons/**'
+      - 'manifest.json'
+      - 'lib/sync-source/**'
+      - 'lib/export/**'
+      - 'lib/compiler-contracts/**'
+      - 'lib/schema/**'
+      - 'scripts/validate-source-export.ts'
+      - 'scripts/compile-icons.ts'
+      - 'scripts/compile-from-source.ts'
+
+concurrency:
+  group: icons-pr-validate-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-source:
+    name: Validate source export
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check
+        run: bun run type-check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Run unit tests (sync-source + sync-service + compile + e2e + conflicts)
+        run: bun test tests/sync-source.test.ts tests/sync-service.test.ts tests/compile-pipeline.test.ts tests/e2e-pr-sync-to-build.test.ts tests/sync-conflicts.test.ts
+
+      - name: Check runtime size budgets
+        run: bun run check:runtime-size
+
+      - name: Validate source export
+        id: validate
+        run: |
+          # Run full validation if icons/ directory exists in the repo root.
+          # This validates schema, manifest, previews, determinism, path safety,
+          # source-of-truth guardrails, AND compile pipeline (via canonical adapter).
+          if [ -d "icons" ]; then
+            mkdir -p ci-artifacts/previews
+            bun scripts/validate-source-export.ts \
+              --source . \
+              --summary ci-artifacts/validation-report.md \
+              --preview-out ci-artifacts/previews \
+              --job-summary ci-artifacts/job-summary.md
+            echo "validate_success=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No icons/ directory found — skipping source file validation."
+            mkdir -p ci-artifacts
+            echo "# Source Export Validation Report" > ci-artifacts/validation-report.md
+            echo "" >> ci-artifacts/validation-report.md
+            echo "No icons/ directory found in repo root. Source validation will run once the first PR sync is merged." >> ci-artifacts/validation-report.md
+            echo "validate_success=skipped" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------
+      # Dry-run compile to produce package preview tarball
+      # ---------------------------------------------------------------
+      - name: Compile dry-run package preview
+        id: compile_preview
+        if: steps.validate.outputs.validate_success == 'true'
+        run: |
+          VERSION="0.0.0-pr.${{ github.event.pull_request.number }}.$(echo ${{ github.sha }} | head -c 8)"
+          mkdir -p ci-artifacts/package-preview
+
+          bun scripts/compile-from-source.ts \
+            --source . \
+            --out ci-artifacts/package-preview \
+            --package-name "@icophone/icons" \
+            --package-version "$VERSION" \
+            --built-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --generate-react
+
+          # Count output for summary
+          ICON_COUNT=$(ls ci-artifacts/package-preview/icons/*.compiled.json 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_FILES=$(find ci-artifacts/package-preview -type f | wc -l | tr -d ' ')
+          echo "icon_count=$ICON_COUNT" >> "$GITHUB_OUTPUT"
+          echo "total_files=$TOTAL_FILES" >> "$GITHUB_OUTPUT"
+          echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------
+      # Post job summary to PR checks
+      # ---------------------------------------------------------------
+      - name: Post validation summary
+        if: always()
+        run: |
+          # Prefer the rich job summary if available, fall back to validation report
+          if [ -f "ci-artifacts/job-summary.md" ]; then
+            cat ci-artifacts/job-summary.md >> "$GITHUB_STEP_SUMMARY"
+          elif [ -f "ci-artifacts/validation-report.md" ]; then
+            cat ci-artifacts/validation-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Append dry-run compile stats if available
+          if [ "${{ steps.compile_preview.outputs.icon_count }}" != "" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "## Package Preview (dry-run)" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Version | \`${{ steps.compile_preview.outputs.package_version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Compiled icons | ${{ steps.compile_preview.outputs.icon_count }} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Total files | ${{ steps.compile_preview.outputs.total_files }} |" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> 📦 The full package preview is available in the **icon-package-preview** artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ---------------------------------------------------------------
+      # Upload artifacts
+      # ---------------------------------------------------------------
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-validation-report
+          path: |
+            ci-artifacts/validation-report.md
+            ci-artifacts/job-summary.md
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload preview SVGs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-previews
+          path: ci-artifacts/previews/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload package preview (dry-run)
+        if: steps.compile_preview.outputs.icon_count != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-package-preview
+          path: ci-artifacts/package-preview/
+          retention-days: 14
+          if-no-files-found: ignore

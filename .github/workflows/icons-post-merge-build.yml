@@ -1,0 +1,133 @@
+name: Build & Package Icons (Post-Merge)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'icons/**'
+      - 'manifest.json'
+      - 'lib/sync-source/**'
+      - 'lib/export/**'
+      - 'lib/compiler-contracts/**'
+      - 'lib/schema/**'
+      - 'scripts/compile-from-source.ts'
+      - 'scripts/compile-icons.ts'
+
+concurrency:
+  group: icons-post-merge-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  build-package:
+    name: Build icon package from merged source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check runtime size budgets
+        run: bun run check:runtime-size
+
+      # ---------------------------------------------------------------
+      # Step 1: Validate merged source files
+      # ---------------------------------------------------------------
+      - name: Validate source export
+        run: |
+          if [ ! -d "icons" ]; then
+            echo "No icons/ directory — nothing to build."
+            exit 0
+          fi
+          bun scripts/validate-source-export.ts \
+            --source . \
+            --summary ci-artifacts/validation-report.md
+
+      # ---------------------------------------------------------------
+      # Step 2: Compile icons from merged source files
+      # ---------------------------------------------------------------
+      - name: Compile icons from source
+        id: compile
+        run: |
+          if [ ! -d "icons" ]; then
+            echo "No icons/ directory — skipping compile."
+            echo "compile_success=skipped" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          VERSION="0.0.0-build.$(echo $GITHUB_SHA | head -c 8)"
+          mkdir -p ci-artifacts/package-output
+
+          bun scripts/compile-from-source.ts \
+            --source . \
+            --out ci-artifacts/package-output \
+            --package-name "@icophone/icons" \
+            --package-version "$VERSION" \
+            --built-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --generate-react
+
+          echo "compile_success=true" >> "$GITHUB_OUTPUT"
+          echo "package_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------
+      # Step 3: Validate compiled package output
+      # ---------------------------------------------------------------
+      - name: Validate compiled package
+        if: steps.compile.outputs.compile_success == 'true'
+        run: |
+          # Verify manifest exists and is valid JSON
+          MANIFEST="ci-artifacts/package-output/icons.manifest.json"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "ERROR: icons.manifest.json not found in output"
+            exit 1
+          fi
+
+          # Verify at least one compiled icon
+          ICON_COUNT=$(ls ci-artifacts/package-output/icons/*.compiled.json 2>/dev/null | wc -l | tr -d ' ')
+          if [ "$ICON_COUNT" -eq 0 ]; then
+            echo "ERROR: No compiled icon files found in output"
+            exit 1
+          fi
+
+          echo "Package validated: $ICON_COUNT compiled icons"
+
+      # ---------------------------------------------------------------
+      # Step 4: Dry-run package publish (no actual publish)
+      # ---------------------------------------------------------------
+      - name: Package dry-run
+        if: steps.compile.outputs.compile_success == 'true'
+        run: |
+          echo "## Package Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version**: \`${{ steps.compile.outputs.package_version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit**: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+          ICON_COUNT=$(ls ci-artifacts/package-output/icons/*.compiled.json 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_FILES=$(find ci-artifacts/package-output -type f | wc -l | tr -d ' ')
+          echo "- **Icons**: ${ICON_COUNT}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Total files**: ${TOTAL_FILES}" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -d "ci-artifacts/package-output/generated" ]; then
+            REACT_FILES=$(find ci-artifacts/package-output/generated -type f | wc -l | tr -d ' ')
+            echo "- **React components**: ${REACT_FILES} files" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # ---------------------------------------------------------------
+      # Step 5: Upload artifacts
+      # ---------------------------------------------------------------
+      - name: Upload package artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-package-${{ github.sha }}
+          path: ci-artifacts/
+          retention-days: 30
+          if-no-files-found: ignore

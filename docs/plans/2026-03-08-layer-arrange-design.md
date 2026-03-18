@@ -1,3 +1,8 @@
+---
+status: implemented
+last-reviewed: 2026-03-18
+---
+
 # Layer Arrange Design
 
 ## Goal

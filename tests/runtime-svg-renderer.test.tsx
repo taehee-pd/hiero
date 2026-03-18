@@ -11,7 +11,7 @@ import {
 import compiledIconFixture from './fixtures/compiler-contracts/compiled-icon.json';
 
 function makeIcon(): CompiledIcon {
-  return structuredClone(compiledIconFixture) as CompiledIcon;
+  return structuredClone(compiledIconFixture) as unknown as CompiledIcon;
 }
 
 describe('runtime svg renderer', () => {

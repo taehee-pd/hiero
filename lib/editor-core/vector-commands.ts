@@ -181,29 +181,286 @@ export function insertPointAfterSelection(): boolean {
   if (!resolved) return false;
   const { editable, subPath, subPathIdx, point, pointIdx } = resolved;
 
-  const nextPoint = subPath.points[pointIdx + 1] ?? (subPath.closed ? subPath.points[0] : null);
+  const nextPointIdx = pointIdx + 1 < subPath.points.length ? pointIdx + 1 : (subPath.closed ? 0 : -1);
+  if (nextPointIdx === -1) return false;
+  const nextPoint = subPath.points[nextPointIdx];
   if (!nextPoint) return false;
 
-  const inserted = {
-    id: `${subPath.id}-pt-${Date.now()}`,
-    position: {
-      x: (point.position.x + nextPoint.position.x) / 2,
-      y: (point.position.y + nextPoint.position.y) / 2,
-    },
-    handleIn: null,
-    handleOut: null,
-    nodeType: 'static' as const,
-    segment: { type: 'line' as const },
-  };
+  const hasCurve = point.handleOut || nextPoint.handleIn;
 
-  subPath.points.splice(pointIdx + 1, 0, inserted);
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  if (hasCurve) {
+    // De Casteljau subdivision at t=0.5 for proper on-curve point insertion
+    const p0 = point.position;
+    const p1 = point.handleOut ?? point.position;
+    const p2 = nextPoint.handleIn ?? nextPoint.position;
+    const p3 = nextPoint.position;
 
-  editorStore.getState().setSelection({
-    layerIds: [target.layerId],
-    pointIds: [`${subPathIdx}:${pointIdx + 1}`],
-  });
+    // First level interpolation
+    const p01 = lerp2d(p0, p1, 0.5);
+    const p12 = lerp2d(p1, p2, 0.5);
+    const p23 = lerp2d(p2, p3, 0.5);
+
+    // Second level
+    const p012 = lerp2d(p01, p12, 0.5);
+    const p123 = lerp2d(p12, p23, 0.5);
+
+    // Third level = point on curve
+    const p0123 = lerp2d(p012, p123, 0.5);
+
+    // Update existing handles for the two resulting curve segments
+    point.handleOut = { x: p01.x, y: p01.y };
+    nextPoint.handleIn = { x: p23.x, y: p23.y };
+
+    const inserted: PathPoint = {
+      id: `${subPath.id}-pt-${Date.now()}`,
+      position: { x: p0123.x, y: p0123.y },
+      handleIn: { x: p012.x, y: p012.y },
+      handleOut: { x: p123.x, y: p123.y },
+      nodeType: 'smooth',
+      segment: { type: 'cubic' },
+    };
+
+    const insertAt = nextPointIdx <= pointIdx ? subPath.points.length : pointIdx + 1;
+    subPath.points.splice(insertAt, 0, inserted);
+
+    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+
+    editorStore.getState().setSelection({
+      layerIds: [target.layerId],
+      pointIds: [`${subPathIdx}:${insertAt}`],
+    });
+  } else {
+    // Simple midpoint for straight line segments
+    const inserted: PathPoint = {
+      id: `${subPath.id}-pt-${Date.now()}`,
+      position: {
+        x: (point.position.x + nextPoint.position.x) / 2,
+        y: (point.position.y + nextPoint.position.y) / 2,
+      },
+      handleIn: null,
+      handleOut: null,
+      nodeType: 'static',
+      segment: { type: 'line' },
+    };
+
+    const insertAt = nextPointIdx <= pointIdx ? subPath.points.length : pointIdx + 1;
+    subPath.points.splice(insertAt, 0, inserted);
+    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+
+    editorStore.getState().setSelection({
+      layerIds: [target.layerId],
+      pointIds: [`${subPathIdx}:${insertAt}`],
+    });
+  }
+
   return true;
+}
+
+function lerp2d(a: { x: number; y: number }, b: { x: number; y: number }, t: number) {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+/**
+ * Split a path segment at the nearest point to a given position.
+ * Supports both line segments and cubic bezier curves.
+ * Returns true if a point was inserted, false otherwise.
+ */
+export function splitSegmentAtPoint(
+  layerId: string,
+  svgPosition: { x: number; y: number },
+  tolerance: number,
+): boolean {
+  const state = editorStore.getState();
+  const iconId = state.currentIconId;
+  const variantId = state.currentVariantId;
+  const stateId = state.currentStateId;
+  if (!iconId || !variantId || !stateId) return false;
+
+  const pathD =
+    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
+  if (!pathD || !isPathDirectlyEditable(pathD)) return false;
+
+  const editable = parseSvgPath(pathD);
+  let bestHit: {
+    subPathIdx: number;
+    pointIdx: number;
+    t: number;
+    distSq: number;
+  } | null = null;
+
+  for (let spIdx = 0; spIdx < editable.subPaths.length; spIdx++) {
+    const subPath = editable.subPaths[spIdx];
+    const segmentCount = subPath.closed ? subPath.points.length : subPath.points.length - 1;
+
+    for (let pIdx = 0; pIdx < segmentCount; pIdx++) {
+      const from = subPath.points[pIdx];
+      const to = subPath.points[(pIdx + 1) % subPath.points.length];
+
+      const hasCurve = from.handleOut || to.handleIn;
+      let result: { t: number; distSq: number };
+
+      if (hasCurve) {
+        result = nearestOnCubic(
+          from.position,
+          from.handleOut ?? from.position,
+          to.handleIn ?? to.position,
+          to.position,
+          svgPosition,
+        );
+      } else {
+        result = nearestOnLine(from.position, to.position, svgPosition);
+      }
+
+      if (!bestHit || result.distSq < bestHit.distSq) {
+        bestHit = { subPathIdx: spIdx, pointIdx: pIdx, t: result.t, distSq: result.distSq };
+      }
+    }
+  }
+
+  if (!bestHit || bestHit.distSq > tolerance * tolerance) return false;
+
+  const subPath = editable.subPaths[bestHit.subPathIdx];
+  const from = subPath.points[bestHit.pointIdx];
+  const toIdx = (bestHit.pointIdx + 1) % subPath.points.length;
+  const to = subPath.points[toIdx];
+  const t = bestHit.t;
+
+  const hasCurve = from.handleOut || to.handleIn;
+
+  if (hasCurve) {
+    const p0 = from.position;
+    const p1 = from.handleOut ?? from.position;
+    const p2 = to.handleIn ?? to.position;
+    const p3 = to.position;
+
+    const p01 = lerp2d(p0, p1, t);
+    const p12 = lerp2d(p1, p2, t);
+    const p23 = lerp2d(p2, p3, t);
+    const p012 = lerp2d(p01, p12, t);
+    const p123 = lerp2d(p12, p23, t);
+    const p0123 = lerp2d(p012, p123, t);
+
+    from.handleOut = { x: p01.x, y: p01.y };
+    to.handleIn = { x: p23.x, y: p23.y };
+
+    const inserted: PathPoint = {
+      id: `${subPath.id}-pt-${Date.now()}`,
+      position: { x: p0123.x, y: p0123.y },
+      handleIn: { x: p012.x, y: p012.y },
+      handleOut: { x: p123.x, y: p123.y },
+      nodeType: 'smooth',
+      segment: { type: 'cubic' },
+    };
+
+    const insertAt = toIdx <= bestHit.pointIdx ? subPath.points.length : bestHit.pointIdx + 1;
+    subPath.points.splice(insertAt, 0, inserted);
+
+    patchPath(iconId, stateId, layerId, serializePath(editable));
+    state.setSelection({
+      layerIds: [layerId],
+      pointIds: [`${bestHit.subPathIdx}:${insertAt}`],
+    });
+  } else {
+    const pos = lerp2d(from.position, to.position, t);
+    const inserted: PathPoint = {
+      id: `${subPath.id}-pt-${Date.now()}`,
+      position: pos,
+      handleIn: null,
+      handleOut: null,
+      nodeType: 'static',
+      segment: { type: 'line' },
+    };
+
+    const insertAt = toIdx <= bestHit.pointIdx ? subPath.points.length : bestHit.pointIdx + 1;
+    subPath.points.splice(insertAt, 0, inserted);
+
+    patchPath(iconId, stateId, layerId, serializePath(editable));
+    state.setSelection({
+      layerIds: [layerId],
+      pointIds: [`${bestHit.subPathIdx}:${insertAt}`],
+    });
+  }
+
+  return true;
+}
+
+function nearestOnLine(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  p: { x: number; y: number },
+): { t: number; distSq: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-10) {
+    return { t: 0, distSq: (p.x - a.x) ** 2 + (p.y - a.y) ** 2 };
+  }
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+  const px = a.x + t * dx;
+  const py = a.y + t * dy;
+  return { t, distSq: (p.x - px) ** 2 + (p.y - py) ** 2 };
+}
+
+function nearestOnCubic(
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+  target: { x: number; y: number },
+): { t: number; distSq: number } {
+  // Sample the curve at intervals and find the closest point
+  const SAMPLES = 32;
+  let bestT = 0;
+  let bestDistSq = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    const pt = evalCubic(p0, p1, p2, p3, t);
+    const distSq = (target.x - pt.x) ** 2 + (target.y - pt.y) ** 2;
+    if (distSq < bestDistSq) {
+      bestDistSq = distSq;
+      bestT = t;
+    }
+  }
+
+  // Refine with binary search around the best sample
+  let lo = Math.max(0, bestT - 1 / SAMPLES);
+  let hi = Math.min(1, bestT + 1 / SAMPLES);
+  for (let iter = 0; iter < 16; iter++) {
+    const midLo = (2 * lo + hi) / 3;
+    const midHi = (lo + 2 * hi) / 3;
+    const ptLo = evalCubic(p0, p1, p2, p3, midLo);
+    const ptHi = evalCubic(p0, p1, p2, p3, midHi);
+    const dLo = (target.x - ptLo.x) ** 2 + (target.y - ptLo.y) ** 2;
+    const dHi = (target.x - ptHi.x) ** 2 + (target.y - ptHi.y) ** 2;
+    if (dLo < dHi) {
+      hi = midHi;
+    } else {
+      lo = midLo;
+    }
+  }
+
+  const finalT = (lo + hi) / 2;
+  const finalPt = evalCubic(p0, p1, p2, p3, finalT);
+  const finalDistSq = (target.x - finalPt.x) ** 2 + (target.y - finalPt.y) ** 2;
+
+  return { t: finalT, distSq: finalDistSq };
+}
+
+function evalCubic(
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  p3: { x: number; y: number },
+  t: number,
+): { x: number; y: number } {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return {
+    x: mt2 * mt * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t2 * t * p3.x,
+    y: mt2 * mt * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t2 * t * p3.y,
+  };
 }
 
 export function toggleSelectedPathClosed(): boolean {
@@ -227,15 +484,16 @@ export function toggleSelectedPathClosed(): boolean {
   return true;
 }
 
-export function nudgeSelectedPointByArrow(key: string): boolean {
+export function nudgeSelectedPointByArrow(key: string, shiftKey = false): boolean {
   const target = getMultiSelectionTarget(1);
   if (!target) return false;
 
+  const step = shiftKey ? NUDGE_STEP * 10 : NUDGE_STEP;
   const delta = {
-    ArrowLeft: { x: -NUDGE_STEP, y: 0 },
-    ArrowRight: { x: NUDGE_STEP, y: 0 },
-    ArrowUp: { x: 0, y: -NUDGE_STEP },
-    ArrowDown: { x: 0, y: NUDGE_STEP },
+    ArrowLeft: { x: -step, y: 0 },
+    ArrowRight: { x: step, y: 0 },
+    ArrowUp: { x: 0, y: -step },
+    ArrowDown: { x: 0, y: step },
   }[key];
 
   if (!delta) return false;

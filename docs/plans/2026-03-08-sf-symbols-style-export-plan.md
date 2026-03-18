@@ -1,3 +1,8 @@
+---
+status: design-phase
+last-reviewed: 2026-03-18
+---
+
 # SF Symbols-Style Export Plan
 
 ## Decision

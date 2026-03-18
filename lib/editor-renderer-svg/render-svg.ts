@@ -1,4 +1,8 @@
 import type { Icon, Layer, PaintRef, RenderingMode } from '@/lib/schema/types';
+import {
+  resolveLayerStyleForRendering,
+  resolveVariantRenderingMode,
+} from '@/lib/rendering/resolve-layer-style';
 
 export type RenderSvgInput = {
   icon: Icon;
@@ -21,6 +25,9 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
   const variant = icon.variants[variantId];
   const state = variant?.states[stateId];
   if (!variant || !state) return;
+  const renderingMode = resolveVariantRenderingMode(
+    input.renderingMode ?? variant.renderingMode,
+  );
 
   // Set viewBox
   const [vx, vy, vw, vh] = variant.viewBox;
@@ -43,9 +50,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     if (id) existingHit.set(id, el);
   });
 
-  const layers = Object.keys(state.layers)
-    .sort((a, b) => a.localeCompare(b))
-    .map((id) => state.layers[id]);
+  const layers = Object.values(state.layers);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
   const rendered = new Set<string>();
 
@@ -75,7 +80,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     }
 
     // Styles
-    applyLayerStyle(pathEl, layer, defs, tokens);
+    applyLayerStyle(pathEl, layer, defs, renderingMode, tokens);
 
     // Transform
     applyTransform(pathEl, layer);
@@ -171,9 +176,10 @@ function applyLayerStyle(
   el: SVGPathElement,
   layer: Layer,
   defs: SVGDefsElement,
+  renderingMode: RenderingMode,
   tokens?: Record<string, string>,
 ): void {
-  const s = layer.style;
+  const s = resolveLayerStyleForRendering(layer, renderingMode, tokens);
   el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
   el.setAttribute(
     'stroke',

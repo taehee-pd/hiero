@@ -1,4 +1,4 @@
-import type { Project, Icon, Transition, TopologyContract } from './types';
+import type { Project, Icon, Transition, TopologyContract, Workspace } from './types';
 
 function isObject(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -13,6 +13,20 @@ export function isProject(val: unknown): val is Project {
   for (const icon of Object.values(val.icons as Record<string, unknown>)) {
     if (!isIcon(icon)) return false;
   }
+  return true;
+}
+
+export function isWorkspace(val: unknown): val is Workspace {
+  if (!isObject(val)) return false;
+  if (val.version !== '2.0') return false;
+  if (!isObject(val.meta)) return false;
+  if (typeof (val.meta as Record<string, unknown>).name !== 'string') return false;
+  if (!isObject(val.iconSets)) return false;
+  for (const iconSet of Object.values(val.iconSets as Record<string, unknown>)) {
+    if (!isProject(iconSet)) return false;
+  }
+  const activeIconSetId = (val as Record<string, unknown>).activeIconSetId;
+  if (activeIconSetId !== undefined && typeof activeIconSetId !== 'string') return false;
   return true;
 }
 

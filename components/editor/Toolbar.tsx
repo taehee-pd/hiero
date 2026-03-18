@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Undo2,
   Redo2,
@@ -23,14 +23,33 @@ import {
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
-import { isProject } from '@/lib/schema/guards';
+import { isProject, isWorkspace } from '@/lib/schema/guards';
 import { exportSvgString } from '@/lib/export/export-svg';
-import { importSvgFileIntoEditor } from '@/lib/import';
+import { exportSvgPackage } from '@/lib/export/export-svg-package';
+import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
+import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
+import { createZipBlob } from '@/lib/export/export-react/zip';
+import { SyncPrPanel } from '@/components/export/SyncPrPanel';
+import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
+import {
+  clearCurrentProjectPath,
+  exportSvg,
+  openProject,
+  saveProject,
+} from '@/lib/platform/bridge';
 import {
   selectCurrentIcon,
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import type { RenderingMode } from '@/lib/schema/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,78 +58,68 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function Toolbar() {
-  const projectFileInputRef = useRef<HTMLInputElement>(null);
-  const svgFileInputRef = useRef<HTMLInputElement>(null);
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Icophone');
   const zoom = useEditorStore((s) => s.viewport.zoom);
+  const renderingMode = useEditorStore((s) => s.renderingMode);
+  const currentIconId = useEditorStore((s) => s.currentIconId);
+  const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
   const currentIconName = useEditorStore((s) =>
     s.currentIconId ? s.project?.icons[s.currentIconId]?.name ?? null : null,
   );
 
   const handleNew = useCallback(() => {
+    clearCurrentProjectPath();
     editorStore.getState().newProject();
   }, []);
 
-  const handleOpenProject = useCallback(() => {
-    projectFileInputRef.current?.click();
-  }, []);
+  const handleOpenProject = useCallback(async () => {
+    const result = await openProject();
+    if (!result) return;
 
-  const handleImportSvg = useCallback(() => {
-    svgFileInputRef.current?.click();
-  }, []);
-
-  const handleProjectFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const json = JSON.parse(reader.result as string);
-        if (isProject(json)) {
-          editorStore.getState().loadProject(json);
-        } else {
-          alert('Invalid Icophone project file.');
-        }
-      } catch {
-        alert('Failed to parse JSON file.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  }, []);
-
-  const handleSvgFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
     try {
-      await importSvgFileIntoEditor(file);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to import SVG file.');
-    } finally {
-      e.target.value = '';
+      const json = JSON.parse(result.data);
+      if (isWorkspace(json)) {
+        editorStore.getState().loadWorkspace(json);
+      } else if (isProject(json)) {
+        editorStore.getState().loadProject(json);
+      } else {
+        clearCurrentProjectPath();
+        window.alert('Invalid Icophone workspace file.');
+      }
+    } catch {
+      clearCurrentProjectPath();
+      window.alert('Failed to parse JSON file.');
     }
   }, []);
 
-  const handleSave = useCallback(() => {
-    const { project } = editorStore.getState();
-    if (!project) return;
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  const serializeWorkspace = useCallback(() => {
+    const { workspace } = editorStore.getState();
+    if (!workspace) return null;
+    const updatedAt = new Date().toISOString();
     const updated = {
-      ...project,
-      meta: { ...project.meta, updatedAt: new Date().toISOString() },
+      ...workspace,
+      meta: { ...workspace.meta, updatedAt },
     };
-    const blob = new Blob([JSON.stringify(updated, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}.icophone.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return {
+      data: JSON.stringify(updated, null, 2),
+      updatedAt,
+    };
   }, []);
 
-  const handleExportSvg = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    const payload = serializeWorkspace();
+    if (!payload) return;
+
+    const result = await saveProject(payload.data);
+    if (result) {
+      editorStore.getState().markSaved(payload.updatedAt);
+    }
+  }, [serializeWorkspace]);
+
+  const handleExportSvg = useCallback(async () => {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
     const variant = selectCurrentVariant(state);
@@ -122,12 +131,58 @@ export function Toolbar() {
       variant.id,
       currentState.id,
       state.project?.tokenSet?.colors,
+      state.renderingMode,
     );
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
+
+    await exportSvg(svg, `${icon.name.replace(/\s+/g, '-').toLowerCase()}.svg`);
+  }, []);
+
+
+  const handleExportSvgPackage = useCallback(() => {
+    const { project } = editorStore.getState();
+    if (!project) return;
+
+    const fileMap = exportSvgPackage(project);
+    const zipBlob = createZipBlob(fileMap);
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportRuntimeJson = useCallback(() => {
+    const state = editorStore.getState();
+    const icon = selectCurrentIcon(state);
+    if (!icon) return;
+
+    const runtimeJson = exportRuntimeJson({
+      ...icon,
+      tokenSet: state.project?.tokenSet,
+    });
+    const blob = new Blob([runtimeJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${icon.name.replace(/\s+/g, '-').toLowerCase()}.svg`;
+    a.download = `${icon.name.replace(/\s+/g, '-').toLowerCase()}.runtime.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleExportReactLibrary = useCallback(() => {
+    const { project } = editorStore.getState();
+    if (!project) return;
+
+    const fileMap = generateIconLibrary(project, {
+      packageName: `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-icons`,
+      typescript: true,
+    });
+    const zipBlob = createZipBlob(fileMap);
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-library.zip`;
     a.click();
     URL.revokeObjectURL(url);
   }, []);
@@ -146,7 +201,15 @@ export function Toolbar() {
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
+  const handleRenderingModeChange = useCallback((value: string) => {
+    if (!currentIconId || !currentVariantId) return;
+    editorStore.getState().patchVariant(currentIconId, currentVariantId, {
+      renderingMode: value as RenderingMode,
+    });
+  }, [currentIconId, currentVariantId]);
+
   return (
+    <>
     <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
         <div className="mr-auto min-w-0">
@@ -173,23 +236,50 @@ export function Toolbar() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleOpenProject}>
+              <DropdownMenuItem onSelect={() => void handleOpenProject()}>
                 <FolderOpen className="size-4" />
                 Open Project
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleImportSvg}>
+              <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
                 <Import className="size-4" />
-                Import SVG
+                Import Icon
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
           <ToolbarButton icon={Download} label="Export SVG" onClick={handleExportSvg} />
+          <ToolbarButton icon={Download} label="Export SVG Package" onClick={handleExportSvgPackage} />
+          <ToolbarButton icon={Download} label="Export Runtime JSON" onClick={handleExportRuntimeJson} />
+          <ToolbarButton icon={Download} label="Export React Library" onClick={handleExportReactLibrary} />
+          <SyncPrPanel />
         </ToolbarGroup>
 
         <ToolbarGroup>
           <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact />
           <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact />
+        </ToolbarGroup>
+
+        <ToolbarGroup>
+          <Select
+            value={renderingMode}
+            onValueChange={handleRenderingModeChange}
+            disabled={!currentIconId || !currentVariantId}
+          >
+            <SelectTrigger
+              size="sm"
+              className="workspace-tool-button h-9 rounded-xl px-3 text-foreground"
+              aria-label="Rendering mode"
+            >
+              <SelectValue placeholder="Rendering Mode" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {RENDERING_MODE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </ToolbarGroup>
 
         <ToolbarGroup>
@@ -201,26 +291,18 @@ export function Toolbar() {
           <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact />
         </ToolbarGroup>
       </div>
-
-      <input
-        ref={projectFileInputRef}
-        type="file"
-        accept=".json"
-        className="sr-only"
-        onChange={handleProjectFileChange}
-        aria-label="Open project file"
-      />
-      <input
-        ref={svgFileInputRef}
-        type="file"
-        accept=".svg,image/svg+xml"
-        className="sr-only"
-        onChange={handleSvgFileChange}
-        aria-label="Import SVG file"
-      />
     </header>
+      <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+    </>
   );
 }
+
+const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
+  { value: 'monochrome', label: 'Monochrome' },
+  { value: 'hierarchical', label: 'Hierarchical' },
+  { value: 'palette', label: 'Palette' },
+  { value: 'multicolor', label: 'Multicolor' },
+];
 
 function ToolbarGroup({ children }: { children: React.ReactNode }) {
   return <div className="workspace-toolbar-group">{children}</div>;
@@ -234,7 +316,7 @@ function ToolbarButton({
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
   compact?: boolean;
 }) {
   return (
@@ -243,7 +325,9 @@ function ToolbarButton({
         <Button
           variant="ghost"
           size={compact ? 'icon-sm' : 'sm'}
-          onClick={onClick}
+          onClick={() => {
+            void onClick();
+          }}
           aria-label={label}
           className={
             compact

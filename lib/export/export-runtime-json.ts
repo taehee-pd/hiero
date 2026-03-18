@@ -12,6 +12,94 @@ import type {
   Variant,
 } from '@/lib/schema/types';
 
+export type RuntimeCoreLayer = {
+  d: string;
+  fill: string;
+  stroke: string;
+  strokeWidth?: number;
+  opacity?: number;
+  transform?: string;
+};
+
+export type RuntimeCoreState = {
+  layers: Record<string, RuntimeCoreLayer>;
+};
+
+export type RuntimeCoreJson = {
+  id: string;
+  name: string;
+  variants: Record<
+    string,
+    {
+      size: number;
+      viewBox: [number, number, number, number];
+    }
+  >;
+  states: Record<string, RuntimeCoreState>;
+  transitions: Record<
+    string,
+    {
+      from: string;
+      to: string;
+      strategy: Transition['strategy'];
+      durationMs: number;
+      easing?: string;
+      layerBindings: Transition['layerBindings'];
+    }
+  >;
+  tokens?: {
+    colors: Record<string, string>;
+  };
+};
+
+type RuntimeJsonExportIcon = Icon & {
+  tokenSet?: {
+    colors?: Record<string, string>;
+  };
+};
+
+export function exportRuntimeJson(
+  icon: RuntimeJsonExportIcon,
+  options?: { variants?: string[]; states?: string[] },
+): string {
+  const variantIds = resolveFilteredVariantIds(icon, options?.variants);
+  const primaryVariantId = variantIds[0] ?? null;
+  const primaryVariant = primaryVariantId ? icon.variants[primaryVariantId] ?? null : null;
+  const stateIds = resolveFilteredStateIds(primaryVariant, options?.states);
+  const colors = getRuntimeJsonColors(icon);
+
+  const payload: RuntimeCoreJson = {
+    id: icon.id,
+    name: icon.name,
+    variants: variantIds.reduce<RuntimeCoreJson['variants']>((acc, variantId) => {
+      const variant = icon.variants[variantId]!;
+      acc[variantId] = {
+        size: variant.size,
+        viewBox: [...variant.viewBox],
+      };
+      return acc;
+    }, {}),
+    states: primaryVariant
+      ? stateIds.reduce<RuntimeCoreJson['states']>((acc, stateId) => {
+          const state = primaryVariant.states[stateId]!;
+          acc[stateId] = {
+            layers: buildRuntimeJsonLayers(state, colors),
+          };
+          return acc;
+        }, {})
+      : {},
+    transitions: buildRuntimeJsonTransitions(icon, stateIds),
+  };
+
+  if (colors && Object.keys(colors).length > 0) {
+    payload.tokens = {
+      colors: { ...colors },
+    };
+  }
+
+  return serializeRuntimeJson(payload);
+}
+
 export type RuntimeExportDiagnostic = {
   level: 'warning' | 'error';
   code:
@@ -302,6 +390,154 @@ export function exportRuntimePackage(project: Project): {
     files,
     diagnostics,
   };
+}
+
+function resolveFilteredVariantIds(icon: Icon, variants?: string[]): string[] {
+  const allowed = variants ? new Set(variants) : null;
+  return Object.keys(icon.variants)
+    .sort((a, b) => a.localeCompare(b))
+    .filter((variantId) => (allowed ? allowed.has(variantId) : true));
+}
+
+function resolveFilteredStateIds(
+  variant: Variant | null,
+  states?: string[],
+): string[] {
+  if (!variant) return [];
+  const allowed = states ? new Set(states) : null;
+  return Object.keys(variant.states)
+    .sort((a, b) => a.localeCompare(b))
+    .filter((stateId) => (allowed ? allowed.has(stateId) : true));
+}
+
+function buildRuntimeJsonLayers(
+  state: State,
+  colors?: Record<string, string>,
+): RuntimeCoreState['layers'] {
+  return Object.keys(state.layers)
+    .sort((a, b) => a.localeCompare(b))
+    .reduce<RuntimeCoreState['layers']>((acc, layerId) => {
+      const layer = state.layers[layerId]!;
+      if (layer.visible === false || !layer.path?.d || layer.isClipMask) {
+        return acc;
+      }
+
+      const runtimeLayer: RuntimeCoreLayer = {
+        d: layer.path.d,
+        fill: resolveRuntimeJsonPaint(layer.style.fill, colors),
+        stroke: resolveRuntimeJsonPaint(layer.style.stroke, colors),
+      };
+
+      if (layer.style.strokeWidth !== undefined) {
+        runtimeLayer.strokeWidth = layer.style.strokeWidth;
+      }
+
+      const opacity = resolveRuntimeJsonOpacity(layer);
+      if (opacity !== undefined) {
+        runtimeLayer.opacity = opacity;
+      }
+
+      const transform = buildTransformString(layer);
+      if (transform) {
+        runtimeLayer.transform = transform;
+      }
+
+      acc[layerId] = runtimeLayer;
+      return acc;
+    }, {});
+}
+
+function buildRuntimeJsonTransitions(
+  icon: Icon,
+  stateIds: string[],
+): RuntimeCoreJson['transitions'] {
+  if (stateIds.length === 0) {
+    return {};
+  }
+  const allowedStates = new Set(stateIds);
+  return Object.keys(icon.transitions)
+    .sort((a, b) => a.localeCompare(b))
+    .reduce<RuntimeCoreJson['transitions']>((acc, transitionId) => {
+      const transition = icon.transitions[transitionId]!;
+      if (
+        allowedStates.size > 0 &&
+        (!allowedStates.has(transition.from) || !allowedStates.has(transition.to))
+      ) {
+        return acc;
+      }
+
+      acc[transitionId] = {
+        from: transition.from,
+        to: transition.to,
+        strategy: transition.strategy,
+        durationMs: transition.durationMs,
+        easing: transition.easing,
+        layerBindings: transition.layerBindings.map((binding) => ({
+          fromLayerId: binding.fromLayerId,
+          toLayerId: binding.toLayerId,
+          tracks: binding.tracks
+            ? binding.tracks.map((track) => ({
+                property: track.property,
+                keyframes: [...track.keyframes],
+              }))
+            : undefined,
+          morph: binding.morph
+            ? {
+                topology: binding.morph.topology,
+                mixer: binding.morph.mixer,
+              }
+            : undefined,
+        })),
+      };
+      return acc;
+    }, {});
+}
+
+function getRuntimeJsonColors(icon: Icon): Record<string, string> | undefined {
+  const colors = (icon as RuntimeJsonExportIcon).tokenSet?.colors;
+  if (!colors) return undefined;
+  return Object.fromEntries(
+    Object.entries(colors).sort(([left], [right]) => left.localeCompare(right)),
+  );
+}
+
+function resolveRuntimeJsonPaint(
+  paint: PaintRef | undefined,
+  colors?: Record<string, string>,
+): string {
+  if (!paint) return 'none';
+
+  switch (paint.mode) {
+    case 'currentColor':
+      return 'currentColor';
+    case 'fixed':
+      return paint.value;
+    case 'token':
+      return colors?.[paint.token] ?? 'currentColor';
+    case 'linearGradient':
+    case 'radialGradient':
+      return 'currentColor';
+    default:
+      return 'none';
+  }
+}
+
+function resolveRuntimeJsonOpacity(layer: Layer): number | undefined {
+  const fill = layer.style.fill;
+  const stroke = layer.style.stroke;
+  const fillVisible = Boolean(fill && !(fill.mode === 'fixed' && fill.value === 'none'));
+  const strokeVisible = Boolean(stroke && !(stroke.mode === 'fixed' && stroke.value === 'none'));
+
+  if (fillVisible && layer.style.fillOpacity !== undefined) {
+    return layer.style.fillOpacity;
+  }
+  if (strokeVisible && layer.style.strokeOpacity !== undefined) {
+    return layer.style.strokeOpacity;
+  }
+  if (!fillVisible && !strokeVisible) {
+    return undefined;
+  }
+  return 1;
 }
 
 export function serializeRuntimeJson(value: unknown): string {

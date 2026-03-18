@@ -4,7 +4,8 @@ import path from 'node:path';
 import type { CompiledIcon, IconChangeRecord } from '@/lib/compiler-contracts';
 import { isCompiledIcon, isIconChangeRecord } from '@/lib/compiler-contracts';
 import type { Project } from '@/lib/schema/types';
-import { isProject } from '@/lib/schema/guards';
+import { isProject, isWorkspace } from '@/lib/schema/guards';
+import { getActiveIconSet } from '@/lib/schema/workspace';
 import { diffCompiledIcons } from './diff-compiled-icons';
 import { exportCompiledIconFile } from './export-compiled-icon';
 import {
@@ -122,7 +123,12 @@ export async function runCompileCommand(params: {
 }): Promise<CompilePipelineResult> {
   const rawProject = await readFile(params.projectPath, 'utf8');
   const parsedProject = JSON.parse(rawProject) as unknown;
-  if (!isProject(parsedProject)) {
+  const project = isWorkspace(parsedProject)
+    ? getActiveIconSet(parsedProject, parsedProject.activeIconSetId)
+    : isProject(parsedProject)
+      ? parsedProject
+      : null;
+  if (!project) {
     throw new Error(`Project file is invalid: ${params.projectPath}`);
   }
 
@@ -131,7 +137,7 @@ export async function runCompileCommand(params: {
     : undefined;
 
   const builtAt = params.builtAt ?? new Date().toISOString();
-  const result = compileProject(parsedProject, {
+  const result = compileProject(project, {
     package: {
       name: params.packageName,
       version: params.packageVersion,

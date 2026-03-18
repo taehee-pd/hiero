@@ -1,3 +1,8 @@
+---
+status: implemented
+last-reviewed: 2026-03-18
+---
+
 # Runtime JSON Export Design
 
 ## Goal

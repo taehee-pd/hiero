@@ -6,7 +6,7 @@ import compiledIconFixture from './fixtures/compiler-contracts/compiled-icon.jso
 import manifestFixture from './fixtures/compiler-contracts/package-manifest.json';
 
 function makeCompiledIcon(id: string, componentName: string, size: number): CompiledIcon {
-  const icon = structuredClone(compiledIconFixture) as CompiledIcon;
+  const icon = structuredClone(compiledIconFixture) as unknown as CompiledIcon;
   icon.id = id;
   icon.componentName = componentName;
   icon.name = componentName;

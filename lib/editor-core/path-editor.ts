@@ -18,7 +18,7 @@ import {
   createRectPath,
   createStarPath,
 } from './path-shapes';
-import { getSelectedPointsBoundingBox } from './vector-commands';
+import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { PathPoint } from './path-model';
 import type { GuideItem } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
@@ -41,6 +41,11 @@ type PenPlacement = {
   anchor: { x: number; y: number };
   pointerId: number;
   basePathD: string;
+};
+type PenHandlePreview = {
+  anchor: { x: number; y: number };
+  handleIn: { x: number; y: number } | null;
+  handleOut: { x: number; y: number } | null;
 };
 type ShapePlacement = {
   layerId: string;
@@ -99,7 +104,7 @@ function getActiveVariantState(
  */
 export class PathEditor {
   private svg: SVGSVGElement;
-  private container: HTMLElement;
+  private container: HTMLElement | SVGSVGElement;
   private isDragging = false;
   private dragMode: DragMode = null;
   private dragStartX = 0;
@@ -119,7 +124,7 @@ export class PathEditor {
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
 
-  constructor(svg: SVGSVGElement, container?: HTMLElement) {
+  constructor(svg: SVGSVGElement, container?: HTMLElement | SVGSVGElement) {
     this.svg = svg;
     const svgRoot = (svg as Element & { closest?: (selector: string) => Element | null }).closest?.('[data-canvas-root]') as HTMLElement | null;
     this.container = container ?? svgRoot ?? svg.parentElement ?? svg;
@@ -218,7 +223,22 @@ export class PathEditor {
         this.startControlDrag(layerId, pointKey, controlDirection, e.clientX, e.clientY);
         this.capturePointer(e.pointerId);
       } else if (layerId && pointKey) {
-        state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+        // Shift-click to toggle multi-select points (like Figma/Illustrator)
+        if (e.shiftKey) {
+          const currentPointIds = [...state.selection.pointIds];
+          const existing = currentPointIds.indexOf(pointKey);
+          if (existing >= 0) {
+            currentPointIds.splice(existing, 1);
+          } else {
+            currentPointIds.push(pointKey);
+          }
+          const layerIds = state.selection.layerIds.includes(layerId)
+            ? state.selection.layerIds
+            : [layerId];
+          state.setSelection({ layerIds, pointIds: currentPointIds });
+        } else {
+          state.setSelection({ layerIds: [layerId], pointIds: [pointKey] });
+        }
         this.startPointDrag(layerId, pointKey, e.clientX, e.clientY);
         this.capturePointer(e.pointerId);
       } else if (this.beginSelectionBoundsDrag(e)) {
@@ -248,6 +268,19 @@ export class PathEditor {
     const state = editorStore.getState();
     const target = e.target as Element;
     const layerId = target.getAttribute?.('data-layer-id') ?? target.getAttribute?.('data-layer-hit-id');
+    const pointKey = target.getAttribute?.('data-point-key');
+
+    // If already in direct-select and double-clicking on a path (not a point),
+    // add a new point on the segment at the click position
+    if (state.tool === 'direct-select' && layerId && !pointKey) {
+      const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+      if (svgPoint) {
+        const tolerance = this.svgUnitsPerScreenPx() * POINT_HIT_RADIUS_PX;
+        if (splitSegmentAtPoint(layerId, svgPoint, tolerance)) {
+          return;
+        }
+      }
+    }
 
     state.setTool('direct-select');
 
@@ -347,6 +380,7 @@ export class PathEditor {
       };
     });
 
+    this.clearPendingPenHandle();
     return nextLayerId;
   }
 
@@ -371,6 +405,7 @@ export class PathEditor {
     const editable = parseSvgPath(layer.path.d);
     const subPath = editable.subPaths[0];
     if (!subPath) return null;
+    this.materializePendingPenHandle(editable, layerId);
 
     const firstPoint = subPath.points[0]?.position;
     const canClose = !!firstPoint && subPath.points.length >= 3 && !subPath.closed;
@@ -379,6 +414,7 @@ export class PathEditor {
       const dy = firstPoint.y - snappedPoint.y;
       if (dx * dx + dy * dy <= PEN_CLOSE_DIST_SQ) {
         subPath.closed = true;
+        this.clearPendingPenHandle();
         state.patchLayer(iconId, stateId, layerId, {
           path: { ...layer.path, d: serializePath(editable) },
         });
@@ -868,9 +904,30 @@ export class PathEditor {
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
-    const dx = snappedPoint.x - context.point.position.x;
-    const dy = snappedPoint.y - context.point.position.y;
-    this.translatePoint(context.subPath, context.pointIdx, dx, dy);
+    let dx = snappedPoint.x - context.point.position.x;
+    let dy = snappedPoint.y - context.point.position.y;
+
+    // Shift-constrain movement to axis-aligned
+    if (e.shiftKey) {
+      const constrained = constrainDeltaToAxis(dx, dy);
+      dx = constrained.dx;
+      dy = constrained.dy;
+    }
+
+    // Move all selected points together (multi-point drag)
+    const state = editorStore.getState();
+    const selectedKeys = uniquePointKeys(state.selection.pointIds);
+    if (selectedKeys.length > 1 && selectedKeys.includes(this.dragPointKey)) {
+      for (const key of selectedKeys) {
+        const ctx = this.resolvePointContext(editable, key);
+        if (ctx) this.translatePoint(ctx.subPath, ctx.pointIdx, dx, dy);
+      }
+    } else {
+      this.translatePoint(context.subPath, context.pointIdx, dx, dy);
+    }
+
+    const finalX = context.point.position.x;
+    const finalY = context.point.position.y;
 
     const nextD = serializePath(editable);
     const pathEl = this.svg.querySelector(
@@ -884,7 +941,7 @@ export class PathEditor {
     if (hitPathEl) {
       hitPathEl.setAttribute('d', nextD);
     }
-    this.updateDraggedPointHandles(snappedPoint.x, snappedPoint.y);
+    this.updateDraggedPointHandles(finalX, finalY);
   }
 
   private dragControl(e: PointerEvent) {
@@ -895,15 +952,21 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
+    // Shift-constrain handle to 45° increments relative to anchor
     const editable = parseSvgPath(this.originalPathD);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
+
+    const constrainedPoint = e.shiftKey
+      ? constrainAngle(context.point.position, svgPoint)
+      : svgPoint;
 
     const controlPosition = this.applyControlPosition(
       context.subPath,
       context.pointIdx,
       this.dragControlDirection,
-      svgPoint,
+      constrainedPoint,
+      e.altKey,
     );
     if (!controlPosition) return;
 
@@ -938,7 +1001,6 @@ export class PathEditor {
     const editable = parseSvgPath(this.penPlacement.basePathD);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
-
     const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
     const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
     const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
@@ -946,28 +1008,18 @@ export class PathEditor {
     if (!subPath) return;
 
     const prev = subPath.points[pointIdx - 1] ?? null;
-    const dx = snappedPoint.x - this.penPlacement.anchor.x;
-    const dy = snappedPoint.y - this.penPlacement.anchor.y;
-    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+    const previewPoint = e.shiftKey
+      ? constrainAngle(this.penPlacement.anchor, snappedPoint)
+      : snappedPoint;
+    const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
+    applyPenPreviewToPoint(point, preview);
 
     if (prev) {
-      if (moved) {
-        prev.handleOut = {
-          x: this.penPlacement.anchor.x + dx,
-          y: this.penPlacement.anchor.y + dy,
-        };
-        prev.nodeType = 'smooth';
-        point.handleIn = {
-          x: this.penPlacement.anchor.x - dx,
-          y: this.penPlacement.anchor.y - dy,
-        };
-        point.nodeType = 'smooth';
-      } else {
-        prev.handleOut = null;
-        point.handleIn = null;
-        point.nodeType = 'static';
-      }
+      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
     }
+
+    this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
 
     const nextD = serializePath(editable);
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
@@ -975,8 +1027,15 @@ export class PathEditor {
       const pathEl = this.svg.querySelector(
         `[data-layer-id="${this.penPlacement?.layerId}"]`,
       ) as SVGPathElement | null;
-      if (!pathEl) return;
-      pathEl.setAttribute('d', nextD);
+      const hitPathEl = this.svg.querySelector(
+        `[data-layer-hit-id="${this.penPlacement?.layerId}"]`,
+      ) as SVGPathElement | null;
+      if (pathEl) {
+        pathEl.setAttribute('d', nextD);
+      }
+      if (hitPathEl) {
+        hitPathEl.setAttribute('d', nextD);
+      }
     });
   }
 
@@ -985,6 +1044,7 @@ export class PathEditor {
     this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
+      this.clearPendingPenHandle();
       this.penPlacement = null;
     }
 
@@ -1017,6 +1077,7 @@ export class PathEditor {
     this.clearActiveSnapGuides();
     if (this.penPlacement) {
       resumeHistory();
+      this.clearPendingPenHandle();
       this.penPlacement = null;
       return;
     }
@@ -1118,33 +1179,21 @@ export class PathEditor {
     const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
     const subPath = editable.subPaths[subPathIdx];
     const prev = subPath?.points[pointIdx - 1] ?? null;
-
-    const dx = snappedPoint.x - this.penPlacement.anchor.x;
-    const dy = snappedPoint.y - this.penPlacement.anchor.y;
-    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+    const previewPoint = e.shiftKey
+      ? constrainAngle(this.penPlacement.anchor, snappedPoint)
+      : snappedPoint;
+    const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
+    applyPenPreviewToPoint(point, preview);
 
     if (prev) {
-      if (moved) {
-        prev.handleOut = {
-          x: this.penPlacement.anchor.x + dx,
-          y: this.penPlacement.anchor.y + dy,
-        };
-        prev.nodeType = 'smooth';
-        point.handleIn = {
-          x: this.penPlacement.anchor.x - dx,
-          y: this.penPlacement.anchor.y - dy,
-        };
-        point.nodeType = 'smooth';
-      } else {
-        prev.handleOut = null;
-        point.handleIn = null;
-        point.nodeType = 'static';
-      }
+      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
     }
 
     state.patchLayer(iconId, stateId, this.penPlacement.layerId, {
       path: { ...layer.path, d: serializePath(editable) },
     });
+    this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
   }
 
   private commitLayerDrag(e: PointerEvent) {
@@ -1202,9 +1251,25 @@ export class PathEditor {
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
-    const dx = snappedPoint.x - context.point.position.x;
-    const dy = snappedPoint.y - context.point.position.y;
-    this.translatePoint(context.subPath, context.pointIdx, dx, dy);
+    let dx = snappedPoint.x - context.point.position.x;
+    let dy = snappedPoint.y - context.point.position.y;
+
+    if (e.shiftKey) {
+      const constrained = constrainDeltaToAxis(dx, dy);
+      dx = constrained.dx;
+      dy = constrained.dy;
+    }
+
+    // Move all selected points together
+    const selectedKeys = uniquePointKeys(state.selection.pointIds);
+    if (selectedKeys.length > 1 && selectedKeys.includes(this.dragPointKey)) {
+      for (const key of selectedKeys) {
+        const ctx = this.resolvePointContext(editable, key);
+        if (ctx) this.translatePoint(ctx.subPath, ctx.pointIdx, dx, dy);
+      }
+    } else {
+      this.translatePoint(context.subPath, context.pointIdx, dx, dy);
+    }
 
     state.patchLayer(iconId, stateId, this.dragLayerId, {
       path: {
@@ -1232,11 +1297,16 @@ export class PathEditor {
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
+    const constrainedPoint = e.shiftKey
+      ? constrainAngle(context.point.position, svgPoint)
+      : svgPoint;
+
     const controlPosition = this.applyControlPosition(
       context.subPath,
       context.pointIdx,
       this.dragControlDirection,
-      svgPoint,
+      constrainedPoint,
+      e.altKey,
     );
     if (!controlPosition) return;
 
@@ -1531,9 +1601,15 @@ export class PathEditor {
     pointIdx: number,
     direction: ControlDirection,
     position: { x: number; y: number },
+    altKey = false,
   ) {
     const point = subPath.points[pointIdx];
     if (!point) return null;
+
+    // Alt key breaks handle symmetry → convert to corner node
+    if (altKey && point.nodeType !== 'corner') {
+      point.nodeType = 'corner';
+    }
 
     if (direction === 'in') {
       const prev = subPath.points[pointIdx - 1];
@@ -1543,18 +1619,70 @@ export class PathEditor {
         point.segment = { type: 'cubic' };
       }
       point.handleIn = { x: position.x, y: position.y };
-      point.nodeType = 'smooth';
+
+      // Mirror opposite handle based on node type
+      if (point.nodeType === 'smooth' && point.handleOut) {
+        const dx = position.x - point.position.x;
+        const dy = position.y - point.position.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0) {
+          const oppositeLen = Math.hypot(
+            point.handleOut.x - point.position.x,
+            point.handleOut.y - point.position.y,
+          );
+          point.handleOut = {
+            x: point.position.x - (dx / len) * oppositeLen,
+            y: point.position.y - (dy / len) * oppositeLen,
+          };
+        }
+      } else if (point.nodeType === 'symmetric' && point.handleOut) {
+        point.handleOut = {
+          x: 2 * point.position.x - position.x,
+          y: 2 * point.position.y - position.y,
+        };
+      }
+      // corner: no mirroring
+
+      if (!altKey && point.nodeType !== 'corner') {
+        point.nodeType = point.nodeType === 'symmetric' ? 'symmetric' : 'smooth';
+      }
       return point.handleIn;
     }
 
-    const next = subPath.points[pointIdx + 1];
-    if (!next) return null;
-    if (next.segment?.type !== 'cubic') {
+    const next = subPath.points[pointIdx + 1] ?? (subPath.closed ? subPath.points[0] : null);
+    if (!next && !point.handleIn) return null;
+    if (next && next.segment?.type !== 'cubic') {
       next.handleIn ??= this.defaultControlPoint(next.position, point.position);
       next.segment = { type: 'cubic' };
     }
     point.handleOut = { x: position.x, y: position.y };
-    point.nodeType = 'smooth';
+
+    // Mirror opposite handle based on node type
+    if (point.nodeType === 'smooth' && point.handleIn) {
+      const dx = position.x - point.position.x;
+      const dy = position.y - point.position.y;
+      const len = Math.hypot(dx, dy);
+      if (len > 0) {
+        const oppositeLen = Math.hypot(
+          point.handleIn.x - point.position.x,
+          point.handleIn.y - point.position.y,
+        );
+        point.handleIn = {
+          x: point.position.x - (dx / len) * oppositeLen,
+          y: point.position.y - (dy / len) * oppositeLen,
+        };
+      }
+    } else if (point.nodeType === 'symmetric' && point.handleIn) {
+      point.handleIn = {
+        x: 2 * point.position.x - position.x,
+        y: 2 * point.position.y - position.y,
+      };
+    }
+    // corner: no mirroring
+
+    if (!altKey && point.nodeType !== 'corner') {
+      point.nodeType = point.nodeType === 'symmetric' ? 'symmetric' : 'smooth';
+    }
     return point.handleOut;
   }
 
@@ -1613,6 +1741,92 @@ export class PathEditor {
     this.shapePlacement = null;
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
+  }
+
+  private buildPenHandlePreview(
+    snappedPoint: { x: number; y: number },
+    options?: { altKey?: boolean },
+  ): PenHandlePreview {
+    const dx = snappedPoint.x - this.penPlacement!.anchor.x;
+    const dy = snappedPoint.y - this.penPlacement!.anchor.y;
+    const moved = Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001;
+
+    if (!moved) {
+      return {
+        anchor: this.penPlacement!.anchor,
+        handleIn: null,
+        handleOut: null,
+      };
+    }
+
+    if (options?.altKey) {
+      return {
+        anchor: this.penPlacement!.anchor,
+        handleIn: null,
+        handleOut: null,
+      };
+    }
+
+    return {
+      anchor: this.penPlacement!.anchor,
+      handleIn: {
+        x: this.penPlacement!.anchor.x - dx,
+        y: this.penPlacement!.anchor.y - dy,
+      },
+      handleOut: {
+        x: this.penPlacement!.anchor.x + dx,
+        y: this.penPlacement!.anchor.y + dy,
+      },
+    };
+  }
+
+  private publishPendingPenHandle(
+    layerId: string,
+    pointKey: string,
+    preview: PenHandlePreview,
+  ) {
+    const hasVisibleHandle = Boolean(preview.handleIn || preview.handleOut);
+    editorStore
+      .getState()
+      .setPendingPenHandle(
+        hasVisibleHandle
+          ? {
+              layerId,
+              pointKey,
+              anchor: preview.anchor,
+              handleIn: preview.handleIn,
+              handleOut: preview.handleOut,
+            }
+          : null,
+      );
+  }
+
+  private clearPendingPenHandle() {
+    editorStore.getState().setPendingPenHandle(null);
+  }
+
+  private materializePendingPenHandle(
+    editable: ReturnType<typeof parseSvgPath>,
+    layerId: string,
+  ) {
+    const pending = editorStore.getState().pendingPenHandle;
+    if (!pending || pending.layerId !== layerId || !pending.handleOut) return;
+
+    const context = this.resolvePointContext(editable, pending.pointKey);
+    if (!context) {
+      this.clearPendingPenHandle();
+      return;
+    }
+
+    const isTerminalPoint = context.pointIdx === context.subPath.points.length - 1;
+    if (!isTerminalPoint) {
+      this.clearPendingPenHandle();
+      return;
+    }
+
+    context.point.handleOut = { ...pending.handleOut };
+    context.point.nodeType = context.point.handleIn ? 'smooth' : 'corner';
+    this.clearPendingPenHandle();
   }
 
   destroy() {
@@ -2069,6 +2283,22 @@ function translatePathPoint(point: PathPoint, dx: number, dy: number): void {
   }
 }
 
+function applyPenPreviewToPoint(
+  point: PathPoint,
+  preview: PenHandlePreview,
+): void {
+  point.handleIn = preview.handleIn ? { ...preview.handleIn } : null;
+  point.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
+  if (point.handleIn || point.handleOut) {
+    point.nodeType = 'smooth';
+    point.segment = { type: 'cubic' };
+    return;
+  }
+
+  point.nodeType = 'static';
+  point.segment = { type: 'line' };
+}
+
 function getPathBoundsFromEditable(editable: ReturnType<typeof parseSvgPath>): SelectionBounds | null {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -2338,4 +2568,36 @@ function scaleHandleRelativeToPoint(
     x: newPoint.x + (handle.x - oldPoint.x) * scaleX,
     y: newPoint.y + (handle.y - oldPoint.y) * scaleY,
   };
+}
+
+/**
+ * Constrain a target point to the nearest 45° angle from an origin.
+ * Used for Shift-constrained point/handle movement (like Figma/Illustrator).
+ */
+function constrainAngle(
+  origin: { x: number; y: number },
+  target: { x: number; y: number },
+): { x: number; y: number } {
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 0.001) return { ...target };
+
+  const angle = Math.atan2(dy, dx);
+  const snapAngle = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+  return {
+    x: origin.x + distance * Math.cos(snapAngle),
+    y: origin.y + distance * Math.sin(snapAngle),
+  };
+}
+
+/**
+ * Constrain a movement delta to the nearest axis (horizontal or vertical)
+ * when Shift is held during point dragging.
+ */
+function constrainDeltaToAxis(dx: number, dy: number): { dx: number; dy: number } {
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return { dx, dy: 0 };
+  }
+  return { dx: 0, dy };
 }

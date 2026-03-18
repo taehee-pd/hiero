@@ -1,3 +1,8 @@
+---
+status: implemented
+last-reviewed: 2026-03-18
+---
+
 # Minimal Browser Design
 
 Date: 2026-03-07

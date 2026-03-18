@@ -1,3 +1,8 @@
+---
+status: partially-implemented
+last-reviewed: 2026-03-18
+---
+
 # Target Codebase Export Plan
 
 ## Goal

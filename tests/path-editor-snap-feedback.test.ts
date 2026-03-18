@@ -29,23 +29,23 @@ function createProjectFixture(): Project {
             size: 24,
             viewBox: [0, 0, 24, 24],
             defaultState: 'default',
-          },
-        },
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              moving: {
-                id: 'moving',
-                visible: true,
-                path: { d: 'M1 1 L2 2' },
-                style: {},
-              },
-              anchor: {
-                id: 'anchor',
-                visible: true,
-                path: { d: 'M8.3 10.7 L12.3 14.7' },
-                style: {},
+            states: {
+              default: {
+                id: 'default',
+                layers: {
+                  moving: {
+                    id: 'moving',
+                    visible: true,
+                    path: { d: 'M1 1 L2 2' },
+                    style: {},
+                  },
+                  anchor: {
+                    id: 'anchor',
+                    visible: true,
+                    path: { d: 'M8.3 10.7 L12.3 14.7' },
+                    style: {},
+                  },
+                },
               },
             },
           },
@@ -125,6 +125,43 @@ describe('path editor snap feedback', () => {
     (editor as any).onPointerUp({ clientX: 8.28, clientY: 10.72, pointerId: 7 });
 
     expect(editorStore.getState().activeSnapGuides).toEqual([]);
+    editor.destroy();
+  });
+
+  test('stores mirrored pending handles for a dragged pen endpoint', () => {
+    const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
+
+    const placement = (editor as any).beginPenPlacement('moving', 8, 8, 7);
+    expect(placement).not.toBeNull();
+
+    (editor as any).updatePenCurvePreview({ clientX: 10, clientY: 8 });
+    (editor as any).onPointerUp({ clientX: 10, clientY: 8, pointerId: 7 });
+
+    expect(editorStore.getState().pendingPenHandle).toMatchObject({
+      layerId: 'moving',
+      pointKey: '0:2',
+      anchor: { x: 8, y: 8 },
+      handleIn: { x: 6, y: 8 },
+      handleOut: { x: 10, y: 8 },
+    });
+    editor.destroy();
+  });
+
+  test('materializes the pending outgoing handle into the next pen segment', () => {
+    const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
+
+    (editor as any).beginPenPlacement('moving', 8, 8, 7);
+    (editor as any).updatePenCurvePreview({ clientX: 10, clientY: 8 });
+    (editor as any).onPointerUp({ clientX: 10, clientY: 8, pointerId: 7 });
+
+    (editor as any).beginPenPlacement('moving', 12, 8, 8);
+
+    const d =
+      editorStore.getState().project!.icons.snap.variants.v24.states.default.layers.moving.path!.d;
+    const path = editorStore.getState().pendingPenHandle;
+
+    expect(d).toBe('M1 1 L2 2 C10 8 6 8 8 8 C10 8 12 8 12 8');
+    expect(path).toBeNull();
     editor.destroy();
   });
 });

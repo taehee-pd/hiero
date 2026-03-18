@@ -1,13 +1,30 @@
 import type {
   Project,
+  Workspace,
+  IconSet,
   Icon,
   Layer,
   State,
+  TopologyContract,
+  Transition,
+  Effect,
   GuideMaster,
   GuideSet,
   GuideItem,
+  Collection,
+  SymbolComponent,
+  SymbolScale,
+  SymbolWeight,
   Variant,
+  RenderingMode,
+  GitHubSyncSettings,
 } from '@/lib/schema/types';
+import {
+  createWorkspaceFromProject,
+  getActiveIconSet,
+  getFirstIconSetId,
+  replaceWorkspaceIconSet,
+} from '@/lib/schema/workspace';
 import type {
   Tool,
   SelectionState,
@@ -15,13 +32,19 @@ import type {
   ShapeType,
   PointMarqueeState,
   PointTransformLabelState,
+  PendingPenHandleState,
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
+import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
+import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
 
 export type EditorState = {
+  workspace: Workspace | null;
   project: Project | null;
+  activeIconSetId: string | null;
+  isDirty: boolean;
   currentIconId: string | null;
   currentVariantId: string | null;
   currentStateId: string | null;
@@ -33,24 +56,52 @@ export type EditorState = {
   guideStyle: 'subtle' | 'strong';
   viewport: ViewportState;
   tool: Tool;
+  renderingMode: RenderingMode;
   shapeSubTool: ShapeType;
   shapePolygonSides: number;
   shapeStarPoints: number;
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
+  pendingPenHandle: PendingPenHandleState | null;
+  transitionPreview: TransitionPreview | null;
+  selectedTransitionId: string | null;
+  favorites: string[];
+  openTabs: EditorTab[];
+  activeTabId: string | null;
+};
+
+export type EditorTab = {
+  id: string;
+  iconSetId: string;
+  iconId: string;
+  variantId: string | null;
+  stateId: string | null;
+};
+
+export type TransitionPreview = {
+  transitionId: string;
+  baseStateId: string;
+  targetStateId: string;
+  progress: number;
+  resolvedTransition: ResolvedTransition;
+  interpolatedValues: InterpolatedValues;
 };
 
 export type EditorActions = {
-  loadProject(project: ProjectInput): void;
+  loadWorkspace(workspace: Workspace, options?: LoadProjectOptions): void;
+  loadProject(project: ProjectInput, options?: LoadProjectOptions): void;
   newProject(): void;
+  markSaved(updatedAt?: string): void;
   insertIcon(icon: Icon): void;
-  addVariant(
-    iconId: string,
-    size: number,
-    viewBox: [number, number, number, number],
-    options?: { name?: string; guideMasterId?: string; sourceVariantId?: string },
-  ): void;
+  addVariant(iconId: string, variant: VariantInput): void;
   removeVariant(iconId: string, variantId: string): void;
+  patchVariant(iconId: string, variantId: string, patch: VariantPatch): void;
+  addTransition(iconId: string, transition: Transition): void;
+  removeTransition(iconId: string, transitionId: string): void;
+  patchTransition(iconId: string, transitionId: string, patch: Partial<Transition>): void;
+  addEffect(iconId: string, effect: Effect): void;
+  removeEffect(iconId: string, effectId: string): void;
+  patchEffect(iconId: string, effectId: string, patch: Partial<Effect>): void;
   duplicateLayersToVariant(
     iconId: string,
     fromVariantId: string,
@@ -60,6 +111,7 @@ export type EditorActions = {
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
+  setStateTopology(iconId: string, stateId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
@@ -78,6 +130,9 @@ export type EditorActions = {
   setShapeStarPoints(points: number): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
+  setPendingPenHandle(handle: PendingPenHandleState | null): void;
+  setTransitionPreview(preview: TransitionPreview | null): void;
+  setSelectedTransitionId(transitionId: string | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
   addGuideMaster(master: GuideMaster): void;
   updateGuideMaster(id: string, patch: Partial<GuideMaster>): void;
@@ -89,6 +144,26 @@ export type EditorActions = {
   updateIconGuide(iconId: string, index: number, item: GuideItem): void;
   removeIconGuide(iconId: string, index: number): void;
   removeSelectedGuides(iconId: string, indexes: number[]): void;
+  addCollection(collection: Collection): void;
+  removeCollection(collectionId: string): void;
+  renameCollection(collectionId: string, name: string): void;
+  addIconToCollection(collectionId: string, iconId: string): void;
+  removeIconFromCollection(collectionId: string, iconId: string): void;
+  toggleFavorite(iconId: string): void;
+  addIconSet(name: string): string | null;
+  removeIconSet(iconSetId: string): void;
+  renameIconSet(iconSetId: string, name: string): void;
+  setActiveIconSet(iconSetId: string): void;
+  updateIconSetSync(iconSetId: string, sync: GitHubSyncSettings | undefined): void;
+  openIconTab(iconSetId: string, iconId: string, options?: { focus?: boolean }): string | null;
+  closeIconTab(tabId: string): void;
+  setActiveTab(tabId: string): void;
+  generateVariantMatrix(
+    iconId: string,
+    options: { sizes: number[]; weights: SymbolWeight[]; scales: SymbolScale[]; sourceVariantId?: string },
+  ): string[];
+  upsertSymbolComponent(iconId: string, component: SymbolComponent): void;
+  removeSymbolComponent(iconId: string, kind: SymbolComponent['kind']): void;
   removeSelectedLayers(): void;
   pauseHistory(): void;
   resumeHistory(): void;
@@ -97,6 +172,22 @@ export type EditorActions = {
 };
 
 export type EditorStore = EditorState & EditorActions;
+
+export type VariantInput = {
+  id?: string;
+  name?: string;
+  size: number;
+  viewBox?: [number, number, number, number];
+  renderingMode?: RenderingMode;
+  guideMasterId?: string;
+  weight?: SymbolWeight;
+  scale?: SymbolScale;
+  sourceVariantId?: string;
+  defaultState?: string;
+  states?: Record<string, State>;
+};
+
+export type VariantPatch = Partial<Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale'>>;
 
 type LegacyVariant = Variant & {
   guideSetId?: string;
@@ -113,7 +204,18 @@ type ProjectInput = Omit<Project, 'icons'> & {
   icons: Record<string, LegacyIcon>;
 };
 
-type TemporalSnapshot = { project: Project | null };
+type LoadProjectOptions = {
+  resetHistory?: boolean;
+  markDirty?: boolean;
+  keepTabs?: boolean;
+};
+
+type TemporalSnapshot = {
+  workspace: Workspace | null;
+  project: Project | null;
+  activeIconSetId: string | null;
+  isDirty: boolean;
+};
 
 type TemporalState = {
   pastStates: TemporalSnapshot[];
@@ -128,7 +230,10 @@ type TemporalState = {
 };
 
 const initialState: EditorState = {
+  workspace: null,
   project: null,
+  activeIconSetId: null,
+  isDirty: false,
   currentIconId: null,
   currentVariantId: null,
   currentStateId: null,
@@ -140,11 +245,18 @@ const initialState: EditorState = {
   guideStyle: 'subtle',
   viewport: { zoom: 12, panX: 0, panY: 0 },
   tool: 'select',
+  renderingMode: 'multicolor',
   shapeSubTool: 'rectangle',
   shapePolygonSides: 5,
   shapeStarPoints: 5,
   pointMarquee: null,
   pointTransformLabel: null,
+  pendingPenHandle: null,
+  transitionPreview: null,
+  selectedTransitionId: null,
+  favorites: [],
+  openTabs: [],
+  activeTabId: null,
 };
 
 let currentState: EditorStore;
@@ -153,7 +265,7 @@ const listeners = new Set<() => void>();
 const MAX_HISTORY = 100;
 export const VARIANT_SIZE_PRESETS = [12, 16, 20, 24, 32, 48] as const;
 let tracking = true;
-let transactionBase: Project | null | undefined;
+let transactionBase: TemporalSnapshot | undefined;
 const pastStates: TemporalSnapshot[] = [];
 const futureStates: TemporalSnapshot[] = [];
 
@@ -169,19 +281,30 @@ function normalizeSelection(selection: SelectionState): Required<SelectionState>
   };
 }
 
-function pushHistorySnapshot(project: Project | null) {
-  pastStates.push({ project });
+function pushHistorySnapshot(workspace: Workspace | null, project: Project | null, activeIconSetId: string | null, isDirty: boolean) {
+  pastStates.push({ workspace, project, activeIconSetId, isDirty });
   if (pastStates.length > MAX_HISTORY) pastStates.shift();
   futureStates.length = 0;
 }
 
 function applySnapshot(snapshot: TemporalSnapshot) {
+  const variant = getVariantById(
+    snapshot.project,
+    currentState.currentIconId,
+    currentState.currentVariantId,
+  );
   currentState = {
     ...currentState,
+    workspace: snapshot.workspace,
     project: snapshot.project,
+    activeIconSetId: snapshot.activeIconSetId,
+    isDirty: snapshot.isDirty,
+    renderingMode: getResolvedRenderingMode(variant),
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
     pointMarquee: null,
+    pendingPenHandle: null,
+    transitionPreview: null,
   };
   emit();
 }
@@ -193,7 +316,12 @@ const temporalState: TemporalState = {
     const prev = pastStates.pop();
     if (!prev) return;
 
-    futureStates.push({ project: currentState.project });
+    futureStates.push({
+      workspace: currentState.workspace,
+      project: currentState.project,
+      activeIconSetId: currentState.activeIconSetId,
+      isDirty: currentState.isDirty,
+    });
     applySnapshot(prev);
   },
 
@@ -201,7 +329,12 @@ const temporalState: TemporalState = {
     const next = futureStates.pop();
     if (!next) return;
 
-    pastStates.push({ project: currentState.project });
+    pastStates.push({
+      workspace: currentState.workspace,
+      project: currentState.project,
+      activeIconSetId: currentState.activeIconSetId,
+      isDirty: currentState.isDirty,
+    });
     applySnapshot(next);
   },
 
@@ -214,7 +347,12 @@ const temporalState: TemporalState = {
   pause() {
     if (!tracking) return;
     tracking = false;
-    transactionBase = currentState.project;
+    transactionBase = {
+      workspace: currentState.workspace,
+      project: currentState.project,
+      activeIconSetId: currentState.activeIconSetId,
+      isDirty: currentState.isDirty,
+    };
   },
 
   resume() {
@@ -225,7 +363,10 @@ const temporalState: TemporalState = {
     if (transactionBase === undefined) return;
     currentState = {
       ...currentState,
-      project: transactionBase,
+      workspace: transactionBase.workspace,
+      project: transactionBase.project,
+      activeIconSetId: transactionBase.activeIconSetId,
+      isDirty: transactionBase.isDirty,
     };
     tracking = true;
     transactionBase = undefined;
@@ -234,8 +375,18 @@ const temporalState: TemporalState = {
 
   commit(_label?: string) {
     if (transactionBase === undefined) return;
-    if (transactionBase !== currentState.project) {
-      pushHistorySnapshot(transactionBase);
+    if (
+      transactionBase.workspace !== currentState.workspace ||
+      transactionBase.project !== currentState.project ||
+      transactionBase.activeIconSetId !== currentState.activeIconSetId ||
+      transactionBase.isDirty !== currentState.isDirty
+    ) {
+      pushHistorySnapshot(
+        transactionBase.workspace,
+        transactionBase.project,
+        transactionBase.activeIconSetId,
+        transactionBase.isDirty,
+      );
     }
     transactionBase = undefined;
   },
@@ -249,15 +400,59 @@ const editorStoreApi = {
   ) => {
     const prev = currentState;
     const nextPatch = typeof updater === 'function' ? updater(prev) : updater;
-    const next = replace
+    const hasExplicitDirty = Object.prototype.hasOwnProperty.call(nextPatch, 'isDirty');
+    let next = replace
       ? (nextPatch as EditorStore)
       : ({ ...prev, ...nextPatch } as EditorStore);
 
+    if (next.workspace && next.activeIconSetId && next.project && next.workspace.iconSets[next.activeIconSetId]) {
+      next = {
+        ...next,
+        workspace: replaceWorkspaceIconSet(next.workspace, next.activeIconSetId, next.project),
+      } as EditorStore;
+    }
+
+    if (next.workspace && next.activeIconSetId && !next.project) {
+      next = {
+        ...next,
+        project: getActiveIconSet(next.workspace, next.activeIconSetId),
+      } as EditorStore;
+    }
+
+    if (next.activeTabId) {
+      const activeTab = next.openTabs.find((tab) => tab.id === next.activeTabId);
+      if (activeTab) {
+        next = {
+          ...next,
+          openTabs: next.openTabs.map((tab) =>
+            tab.id === next.activeTabId
+              ? {
+                  ...tab,
+                  iconSetId: next.activeIconSetId ?? tab.iconSetId,
+                  iconId: next.currentIconId ?? tab.iconId,
+                  variantId: next.currentVariantId,
+                  stateId: next.currentStateId,
+                }
+              : tab,
+          ),
+        } as EditorStore;
+      }
+    }
+
+    if (prev.project !== next.project && !hasExplicitDirty) {
+      next = { ...next, isDirty: true };
+    }
+
     if (prev.project !== next.project) {
       if (tracking) {
-        pushHistorySnapshot(prev.project);
+        pushHistorySnapshot(prev.workspace, prev.project, prev.activeIconSetId, prev.isDirty);
       } else if (transactionBase === undefined) {
-        transactionBase = prev.project;
+        transactionBase = {
+          workspace: prev.workspace,
+          project: prev.project,
+          activeIconSetId: prev.activeIconSetId,
+          isDirty: prev.isDirty,
+        };
       }
     }
 
@@ -548,48 +743,178 @@ function replaceVariantState(
   };
 }
 
+function getFirstIconId(project: Project | null | undefined) {
+  return project ? Object.keys(project.icons)[0] ?? null : null;
+}
+
+function getFirstVariantId(project: Project | null | undefined, iconId: string | null | undefined) {
+  if (!project || !iconId) return null;
+  return Object.keys(project.icons[iconId]?.variants ?? {})[0] ?? null;
+}
+
+function getFirstStateId(
+  project: Project | null | undefined,
+  iconId: string | null | undefined,
+  variantId: string | null | undefined,
+) {
+  if (!project || !iconId || !variantId) return null;
+  return Object.keys(project.icons[iconId]?.variants[variantId]?.states ?? {})[0] ?? null;
+}
+
+function buildEditorTarget(project: Project | null | undefined, requestedIconId?: string | null) {
+  const iconId = requestedIconId && project?.icons[requestedIconId] ? requestedIconId : getFirstIconId(project);
+  const variantId = getFirstVariantId(project, iconId);
+  const stateId = getFirstStateId(project, iconId, variantId);
+
+  return {
+    iconId,
+    variantId,
+    stateId,
+    renderingMode: getResolvedRenderingMode(
+      variantId && iconId && project ? project.icons[iconId]?.variants[variantId] : null,
+    ),
+  };
+}
+
+function createEmptyIconSet(name: string, now = new Date().toISOString()): IconSet {
+  const defaultGuideMaster = getDefaultGuideMaster(24);
+  return {
+    version: '1.0',
+    meta: { name, createdAt: now, updatedAt: now },
+    icons: {},
+    guideMasters: {
+      [defaultGuideMaster.id]: defaultGuideMaster,
+    },
+  };
+}
+
+function buildWorkspaceState(
+  workspace: Workspace,
+  activeIconSetId?: string | null,
+  options?: { requestedIconId?: string | null; keepTabs?: boolean; previousState?: EditorStore },
+): Partial<EditorStore> {
+  const resolvedIconSetId = activeIconSetId ?? getFirstIconSetId(workspace);
+  const project = getActiveIconSet(workspace, resolvedIconSetId);
+  const target = buildEditorTarget(project, options?.requestedIconId);
+
+  const baseState = options?.previousState;
+  const existingTabs = options?.keepTabs ? baseState?.openTabs ?? [] : [];
+  const activeTabId = options?.keepTabs ? baseState?.activeTabId ?? null : null;
+
+  return {
+    workspace,
+    project,
+    activeIconSetId: resolvedIconSetId,
+    currentIconId: target.iconId,
+    currentVariantId: target.variantId,
+    currentStateId: target.stateId,
+    renderingMode: target.renderingMode,
+    selectedIconGuideIndex: null,
+    selection: { layerIds: [], pointIds: [] },
+    activeSnapGuides: [],
+    snapEnabled: true,
+    guidesVisible: true,
+    guideStyle: 'subtle',
+    viewport: { zoom: 12, panX: 0, panY: 0 },
+    pointMarquee: null,
+    pointTransformLabel: null,
+    pendingPenHandle: null,
+    transitionPreview: null,
+    favorites: baseState?.favorites ?? [],
+    selectedTransitionId: null,
+    openTabs: existingTabs,
+    activeTabId,
+  };
+}
+
+function createTabId(iconSetId: string, iconId: string) {
+  return `${iconSetId}::${iconId}`;
+}
+
+function getResolvedRenderingMode(
+  variant: Pick<Variant, 'renderingMode'> | null | undefined,
+): RenderingMode {
+  return variant?.renderingMode ?? 'multicolor';
+}
+
 function createActions(): EditorActions {
   return {
-    loadProject(project) {
-      const migratedProject = migrateProjectForGuideMasters(project);
-      const firstIconId = Object.keys(project.icons)[0] ?? null;
-      const firstIcon = firstIconId ? migratedProject.icons[firstIconId] : null;
-      const firstVariantId = firstIcon ? Object.keys(firstIcon.variants)[0] ?? null : null;
-      const firstStateId = firstVariantId
-        ? Object.keys(firstIcon?.variants[firstVariantId]?.states ?? {})[0] ?? null
-        : null;
+    loadWorkspace(workspace, options) {
+      const { resetHistory = true, markDirty = false, keepTabs = false } = options ?? {};
+      const migratedIconSets = Object.fromEntries(
+        Object.entries(workspace.iconSets).map(([iconSetId, iconSet]) => [
+          iconSetId,
+          migrateProjectForGuideMasters(iconSet),
+        ]),
+      );
+      const migratedWorkspace: Workspace = {
+        ...workspace,
+        iconSets: migratedIconSets,
+        activeIconSetId:
+          (workspace.activeIconSetId && migratedIconSets[workspace.activeIconSetId]
+            ? workspace.activeIconSetId
+            : getFirstIconSetId({
+                ...workspace,
+                iconSets: migratedIconSets,
+              }) ?? undefined),
+      };
 
       editorStoreApi.setState({
-        project: migratedProject,
-        currentIconId: firstIconId,
-        currentVariantId: firstVariantId,
-        currentStateId: firstStateId,
-        selectedIconGuideIndex: null,
-        selection: { layerIds: [], pointIds: [] },
-        activeSnapGuides: [],
-        snapEnabled: true,
-        guidesVisible: true,
-        guideStyle: 'subtle',
-        viewport: { zoom: 12, panX: 0, panY: 0 },
-        pointMarquee: null,
-        pointTransformLabel: null,
+        ...initialState,
+        ...buildWorkspaceState(migratedWorkspace, migratedWorkspace.activeIconSetId, {
+          previousState: editorStoreApi.getState(),
+          keepTabs,
+        }),
+        isDirty: markDirty,
       });
-      resetHistoryForLoadedDocument();
+      if (resetHistory) {
+        resetHistoryForLoadedDocument();
+      }
+    },
+
+    loadProject(project, options) {
+      const workspace = createWorkspaceFromProject(migrateProjectForGuideMasters(project));
+      const { resetHistory = true, markDirty = false, keepTabs = false } = options ?? {};
+      editorStoreApi.setState({
+        ...initialState,
+        ...buildWorkspaceState(workspace, workspace.activeIconSetId, {
+          previousState: editorStoreApi.getState(),
+          keepTabs,
+        }),
+        isDirty: markDirty,
+      });
+      if (resetHistory) {
+        resetHistoryForLoadedDocument();
+      }
     },
 
     newProject() {
       const now = new Date().toISOString();
-      const defaultGuideMaster = getDefaultGuideMaster(24);
-      const project: Project = {
-        version: '1.0',
-        meta: { name: 'Untitled', createdAt: now, updatedAt: now },
-        icons: {},
-        guideMasters: {
-          [defaultGuideMaster.id]: defaultGuideMaster,
+      const workspace: Workspace = {
+        version: '2.0',
+        meta: { name: 'Untitled Workspace', createdAt: now, updatedAt: now },
+        iconSets: {
+          'icon-set-1': createEmptyIconSet('Untitled Set', now),
         },
+        activeIconSetId: 'icon-set-1',
       };
-      editorStoreApi.setState({ ...initialState, project });
+      editorStoreApi.setState({
+        ...initialState,
+        ...buildWorkspaceState(workspace, workspace.activeIconSetId, {
+          previousState: editorStoreApi.getState(),
+        }),
+        isDirty: false,
+      });
       resetHistoryForLoadedDocument();
+    },
+
+    markSaved(_updatedAt) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        return {
+          isDirty: false,
+        };
+      });
     },
 
     insertIcon(icon) {
@@ -628,52 +953,67 @@ function createActions(): EditorActions {
           currentIconId: nextIconId,
           currentVariantId: nextVariantId,
           currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(
+            nextVariantId ? nextIcon.variants[nextVariantId] : null,
+          ),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
           pointTransformLabel: null,
+          transitionPreview: null,
         };
       });
     },
 
-    addVariant(iconId, size, viewBox, options) {
+    addVariant(iconId, variantInput) {
       editorStoreApi.setState((s) => {
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon) return s;
+        if (!Number.isFinite(variantInput.size) || variantInput.size <= 0) return s;
 
         const sourceVariantId =
-          options?.sourceVariantId ??
+          variantInput.sourceVariantId ??
           (s.currentIconId === iconId ? s.currentVariantId : null) ??
           Object.keys(icon.variants)[0] ??
           null;
         const sourceVariant = sourceVariantId ? icon.variants[sourceVariantId] : null;
         if (!sourceVariant) return s;
 
-        const nextVariantId = buildVariantId(size, Object.keys(icon.variants));
+        const nextVariantId = variantInput.id
+          ? ensureUniqueRecordId(variantInput.id, Object.keys(icon.variants))
+          : buildVariantId(variantInput.size, Object.keys(icon.variants));
         const nextVariantName = buildVariantName(
-          size,
+          variantInput.size,
           Object.values(icon.variants).map((variant) => variant.name ?? String(variant.size)),
-          options?.name,
+          variantInput.name,
         );
-        const nextStates = cloneStateRecord(sourceVariant.states);
-        const nextViewBox = scaleViewBoxToSize(
-          viewBox[2] > 0 && viewBox[3] > 0 ? viewBox : sourceVariant.viewBox,
-          size,
-        );
+        const nextStates = cloneStateRecord(variantInput.states ?? sourceVariant.states);
+        const nextViewBox =
+          variantInput.viewBox && variantInput.viewBox[2] > 0 && variantInput.viewBox[3] > 0
+            ? variantInput.viewBox
+            : scaleViewBoxToSize(sourceVariant.viewBox, variantInput.size);
 
         const nextVariant: Variant = {
           id: nextVariantId,
           name: nextVariantName,
-          size,
+          size: variantInput.size,
           viewBox: nextViewBox,
+          renderingMode:
+            variantInput.renderingMode ?? sourceVariant.renderingMode ?? s.renderingMode,
           guideMasterId:
-            options?.guideMasterId ??
+            variantInput.guideMasterId ??
             sourceVariant.guideMasterId ??
             Object.values(s.project.guideMasters ?? {}).find(
-              (master) => master.targetSize === size,
+              (master) => master.targetSize === variantInput.size,
             )?.id,
-          defaultState: sourceVariant.defaultState,
+          weight: variantInput.weight ?? sourceVariant.weight,
+          scale: variantInput.scale ?? sourceVariant.scale,
+          defaultState:
+            variantInput.defaultState ??
+            sourceVariant.defaultState ??
+            Object.keys(nextStates)[0] ??
+            'default',
           states: nextStates,
         };
 
@@ -699,6 +1039,7 @@ function createActions(): EditorActions {
             nextVariant.defaultState ??
             Object.keys(nextVariant.states)[0] ??
             null,
+          renderingMode: getResolvedRenderingMode(nextVariant),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           selectedIconGuideIndex: null,
@@ -746,12 +1087,252 @@ function createActions(): EditorActions {
           },
           currentVariantId: fallbackVariantId,
           currentStateId: fallbackStateId,
+          renderingMode: getResolvedRenderingMode(fallbackVariant),
           selection: s.currentVariantId === variantId ? { layerIds: [], pointIds: [] } : s.selection,
           activeSnapGuides: s.currentVariantId === variantId ? [] : s.activeSnapGuides,
           selectedIconGuideIndex: s.currentVariantId === variantId ? null : s.selectedIconGuideIndex,
           pointMarquee: s.currentVariantId === variantId ? null : s.pointMarquee,
           pointTransformLabel:
             s.currentVariantId === variantId ? null : s.pointTransformLabel,
+        };
+      });
+    },
+
+    patchVariant(iconId, variantId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[variantId];
+        if (!icon || !variant) return s;
+
+        const nextSize =
+          patch.size !== undefined && Number.isFinite(patch.size) && patch.size > 0
+            ? patch.size
+            : variant.size;
+        const nextViewBox =
+          patch.viewBox && patch.viewBox[2] > 0 && patch.viewBox[3] > 0
+            ? patch.viewBox
+            : variant.viewBox;
+        const nextRenderingMode = patch.renderingMode ?? variant.renderingMode;
+        const nextWeight = patch.weight ?? variant.weight;
+        const nextScale = patch.scale ?? variant.scale;
+
+        if (
+          nextSize === variant.size &&
+          nextViewBox === variant.viewBox &&
+          nextRenderingMode === variant.renderingMode &&
+          nextWeight === variant.weight &&
+          nextScale === variant.scale
+        ) {
+          return s;
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [variantId]: {
+                    ...variant,
+                    size: nextSize,
+                    viewBox: nextViewBox,
+                    renderingMode: nextRenderingMode,
+                    weight: nextWeight,
+                    scale: nextScale,
+                  },
+                },
+              },
+            },
+          },
+          renderingMode:
+            s.currentIconId === iconId && s.currentVariantId === variantId
+              ? getResolvedRenderingMode({ renderingMode: nextRenderingMode })
+              : s.renderingMode,
+        };
+      });
+    },
+
+    addTransition(iconId, transition) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const nextTransitionId = ensureUniqueRecordId(
+          transition.id,
+          Object.keys(icon.transitions),
+        );
+        const nextTransition =
+          nextTransitionId === transition.id
+            ? transition
+            : {
+                ...transition,
+                id: nextTransitionId,
+              };
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: {
+                  ...icon.transitions,
+                  [nextTransition.id]: nextTransition,
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeTransition(iconId, transitionId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.transitions[transitionId]) return s;
+
+        const nextTransitions = { ...icon.transitions };
+        delete nextTransitions[transitionId];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: nextTransitions,
+              },
+            },
+          },
+          transitionPreview:
+            s.transitionPreview?.transitionId === transitionId ? null : s.transitionPreview,
+          selectedTransitionId:
+            s.selectedTransitionId === transitionId ? null : s.selectedTransitionId,
+        };
+      });
+    },
+
+    patchTransition(iconId, transitionId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const transition = icon?.transitions[transitionId];
+        if (!icon || !transition) return s;
+
+        const { id: _ignoredId, ...safePatch } = patch;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                transitions: {
+                  ...icon.transitions,
+                  [transitionId]: {
+                    ...transition,
+                    ...safePatch,
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    addEffect(iconId, effect) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const current = icon.effects ?? {};
+        const nextId = ensureUniqueRecordId(effect.id, Object.keys(current));
+        const nextEffect = nextId === effect.id ? effect : { ...effect, id: nextId };
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                effects: {
+                  ...current,
+                  [nextEffect.id]: nextEffect,
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeEffect(iconId, effectId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.effects?.[effectId]) return s;
+
+        const nextEffects = { ...icon.effects };
+        delete nextEffects[effectId];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                effects: nextEffects,
+              },
+            },
+          },
+        };
+      });
+    },
+
+    patchEffect(iconId, effectId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        const effect = icon?.effects?.[effectId];
+        if (!icon || !effect) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                effects: {
+                  ...(icon.effects ?? {}),
+                  [effectId]: {
+                    ...effect,
+                    ...patch,
+                  },
+                },
+              },
+            },
+          },
         };
       });
     },
@@ -812,10 +1393,14 @@ function createActions(): EditorActions {
           currentStateId: nextVariantId
             ? Object.keys(icon.variants[nextVariantId]?.states ?? {})[0] ?? null
             : null,
+          renderingMode: getResolvedRenderingMode(
+            nextVariantId ? icon.variants[nextVariantId] : null,
+          ),
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
+          transitionPreview: null,
         };
       });
     },
@@ -835,10 +1420,12 @@ function createActions(): EditorActions {
         return {
           currentVariantId: id,
           currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(variant),
           activeSnapGuides: [],
           pointMarquee: null,
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
+          transitionPreview: null,
         };
       });
     },
@@ -850,6 +1437,33 @@ function createActions(): EditorActions {
         selection: { layerIds: [], pointIds: [] },
         activeSnapGuides: [],
         pointMarquee: null,
+        transitionPreview: null,
+        favorites: [],
+      });
+    },
+
+    setStateTopology(iconId, stateId, topology) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[stateId];
+        if (!icon || !variant || !state) return s;
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...replaceVariantState(icon, s.currentVariantId, stateId, {
+                  ...state,
+                  topology,
+                }),
+              },
+            },
+          },
+        };
       });
     },
 
@@ -869,6 +1483,23 @@ function createActions(): EditorActions {
         const layer = state?.layers[layerId];
         if (!icon || !variant || !state || !layer) return s;
 
+        const nextLayer = { ...layer, ...patch };
+        const nextState = {
+          ...state,
+          layers: {
+            ...state.layers,
+            [layerId]: nextLayer,
+          },
+        };
+
+        if (state.topology?.locked && patch.path) {
+          const nextTopology = computeTopology(nextState);
+          const compatibility = areTopologiesCompatible(state.topology, nextTopology);
+          if (!compatibility.compatible) {
+            throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
+          }
+        }
+
         return {
           project: {
             ...s.project,
@@ -876,11 +1507,7 @@ function createActions(): EditorActions {
               ...s.project.icons,
               [iconId]: {
                 ...replaceVariantState(icon, s.currentVariantId, stateId, {
-                  ...state,
-                  layers: {
-                    ...state.layers,
-                    [layerId]: { ...layer, ...patch },
-                  },
+                  ...nextState,
                 }),
               },
             },
@@ -1059,6 +1686,7 @@ function createActions(): EditorActions {
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
+        pendingPenHandle: null,
       });
     },
 
@@ -1094,6 +1722,7 @@ function createActions(): EditorActions {
         selectedIconGuideIndex: null,
         activeSnapGuides: [],
         pointMarquee: null,
+        pendingPenHandle: null,
       });
     },
 
@@ -1115,6 +1744,18 @@ function createActions(): EditorActions {
 
     setPointTransformLabel(label) {
       editorStoreApi.setState({ pointTransformLabel: label });
+    },
+
+    setPendingPenHandle(handle) {
+      editorStoreApi.setState({ pendingPenHandle: handle });
+    },
+
+    setTransitionPreview(preview) {
+      editorStoreApi.setState({ transitionPreview: preview });
+    },
+
+    setSelectedTransitionId(transitionId) {
+      editorStoreApi.setState({ selectedTransitionId: transitionId });
     },
 
     updateProjectMeta(patch) {
@@ -1376,6 +2017,438 @@ function createActions(): EditorActions {
       });
     },
 
+
+    addCollection(collection) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const existing = s.project.collections ?? {};
+        const collectionId = ensureUniqueRecordId(collection.id, Object.keys(existing));
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            collections: {
+              ...existing,
+              [collectionId]: { ...collection, id: collectionId, iconIds: Array.from(new Set(collection.iconIds)) },
+            },
+          },
+        };
+      });
+    },
+
+    removeCollection(collectionId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.collections?.[collectionId]) return s;
+        const next = { ...s.project.collections };
+        delete next[collectionId];
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            collections: next,
+          },
+        };
+      });
+    },
+
+    renameCollection(collectionId, name) {
+      editorStoreApi.setState((s) => {
+        const collection = s.project?.collections?.[collectionId];
+        if (!s.project || !collection) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            collections: {
+              ...(s.project.collections ?? {}),
+              [collectionId]: { ...collection, name },
+            },
+          },
+        };
+      });
+    },
+
+    addIconToCollection(collectionId, iconId) {
+      editorStoreApi.setState((s) => {
+        const collection = s.project?.collections?.[collectionId];
+        if (!s.project || !collection || !s.project.icons[iconId]) return s;
+        if (collection.iconIds.includes(iconId)) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            collections: {
+              ...(s.project.collections ?? {}),
+              [collectionId]: { ...collection, iconIds: [...collection.iconIds, iconId] },
+            },
+          },
+        };
+      });
+    },
+
+    removeIconFromCollection(collectionId, iconId) {
+      editorStoreApi.setState((s) => {
+        const collection = s.project?.collections?.[collectionId];
+        if (!s.project || !collection) return s;
+        const nextIds = collection.iconIds.filter((id) => id !== iconId);
+        if (nextIds.length === collection.iconIds.length) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            collections: {
+              ...(s.project.collections ?? {}),
+              [collectionId]: { ...collection, iconIds: nextIds },
+            },
+          },
+        };
+      });
+    },
+
+    toggleFavorite(iconId) {
+      editorStoreApi.setState((s) => ({
+        favorites: s.favorites.includes(iconId)
+          ? s.favorites.filter((id) => id !== iconId)
+          : [...s.favorites, iconId],
+      }));
+    },
+
+    addIconSet(name) {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const iconSetId = ensureUniqueRecordId(toKebabCase(trimmed) || 'icon-set', Object.keys(editorStoreApi.getState().workspace?.iconSets ?? {}));
+      const now = new Date().toISOString();
+      editorStoreApi.setState((s) => {
+        const workspace =
+          s.workspace ??
+          {
+            version: '2.0',
+            meta: { name: 'Untitled Workspace', createdAt: now, updatedAt: now },
+            iconSets: {},
+            activeIconSetId: undefined,
+          };
+
+        return buildWorkspaceState(
+          {
+            ...workspace,
+            meta: { ...workspace.meta, updatedAt: now },
+            iconSets: {
+              ...workspace.iconSets,
+              [iconSetId]: createEmptyIconSet(trimmed, now),
+            },
+            activeIconSetId: iconSetId,
+          },
+          iconSetId,
+          { previousState: s },
+        );
+      });
+      return iconSetId;
+    },
+
+    removeIconSet(iconSetId) {
+      editorStoreApi.setState((s) => {
+        if (!s.workspace?.iconSets[iconSetId]) return s;
+        const nextIconSets = { ...s.workspace.iconSets };
+        delete nextIconSets[iconSetId];
+        const nextWorkspace: Workspace = {
+          ...s.workspace,
+          iconSets: nextIconSets,
+        };
+        const nextActiveIconSetId =
+          s.activeIconSetId === iconSetId ? getFirstIconSetId(nextWorkspace) : s.activeIconSetId;
+        const nextTabs = s.openTabs.filter((tab) => tab.iconSetId !== iconSetId);
+        const nextActiveTabId =
+          s.activeTabId && nextTabs.some((tab) => tab.id === s.activeTabId)
+            ? s.activeTabId
+            : nextTabs[0]?.id ?? null;
+        if (!nextActiveIconSetId) {
+          return {
+            workspace: nextWorkspace,
+            project: null,
+            activeIconSetId: null,
+            currentIconId: null,
+            currentVariantId: null,
+            currentStateId: null,
+            openTabs: nextTabs,
+            activeTabId: nextActiveTabId,
+          };
+        }
+        return {
+          ...buildWorkspaceState(nextWorkspace, nextActiveIconSetId, { previousState: s, keepTabs: true }),
+          openTabs: nextTabs,
+          activeTabId: nextActiveTabId,
+        };
+      });
+    },
+
+    renameIconSet(iconSetId, name) {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      editorStoreApi.setState((s) => {
+        const iconSet = s.workspace?.iconSets[iconSetId];
+        if (!s.workspace || !iconSet) return s;
+        const nextIconSet: IconSet = {
+          ...iconSet,
+          meta: { ...iconSet.meta, name: trimmed, updatedAt: new Date().toISOString() },
+        };
+        return {
+          workspace: replaceWorkspaceIconSet(s.workspace, iconSetId, nextIconSet),
+          project: s.activeIconSetId === iconSetId ? nextIconSet : s.project,
+        };
+      });
+    },
+
+    setActiveIconSet(iconSetId) {
+      editorStoreApi.setState((s) => {
+        if (!s.workspace?.iconSets[iconSetId]) return s;
+        return {
+          ...buildWorkspaceState(s.workspace, iconSetId, { previousState: s, keepTabs: true }),
+          activeTabId: s.activeTabId,
+          openTabs: s.openTabs,
+        };
+      });
+    },
+
+    updateIconSetSync(iconSetId, sync) {
+      editorStoreApi.setState((s) => {
+        const iconSet = s.workspace?.iconSets[iconSetId];
+        if (!s.workspace || !iconSet) return s;
+        const nextIconSet: IconSet = {
+          ...iconSet,
+          meta: { ...iconSet.meta, updatedAt: new Date().toISOString() },
+          sync,
+        };
+        return {
+          workspace: replaceWorkspaceIconSet(s.workspace, iconSetId, nextIconSet),
+          project: s.activeIconSetId === iconSetId ? nextIconSet : s.project,
+        };
+      });
+    },
+
+    openIconTab(iconSetId, iconId, options) {
+      const state = editorStoreApi.getState();
+      const workspace = state.workspace;
+      const iconSet = workspace?.iconSets[iconSetId];
+      if (!iconSet?.icons[iconId]) return null;
+      const variantId = getFirstVariantId(iconSet, iconId);
+      const stateId = getFirstStateId(iconSet, iconId, variantId);
+      const tabId = createTabId(iconSetId, iconId);
+      editorStoreApi.setState((s) => {
+        const exists = s.openTabs.some((tab) => tab.id === tabId);
+        const nextTabs = exists
+          ? s.openTabs
+          : [
+              ...s.openTabs,
+              {
+                id: tabId,
+                iconSetId,
+                iconId,
+                variantId,
+                stateId,
+              },
+            ];
+        const shouldFocus = options?.focus !== false;
+        return shouldFocus
+          ? {
+              ...buildWorkspaceState(s.workspace!, iconSetId, {
+                previousState: s,
+                keepTabs: true,
+                requestedIconId: iconId,
+              }),
+              currentVariantId: variantId,
+              currentStateId: stateId,
+              openTabs: nextTabs,
+              activeTabId: tabId,
+            }
+          : {
+              openTabs: nextTabs,
+            };
+      });
+      return tabId;
+    },
+
+    closeIconTab(tabId) {
+      editorStoreApi.setState((s) => {
+        const index = s.openTabs.findIndex((tab) => tab.id === tabId);
+        if (index === -1) return s;
+        const nextTabs = s.openTabs.filter((tab) => tab.id !== tabId);
+        if (s.activeTabId !== tabId) {
+          return {
+            openTabs: nextTabs,
+          };
+        }
+
+        const fallbackTab = nextTabs[index] ?? nextTabs[index - 1] ?? null;
+        if (!fallbackTab) {
+          return {
+            openTabs: nextTabs,
+            activeTabId: null,
+          };
+        }
+
+        return {
+          ...buildWorkspaceState(s.workspace!, fallbackTab.iconSetId, {
+            previousState: s,
+            keepTabs: true,
+            requestedIconId: fallbackTab.iconId,
+          }),
+          currentVariantId: fallbackTab.variantId,
+          currentStateId: fallbackTab.stateId,
+          openTabs: nextTabs,
+          activeTabId: fallbackTab.id,
+        };
+      });
+    },
+
+    setActiveTab(tabId) {
+      editorStoreApi.setState((s) => {
+        const tab = s.openTabs.find((entry) => entry.id === tabId);
+        if (!tab || !s.workspace) return s;
+        return {
+          ...buildWorkspaceState(s.workspace, tab.iconSetId, {
+            previousState: s,
+            keepTabs: true,
+            requestedIconId: tab.iconId,
+          }),
+          currentVariantId: tab.variantId ?? getFirstVariantId(s.workspace.iconSets[tab.iconSetId], tab.iconId),
+          currentStateId:
+            tab.stateId ??
+            getFirstStateId(
+              s.workspace.iconSets[tab.iconSetId],
+              tab.iconId,
+              tab.variantId ?? getFirstVariantId(s.workspace.iconSets[tab.iconSetId], tab.iconId),
+            ),
+          openTabs: s.openTabs,
+          activeTabId: tabId,
+        };
+      });
+    },
+
+
+
+    generateVariantMatrix(iconId, options) {
+      const createdVariantIds: string[] = [];
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const sizes = options.sizes.filter((size) => Number.isFinite(size) && size > 0);
+        const weights = options.weights;
+        const scales = options.scales;
+        if (sizes.length === 0 || weights.length === 0 || scales.length === 0) return s;
+
+        const existingVariants = { ...icon.variants };
+        const existingIds = Object.keys(existingVariants);
+        const existingNames = Object.values(existingVariants).map((variant) => variant.name ?? String(variant.size));
+
+        for (const size of sizes) {
+          for (const weight of weights) {
+            for (const scale of scales) {
+              const already = Object.values(existingVariants).find(
+                (variant) => variant.size === size && variant.weight === weight && variant.scale === scale,
+              );
+              if (already) continue;
+
+              const sourceVariant = pickClosestVariant(existingVariants, size, weight, scale, options.sourceVariantId) ?? Object.values(existingVariants)[0];
+              if (!sourceVariant) continue;
+
+              const nextVariantId = buildVariantId(size, [...existingIds, ...createdVariantIds]);
+              createdVariantIds.push(nextVariantId);
+              const nextStates = cloneStateRecord(sourceVariant.states);
+              const nextName = buildVariantName(size, existingNames, `${size}-${weight}-${scale}`);
+              existingNames.push(nextName);
+
+              existingVariants[nextVariantId] = {
+                id: nextVariantId,
+                name: nextName,
+                size,
+                viewBox: scaleViewBoxToSize(sourceVariant.viewBox, size),
+                renderingMode: sourceVariant.renderingMode,
+                guideMasterId:
+                  sourceVariant.guideMasterId ??
+                  Object.values(s.project.guideMasters ?? {}).find((master) => master.targetSize === size)?.id,
+                weight,
+                scale,
+                defaultState: sourceVariant.defaultState,
+                states: nextStates,
+              };
+            }
+          }
+        }
+
+        if (createdVariantIds.length === 0) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: existingVariants,
+              },
+            },
+          },
+          currentVariantId: createdVariantIds[createdVariantIds.length - 1] ?? s.currentVariantId,
+        };
+      });
+      return createdVariantIds;
+    },
+
+    upsertSymbolComponent(iconId, component) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                components: {
+                  ...(icon.components ?? {}),
+                  [component.kind]: {
+                    ...component,
+                    layerIds: Array.from(new Set(component.layerIds)),
+                  },
+                },
+              },
+            },
+          },
+        };
+      });
+    },
+
+    removeSymbolComponent(iconId, kind) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon?.components?.[kind]) return s;
+        const nextComponents = { ...icon.components };
+        delete nextComponents[kind];
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                components: nextComponents,
+              },
+            },
+          },
+        };
+      });
+    },
+
     removeSelectedLayers() {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentIconId || !s.currentVariantId || !s.currentStateId) return s;
@@ -1521,6 +2594,59 @@ function clampInteger(value: number, minimum: number): number {
   return Math.max(minimum, Math.round(value));
 }
 
+
+const SYMBOL_WEIGHT_ORDER: SymbolWeight[] = [
+  'ultralight',
+  'thin',
+  'light',
+  'regular',
+  'medium',
+  'semibold',
+  'bold',
+  'heavy',
+  'black',
+];
+
+const SYMBOL_SCALE_ORDER: SymbolScale[] = ['small', 'medium', 'large'];
+
+function pickClosestVariant(
+  variants: Record<string, Variant>,
+  targetSize: number,
+  targetWeight: SymbolWeight,
+  targetScale: SymbolScale,
+  preferredVariantId?: string,
+): Variant | null {
+  if (preferredVariantId && variants[preferredVariantId]) {
+    return variants[preferredVariantId]!;
+  }
+
+  const entries = Object.values(variants);
+  if (entries.length === 0) return null;
+
+  const weightIndex = SYMBOL_WEIGHT_ORDER.indexOf(targetWeight);
+  const scaleIndex = SYMBOL_SCALE_ORDER.indexOf(targetScale);
+
+  let best: Variant | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const variant of entries) {
+    const currentWeightIndex = variant.weight ? SYMBOL_WEIGHT_ORDER.indexOf(variant.weight) : SYMBOL_WEIGHT_ORDER.indexOf('regular');
+    const currentScaleIndex = variant.scale ? SYMBOL_SCALE_ORDER.indexOf(variant.scale) : SYMBOL_SCALE_ORDER.indexOf('medium');
+
+    const score =
+      Math.abs(variant.size - targetSize) * 100 +
+      Math.abs(currentWeightIndex - weightIndex) * 10 +
+      Math.abs(currentScaleIndex - scaleIndex);
+
+    if (score < bestScore) {
+      bestScore = score;
+      best = variant;
+    }
+  }
+
+  return best;
+}
+
 function ensureUniqueIconId(candidate: string, existingIds: string[]): string {
   return ensureUniqueRecordId(candidate, existingIds);
 }
@@ -1535,6 +2661,14 @@ function ensureUniqueRecordId(candidate: string, existingIds: string[]): string 
     nextId = `${candidate}-${counter}`;
   }
   return nextId;
+}
+
+function toKebabCase(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function hasClipMaskTargets(

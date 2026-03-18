@@ -1,0 +1,20 @@
+{
+  "name": "icophone-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/patch-electrobun-wrapper.cjs",
+    "dev": "sh scripts/dev-with-next.sh",
+    "dev:electrobun": "electrobun dev",
+    "open-dev": "sh scripts/open-dev-app.sh",
+    "build": "electrobun build",
+    "dist": "electrobun build --env=stable"
+  },
+  "dependencies": {
+    "electrobun": "1.15.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

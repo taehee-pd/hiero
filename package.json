@@ -1,13 +1,30 @@
 {
-  "name": "my-project",
+  "name": "icon-authoring-tool",
   "version": "0.1.0",
   "private": true,
+  "description": "Icon design studio for stateful, animated SVG icons",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "compile:icons": "bun scripts/compile-icons.ts"
+    "test": "bun test",
+    "test:ci": "bun test tests/",
+    "test:watch": "bun test --watch",
+    "test:sync": "bun test tests/sync-source.test.ts tests/sync-service.test.ts tests/sync-conflicts.test.ts tests/sync-analytics.test.ts tests/sync-ui.test.ts",
+    "test:export": "bun test tests/compile-pipeline.test.ts tests/compiled-icon-export.test.ts tests/export-react.test.ts tests/export-runtime-json.test.ts tests/export-svg-package.test.ts tests/react-codegen.test.ts tests/runtime-json-export.test.ts",
+    "test:import": "bun test tests/adapter-sdk.test.ts tests/lucide-adapter.test.ts tests/normalized-ir.test.ts tests/raw-svg-adapter.test.ts tests/svg-normalizer.test.ts tests/svg-sanitizer.test.ts tests/svg-import.test.ts tests/svg-import-flow.test.ts tests/import-svg.test.ts",
+    "type-check": "tsc --noEmit",
+    "compile:icons": "bun scripts/compile-icons.ts",
+    "compile:from-source": "bun scripts/compile-from-source.ts",
+    "desktop:dev": "sh scripts/start-desktop-dev.sh",
+    "desktop:build": "bun run desktop/scripts/build-production.ts",
+    "desktop:dist": "bun run desktop/scripts/build-production.ts --dist",
+    "build:icons:package": "bun scripts/build-icons-package.ts",
+    "validate:icons:package": "bun scripts/validate-icons-package.ts",
+    "validate:source-export": "bun scripts/validate-source-export.ts --source .",
+    "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts",
+    "check:runtime-size": "bun scripts/check-runtime-size.ts"
   },
   "dependencies": {
     "@fontsource/work-sans": "^5.2.8",
@@ -64,13 +81,18 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",
+    "@types/bun": "^1.3.10",
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "eslint": "^10.0.3",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "typescript-eslint": "^8.57.1"
   }
 }

@@ -2,90 +2,12 @@
 
 import { useState } from 'react';
 
-import type { Icon, State } from '@/lib/schema';
 import { VibeIcon, useIconState } from '@/lib/runtime-react';
+import { HAMBURGER_CLOSE_ICON } from '@/lib/schema/sample-icons/hamburger-close';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
 
-const HAMBURGER_CLOSE_ICON: Icon = makeHamburgerCloseIcon();
 const chevronIcon = SAMPLE_PROJECT.icons['icon-chevron']!;
-
-function makeHamburgerCloseIcon(): Icon {
-  const openState: State = {
-    id: 'open',
-    layers: {
-      top: {
-        id: 'top',
-        path: { d: 'M4 7H20' },
-        style: { stroke: { mode: 'currentColor' }, strokeWidth: 2, lineCap: 'round' },
-      },
-      middle: {
-        id: 'middle',
-        path: { d: 'M4 12H20' },
-        style: { stroke: { mode: 'currentColor' }, strokeWidth: 2, lineCap: 'round' },
-      },
-      bottom: {
-        id: 'bottom',
-        path: { d: 'M4 17H20' },
-        style: { stroke: { mode: 'currentColor' }, strokeWidth: 2, lineCap: 'round' },
-      },
-    },
-  };
-
-  const closedState: State = {
-    id: 'closed',
-    layers: {
-      top: {
-        id: 'top',
-        path: { d: 'M6 6L18 18' },
-        style: { stroke: { mode: 'currentColor' }, strokeWidth: 2, lineCap: 'round' },
-      },
-      bottom: {
-        id: 'bottom',
-        path: { d: 'M18 6L6 18' },
-        style: { stroke: { mode: 'currentColor' }, strokeWidth: 2, lineCap: 'round' },
-      },
-    },
-  };
-
-  return {
-    id: 'icon-hamburger-close',
-    name: 'Hamburger Close',
-    variants: {
-      '24': {
-        id: '24',
-        size: 24,
-        viewBox: [0, 0, 24, 24],
-        defaultState: 'open',
-        states: {
-          open: openState,
-          closed: closedState,
-        },
-      },
-    },
-    transitions: {
-      'open-closed': {
-        id: 'open-closed',
-        from: 'open',
-        to: 'closed',
-        strategy: 'replace',
-        durationMs: 180,
-        easing: 'ease-in-out',
-        layerBindings: [],
-      },
-      'closed-open': {
-        id: 'closed-open',
-        from: 'closed',
-        to: 'open',
-        strategy: 'replace',
-        durationMs: 180,
-        easing: 'ease-in-out',
-        layerBindings: [],
-      },
-    },
-  };
-}
-
 export default function RuntimeDemoPage() {
   const hamburger = useIconState('open');
   const chevron = useIconState('default');

@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { ResolvedTransition } from '../lib/runtime-core';
-import { planCssTrackTransition } from '../lib/runtime-dom';
+import {
+  captureCssTrackTransitionValues,
+  planCssTrackTransition,
+} from '../lib/runtime-dom';
 
 function makeResolvedTransition(): ResolvedTransition {
   return {
@@ -47,5 +50,16 @@ describe('runtime-dom driver css fallback planning', () => {
     const resolved = makeResolvedTransition();
     resolved.layerBindings[0]!.toLayer = { id: 'line-next', style: {}, path: { d: 'M0 0L20 20' } };
     expect(planCssTrackTransition(resolved)).toBeNull();
+  });
+
+  test('captures the current css-fallback values for interruption blend-out', () => {
+    const plan = planCssTrackTransition(makeResolvedTransition());
+    expect(plan).not.toBeNull();
+
+    const values = captureCssTrackTransitionValues(plan!, 80);
+    const layerValues = values.line;
+
+    expect(layerValues?.opacity).toBe(0.5);
+    expect(layerValues?.translateX).toBe(4);
   });
 });

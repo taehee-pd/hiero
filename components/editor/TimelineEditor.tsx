@@ -6,12 +6,21 @@ import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { cn } from '@/lib/utils';
 
-const TRACKS: TimelineTrack['property'][] = ['opacity', 'rotate', 'translateX', 'translateY', 'scale', 'pathLength'];
+type NumericTrackProperty = Exclude<TimelineTrack['property'], 'fill' | 'stroke'>;
+
+const TRACKS: NumericTrackProperty[] = [
+  'opacity',
+  'rotate',
+  'translateX',
+  'translateY',
+  'scale',
+  'pathLength',
+];
 const PX_PER_MS = 0.35;
 
 type SelectedKeyframe = {
   bindingIndex: number;
-  property: TimelineTrack['property'];
+  property: NumericTrackProperty;
   keyframeIndex: number;
 };
 
@@ -76,7 +85,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
     };
   }, [duration, playhead, playing, scrubTo]);
 
-  const handleAddKeyframe = useCallback((bindingIndex: number, property: TimelineTrack['property'], progress: number) => {
+  const handleAddKeyframe = useCallback((bindingIndex: number, property: NumericTrackProperty, progress: number) => {
     updateTransition((draft) => {
       const nextBindings = draft.layerBindings.map((binding, idx) => {
         if (idx !== bindingIndex) return binding;
@@ -84,6 +93,9 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
         const existingIdx = tracks.findIndex((track) => track.property === property);
         if (existingIdx >= 0) {
           const track = tracks[existingIdx]!;
+          if (!isNumericTrack(track)) {
+            return binding;
+          }
           const nextKeyframes = [...track.keyframes, 0];
           tracks[existingIdx] = { ...track, keyframes: nextKeyframes };
         } else {
@@ -103,6 +115,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
         if (idx !== key.bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== key.property) return track;
+          if (!isNumericTrack(track)) return track;
           const nextKeyframes = [...track.keyframes];
           nextKeyframes[key.keyframeIndex] = targetIndex;
           return { ...track, keyframes: nextKeyframes };
@@ -120,6 +133,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
         if (idx !== key.bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== key.property) return track;
+          if (!isNumericTrack(track)) return track;
           const nextKeyframes = track.keyframes.filter((_, i) => i !== key.keyframeIndex);
           return { ...track, keyframes: nextKeyframes };
         });
@@ -242,6 +256,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
                 if (idx !== menu.key.bindingIndex) return binding;
                 const tracks = (binding.tracks ?? []).map((track) => {
                   if (track.property !== menu.key.property) return track;
+                  if (!isNumericTrack(track)) return track;
                   const nextKeyframes = [...track.keyframes];
                   nextKeyframes[menu.key.keyframeIndex] = value;
                   return { ...track, keyframes: nextKeyframes };
@@ -255,4 +270,10 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
       ) : null}
     </div>
   );
+}
+
+function isNumericTrack(
+  track: TimelineTrack,
+): track is Extract<TimelineTrack, { property: NumericTrackProperty }> {
+  return track.property !== 'fill' && track.property !== 'stroke';
 }

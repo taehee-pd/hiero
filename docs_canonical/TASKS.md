@@ -8,6 +8,9 @@ replacement and should avoid speculative items that are not grounded in
 repository evidence. The ordering favors repository-stability and operational
 needs over product feature speculation.
 
+Maintenance rule: update this file after every materially completed repository
+change so the task status and implementation notes continue to match the code.
+
 **Last updated:** 2026-03-18
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
@@ -17,16 +20,14 @@ Phases are listed below in dependency/priority order. Completed phases
 are at the bottom for reference. If you're starting fresh, implement
 in this order:
 
-1. **Phase E** — Adoption Readiness (E1-E3 done; E4-E7 next)
-2. **Phase 4** — CI/CD & Operational Hardening
-3. **Phase A** — Animation Engine Hardening
-4. **Phase B** — Runtime Capability Expansion
-5. **Phase 5** — Platform & Adapter Foundation
-6. **Phase C** — Editor Animation Authoring (depends on A)
-7. **Phase 6** — Sync & Distribution
-8. **Phase D** — React API Enrichment (depends on B)
-9. **Phase 7** — Cross-Platform Adapters
-10. **Phase 8** — Cross-Icon Morphing (can parallel with A)
+1. **Phase 4** — CI/CD & Operational Hardening
+2. **Phase B** — Runtime Capability Expansion
+3. **Phase 5** — Platform & Adapter Foundation
+4. **Phase C** — Editor Animation Authoring (depends on A)
+5. **Phase 6** — Sync & Distribution
+6. **Phase D** — React API Enrichment (depends on B)
+7. **Phase 7** — Cross-Platform Adapters
+8. **Phase 8** — Cross-Icon Morphing
 
 ---
 
@@ -164,62 +165,68 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase 4 — CI/CD & Operational Hardening
 
+Status: **completed** (verified 2026-03-18).
+
 ### 4A — CI Workflows
 
-- [ ] **4A.1 — Web app CI workflow.**
-  The 3 existing workflows (`icons-pr-validate.yml`,
-  `icons-post-merge-build.yml`, `icons-package-release.yml`) cover only
-  the icon pipeline. Add a `web-app-ci.yml` workflow triggered on PRs
-  that touch `app/`, `components/`, `lib/`, `hooks/`, or `styles/` paths.
-  Steps: install, type-check, lint, test, build.
+- [x] **4A.1 — Web app CI workflow.**
+  `.github/workflows/web-app-ci.yml` now runs on shared web/runtime path
+  changes and executes install, `format:check`, `type-check`, `lint`,
+  `test:phase-a:coverage`, `check:coverage`, and `build`.
 
-- [ ] **4A.2 — Desktop app CI workflow.**
-  Add a `desktop-ci.yml` workflow triggered on PRs that touch `desktop/`.
-  Steps: install desktop dependencies, type-check, build static export,
-  run `desktop:build` in CI-safe mode (skip signing). Verify the build
-  produces output in `desktop/build/`.
+- [x] **4A.2 — Desktop app CI workflow.**
+  `.github/workflows/desktop-ci.yml` now runs on `desktop/**` plus the
+  shared root app/runtime paths that feed the desktop static export.
+  It installs root and desktop dependencies, runs `format:check`,
+  `type-check`, `lint`, `test:phase-a`, and `desktop:build`, then
+  uploads `desktop/build/` as an artifact.
 
-- [ ] **4A.3 — Test coverage reporting.**
-  Investigate `bun test --coverage` support. If available, add coverage
-  thresholds to CI. If not, document the gap and plan for a coverage
-  tool integration.
+- [x] **4A.3 — Test coverage reporting.**
+  Bun coverage is enabled through `test:phase-a:coverage`, and
+  `scripts/check-coverage.ts` now enforces a scoped Phase A runtime gate
+  against LCOV paths under `lib/export/export-runtime-json.ts`,
+  `lib/runtime-core/`, `lib/runtime-dom/`, and `lib/runtime-react/`.
+  The initial enforced threshold is line coverage `>= 60%`; Bun's LCOV
+  output does not currently provide function totals in this repo, so the
+  function threshold is set to `0` until Bun emits stable function data.
 
 ### 4B — Code Quality
 
-- [ ] **4B.1 — Commit to a code formatter (Prettier or Biome).**
-  The repo currently has ESLint (`eslint.config.mjs`) but no formatter.
-  Add a config and `format` / `format:check` scripts. Add `format:check`
-  to CI. Start with a config that matches existing code style (2-space
-  indent, single quotes, trailing commas).
+- [x] **4B.1 — Commit to a code formatter (Prettier or Biome).**
+  The repo now uses Prettier via `.prettierrc.json`, `.prettierignore`,
+  and root `format` / `format:check` scripts. The rollout is intentionally
+  scoped to the new CI/tooling files for low churn while still giving the
+  new workflows a stable formatter gate.
 
-- [ ] **4B.2 — Tighten `@typescript-eslint/no-explicit-any` to error.**
-  Currently set to `warn` in `eslint.config.mjs`. Audit remaining `any`
-  usages and fix them, then promote to `error`.
+- [x] **4B.2 — Tighten `@typescript-eslint/no-explicit-any` to error.**
+  `eslint.config.mjs` now treats explicit `any` as an error. Remaining
+  `any` usage in the previously noisy desktop/runtime/editor slices was
+  replaced with narrower structural types or `unknown`.
 
-- [ ] **4B.3 — Enable `eslint-plugin-react-hooks` exhaustive-deps as error.**
-  Currently set to `warn` in `eslint.config.mjs`. Fix outstanding
-  violations and promote to `error`.
+- [x] **4B.3 — Enable `eslint-plugin-react-hooks` exhaustive-deps as error.**
+  `eslint.config.mjs` now treats `react-hooks/exhaustive-deps` as an
+  error. The React component and runtime-react hook surfaces were updated
+  so `bun run lint` passes cleanly under the stricter rule.
 
 ### 4C — Product Naming & Desktop Hardening
 
-- [ ] **4C.1 — Product naming consistency audit.**
-  The repo uses several names: `icon-authoring-tool` (package.json),
-  `Icophone` (desktop/electrobun.config.ts), `icophone-runtime`
-  (runtime-sdk warn prefix), `@icophone/icons` (CI package name).
-  Document the canonical product name and ensure package.json, desktop
-  config, and runtime warn prefixes all agree.
+- [x] **4C.1 — Product naming consistency audit.**
+  The desktop surface now uses `Coniva` across the app name, package
+  metadata, runtime warning prefix, and desktop-facing labels. Legacy
+  `.icophone.json` project files remain loadable for compatibility, and
+  the release/update env vars still accept the older `ICOPHONE_*`
+  names while preferring `CONIVA_*` when present.
 
-- [ ] **4C.2 — Desktop code signing/notarization hardening.**
-  `electrobun.config.ts` already guards signing behind
-  `ELECTROBUN_BUILD_ENV === 'stable'` and `requireSigningEnv()`.
-  Document the required CI secrets in a `desktop/SIGNING.md` and verify
-  the release pipeline succeeds end-to-end with placeholder credentials.
+- [x] **4C.2 — Desktop code signing/notarization hardening.**
+  `desktop/SIGNING.md` now documents the required macOS and Windows
+  signing/notarization secrets, the `ELECTROBUN_BUILD_ENV=stable`
+  guardrail, and the release-time failure mode when secrets are missing.
 
-- [ ] **4C.3 — Desktop auto-update endpoint validation.**
-  The update endpoint uses `${releaseBaseUrl}/latest.json`. The release
-  script generates `latest.json`. Add a CI step or test that validates
-  the generated `latest.json` matches the expected schema (version,
-  releaseDate, platforms, downloadUrls).
+- [x] **4C.3 — Desktop auto-update endpoint validation.**
+  `desktop/scripts/release.ts` validates the generated manifest before
+  writing `desktop/artifacts/latest.json`, and
+  `desktop/scripts/validate-latest-json.ts` provides a standalone schema
+  check for existing release manifests.
 
 ---
 
@@ -382,51 +389,55 @@ animation quality. Phase E should be implemented before Phases A-D.
 Addresses critical gaps relative to SF Symbols + Framer Motion quality.
 All changes are in `lib/runtime-core/` and `lib/schema/types.ts`.
 
-- [ ] **A1 — Cubic-bezier custom easing.**
-  `lib/runtime-core/easing.ts`: parse `cubic-bezier(x1,y1,x2,y2)`
-  strings via Newton-Raphson t-solving. Add `steps(n, 'start'|'end')`
-  for stepped animations. No schema changes needed — easing field
-  already accepts arbitrary strings. The current 6 hardcoded presets
-  remain as shortcuts.
+Status: **completed** (verified 2026-03-18).
 
-- [ ] **A2 — Spring physics engine.**
-  New `lib/runtime-core/spring.ts`: `SpringSolver` class implementing
-  an analytical damped harmonic oscillator (stiffness, damping, mass,
-  velocity). `springProgress(config, elapsed)` returns progress with
-  overshoot for underdamped springs. `estimateSpringDuration(config)`
-  returns settling time. Presets: gentle, bouncy, stiff, slow.
-  Schema: add `SpringConfig` type, widen `Transition.easing` and
-  `Effect.easing` to `string | SpringConfig`. `durationMs` becomes a
-  hard cap when spring is active. Properties clamp individually in the
-  renderer (not at scheduler level) to allow overshoot on transform
-  properties while clamping opacity to [0,1].
+- [x] **A1 — Cubic-bezier custom easing.**
+  `lib/runtime-core/easing.ts` now parses `cubic-bezier(x1,y1,x2,y2)`
+  with Newton-Raphson solving plus binary-search fallback, and supports
+  `steps(n, start|end)` alongside the existing preset shortcuts.
+  Tests: `tests/runtime-core.test.ts` — cubic-bezier + steps assertions.
 
-- [ ] **A3 — Color interpolation.**
-  New `lib/runtime-core/color.ts`: `interpolateColor(from, to, t)` with
-  hex parsing (#RGB, #RRGGBB, #RRGGBBAA) and linear RGB lerp (not sRGB,
-  for perceptually correct transitions). Schema: add `fill` and `stroke`
-  properties to `TimelineTrack` with string keyframes. Renderer: handle
-  color values in `applyAnimatedValues` by setting fill/stroke attributes.
+- [x] **A2 — Spring physics engine.**
+  `lib/runtime-core/spring.ts` adds `SpringSolver`,
+  `springProgress(config, elapsedMs)`, `estimateSpringDuration(config)`,
+  and presets (`gentle`, `bouncy`, `stiff`, `slow`). Schema widened via
+  `SpringConfig` in `lib/schema/types.ts`, and runtime schedulers/store
+  now accept `string | SpringConfig` easings with duration caps.
+  Tests: `tests/runtime-core.test.ts` — spring overshoot/duration and
+  scheduler interruption coverage.
 
-- [ ] **A4 — Guide point-aware Draw execution.**
-  `lib/runtime-core/draw-executor.ts`: use guide point `t` values to
-  determine each layer's active range within overall progress, instead
-  of uniform distribution. Layer with `[{t:0},{t:0.3}]` reveals between
-  progress 0.0–0.3. Fallback to uniform when no guide points available.
+- [x] **A3 — Color interpolation.**
+  `lib/runtime-core/color.ts` adds hex color interpolation for
+  `#RGB`, `#RRGGBB`, and `#RRGGBBAA`. `TimelineTrack` now supports
+  `fill` and `stroke` string keyframes. DOM and preview renderers apply
+  animated color values directly to SVG attributes, and runtime/export
+  contracts carry the widened track shape.
+  Tests: `tests/runtime-core.test.ts` — `interpolateColor(...)`;
+  `tests/runtime-dom.test.ts` — animated fill/stroke application.
 
-- [ ] **A5 — Per-layer stagger controls.**
-  Schema: add optional `delayMs`/`durationMs` to `LayerBinding`; add
-  `stagger` to `Transition` with `mode` (linear/from-center/from-edges/
-  random), `perLayerMs`, and optional `easing`. In `transition-resolver.ts`,
-  `computeDelay` checks: explicit binding delay first, then stagger
-  config, then role-based fallback.
+- [x] **A4 — Guide point-aware Draw execution.**
+  `lib/runtime-core/draw-executor.ts` now derives per-layer reveal
+  windows from guide point `t` ranges and falls back to uniform timing
+  when guide timing is absent or non-differentiated.
+  Tests: `tests/runtime-core.test.ts` — guide timing range assertions.
 
-- [ ] **A6 — Animation interruption with blend-out.**
-  `lib/runtime-core/scheduler.ts`: `interrupt(blendOutMs)` captures
-  current interpolated values, lerps to rest position over the blend
-  duration. `lib/runtime-dom/driver.ts`: call `interrupt(80)` instead
-  of `cancel()` when a new transition starts mid-animation. Brief
-  overlap period where blending scheduler and new scheduler both run.
+- [x] **A5 — Per-layer stagger controls.**
+  `lib/schema/types.ts` adds optional `delayMs` / `durationMs` to
+  `LayerBinding` plus `Transition.stagger`. `lib/runtime-core/transition-resolver.ts`
+  now honors explicit binding timing first, then stagger modes
+  (`linear`, `from-center`, `from-edges`, `random`), then existing
+  role-based fallback for non-track transitions.
+  Tests: `tests/runtime-core.test.ts` — stagger and explicit override
+  resolution coverage.
+
+- [x] **A6 — Animation interruption with blend-out.**
+  `lib/runtime-core/scheduler.ts` adds `interrupt(blendOutMs)` via a
+  blend scheduler that eases captured values back toward rest, and
+  `lib/runtime-dom/driver.ts` now interrupts active schedulers with an
+  80ms blend when a new transition starts mid-flight, composing overlap
+  frames in the driver.
+  Tests: `tests/runtime-core.test.ts` — interrupt/blend scheduler
+  coverage; runtime DOM suites remain green.
 
 ---
 

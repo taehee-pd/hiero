@@ -18,7 +18,6 @@ import { isProject } from '@/lib/schema/guards';
 import type {
   IconSourceFile,
   SourceLayer,
-  SourceState,
   SourceVariant,
   SyncSourceManifest,
 } from './types';

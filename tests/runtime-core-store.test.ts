@@ -1,9 +1,57 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { RuntimeVariantPayload } from '../lib/export/export-runtime-json';
 import { createIconRuntimeStore } from '../lib/runtime-core/store';
 import { SAMPLE_RUNTIME_EXPORT } from '../lib/runtime-react/demo-fixture';
 
 const payload = SAMPLE_RUNTIME_EXPORT.variant;
+
+const SPRING_PAYLOAD: RuntimeVariantPayload = {
+  variant: {
+    id: 'v24',
+    size: 24,
+    viewBox: [0, 0, 24, 24],
+    defaultState: 'default',
+  },
+  states: {
+    default: {
+      layers: [
+        {
+          id: 'line',
+          d: 'M0 0L10 10',
+          fill: { kind: 'none' },
+          stroke: { kind: 'solid', color: '#000000' },
+        },
+      ],
+    },
+    active: {
+      layers: [
+        {
+          id: 'line',
+          d: 'M0 0L10 10',
+          fill: { kind: 'none' },
+          stroke: { kind: 'solid', color: '#000000' },
+        },
+      ],
+    },
+  },
+  transitions: {
+    activate: {
+      from: 'default',
+      to: 'active',
+      strategy: 'track',
+      durationMs: 400,
+      easing: { type: 'spring', stiffness: 170, damping: 12, mass: 1 },
+      layerBindings: [
+        {
+          fromLayerId: 'line',
+          toLayerId: 'line',
+          tracks: [{ property: 'translateX', keyframes: [0, 10] }],
+        },
+      ],
+    },
+  },
+};
 
 describe('runtime core store', () => {
   test('steps track transitions and settles into the requested state', () => {
@@ -114,8 +162,8 @@ describe('runtime core store', () => {
 
     expect(snapshot.activeEffectId).toBe('drawOn');
     expect(snapshot.isAnimating).toBeTrue();
-    expect(chevron?.pathLengthProgress).toBeGreaterThan(0.45);
-    expect(chevron?.pathLengthProgress).toBeLessThan(0.55);
+    expect(chevron?.pathLengthProgress).toBeGreaterThan(0.7);
+    expect(chevron?.pathLengthProgress).toBeLessThan(0.8);
 
     now = 321;
     store.advanceTo(now);
@@ -123,5 +171,31 @@ describe('runtime core store', () => {
 
     expect(snapshot.activeEffectId).toBeUndefined();
     expect(snapshot.isAnimating).toBeFalse();
+  });
+
+  test('preserves spring overshoot for numeric tracks until the declared duration settles', () => {
+    let now = 0;
+    const store = createIconRuntimeStore(SPRING_PAYLOAD, {
+      autoTick: false,
+      now: () => now,
+    });
+
+    store.setState('active');
+
+    now = 240;
+    store.advanceTo(now);
+    let snapshot = store.getSnapshot();
+    const lineDuringOvershoot = snapshot.snapshot.layers.find((layer) => layer.id === 'line');
+
+    expect(snapshot.isAnimating).toBeTrue();
+    expect(lineDuringOvershoot?.transform).toContain('translate(11.');
+
+    now = 400;
+    store.advanceTo(now);
+    snapshot = store.getSnapshot();
+
+    expect(snapshot.isAnimating).toBeFalse();
+    expect(snapshot.activeTransitionId).toBeUndefined();
+    expect(snapshot.settledStateId).toBe('active');
   });
 });

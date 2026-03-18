@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ElectrobunConfig } from 'electrobun/bun';
+import {
+  DESKTOP_PRODUCT_NAME,
+  PROJECT_FILE_ASSOCIATION_NAME,
+} from './src/shared/naming';
 
 /**
  * Require an environment variable for production builds.
@@ -58,20 +62,24 @@ const desktopPackageJson = JSON.parse(
   readFileSync(join(import.meta.dir, 'package.json'), 'utf8'),
 ) as { version: string };
 const releaseBaseUrl =
-  process.env['ICOPHONE_RELEASE_BASE_URL'] ?? 'https://updates.icophone.app/releases';
+  process.env['CONIVA_RELEASE_BASE_URL'] ??
+  process.env['ICOPHONE_RELEASE_BASE_URL'] ??
+  'https://updates.icophone.app/releases';
 const updateEndpoint =
-  process.env['ICOPHONE_UPDATE_ENDPOINT'] ?? `${releaseBaseUrl.replace(/\/+$/, '')}/latest.json`;
+  process.env['CONIVA_UPDATE_ENDPOINT'] ??
+  process.env['ICOPHONE_UPDATE_ENDPOINT'] ??
+  `${releaseBaseUrl.replace(/\/+$/, '')}/latest.json`;
 
 const config: ExtendedElectrobunConfig = {
   app: {
-    name: 'Icophone',
-    identifier: 'com.icophone.app',
+    name: DESKTOP_PRODUCT_NAME,
+    identifier: 'com.coniva.app',
     version: desktopPackageJson.version,
-    description: 'Desktop shell for the Icophone icon authoring studio.',
+    description: `Desktop shell for the ${DESKTOP_PRODUCT_NAME} icon authoring studio.`,
     fileAssociations: [
       {
-        name: 'Icophone Project',
-        extensions: ['icophone.json'],
+        name: PROJECT_FILE_ASSOCIATION_NAME,
+        extensions: ['coniva.json', 'icophone.json'],
         mimeType: 'application/json',
         role: 'editor',
       },
@@ -116,7 +124,7 @@ const config: ExtendedElectrobunConfig = {
     },
     linuxDeb: {
       category: 'Graphics',
-      maintainer: 'Icophone Team <desktop@icophone.app>',
+      maintainer: `${DESKTOP_PRODUCT_NAME} Team <desktop@coniva.app>`,
     },
   },
   signing: isStableBuild

@@ -2,7 +2,7 @@ import type { Effect } from '@/lib/schema/types';
 
 export type PresetOptions = {
   durationMs?: number;
-  easing?: string;
+  easing?: Effect['easing'];
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';

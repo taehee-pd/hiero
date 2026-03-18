@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ViewportState, SelectionState } from '@/lib/editor-store/types';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { Layer, GuideItem, GuideSet } from '@/lib/schema/types';
-import { loadPaperGlobal, type PaperGlobal } from '@/lib/editor-core/paper-runtime';
+import {
+  loadPaperGlobal,
+  type PaperGlobal,
+  type PaperPoint,
+  type PaperRectangle,
+  type PaperScopeInstance,
+} from '@/lib/editor-core/paper-runtime';
 
 type OverlayGuideSet = GuideSet & {
   viewBox?: [number, number, number, number];
@@ -33,7 +39,7 @@ export function useCanvasOverlay(
   options: OverlayOptions,
 ) {
   const paperRef = useRef<PaperGlobal | null>(null);
-  const scopeRef = useRef<any>(null);
+  const scopeRef = useRef<PaperScopeInstance | null>(null);
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
@@ -137,7 +143,7 @@ export function useCanvasOverlay(
           const layer = layers[layerId];
           if (!layer || !layer.path?.d) continue;
 
-          let bounds: any = null;
+          let bounds: PaperRectangle | null = null;
           try {
             const item = new scope.CompoundPath(layer.path.d);
             item.fillColor = null;
@@ -257,7 +263,7 @@ export function useCanvasOverlay(
             removeResizeListener?.();
             try {
               scope.project.clear();
-              scope.view.remove();
+              scope.view.remove?.();
             } catch (err) {
               console.error('[CanvasOverlay] cleanup failed', err);
             }
@@ -283,10 +289,10 @@ export function useCanvasOverlay(
 }
 
 function drawPointSelectionBoundingBox(
-  scope: any,
+  scope: PaperScopeInstance,
   bbox: { minX: number; minY: number; maxX: number; maxY: number },
   label: { width: number; height: number } | null | undefined,
-  toScreen: (x: number, y: number) => any,
+  toScreen: (x: number, y: number) => PaperPoint,
 ) {
   const strokeColor = new scope.Color('rgba(96,165,250,0.7)');
   const outline = new scope.Path.Rectangle({
@@ -339,15 +345,15 @@ function drawPointSelectionBoundingBox(
       strokeColor,
       strokeWidth: 1,
     });
-    background.sendToBack();
+    background.sendToBack?.();
     text.bringToFront();
   }
 }
 
 function drawPointMarquee(
-  scope: any,
+  scope: PaperScopeInstance,
   marquee: { minX: number; minY: number; maxX: number; maxY: number },
-  toScreen: (x: number, y: number) => any,
+  toScreen: (x: number, y: number) => PaperPoint,
 ) {
   const topLeft = toScreen(marquee.minX, marquee.minY);
   const bottomRight = toScreen(marquee.maxX, marquee.maxY);
@@ -370,11 +376,11 @@ function formatMeasure(value: number): string {
 }
 
 function drawGuideItems(
-  scope: any,
+  scope: PaperScopeInstance,
   items: GuideItem[],
   viewBox: [number, number, number, number],
   guideViewBox: [number, number, number, number] | undefined,
-  toScreen: (x: number, y: number) => any,
+  toScreen: (x: number, y: number) => PaperPoint,
   guideStyle: 'subtle' | 'strong',
 ) {
   const [vx, vy, vw, vh] = viewBox;
@@ -455,10 +461,10 @@ function drawGuideItems(
 }
 
 function drawActiveSnapGuides(
-  scope: any,
+  scope: PaperScopeInstance,
   guides: SnapTarget[],
   viewBox: [number, number, number, number],
-  toScreen: (x: number, y: number) => any,
+  toScreen: (x: number, y: number) => PaperPoint,
 ) {
   const [vx, vy, vw, vh] = viewBox;
   const drawn = new Set<string>();
@@ -495,7 +501,7 @@ function drawActiveSnapGuides(
   }
 }
 
-function getSnapGuideColor(scope: any, type: SnapTarget['type']) {
+function getSnapGuideColor(scope: PaperScopeInstance, type: SnapTarget['type']) {
   switch (type) {
     case 'center':
       return new scope.Color('rgba(34, 211, 238, 0.72)');

@@ -39,7 +39,6 @@ import type { SyncAnalytics } from './analytics';
 import { createNoOpAnalytics } from './analytics';
 import {
   ValidationFailureError,
-  SyncError,
   classifyGitHubError,
 } from './errors';
 import { diffSourcePayloads } from './diff-source';

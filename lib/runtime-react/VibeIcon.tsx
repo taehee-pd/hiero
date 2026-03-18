@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 
-import type { Icon, Layer, PaintRef, Variant } from '../schema';
+import type { Icon, Layer, Variant } from '../schema';
 import { createIconDriver, type IconDriver } from '../runtime-dom';
 import { getRenderableLayers, resolvePaintToString } from '../runtime-dom/renderer';
 
@@ -43,6 +43,11 @@ export function VibeIcon({
   const resolvedState = resolveState(resolvedVariant, state);
   const renderedSize = size ?? resolvedVariant.size;
   const [vx, vy, vw, vh] = resolvedVariant.viewBox;
+  const initialStateRef = useRef(resolvedState);
+
+  useEffect(() => {
+    initialStateRef.current = resolvedState;
+  }, [resolvedState]);
 
   // Driver lifecycle: create/destroy when icon identity, variant, or size change.
   useEffect(() => {
@@ -55,7 +60,7 @@ export function VibeIcon({
     if (!container) return;
 
     const driver = createIconDriver(container, icon, resolvedVariant.id, {
-      initialState: resolvedState,
+      initialState: initialStateRef.current,
       size: renderedSize,
       label,
       reduceMotion,
@@ -69,17 +74,14 @@ export function VibeIcon({
         driverRef.current = null;
       }
     };
-  }, [icon, renderedSize, resolvedVariant.id]);
+  }, [icon, label, reduceMotion, renderedSize, resolvedVariant.id]);
 
   // Subscribe to the driver's current state via useSyncExternalStore.
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      const driver = driverRef.current;
-      if (!driver) return () => {};
-      return driver.subscribe(onStoreChange);
-    },
-    [icon, renderedSize, resolvedVariant.id],
-  );
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    const driver = driverRef.current;
+    if (!driver) return () => {};
+    return driver.subscribe(onStoreChange);
+  }, []);
 
   const getSnapshot = useCallback(() => {
     return driverRef.current?.getCurrentState() ?? resolvedState;
@@ -112,14 +114,14 @@ export function VibeIcon({
     }
 
     driver.transitionTo(resolvedState);
-  }, [animate, currentDriverState, icon, renderedSize, resolvedState, resolvedVariant.id]);
+  }, [animate, currentDriverState, icon, label, reduceMotion, renderedSize, resolvedState, resolvedVariant.id]);
 
   // Trigger named effect when requested.
   useEffect(() => {
     const driver = driverRef.current;
     if (!driver || !effect || animate === false) return;
     driver.triggerEffect(effect);
-  }, [animate, effect, resolvedState]);
+  }, [animate, effect]);
 
   // Render static SVG with layers for SSR. The driver replaces this on hydration.
   const resolvedStateDef = resolvedVariant.states[resolvedState];

@@ -1,0 +1,94 @@
+name: Desktop CI
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'app/**'
+      - 'components/**'
+      - 'hooks/**'
+      - 'lib/**'
+      - 'styles/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'next.config.mjs'
+      - 'postcss.config.mjs'
+      - 'eslint.config.mjs'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - '.github/workflows/desktop-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'app/**'
+      - 'components/**'
+      - 'hooks/**'
+      - 'lib/**'
+      - 'styles/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'next.config.mjs'
+      - 'postcss.config.mjs'
+      - 'eslint.config.mjs'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - '.github/workflows/desktop-ci.yml'
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate desktop build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install desktop dependencies
+        run: corepack pnpm --dir desktop install --frozen-lockfile
+
+      - name: Format check
+        run: bun run format:check
+
+      - name: Type check
+        run: bun run type-check
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Run Phase A test slice
+        run: bun run test:phase-a
+
+      - name: Build desktop app
+        run: bun run desktop:build
+
+      - name: Verify desktop build output
+        run: test -d desktop/build
+
+      - name: Upload desktop build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-build
+          path: desktop/build/
+          retention-days: 14
+          if-no-files-found: ignore

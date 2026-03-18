@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { CompiledIcon, IconChangeRecord } from '@/lib/compiler-contracts';
+import type { CompiledIcon } from '@/lib/compiler-contracts';
 import { isCompiledIcon, isIconChangeRecord } from '@/lib/compiler-contracts';
 import type { Project } from '@/lib/schema/types';
 import { isProject, isWorkspace } from '@/lib/schema/guards';

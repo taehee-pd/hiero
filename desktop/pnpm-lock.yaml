@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       electrobun:
-        specifier: ^1.15.1
+        specifier: 1.15.1
         version: 1.15.1
     devDependencies:
       typescript:

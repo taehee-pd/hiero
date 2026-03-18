@@ -1,7 +1,9 @@
+import type { SpringConfig } from '../schema';
 import { getEasingFunction } from './easing';
 import type { InterpolatedValues, FrameHandle } from './scheduler';
 import type { DrawAnnotation } from './draw-executor';
 import { computeDrawOnValues, computeDrawOffValues } from './draw-executor';
+import { estimateSpringDuration, springProgress } from './spring';
 
 /**
  * Runtime effect definition from the exported payload.
@@ -9,7 +11,7 @@ import { computeDrawOnValues, computeDrawOffValues } from './draw-executor';
 export type EffectDefinition = {
   kind: string;
   durationMs: number;
-  easing?: string;
+  easing?: string | SpringConfig;
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';
@@ -39,7 +41,6 @@ export type EffectSchedulerOptions = {
  */
 export class EffectScheduler {
   private readonly effect: EffectDefinition;
-  private readonly easing: (t: number) => number;
   private readonly now: () => number;
   private readonly requestFrame: (callback: FrameRequestCallback) => FrameHandle;
   private readonly cancelFrame: (handle: FrameHandle) => void;
@@ -47,6 +48,8 @@ export class EffectScheduler {
   private readonly drawAnnotation?: DrawAnnotation;
   private readonly targetLayerIds: string[];
   private readonly completeListeners = new Set<EffectCompleteCallback>();
+  private readonly progressAtElapsed: (elapsedMs: number) => number;
+  private readonly effectiveDurationMs: number;
 
   private activeHandle: FrameHandle | null = null;
   private startedAt = 0;
@@ -55,13 +58,18 @@ export class EffectScheduler {
 
   constructor(effect: EffectDefinition, options: EffectSchedulerOptions = {}) {
     this.effect = effect;
-    this.easing = getEasingFunction(effect.easing ?? 'linear');
     this.now = options.now ?? defaultNow;
     this.requestFrame = options.requestFrame ?? defaultRequestFrame;
     this.cancelFrame = options.cancelFrame ?? defaultCancelFrame;
     this.onFrameCallback = options.onFrame ?? (() => {});
     this.drawAnnotation = options.drawAnnotation;
     this.targetLayerIds = options.targetLayerIds ?? [];
+    const { durationMs, progressAtElapsed } = resolveEffectProgressController(
+      effect.easing,
+      effect.durationMs,
+    );
+    this.progressAtElapsed = progressAtElapsed;
+    this.effectiveDurationMs = durationMs;
   }
 
   start(): void {
@@ -71,7 +79,7 @@ export class EffectScheduler {
     this.startedAt = this.now();
     this.emitFrame(0);
 
-    if (this.effect.durationMs <= 0) {
+    if (this.effectiveDurationMs <= 0) {
       this.emitFrame(1);
       this.finish();
       return;
@@ -98,7 +106,7 @@ export class EffectScheduler {
       if (!this.running) return;
 
       const elapsed = this.now() - this.startedAt;
-      const durationMs = this.effect.durationMs;
+      const durationMs = this.effectiveDurationMs;
       const delayMs = this.effect.delay ?? 0;
 
       if (elapsed < delayMs) {
@@ -136,7 +144,9 @@ export class EffectScheduler {
   }
 
   private emitFrame(rawProgress: number): void {
-    const easedProgress = this.easing(clamp01(rawProgress));
+    const easedProgress = this.progressAtElapsed(
+      clamp01(rawProgress) * Math.max(this.effectiveDurationMs, 1),
+    );
     const values = computeEffectValues(
       this.effect.kind,
       easedProgress,
@@ -243,6 +253,32 @@ function clamp01(value: number): number {
   if (value <= 0) return 0;
   if (value >= 1) return 1;
   return value;
+}
+
+function resolveEffectProgressController(
+  easing: string | SpringConfig | undefined,
+  durationMs: number,
+): {
+  durationMs: number;
+  progressAtElapsed: (elapsedMs: number) => number;
+} {
+  if (typeof easing === 'string' || easing === undefined) {
+    const easingFunction = getEasingFunction(easing ?? 'linear');
+    return {
+      durationMs: Math.max(0, durationMs),
+      progressAtElapsed: (elapsedMs) =>
+        easingFunction(clamp01(elapsedMs / Math.max(durationMs, 1))),
+    };
+  }
+
+  const effectiveDurationMs = Math.min(
+    Math.max(durationMs, 0),
+    estimateSpringDuration(easing),
+  );
+  return {
+    durationMs: effectiveDurationMs,
+    progressAtElapsed: (elapsedMs) => springProgress(easing, elapsedMs),
+  };
 }
 
 function defaultNow(): number {

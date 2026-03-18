@@ -41,6 +41,7 @@ This pipeline accepts either a legacy project/workspace file or canonical source
 Desktop release flow exists in-repo:
 
 - `bun run desktop/scripts/release.ts --version <semver> --notes "<notes>"`
+- `bun run desktop/scripts/validate-latest-json.ts [--file <path>]`
 
 The release script:
 
@@ -48,7 +49,10 @@ The release script:
 - rebuilds the static export
 - stages the Electrobun mainview bundle
 - runs the desktop distribution build
+- validates the generated `latest.json` manifest schema before writing it
 - writes `desktop/artifacts/latest.json`
+
+Signing and notarization expectations live in `desktop/SIGNING.md`.
 
 ## CI/CD Status
 
@@ -57,12 +61,15 @@ Repository CI workflows are present under `.github/workflows/`:
 - `icons-pr-validate.yml`: validates sync/export source files and runs targeted test suites on pull requests.
 - `icons-post-merge-build.yml`: validates and compiles merged source files on `main`.
 - `icons-package-release.yml`: builds/validates icon package artifacts on `main` changes and supports manual npm publish dispatch.
+- `web-app-ci.yml`: runs formatter, type-check, lint, Phase A coverage, coverage threshold enforcement, and `build` for shared web/runtime path changes.
+- `desktop-ci.yml`: runs formatter, type-check, lint, Phase A tests, and `desktop:build` for desktop changes plus the shared root paths that feed the desktop export.
 
 Practical implication:
 
 - compile/export and package verification is automated for icon-pipeline changes
-- web application and desktop app CI coverage are still not formalized in a dedicated workflow
-- local build and test verification remains required for non-icon-pipeline areas
+- web application and desktop app CI now have dedicated workflows
+- the Phase A runtime/export surface has a scoped LCOV threshold gate via `scripts/check-coverage.ts`
+- local build and test verification still matters for areas outside the current CI slice or formatter scope
 
 ## Agent Task Lifecycle
 
@@ -73,7 +80,8 @@ Recommended repository task loop for agents working in this repo:
 3. Prefer the smallest viable change that preserves file paths, conventions, and existing behavior.
 4. Run targeted verification for the area changed.
 5. Run broader validation when a change crosses module boundaries.
-6. Update canonical documentation when repository behavior or operating knowledge changes materially.
+6. Update `docs_canonical/TASKS.md` after each materially completed change so backlog status matches the implementation.
+7. Update canonical documentation when repository behavior or operating knowledge changes materially.
 
 ## Verification Expectations
 

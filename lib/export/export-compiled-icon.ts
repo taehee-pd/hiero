@@ -18,15 +18,9 @@ import type {
   Layer,
   PaintRef,
   Project,
+  TimelineTrack,
   Transition,
 } from '@/lib/schema/types';
-
-const RENDERING_MODES: CompiledRenderingMode[] = [
-  'monochrome',
-  'hierarchical',
-  'palette',
-  'multicolor',
-];
 
 export function exportCompiledIcon(project: Project, iconId: string): CompiledIcon {
   const icon = project.icons[iconId];
@@ -217,10 +211,7 @@ function toCompiledTransition(transition: Transition): CompiledTransition {
     bindings: transition.layerBindings.map<CompiledLayerBinding>((binding) => ({
       fromLayerId: binding.fromLayerId,
       toLayerId: binding.toLayerId,
-      tracks: binding.tracks?.map((track) => ({
-        property: track.property,
-        keyframes: [...track.keyframes],
-      })),
+      tracks: binding.tracks?.map(cloneCompiledTrack),
       morph: binding.morph
         ? {
             topology: binding.morph.topology,
@@ -248,6 +239,16 @@ function toCompiledEffect(effect: Effect): CompiledEffect | null {
     kind: effect.kind,
     durationMs: effect.durationMs,
     easing: effect.easing ?? 'linear',
+  };
+}
+
+function cloneCompiledTrack(
+  track: TimelineTrack,
+): NonNullable<CompiledLayerBinding['tracks']>[number] {
+  return {
+    property: track.property,
+    keyframes:
+      [...track.keyframes] as NonNullable<CompiledLayerBinding['tracks']>[number]['keyframes'],
   };
 }
 

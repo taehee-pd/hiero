@@ -49,6 +49,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The desktop shell lives under `desktop/` and wraps the same app with native menus, file dialogs, and desktop file I/O.
 
+The shell is branded as Coniva. Legacy `.icophone.json` files and
+`ICOPHONE_*` release env vars still work for compatibility while the
+desktop path finishes its rename.
+
 Use:
 
 ```bash

@@ -1,6 +1,6 @@
 # Desktop Release Workflow
 
-Icophone desktop releases are built from the staged Next.js export plus the Electrobun wrapper.
+Icon Authoring Tool desktop releases are built from the staged Next.js export plus the Electrobun wrapper.
 
 ## Release Steps
 
@@ -12,11 +12,11 @@ bun run desktop/scripts/release.ts --version 0.1.1 --notes "Bug fixes and deskto
 ```
 
 3. The script will:
-   - update [`desktop/package.json`](/Users/taehee/IconStudio/desktop/package.json)
+   - update [`desktop/package.json`](../desktop/package.json)
    - build the static desktop webview bundle
    - run the Electrobun stable/dist build
    - generate installer/update artifacts
-   - write [`desktop/artifacts/latest.json`](/Users/taehee/IconStudio/desktop/artifacts/latest.json)
+   - write [`desktop/artifacts/latest.json`](../desktop/artifacts/latest.json)
 
 Electrobun also emits the native per-platform updater manifests that the built-in updater consumes:
 
@@ -43,7 +43,7 @@ Use immutable, versioned artifact URLs and HTTPS.
 
 ## Code Signing
 
-The desktop config reads signing placeholders from environment variables in [`desktop/electrobun.config.ts`](/Users/taehee/IconStudio/desktop/electrobun.config.ts).
+The desktop config reads signing placeholders from environment variables in [`desktop/electrobun.config.ts`](../desktop/electrobun.config.ts).
 
 macOS:
 

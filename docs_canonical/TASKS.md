@@ -6,9 +6,11 @@ This file records the current engineering backlog that can be justified from the
 
 ## Priority 0: Harness and Repository Hygiene
 
-- Formalize root package metadata and naming. The repository still mixes `my-project`, `Icophone`, `IconStudio`, and `Icon Studio`.
-- Formalize repository-level lint and test entrypoints so operational workflows are explicit rather than inferred.
-- Reconcile legacy docs with the actual presence of workspace support, runtime packages, and compile/export functionality.
+Status: completed.
+
+- Root package metadata was formalized to `icon-authoring-tool`, reducing placeholder naming drift at the repository root.
+- Repository-level lint/test entrypoints are now explicit (`lint` and `test` in the root package scripts).
+- Canonical and legacy operational docs were reconciled with implemented workspace support, CI workflow presence, and compile/export/runtime behavior.
 
 ## Priority 1: Workflow Hardening
 
@@ -29,9 +31,20 @@ This file records the current engineering backlog that can be justified from the
 
 ## Priority 2: Integration and Platform Work
 
+Status: in progress.
+
 - Harden GitHub sync and downstream export integrations already present in the codebase.
 - Continue desktop-native UX and bridge improvements without breaking the shared web/desktop surface boundary.
-- Revisit planning docs under `docs/plans/` and archive or supersede items whose implementation status has changed materially.
+- ✅ Revisited planning docs under `docs/plans/` and added a maintained status/disposition index in `docs/plans/STATUS.md`.
+
+
+## Priority 3: Documentation Portability and Provenance Hygiene
+
+Status: completed.
+
+- Replaced machine-local absolute documentation links with repository-relative links in active legacy operations docs and README.
+- Kept historical planning docs intact while fixing broken internal cross-links so archival context stays navigable.
+- Reduced environment-specific path leakage in contributor-facing docs to improve portability across machines and CI.
 
 ## Source Basis
 

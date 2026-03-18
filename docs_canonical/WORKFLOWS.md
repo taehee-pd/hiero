@@ -29,8 +29,12 @@ Desktop build:
 Compile/export pipeline:
 
 - `bun scripts/compile-icons.ts --project <file> --out <dir> --package-name <name> --package-version <version> [--previous-out <dir>] [--built-at <iso>] [--generate-react]`
+- `bun scripts/compile-from-source.ts --source <dir> --out <dir> --package-name <name> --package-version <version> [--previous-out <dir>] [--built-at <iso>] [--generate-react]`
+- `bun scripts/validate-source-export.ts --source <dir> [--summary <md>] [--preview-out <dir>] [--job-summary <md>]`
 
-This pipeline accepts either a legacy project file or a workspace file and emits deterministic compiled artifacts.
+Root script entrypoints mirror these operations as `compile:from-source` and `validate:source-export` for operational consistency.
+
+This pipeline accepts either a legacy project/workspace file or canonical source-export files and emits deterministic compiled artifacts.
 
 ## Deployment and Release
 
@@ -48,13 +52,17 @@ The release script:
 
 ## CI/CD Status
 
-There is no repository CI configuration in `.github/` at the time of writing.
+Repository CI workflows are present under `.github/workflows/`:
+
+- `icons-pr-validate.yml`: validates sync/export source files and runs targeted test suites on pull requests.
+- `icons-post-merge-build.yml`: validates and compiles merged source files on `main`.
+- `icons-package-release.yml`: builds/validates icon package artifacts on `main` changes and supports manual npm publish dispatch.
 
 Practical implication:
 
-- build and release workflows are currently documented and scriptable
-- automated verification/publishing policy is not defined in-repo
-- any CI behavior should be treated as external unless committed into the repository
+- compile/export and package verification is automated for icon-pipeline changes
+- web application and desktop app CI coverage are still not formalized in a dedicated workflow
+- local build and test verification remains required for non-icon-pipeline areas
 
 ## Agent Task Lifecycle
 
@@ -78,5 +86,5 @@ Observed repository practice favors targeted verification:
 
 ## Known Conflicts / Notes
 
-- There is a documented `lint` script in the root `package.json`, but no repo-level ESLint configuration was found during this redesign pass.
+- Repository lint and test entrypoints are explicitly defined in root scripts (`lint`, `test`).
 - Legacy docs describe release and build steps well for desktop, but there is no equivalent committed web deployment pipeline.

@@ -36,7 +36,11 @@ Open [http://localhost:3000](http://localhost:3000).
 - `corepack pnpm dev` - start local development server
 - `corepack pnpm build` - production build
 - `corepack pnpm start` - run production server
-- `corepack pnpm lint` - run ESLint (requires eslint to be installed/configured)
+- `corepack pnpm lint` - run repository lint checks
+- `corepack pnpm test` - run Bun test suites
+- `corepack pnpm test:sync` - run sync/export integration-focused tests
+- `corepack pnpm validate:source-export` - validate canonical `icons/` + `manifest.json` source exports from repo root
+- `corepack pnpm compile:from-source -- --source <dir> --out <dir> --package-name <name> --package-version <version> [--generate-react]` - compile from canonical source export input
 - `corepack pnpm desktop:dev` - start the web dev server if needed and launch the Electrobun desktop app
 - `corepack pnpm desktop:build` - build the desktop app bundle
 - `corepack pnpm desktop:dist` - build desktop distribution artifacts
@@ -59,7 +63,7 @@ That command:
 
 ### Electrobun vendor patch
 
-This repo currently applies a small postinstall patch in [desktop/scripts/patch-electrobun-wrapper.cjs](/Users/taehee/IconStudio/desktop/scripts/patch-electrobun-wrapper.cjs).
+This repo currently applies a small postinstall patch in [desktop/scripts/patch-electrobun-wrapper.cjs](desktop/scripts/patch-electrobun-wrapper.cjs).
 
 Why it exists:
 
@@ -110,7 +114,7 @@ bun scripts/compile-from-source.ts \
 
 ### Local development / test fixtures
 
-For compiling directly from a project JSON file (editor-local only, not for CI):
+For compiling directly from a project/workspace JSON file (editor-local only, not for CI):
 
 ```bash
 bun scripts/compile-icons.ts \
@@ -314,3 +318,8 @@ SYNC_DRY_RUN_ONLY=false
 7. **Single base branch.** Each sync targets one base branch. Multi-branch workflows (e.g., syncing to both `main` and `release`) require separate sync requests.
 
 8. **No partial sync.** You cannot sync a subset of icons — the payload always represents the full canonical state. Unchanged files are skipped via diffing, but the payload must include everything.
+
+
+## Legacy planning docs status
+
+Legacy implementation/design plans under `docs/plans/` are now indexed in `docs/plans/STATUS.md` with dispositions and canonical replacements. Treat canonical docs under `docs_canonical/` as authoritative.

@@ -34,7 +34,7 @@ That means the implementation sequence must begin with export and runtime primit
 
 ### Runtime JSON Contract
 
-Use the export contract defined in [2026-03-08-runtime-json-export-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-json-export-design.md):
+Use the export contract defined in [2026-03-08-runtime-json-export-design.md](2026-03-08-runtime-json-export-design.md):
 
 - `icons/index.json` for discovery
 - `icons/<icon>/meta.json` for static icon metadata and variant manifest
@@ -44,7 +44,7 @@ This supersedes the external document's earlier "single `RuntimeIcon` object wit
 
 ### SF Symbols-Style Priority
 
-Follow the direction captured in [2026-03-08-sf-symbols-style-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-sf-symbols-style-export-plan.md):
+Follow the direction captured in [2026-03-08-sf-symbols-style-export-plan.md](2026-03-08-sf-symbols-style-export-plan.md):
 
 - Draw annotations come before generic effect presets
 - Variable Draw is exported as semantic participation data, not as an inferred effect

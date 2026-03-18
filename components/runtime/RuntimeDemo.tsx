@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { RuntimeSvgRenderer } from '@/lib/runtime-dom';
+import { RuntimeSvgRenderer } from '@/lib/runtime-dom/snapshot-renderer';
 import { Icon } from '@/lib/runtime-react/icon';
 import { SAMPLE_RUNTIME_PAYLOAD } from '@/lib/runtime-react/demo-fixture';
 import { useIcon } from '@/lib/runtime-react/use-icon';

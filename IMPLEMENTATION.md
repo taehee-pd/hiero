@@ -5,7 +5,7 @@ This document tracks implementation progress against the planned architecture an
 ## Current status
 
 - **Phase 1 (Foundation/editor authoring):** Complete and covered by deterministic/integration tests.
-- **Phase 2 (Stateful runtime packages):** Not started in this repo structure yet.
+- **Phase 2 (Stateful runtime packages):** Implemented for the current runtime-json, DOM, and React validation scope.
 - **Phase 3/5 editor-side groundwork:** Partially implemented in the editor and export/import stack (guides, gradients, boolean ops, alignment/distribution, SVG IO).
 
 ---
@@ -62,17 +62,16 @@ This document tracks implementation progress against the planned architecture an
 ### `export`
 - [x] Deterministic SVG export exists.
 - [x] Token paint resolution, gradient defs, and clip-path emission are implemented.
-- [x] Deterministic runtime-json export exists for per-variant payloads, including transitions, effects, draw metadata, and diagnostics.
 
 ### `runtime-core`
-- [x] Baseline runtime store exists for runtime-json payloads with transition stepping, effect playback, and interrupt-safe state changes.
+- [x] Runtime-json store helpers also exist for payload-driven React/SSR playback. (`lib/runtime-core/store.ts`)
 
 ### `runtime-dom`
-- [x] Runtime snapshot SVG renderer exists with gradients, clip paths, and path-length playback support.
+- [x] Snapshot SVG rendering helpers also exist for payload-driven React/SSR playback. (`lib/runtime-dom/snapshot-renderer.tsx`)
 
 ### `runtime-react`
-- [x] `<Icon />` and `useIcon()` exist on top of the runtime store using `useSyncExternalStore`.
-- [x] A demo route exists for end-to-end runtime React validation.
+- [x] In addition to `VibeIcon`/`useIconState`, direct runtime-json hooks/components exist for payload-driven playback. (`lib/runtime-react/icon.tsx`, `lib/runtime-react/use-icon.ts`)
+- [x] A dedicated runtime-json demo route exists for end-to-end validation. (`app/runtime-demo/page.tsx`)
 
 ### `apps/web`
 - [x] Editor shell layout with side panels and canvas is implemented.
@@ -87,47 +86,48 @@ This document tracks implementation progress against the planned architecture an
 
 ---
 
-## Remaining roadmap
+## Remaining roadmap (last reviewed: 2026-03-18)
 
-Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-library-implementation-plan.md), [docs/plans/2026-03-08-runtime-json-export-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-runtime-json-export-design.md), [docs/plans/2026-03-08-sf-symbols-style-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-sf-symbols-style-export-plan.md), [docs/plans/2026-03-08-target-codebase-export-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-target-codebase-export-plan.md), and [docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md).
+Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-implementation-plan.md](docs/plans/2026-03-08-runtime-library-implementation-plan.md), [docs/plans/2026-03-08-runtime-json-export-design.md](docs/plans/2026-03-08-runtime-json-export-design.md), [docs/plans/2026-03-08-sf-symbols-style-export-plan.md](docs/plans/2026-03-08-sf-symbols-style-export-plan.md), [docs/plans/2026-03-08-target-codebase-export-plan.md](docs/plans/2026-03-08-target-codebase-export-plan.md), and [docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md](docs/plans/2026-03-08-multi-platform-export-sync-platform-plan.md).
 
 ### Phase R0 - Repo preparation
-- [ ] Replace placeholder package metadata with real package naming.
-- [ ] Formalize the active test runner/scripts used by the repo.
-- [ ] Add shared runtime payload types for exporter + runtime modules.
-- [ ] Define in-repo module boundaries for `runtime-core`, `runtime-dom`, and `runtime-react`.
+- [x] Replace placeholder package metadata with real package naming.
+- [x] Formalize the active test runner/scripts used by the repo. (Bun test; scripts in package.json)
+- [x] Add shared runtime payload types for exporter + runtime modules. (`lib/compiler-contracts/types.ts`)
+- [x] Define in-repo module boundaries for `runtime-core`, `runtime-dom`, and `runtime-react`. (`lib/runtime-core/`, `lib/runtime-dom/`, `lib/runtime-react/`)
 
-### Phase R1 - Runtime JSON exporter
-- [ ] Implement `lib/export/export-runtime-json.ts`.
-- [ ] Emit deterministic `index.json`, `meta.json`, and per-variant payload files.
-- [ ] Add explicit Draw annotation export from editor guide points.
-- [ ] Add Variable Draw participation export for draw-capable layers.
-- [ ] Add Magic Replace continuity metadata for preserved enclosure layers.
-- [ ] Preserve gradient paint descriptors in runtime payloads.
-- [ ] Materialize only valid icon-level transitions/effects per variant.
-- [ ] Add exporter diagnostics for invalid runtime transitions.
-- [ ] Add deterministic export coverage for runtime-json.
+### Phase R1 - Runtime JSON exporter (complete)
+- [x] Implement `lib/export/export-runtime-json.ts`.
+- [x] Emit deterministic `index.json`, `meta.json`, and per-variant payload files.
+- [x] Add explicit Draw annotation export from editor guide points. (`buildDrawAnnotation()` + test coverage in `tests/runtime-json-export.test.ts:97-177`)
+- [x] Add Variable Draw participation export for draw-capable layers. (`variableDraw.participatingLayerIds` + test at line 178-180)
+- [x] Add Magic Replace continuity metadata for preserved enclosure layers. (`getPreservedLayerIds()` + `magicReplace` emission + test at line 182-189)
+- [x] Preserve gradient paint descriptors in runtime payloads.
+- [x] Materialize only valid icon-level transitions/effects per variant.
+- [x] Add exporter diagnostics for invalid runtime transitions. (`RuntimeExportDiagnostic` with 5 codes + test at lines 197-244)
+- [x] Add deterministic export coverage for runtime-json. (`tests/export-runtime-json.test.ts`, `tests/runtime-json-export.test.ts`)
 
-### Phase R2 - Runtime core
-- [ ] Build `IconRuntime` state machine and frame scheduler.
-- [ ] Execute Draw On / Draw Off from exported annotation data.
-- [ ] Support Variable Draw progress on participating layers.
-- [ ] Support Magic Replace continuity with preserved enclosures.
-- [ ] Implement `replace` and `track` transition strategies.
-- [ ] Support named easings and cubic-bezier parsing.
-- [ ] Add effect playback and snapshot composition.
-- [ ] Add frame checkpoint tests for state changes and interruptions.
+### Phase R2 - Runtime core (complete)
+- [x] Build `IconRuntime` state machine and frame scheduler. (`lib/runtime-core/`)
+- [x] Execute Draw On / Draw Off from exported annotation data. (`lib/runtime-core/draw-executor.ts` + tests)
+- [x] Support Variable Draw progress on participating layers. (`computeVariableDrawValues()` + tests)
+- [x] Support Magic Replace continuity with preserved enclosures. (`resolveTransition` `preserveLayerIds` option + tests)
+- [x] Implement `replace` and `track` transition strategies. (verified with unmatched-layer fallback test)
+- [x] Support named easings and cubic-bezier parsing.
+- [x] Add effect playback and snapshot composition. (`lib/runtime-core/effect-scheduler.ts` — bounce, pulse, rotate, breathe, wiggle, scale, appear, disappear, lineDrawOn/Off + tests)
+- [x] Add frame checkpoint tests for state changes and interruptions. (`tests/runtime-core.test.ts`)
 
-### Phase R3 - Runtime DOM
-- [ ] Build SVG renderer for runtime snapshots.
-- [ ] Support efficient DOM updates across animated frames.
-- [ ] Add browser-level tests for mount/update/unmount behavior.
+### Phase R3 - Runtime DOM (complete)
+- [x] Build SVG renderer for runtime snapshots. (`lib/runtime-dom/`)
+- [x] Support efficient DOM updates across animated frames. (diff-based `setState` + test for shared-layer identity preservation)
+- [x] Add browser-level tests for mount/update/unmount behavior. (`tests/runtime-dom.test.ts`, `tests/runtime-svg-renderer.test.tsx`)
 
-### Phase R4 - Runtime React
-- [ ] Build `<Icon />` and `useIcon` on top of the runtime store.
-- [ ] Wire `useSyncExternalStore` subscriptions and prop-driven state changes.
-- [ ] Add integration coverage for controlled and uncontrolled animation flows.
-- [ ] Add a demo icon path in the app for end-to-end validation.
+### Phase R4 - Runtime React (complete)
+- [x] Build the runtime React surfaces on top of the runtime store. (`lib/runtime-react/VibeIcon.tsx`, `lib/runtime-react/icon.tsx`, `lib/runtime-react/useIconState.ts`, `lib/runtime-react/use-icon.ts`)
+- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/VibeIcon.tsx`, `lib/runtime-react/use-icon.ts`, `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
+- [x] Add integration coverage for controlled and uncontrolled animation flows. (`tests/runtime-react.test.tsx` — 9 tests)
+- [x] Add a demo icon path in the app for end-to-end validation. (`app/demo/runtime/page.tsx` — Hamburger/Close + Chevron + export pipeline validation)
+- [x] Keep the payload-first runtime-json React adapter path and SSR snapshot renderer alongside the mainline API. (`tests/runtime-react-phase4.test.tsx`, `app/runtime-demo/page.tsx`)
 
 ### Phase R5 - Platform capability layer
 - [ ] Define target platform, delivery mode, capability, and export-outcome types.

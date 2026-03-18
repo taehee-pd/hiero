@@ -10,7 +10,7 @@ import {
   createIconRuntimeStore,
   type IconRuntimeEffectRepeat,
   type IconRuntimeStore,
-} from '@/lib/runtime-core';
+} from '@/lib/runtime-core/store';
 import type { RuntimeVariantPayload } from '@/lib/export/export-runtime-json';
 
 export type UseIconOptions = {

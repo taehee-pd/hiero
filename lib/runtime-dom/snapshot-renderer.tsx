@@ -4,7 +4,10 @@ import type {
   RuntimeClipPath,
   RuntimePaint,
 } from '@/lib/export/export-runtime-json';
-import type { RuntimeSnapshot, RuntimeSnapshotLayer } from '@/lib/runtime-core';
+import type {
+  RuntimeSnapshot,
+  RuntimeSnapshotLayer,
+} from '@/lib/runtime-core/store';
 
 export type RuntimeSvgRendererProps = React.SVGProps<SVGSVGElement> & {
   snapshot: RuntimeSnapshot;
@@ -31,10 +34,7 @@ export const RuntimeSvgRenderer = forwardRef<SVGSVGElement, RuntimeSvgRendererPr
       >
         {title ? <title>{title}</title> : null}
         {defs.length > 0 ? <defs>{defs}</defs> : null}
-        <g
-          transform={snapshot.groupTransform}
-          opacity={snapshot.groupOpacity}
-        >
+        <g transform={snapshot.groupTransform} opacity={snapshot.groupOpacity}>
           {snapshot.layers.map((layer) => (
             <path
               key={layer.key}
@@ -44,16 +44,20 @@ export const RuntimeSvgRenderer = forwardRef<SVGSVGElement, RuntimeSvgRendererPr
               stroke={resolvePaintValue(layer.stroke, prefix, layer.key, 'stroke')}
               strokeOpacity={layer.strokeOpacity}
               strokeWidth={layer.strokeWidth}
-              strokeLinecap={layer.lineCap as React.SVGProps<SVGPathElement>['strokeLinecap']}
-              strokeLinejoin={layer.lineJoin as React.SVGProps<SVGPathElement>['strokeLinejoin']}
+              strokeLinecap={
+                layer.lineCap as React.SVGProps<SVGPathElement>['strokeLinecap']
+              }
+              strokeLinejoin={
+                layer.lineJoin as React.SVGProps<SVGPathElement>['strokeLinejoin']
+              }
               fillRule={layer.fillRule}
               transform={layer.transform}
               opacity={layer.opacity}
-              clipPath={layer.clipPath ? `url(#${buildClipPathId(prefix, layer.key)})` : undefined}
-              pathLength={layer.pathLengthProgress !== undefined ? 1 : undefined}
-              strokeDasharray={
-                layer.pathLengthProgress !== undefined ? 1 : undefined
+              clipPath={
+                layer.clipPath ? `url(#${buildClipPathId(prefix, layer.key)})` : undefined
               }
+              pathLength={layer.pathLengthProgress !== undefined ? 1 : undefined}
+              strokeDasharray={layer.pathLengthProgress !== undefined ? 1 : undefined}
               strokeDashoffset={
                 layer.pathLengthProgress !== undefined
                   ? 1 - layer.pathLengthProgress
@@ -68,7 +72,10 @@ export const RuntimeSvgRenderer = forwardRef<SVGSVGElement, RuntimeSvgRendererPr
   },
 );
 
-function collectDefs(layers: RuntimeSnapshot['layers'], prefix: string): React.ReactNode[] {
+function collectDefs(
+  layers: RuntimeSnapshot['layers'],
+  prefix: string,
+): React.ReactNode[] {
   const defs: React.ReactNode[] = [];
 
   for (const layer of layers) {
@@ -167,11 +174,7 @@ function renderClipPath(
 ): React.ReactNode {
   return (
     <clipPath key={buildClipPathId(prefix, layer.key)} id={buildClipPathId(prefix, layer.key)}>
-      <path
-        d={clipPath.d}
-        fillRule={clipPath.fillRule}
-        transform={clipPath.transform}
-      />
+      <path d={clipPath.d} fillRule={clipPath.fillRule} transform={clipPath.transform} />
     </clipPath>
   );
 }
@@ -195,7 +198,11 @@ function resolvePaintValue(
   }
 }
 
-function buildPaintId(prefix: string, layerKey: string, role: 'fill' | 'stroke'): string {
+function buildPaintId(
+  prefix: string,
+  layerKey: string,
+  role: 'fill' | 'stroke',
+): string {
   return `${prefix}-${layerKey}-${role}`;
 }
 

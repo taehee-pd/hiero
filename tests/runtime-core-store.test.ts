@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import { createIconRuntimeStore } from '../lib/runtime-core';
-import { SAMPLE_RUNTIME_EXPORT } from '../lib/runtime-react';
+import { createIconRuntimeStore } from '../lib/runtime-core/store';
+import { SAMPLE_RUNTIME_EXPORT } from '../lib/runtime-react/demo-fixture';
 
 const payload = SAMPLE_RUNTIME_EXPORT.variant;
 

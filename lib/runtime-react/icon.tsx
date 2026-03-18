@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 
-import { RuntimeSvgRenderer } from '@/lib/runtime-dom';
+import { RuntimeSvgRenderer } from '@/lib/runtime-dom/snapshot-renderer';
 import type { UseIconOptions } from './use-icon';
 import { useIcon } from './use-icon';
 

@@ -7,10 +7,10 @@ Icophone ships as two targets:
 
 ## Build Flow
 
-The production desktop pipeline lives in [`desktop/scripts/build-production.ts`](/Users/taehee/IconStudio/desktop/scripts/build-production.ts).
+The production desktop pipeline lives in [`desktop/scripts/build-production.ts`](../desktop/scripts/build-production.ts).
 
 1. Run the Next.js build in export mode with `NEXT_OUTPUT_MODE=export`.
-2. Copy the generated `out/` directory into [`desktop/.generated/mainview`](/Users/taehee/IconStudio/desktop/.generated/mainview).
+2. Copy the generated `out/` directory into [`desktop/.generated/mainview`](../desktop/.generated/mainview).
 3. Inject the Electroview bootstrap script into every exported HTML file so the webview can talk to the Bun process.
 4. Run the Electrobun package step.
 
@@ -22,14 +22,14 @@ Root commands:
 
 ## Static Export Notes
 
-- Export mode is toggled in [`next.config.mjs`](/Users/taehee/IconStudio/next.config.mjs) with `NEXT_OUTPUT_MODE=export`.
+- Export mode is toggled in [`next.config.mjs`](../next.config.mjs) with `NEXT_OUTPUT_MODE=export`.
 - In export mode, the exported app is loaded from `views://mainview/index.html`.
 - Next.js 16 does not currently accept a custom-scheme `assetPrefix` during export, so the desktop bundle uses root-relative URLs that resolve against the `views://mainview` host at runtime.
 - Desktop-export navigation stays on `/editor` and passes the current icon as a query string, so the desktop build does not depend on generating arbitrary `/editor/[iconId]` files.
 
 ## Code Signing
 
-The current Electrobun config keeps signing disabled by default in [`desktop/electrobun.config.ts`](/Users/taehee/IconStudio/desktop/electrobun.config.ts).
+The current Electrobun config keeps signing disabled by default in [`desktop/electrobun.config.ts`](../desktop/electrobun.config.ts).
 
 macOS:
 
@@ -49,7 +49,7 @@ Linux:
 
 ## Update Server
 
-The placeholder release/update endpoints live in [`desktop/electrobun.config.ts`](/Users/taehee/IconStudio/desktop/electrobun.config.ts):
+The placeholder release/update endpoints live in [`desktop/electrobun.config.ts`](../desktop/electrobun.config.ts):
 
 - `release.baseUrl`
 - `runtime.updateEndpoint`

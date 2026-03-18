@@ -37,7 +37,7 @@ import e2eFixture from './fixtures/e2e/compiler-project.json';
 // ---------------------------------------------------------------------------
 
 function makeProject(): Project {
-  return structuredClone(e2eFixture) as Project;
+  return structuredClone(e2eFixture) as unknown as Project;
 }
 
 const COMPILE_OPTIONS = {

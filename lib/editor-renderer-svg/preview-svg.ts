@@ -50,7 +50,7 @@ export function applyTransitionPreview(
       }
     }
 
-    if (binding.fallback === 'crossfade') {
+    if (binding.fallback === 'fade-through') {
       if (sourceId) {
         const baseEntry = getBaseElements(target, sourceId);
         if (baseEntry.path) {

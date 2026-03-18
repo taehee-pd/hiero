@@ -457,7 +457,7 @@ function formatFileList(items: string[]): string[] {
 }
 
 export function escapeMarkdown(text: string): string {
-  return text.replace(/[*_`~\[\]]/g, '\\$&');
+  return text.replace(/[*_`~[\]]/g, '\\$&');
 }
 
 function formatIconChangeKind(kind: IconChange['kind']): string {

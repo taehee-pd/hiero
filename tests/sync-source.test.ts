@@ -21,7 +21,7 @@ import e2eProjectFixture from './fixtures/e2e/compiler-project.json';
 // ---------------------------------------------------------------------------
 
 function makeProject(): Project {
-  return structuredClone(e2eProjectFixture) as Project;
+  return structuredClone(e2eProjectFixture) as unknown as Project;
 }
 
 function makeMultiIconProject(): Project {

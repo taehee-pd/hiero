@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { CompiledIcon } from '../lib/compiler-contracts';
 import { isIconChangeRecord } from '../lib/compiler-contracts';
 import { diffCompiledIcons } from '../lib/export/diff-compiled-icons';
 import compiledIconFixture from './fixtures/compiler-contracts/compiled-icon.json';
 
-function makeBase() {
-  return structuredClone(compiledIconFixture);
+function makeBase(): CompiledIcon {
+  return structuredClone(compiledIconFixture) as unknown as CompiledIcon;
 }
 
 describe('diffCompiledIcons', () => {

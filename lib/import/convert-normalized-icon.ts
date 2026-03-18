@@ -146,8 +146,7 @@ function geometryToPath(node: NormalizedNode): string {
         node.geometry.y,
         node.geometry.width,
         node.geometry.height,
-        node.geometry.rx,
-        node.geometry.ry,
+        node.geometry.rx ?? node.geometry.ry ?? 0,
       );
     case 'circle':
       return createEllipsePath(

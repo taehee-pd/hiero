@@ -1,3 +1,9 @@
+/**
+ * @deprecated Use `lib/sync-service/github-provider.ts` instead.
+ * This legacy client predates the Phase C-F sync service refactor and
+ * lacks conflict detection, analytics, and structured error handling.
+ */
+
 export type GitHubRefResponse = {
   ref: string;
   node_id: string;

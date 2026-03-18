@@ -136,7 +136,7 @@ describe('runtime core', () => {
     expect(trackResolved.layerBindings[0]?.fromLayer?.id).toBe('base');
     expect(trackResolved.layerBindings[0]?.toLayer?.id).toBe('base');
     expect(trackResolved.layerBindings[0]?.tracks).toEqual(
-      trackTransition.layerBindings[0]?.tracks,
+      trackTransition.layerBindings[0]?.tracks ?? [],
     );
 
     const replaceResolved = resolveTransition(
@@ -200,7 +200,7 @@ describe('runtime core', () => {
     });
 
     nowValue = 50;
-    frameCallback?.(50);
+    (frameCallback as FrameRequestCallback | null)?.(50);
     expect(frames[1]?.progress).toBe(0.5);
     expect(frames[1]?.opacity).toBe(0.5);
     expect(frames[1]?.rotate).toBe(45);
@@ -208,7 +208,7 @@ describe('runtime core', () => {
     expect(completed).toBe(0);
 
     nowValue = 100;
-    frameCallback?.(100);
+    (frameCallback as FrameRequestCallback | null)?.(100);
     expect(frames[2]?.progress).toBe(1);
     expect(frames[2]?.opacity).toBe(1);
     expect(frames[2]?.rotate).toBe(90);

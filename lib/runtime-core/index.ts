@@ -9,5 +9,3 @@ export * from './transition-resolver';
 
 export * from './inspection';
 export * from './path-normalization';
-
-export * from './store';

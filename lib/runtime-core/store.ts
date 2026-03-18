@@ -1,9 +1,13 @@
 import type {
   RuntimeEffect,
   RuntimeLayer,
+  RuntimeTrack,
   RuntimeTransition,
   RuntimeVariantPayload,
 } from '@/lib/export/export-runtime-json';
+import { interpolateColor } from './color';
+import { getEasingFunction } from './easing';
+import { estimateSpringDuration, springProgress } from './spring';
 
 export type IconRuntimeEffectRepeat = 'once' | 'loop' | number;
 
@@ -110,14 +114,19 @@ export function createIconRuntimeStore(
   }
 
   function rebuildSnapshot(timeMs: number): void {
+    const transitionElapsedMs = transition ? Math.max(timeMs - transition.startedAt, 0) : 0;
     const transitionProgress = transition
-      ? clamp01((timeMs - transition.startedAt) / Math.max(transition.transition.durationMs, 1))
+      ? resolveRuntimeEasingProgress(
+          transition.transition.easing,
+          transitionElapsedMs,
+          transition.transition.durationMs,
+        )
       : 1;
     const effectProgress = effect
       ? resolveEffectProgress(effect, timeMs)
       : undefined;
 
-    if (transition && transitionProgress >= 1) {
+    if (transition && transitionElapsedMs >= Math.max(transition.transition.durationMs, 0)) {
       settledStateId = transition.toStateId;
       transition = undefined;
     }
@@ -367,25 +376,59 @@ function buildTransitionSnapshot(
       };
 
     for (const track of binding.tracks ?? []) {
-      const value = sampleTrack(track.keyframes, progress);
+      const localProgress = resolveBindingProgress(
+        progress,
+        binding.delayMs,
+        binding.durationMs,
+        playback.transition.layerBindings,
+      );
+      const value = sampleTrack(track, localProgress);
       switch (track.property) {
         case 'opacity':
-          opacityState.set(layerId, value);
+          if (typeof value === 'number') {
+            opacityState.set(layerId, clamp01(value));
+          }
           break;
         case 'translateX':
-          layerTransform.translateX = value;
+          if (typeof value === 'number') {
+            layerTransform.translateX = value;
+          }
           break;
         case 'translateY':
-          layerTransform.translateY = value;
+          if (typeof value === 'number') {
+            layerTransform.translateY = value;
+          }
           break;
         case 'rotate':
-          layerTransform.rotate = value;
+          if (typeof value === 'number') {
+            layerTransform.rotate = value;
+          }
           break;
         case 'scale':
-          layerTransform.scale = value;
+          if (typeof value === 'number') {
+            layerTransform.scale = value;
+          }
           break;
         case 'pathLength':
-          pathLengthState.set(layerId, clamp01(value));
+          if (typeof value === 'number') {
+            pathLengthState.set(layerId, clamp01(value));
+          }
+          break;
+        case 'fill':
+          if (typeof value === 'string') {
+            const snapshot = layerSnapshots.get(layerId);
+            if (snapshot) {
+              snapshot.fill = { kind: 'solid', color: value };
+            }
+          }
+          break;
+        case 'stroke':
+          if (typeof value === 'string') {
+            const snapshot = layerSnapshots.get(layerId);
+            if (snapshot) {
+              snapshot.stroke = { kind: 'solid', color: value };
+            }
+          }
           break;
       }
     }
@@ -530,12 +573,19 @@ function resolveEffectProgress(
   }
 
   return {
-    progress: elapsed / duration,
+    progress: resolveRuntimeEasingProgress(playback.effect.easing, elapsed, duration),
     complete: false,
   };
 }
 
-function sampleTrack(keyframes: number[], progress: number): number {
+function sampleTrack(track: RuntimeTrack, progress: number): number | string {
+  if (track.property === 'fill' || track.property === 'stroke') {
+    return sampleStringTrack(track.keyframes as string[], progress);
+  }
+  return sampleNumberTrack(track.keyframes as number[], progress);
+}
+
+function sampleNumberTrack(keyframes: number[], progress: number): number {
   if (keyframes.length === 0) {
     return 0;
   }
@@ -543,13 +593,79 @@ function sampleTrack(keyframes: number[], progress: number): number {
     return keyframes[0] ?? 0;
   }
 
-  const scaled = clamp01(progress) * (keyframes.length - 1);
-  const startIndex = Math.floor(scaled);
-  const endIndex = Math.min(startIndex + 1, keyframes.length - 1);
+  const scaled = progress * (keyframes.length - 1);
+  const { startIndex, endIndex } = resolveKeyframeSegment(scaled, keyframes.length);
   const localProgress = scaled - startIndex;
   const start = keyframes[startIndex] ?? 0;
   const end = keyframes[endIndex] ?? start;
   return start + (end - start) * localProgress;
+}
+
+function sampleStringTrack(keyframes: string[], progress: number): string {
+  if (keyframes.length === 0) {
+    return '#000000';
+  }
+  if (keyframes.length === 1) {
+    return keyframes[0] ?? '#000000';
+  }
+
+  const scaled = clamp01(progress) * (keyframes.length - 1);
+  const startIndex = Math.floor(scaled);
+  const endIndex = Math.min(startIndex + 1, keyframes.length - 1);
+  const localProgress = scaled - startIndex;
+  const start = keyframes[startIndex] ?? '#000000';
+  const end = keyframes[endIndex] ?? start;
+  return interpolateColor(start, end, localProgress);
+}
+
+function resolveKeyframeSegment(
+  scaledProgress: number,
+  length: number,
+): { startIndex: number; endIndex: number } {
+  if (scaledProgress <= 0) {
+    return { startIndex: 0, endIndex: 1 };
+  }
+
+  if (scaledProgress >= length - 1) {
+    return { startIndex: length - 2, endIndex: length - 1 };
+  }
+
+  const startIndex = Math.floor(scaledProgress);
+  return {
+    startIndex,
+    endIndex: Math.min(startIndex + 1, length - 1),
+  };
+}
+
+function resolveBindingProgress(
+  globalProgress: number,
+  delayMs: number | undefined,
+  durationMs: number | undefined,
+  bindings: RuntimeTransition['layerBindings'],
+): number {
+  const totalMs = Math.max(
+    ...bindings.map((binding) => (binding.delayMs ?? 0) + (binding.durationMs ?? 0)),
+    1,
+  );
+  const elapsed = globalProgress * totalMs;
+  const duration = Math.max(durationMs ?? totalMs, 1);
+  return Math.max(0, (elapsed - (delayMs ?? 0)) / duration);
+}
+
+function resolveRuntimeEasingProgress(
+  easing: RuntimeTransition['easing'] | RuntimeEffect['easing'],
+  elapsedMs: number,
+  durationMs: number,
+): number {
+  if (typeof easing === 'string' || easing === undefined) {
+    return getEasingFunction(easing ?? 'linear')(clamp01(elapsedMs / Math.max(durationMs, 1)));
+  }
+
+  const effectiveDuration = Math.min(
+    Math.max(durationMs, 0),
+    estimateSpringDuration(easing),
+  );
+  return springProgress(easing, Math.min(Math.max(elapsedMs, 0), effectiveDuration));
 }
 
 function scaleAroundCenter(

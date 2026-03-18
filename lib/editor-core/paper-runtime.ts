@@ -1,4 +1,86 @@
-export type PaperGlobal = any;
+export interface PaperPoint {
+  x: number;
+  y: number;
+}
+
+export interface PaperSize {
+  width: number;
+  height: number;
+}
+
+export interface PaperRectangle extends PaperSize {
+  x: number;
+  y: number;
+  clone(): PaperRectangle;
+  expand(horizontal: number, vertical?: number): PaperRectangle;
+  intersects(other: PaperRectangle): boolean;
+}
+
+export type PaperBounds = PaperRectangle;
+
+export interface PaperColor {
+  readonly __paperColorBrand?: never;
+}
+
+export interface PaperRemovable {
+  remove(): void;
+}
+
+export interface PaperTransformable extends PaperRemovable {
+  fillColor: unknown;
+  strokeColor: unknown;
+  strokeWidth?: number;
+  dashArray?: number[];
+  translate(point: PaperPoint): void;
+  rotate(angle: number, center?: PaperPoint): void;
+  scale(scaleX: number, scaleY?: number, center?: PaperPoint): void;
+  sendToBack?(): void;
+}
+
+export interface PaperCompoundPath extends PaperTransformable {
+  bounds: PaperBounds;
+  strokeBounds: PaperBounds;
+  pathData?: string;
+  getPathData?(): string;
+  [key: string]: unknown;
+}
+
+export interface PaperPointText extends PaperTransformable {
+  bounds: PaperBounds;
+  bringToFront(): void;
+}
+
+export interface PaperScopeInstance {
+  setup(target: HTMLCanvasElement | PaperSize): void;
+  activate(): void;
+  project: {
+    clear(): void;
+    remove?: () => void;
+  };
+  view: {
+    viewSize: PaperSize;
+    update(): void;
+    remove?: () => void;
+  };
+  Point: new (x: number, y: number) => PaperPoint;
+  Size: new (width: number, height: number) => PaperSize;
+  Rectangle: new (...args: unknown[]) => PaperRectangle;
+  Color: new (...args: unknown[]) => PaperColor;
+  Path: {
+    Line: new (...args: unknown[]) => PaperTransformable;
+    Rectangle: new (...args: unknown[]) => PaperTransformable;
+    Ellipse: new (...args: unknown[]) => PaperTransformable;
+    Circle: new (...args: unknown[]) => PaperTransformable;
+  };
+  CompoundPath: new (...args: unknown[]) => PaperCompoundPath;
+  PointText: new (...args: unknown[]) => PaperPointText;
+  remove?: () => void;
+}
+
+export type PaperGlobal = {
+  PaperScope: new () => PaperScopeInstance;
+  Size: new (width: number, height: number) => PaperSize;
+};
 
 type PaperWindow = Window & { paper?: PaperGlobal };
 

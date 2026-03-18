@@ -10,7 +10,10 @@ import {
   computeVariableDrawValues,
   computeEffectValues,
   getEasingFunction,
+  interpolateColor,
+  estimateSpringDuration,
   resolveTransition,
+  springProgress,
 } from '../lib/runtime-core';
 import type { DrawAnnotation, VariableDrawConfig } from '../lib/runtime-core';
 
@@ -185,9 +188,9 @@ describe('runtime core', () => {
       onFrame: (progress, values) => {
         frames.push({
           progress,
-          opacity: values.base?.opacity,
-          rotate: values.base?.rotate,
-          scale: values.base?.scale,
+          opacity: values.base?.opacity as number | undefined,
+          rotate: values.base?.rotate as number | undefined,
+          scale: values.base?.scale as number | undefined,
         });
       },
     });
@@ -298,6 +301,85 @@ describe('runtime core', () => {
       expect(easing(1)).toBe(1);
     }
   });
+
+  test('getEasingFunction supports cubic-bezier strings and steps', () => {
+    const cubicBezier = getEasingFunction('cubic-bezier(0.42, 0, 0.58, 1)');
+    expect(cubicBezier(0)).toBe(0);
+    expect(cubicBezier(0.5)).toBeGreaterThan(0.45);
+    expect(cubicBezier(0.5)).toBeLessThan(0.55);
+    expect(cubicBezier(1)).toBe(1);
+
+    const stepsStart = getEasingFunction('steps(4, start)');
+    const stepsEnd = getEasingFunction('steps(4, end)');
+    expect(stepsStart(0)).toBe(0);
+    expect(stepsStart(0.1)).toBe(0.25);
+    expect(stepsEnd(0.24)).toBe(0);
+    expect(stepsEnd(0.26)).toBe(0.25);
+  });
+
+  test('spring helpers produce overshoot and a bounded duration estimate', () => {
+    const config = { type: 'spring' as const, stiffness: 220, damping: 12, mass: 1 };
+    expect(springProgress(config, 0)).toBe(0);
+    expect(springProgress(config, 150)).toBeGreaterThan(1);
+    expect(estimateSpringDuration(config)).toBeGreaterThan(0);
+    expect(estimateSpringDuration(config)).toBeLessThanOrEqual(5000);
+  });
+
+  test('TransitionScheduler interrupt returns a blend scheduler that eases values to rest', () => {
+    const icon = makeIcon();
+    const variant = icon.variants.v24;
+    const resolved = resolveTransition(
+      icon.transitions['idle-active']!,
+      variant.states.idle!,
+      variant.states.active!,
+    );
+
+    let nowValue = 0;
+    let frameCallback: FrameRequestCallback | null = null;
+    const blendFrames: Array<{ rotate?: number; scale?: number }> = [];
+
+    const scheduler = new TransitionScheduler(resolved, {
+      now: () => nowValue,
+      requestFrame: (callback) => {
+        frameCallback = callback;
+        return 1;
+      },
+      cancelFrame: () => {
+        frameCallback = null;
+      },
+    });
+
+    scheduler.start();
+    nowValue = 50;
+    (frameCallback as FrameRequestCallback | null)?.(50);
+
+    const blend = scheduler.interrupt(80, {
+      now: () => nowValue,
+      requestFrame: (callback) => {
+        frameCallback = callback;
+        return 2;
+      },
+      cancelFrame: () => {
+        frameCallback = null;
+      },
+      onFrame: (_progress, values) => {
+        blendFrames.push({
+          rotate: values.base?.rotate as number | undefined,
+          scale: values.base?.scale as number | undefined,
+        });
+      },
+    });
+
+    expect(blend).not.toBeNull();
+    blend?.start();
+    expect(blendFrames[0]?.rotate).toBe(45);
+    expect(blendFrames[0]?.scale).toBe(1.5);
+
+    nowValue = 130;
+    (frameCallback as FrameRequestCallback | null)?.(130);
+    expect(blendFrames[1]?.rotate).toBeLessThan(10);
+    expect(blendFrames[1]?.scale).toBeLessThan(1.1);
+  });
 });
 
 describe('magic replace', () => {
@@ -387,6 +469,24 @@ describe('draw executor', () => {
     expect(at1.arrow?.pathLength).toBe(0);
     expect(at1.circle?.pathLength).toBe(0);
   });
+
+  test('computeDrawOnValues respects guide point timing ranges', () => {
+    const timedDraw: DrawAnnotation = {
+      mode: 'byLayer',
+      layers: {
+        first: { guidePoints: [{ t: 0 }, { t: 0.3 }] },
+        second: { guidePoints: [{ t: 0.3 }, { t: 1 }] },
+      },
+    };
+
+    const at15 = computeDrawOnValues(timedDraw, 0.15);
+    expect(at15.first?.pathLength).toBe(0.5);
+    expect(at15.second?.pathLength).toBe(0);
+
+    const at65 = computeDrawOnValues(timedDraw, 0.65);
+    expect(at65.first?.pathLength).toBe(1);
+    expect(at65.second?.pathLength).toBeCloseTo(0.5, 4);
+  });
 });
 
 describe('variable draw', () => {
@@ -419,37 +519,42 @@ describe('variable draw', () => {
 });
 
 describe('effect scheduler', () => {
+  test('interpolateColor blends hex colors including shorthand input', () => {
+    expect(interpolateColor('#000', '#ffffff', 0.5)).toBe('#808080');
+    expect(interpolateColor('#ff000080', '#00ff0080', 0.5)).toBe('#80800080');
+  });
+
   test('bounce effect produces translateY values peaking at midpoint', () => {
     const values = computeEffectValues('bounce', 0, ['icon']);
-    expect(Math.abs(values.icon?.translateY ?? 0)).toBeLessThan(0.01);
+    expect(Math.abs((values.icon?.translateY as number | undefined) ?? 0)).toBeLessThan(0.01);
 
     const mid = computeEffectValues('bounce', 0.5, ['icon']);
-    expect(mid.icon?.translateY).toBeLessThan(0); // moves up (negative Y)
+    expect(mid.icon?.translateY as number | undefined).toBeLessThan(0); // moves up (negative Y)
 
     const end = computeEffectValues('bounce', 1, ['icon']);
-    expect(Math.abs(end.icon?.translateY ?? 1)).toBeLessThan(0.01); // returns to ~0
+    expect(Math.abs((end.icon?.translateY as number | undefined) ?? 1)).toBeLessThan(0.01); // returns to ~0
   });
 
   test('pulse effect produces scale values peaking at midpoint', () => {
     const start = computeEffectValues('pulse', 0, ['icon']);
-    expect(start.icon?.scale).toBe(1);
+    expect(start.icon?.scale as number | undefined).toBe(1);
 
     const mid = computeEffectValues('pulse', 0.5, ['icon']);
-    expect(mid.icon?.scale).toBeGreaterThan(1); // scale up
+    expect(mid.icon?.scale as number | undefined).toBeGreaterThan(1); // scale up
 
     const end = computeEffectValues('pulse', 1, ['icon']);
-    expect(Math.abs((end.icon?.scale ?? 2) - 1)).toBeLessThan(0.01);
+    expect(Math.abs(((end.icon?.scale as number | undefined) ?? 2) - 1)).toBeLessThan(0.01);
   });
 
   test('rotate effect produces 0-360 rotation', () => {
     const start = computeEffectValues('rotate', 0, ['icon']);
-    expect(start.icon?.rotate).toBe(0);
+    expect(start.icon?.rotate as number | undefined).toBe(0);
 
     const mid = computeEffectValues('rotate', 0.5, ['icon']);
-    expect(mid.icon?.rotate).toBe(180);
+    expect(mid.icon?.rotate as number | undefined).toBe(180);
 
     const end = computeEffectValues('rotate', 1, ['icon']);
-    expect(end.icon?.rotate).toBe(360);
+    expect(end.icon?.rotate as number | undefined).toBe(360);
   });
 
   test('lineDrawOn effect delegates to draw executor', () => {
@@ -461,7 +566,7 @@ describe('effect scheduler', () => {
     };
 
     const values = computeEffectValues('lineDrawOn', 0.5, [], draw);
-    expect(values.line?.pathLength).toBe(0.5); // single layer, half revealed at progress 0.5
+    expect(values.line?.pathLength as number | undefined).toBe(0.5); // single layer, half revealed at progress 0.5
   });
 
   test('EffectScheduler emits frames with correct timing', () => {
@@ -476,7 +581,7 @@ describe('effect scheduler', () => {
         now: () => nowValue,
         requestFrame: (cb) => { frameCallback = cb; return 1; },
         cancelFrame: () => { frameCallback = null; },
-        onFrame: (values) => { frames.push({ opacity: values.icon?.opacity }); },
+        onFrame: (values) => { frames.push({ opacity: values.icon?.opacity as number | undefined }); },
         targetLayerIds: ['icon'],
       },
     );
@@ -498,5 +603,46 @@ describe('effect scheduler', () => {
     (frameCallback as FrameRequestCallback | null)?.(100);
     expect(frames[2]?.opacity).toBe(1);
     expect(completed).toBe(1);
+  });
+
+  test('resolveTransition applies stagger delays and explicit binding timing overrides', () => {
+    const fromState: State = {
+      id: 'from',
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H4V4H0Z' }, style: {}, role: 'primary' },
+        b: { id: 'b', path: { d: 'M5 0H9V4H5Z' }, style: {}, role: 'secondary' },
+      },
+    };
+    const toState: State = {
+      id: 'to',
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H4V4H0Z' }, style: {}, role: 'primary' },
+        b: { id: 'b', path: { d: 'M5 0H9V4H5Z' }, style: {}, role: 'secondary' },
+      },
+    };
+    const transition: Transition = {
+      id: 'staggered',
+      from: 'from',
+      to: 'to',
+      strategy: 'track',
+      durationMs: 200,
+      easing: 'linear',
+      stagger: { mode: 'linear', perLayerMs: 40 },
+      layerBindings: [
+        { fromLayerId: 'a', toLayerId: 'a', tracks: [{ property: 'rotate', keyframes: [0, 10] }] },
+        {
+          fromLayerId: 'b',
+          toLayerId: 'b',
+          delayMs: 10,
+          durationMs: 90,
+          tracks: [{ property: 'rotate', keyframes: [0, 20] }],
+        },
+      ],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    expect(resolved.layerBindings[0]?.delayMs).toBe(0);
+    expect(resolved.layerBindings[1]?.delayMs).toBe(10);
+    expect(resolved.layerBindings[1]?.durationMs).toBe(90);
   });
 });

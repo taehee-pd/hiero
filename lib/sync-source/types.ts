@@ -8,7 +8,6 @@
 
 import type {
   Effect,
-  Layer,
   PaintRef,
   RenderingMode,
   SymbolWeight,

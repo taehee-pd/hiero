@@ -1,3 +1,5 @@
+import type { SpringConfig } from '@/lib/schema/types';
+
 export const COMPILED_ICON_SCHEMA_URI =
   'https://icophone.dev/schemas/compiled-icon/1.0.0' as const;
 export const PACKAGE_MANIFEST_SCHEMA_URI =
@@ -23,7 +25,9 @@ export type CompiledTrackProperty =
   | 'translateX'
   | 'translateY'
   | 'scale'
-  | 'pathLength';
+  | 'pathLength'
+  | 'fill'
+  | 'stroke';
 
 export type CompiledEffectKind =
   | 'bounce'
@@ -96,7 +100,7 @@ export type CompiledTransition = {
   from: string;
   to: string;
   durationMs: number;
-  easing: string;
+  easing: string | SpringConfig;
   strategy: CompiledTransitionStrategy;
   bindings: CompiledLayerBinding[];
 };
@@ -106,7 +110,7 @@ export type CompiledLayerBinding = {
   toLayerId?: string;
   tracks?: Array<{
     property: CompiledTrackProperty;
-    keyframes: number[];
+    keyframes: number[] | string[];
   }>;
   morph?: {
     topology: 'strict' | 'bestGuess';
@@ -117,7 +121,7 @@ export type CompiledLayerBinding = {
 export type CompiledEffect = {
   kind: CompiledEffectKind;
   durationMs: number;
-  easing: string;
+  easing: string | SpringConfig;
   params?: Record<string, number | string | boolean>;
 };
 

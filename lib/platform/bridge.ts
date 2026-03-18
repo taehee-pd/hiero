@@ -113,7 +113,7 @@ type ElectrobunPacket =
   | { type: 'message'; id: string; payload: unknown };
 
 type PendingRequest = {
-  resolve: (value: any) => void;
+  resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
 };
@@ -292,7 +292,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
     params,
   } satisfies ElectrobunPacket);
 
-  return await new Promise<T>((resolve, reject) => {
+  return await new Promise<unknown>((resolve, reject) => {
     const timeout = setTimeout(() => {
       pendingRequests.delete(id);
       reject(new Error(`Timed out waiting for Electrobun request: ${method}`));
@@ -300,7 +300,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
 
     pendingRequests.set(id, { resolve, reject, timeout });
     window.__electrobunBunBridge?.postMessage(payload);
-  });
+  }) as T;
 }
 
 async function pickFiles(options: { accept: string; multiple?: boolean }) {

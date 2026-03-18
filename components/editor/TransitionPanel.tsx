@@ -213,7 +213,16 @@ export function TransitionPanel() {
       applyPreviewFrame(nextPreview, 0);
       startScheduler(nextPreview, 0, nextPreview.speed);
     },
-    [activePreview?.speed, applyPreviewFrame, currentIcon, currentStateId, currentVariant, startScheduler],
+    [
+      activePreview?.speed,
+      activePreview?.transitionId,
+      applyPreviewFrame,
+      currentIcon,
+      currentStateId,
+      currentVariant,
+      setSelectedTransitionId,
+      startScheduler,
+    ],
   );
 
   const handleTogglePlayback = useCallback(() => {
@@ -499,7 +508,7 @@ export function TransitionPanel() {
                   />
                   <InlineSelect
                     label="Easing"
-                    value={transition.easing ?? 'linear'}
+                    value={typeof transition.easing === 'string' ? transition.easing : 'linear'}
                     onChange={(value) =>
                       patchTransition(currentIcon.id, transition.id, { easing: value })
                     }

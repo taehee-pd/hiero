@@ -35,6 +35,17 @@ function isNumberArray(val: unknown): val is number[] {
   return Array.isArray(val) && val.every((item) => typeof item === 'number');
 }
 
+function isSpringConfig(val: unknown): boolean {
+  return (
+    isObject(val) &&
+    val.type === 'spring' &&
+    typeof val.stiffness === 'number' &&
+    typeof val.damping === 'number' &&
+    (val.mass === undefined || typeof val.mass === 'number') &&
+    (val.velocity === undefined || typeof val.velocity === 'number')
+  );
+}
+
 function isRecordOf<T>(
   val: unknown,
   predicate: (item: unknown) => item is T,
@@ -56,6 +67,8 @@ const TRACK_PROPERTIES: CompiledTrackProperty[] = [
   'translateY',
   'scale',
   'pathLength',
+  'fill',
+  'stroke',
 ];
 
 const EFFECT_KINDS: CompiledEffectKind[] = [
@@ -170,7 +183,12 @@ export function isCompiledLayerBinding(val: unknown): val is CompiledLayerBindin
       if (!TRACK_PROPERTIES.includes(track.property as CompiledTrackProperty)) {
         return false;
       }
-      if (!isNumberArray(track.keyframes)) return false;
+      if (
+        !isNumberArray(track.keyframes) &&
+        !isStringArray(track.keyframes)
+      ) {
+        return false;
+      }
     }
   }
 
@@ -188,7 +206,7 @@ export function isCompiledTransition(val: unknown): val is CompiledTransition {
   if (typeof val.from !== 'string') return false;
   if (typeof val.to !== 'string') return false;
   if (typeof val.durationMs !== 'number') return false;
-  if (typeof val.easing !== 'string') return false;
+  if (typeof val.easing !== 'string' && !isSpringConfig(val.easing)) return false;
   if (!['track', 'strictMorph', 'bestGuessMorph', 'replace'].includes(val.strategy as string)) {
     return false;
   }
@@ -199,7 +217,7 @@ export function isCompiledEffect(val: unknown): val is CompiledEffect {
   if (!isObject(val)) return false;
   if (!EFFECT_KINDS.includes(val.kind as CompiledEffectKind)) return false;
   if (typeof val.durationMs !== 'number') return false;
-  if (typeof val.easing !== 'string') return false;
+  if (typeof val.easing !== 'string' && !isSpringConfig(val.easing)) return false;
 
   if (val.params !== undefined) {
     if (!isObject(val.params)) return false;

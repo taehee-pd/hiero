@@ -1,7 +1,7 @@
 import { Electroview } from 'electrobun/view';
-import type { IcophoneRPC } from '../shared/rpc-types';
+import type { ConivaRPC } from '../shared/rpc-types';
 
-const rpc = Electroview.defineRPC<IcophoneRPC>({
+const rpc = Electroview.defineRPC<ConivaRPC>({
   handlers: {
     requests: {},
     messages: {
@@ -31,4 +31,4 @@ const rpc = Electroview.defineRPC<IcophoneRPC>({
   }
 ).electrobun = window.__electrobun;
 new Electroview({ rpc });
-rpc.send('webviewReady');
+rpc.send('webviewReady', undefined);

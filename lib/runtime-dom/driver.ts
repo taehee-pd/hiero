@@ -1,8 +1,10 @@
 import type { Icon, TimelineTrack } from '../schema';
 import {
+  BlendScheduler,
   StateMachine,
   TransitionScheduler,
   EffectScheduler,
+  getEasingFunction,
   resolveTransition,
   computeVariableDrawValues,
   shouldReduceMotion,
@@ -94,8 +96,13 @@ export function createIconDriver(
   renderer.setState(stateMachine.currentState.id);
 
   let activeScheduler: TransitionScheduler | null = null;
+  let activeBlendScheduler: BlendScheduler | null = null;
   let activeEffectScheduler: EffectScheduler | null = null;
   let activeCssFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeCssFallbackPlan: CssTrackTransitionPlan | null = null;
+  let activeCssFallbackStartedAt = 0;
+  let activeTransitionValues: InterpolatedValues = {};
+  let activeBlendValues: InterpolatedValues = {};
   const stateListeners = new Set<IconDriverStateListener>();
 
   function notifyStateListeners() {
@@ -104,21 +111,86 @@ export function createIconDriver(
     }
   }
 
+  function clearAnimatedFrames() {
+    activeTransitionValues = {};
+    activeBlendValues = {};
+  }
+
+  function renderAnimatedFrame(
+    stateId: string,
+    progress: number,
+    transition?: ResolvedTransition,
+  ) {
+    renderer.applyFrame(
+      stateId,
+      progress,
+      composeInterpolatedValues(activeBlendValues, activeTransitionValues),
+      transition,
+    );
+  }
+
   function cancelActiveTransitions() {
     activeScheduler?.cancel();
     activeScheduler = null;
+    activeBlendScheduler?.cancel();
+    activeBlendScheduler = null;
     if (activeCssFallbackTimer !== null) {
       clearTimeout(activeCssFallbackTimer);
       activeCssFallbackTimer = null;
     }
+    activeCssFallbackPlan = null;
+    activeCssFallbackStartedAt = 0;
+    clearAnimatedFrames();
     renderer.clearCssTrackTransitions();
   }
 
   const unsubscribe = stateMachine.onStateChange((state, transition) => {
-    cancelActiveTransitions();
     notifyStateListeners();
 
+    const interruptedBlend = activeScheduler?.interrupt(80, {
+      onFrame: (_progress, values) => {
+        activeBlendValues = values;
+        renderAnimatedFrame(state.id, 0);
+      },
+    });
+    const interruptedCssValues =
+      !activeScheduler && activeCssFallbackPlan
+        ? captureCssTrackTransitionValues(
+            activeCssFallbackPlan,
+            defaultNow() - activeCssFallbackStartedAt,
+          )
+        : null;
+    activeScheduler = null;
+    activeBlendScheduler?.cancel();
+    activeBlendScheduler =
+      interruptedBlend ??
+      (interruptedCssValues && Object.keys(interruptedCssValues).length > 0
+        ? new BlendScheduler(interruptedCssValues, 80, {
+            onFrame: (_progress, values) => {
+              activeBlendValues = values;
+              renderAnimatedFrame(state.id, 0);
+            },
+          })
+        : null);
+    activeBlendScheduler?.onComplete(() => {
+      if (activeBlendScheduler) {
+        activeBlendValues = {};
+        activeBlendScheduler = null;
+      }
+    });
+    activeBlendScheduler?.start();
+    const forceJsScheduler = Boolean(interruptedCssValues);
+
+    if (activeCssFallbackTimer !== null) {
+      clearTimeout(activeCssFallbackTimer);
+      activeCssFallbackTimer = null;
+    }
+    activeCssFallbackPlan = null;
+    activeCssFallbackStartedAt = 0;
+    renderer.clearCssTrackTransitions();
+
     if (!transition || shouldReduceMotion(reduceMotionSetting)) {
+      cancelActiveTransitions();
       renderer.setState(state.id);
       return;
     }
@@ -127,6 +199,7 @@ export function createIconDriver(
     const fromState = variant.states[transition.from];
     const toState = variant.states[transition.to];
     if (!fromState || !toState) {
+      cancelActiveTransitions();
       renderer.setState(state.id);
       return;
     }
@@ -136,10 +209,14 @@ export function createIconDriver(
     });
 
     const cssPlan = planCssTrackTransition(resolved);
-    if (cssPlan) {
+    if (cssPlan && !forceJsScheduler) {
+      activeCssFallbackPlan = cssPlan;
+      activeCssFallbackStartedAt = defaultNow();
       renderer.applyCssTrackTransition(state.id, cssPlan);
       activeCssFallbackTimer = setTimeout(() => {
         renderer.clearCssTrackTransitions();
+        activeCssFallbackPlan = null;
+        activeCssFallbackStartedAt = 0;
         activeCssFallbackTimer = null;
       }, cssPlan.durationMs + 20);
       return;
@@ -147,7 +224,8 @@ export function createIconDriver(
 
     const scheduler = new TransitionScheduler(resolved, {
       onFrame: (progress, interpolatedValues: InterpolatedValues) => {
-        renderer.applyFrame(state.id, progress, interpolatedValues, resolved);
+        activeTransitionValues = interpolatedValues;
+        renderAnimatedFrame(state.id, progress, resolved);
       },
     });
 
@@ -155,6 +233,7 @@ export function createIconDriver(
       if (activeScheduler === scheduler) {
         activeScheduler = null;
       }
+      activeTransitionValues = {};
       renderer.setState(state.id);
     });
 
@@ -244,8 +323,13 @@ export function planCssTrackTransition(
       if (track.keyframes.length === 0) {
         return null;
       }
-      fromValues[track.property] = track.keyframes[0]!;
-      toValues[track.property] = track.keyframes[track.keyframes.length - 1]!;
+      fromValues[track.property] = track.keyframes[0] as number;
+      toValues[track.property] = track.keyframes[track.keyframes.length - 1] as number;
+    }
+
+    const easing = binding.easing ?? resolved.easing;
+    if (typeof easing !== 'string') {
+      return null;
     }
 
     bindings.push({
@@ -254,7 +338,7 @@ export function planCssTrackTransition(
       toValues,
       durationMs: Math.max(0, binding.durationMs ?? resolved.durationMs),
       delayMs: Math.max(0, binding.delayMs ?? 0),
-      easing: binding.easing ?? resolved.easing,
+      easing,
     });
   }
 
@@ -267,6 +351,85 @@ export function planCssTrackTransition(
     durationMs,
     bindings,
   };
+}
+
+function composeInterpolatedValues(
+  blendValues: InterpolatedValues,
+  transitionValues: InterpolatedValues,
+): InterpolatedValues {
+  const result: InterpolatedValues = {};
+  const layerIds = new Set([
+    ...Object.keys(blendValues),
+    ...Object.keys(transitionValues),
+  ]);
+
+  for (const layerId of layerIds) {
+    const blended = blendValues[layerId] ?? {};
+    const transitioned = transitionValues[layerId] ?? {};
+    const nextValues: InterpolatedValues[string] = {
+      ...blended,
+      ...transitioned,
+    };
+
+    for (const property of ['translateX', 'translateY', 'rotate'] as const) {
+      const blendValue = blended[property];
+      const transitionValue = transitioned[property];
+      if (typeof blendValue === 'number' && typeof transitionValue === 'number') {
+        nextValues[property] = blendValue + transitionValue;
+      }
+    }
+
+    const blendScale = blended.scale;
+    const transitionScale = transitioned.scale;
+    if (typeof blendScale === 'number' && typeof transitionScale === 'number') {
+      nextValues.scale = 1 + (blendScale - 1) + (transitionScale - 1);
+    }
+
+    result[layerId] = nextValues;
+  }
+
+  return result;
+}
+
+export function captureCssTrackTransitionValues(
+  plan: CssTrackTransitionPlan,
+  elapsedMs: number,
+): InterpolatedValues {
+  const values: InterpolatedValues = {};
+
+  for (const binding of plan.bindings) {
+    const layerValues = (values[binding.layerId] ??= {});
+    const effectiveElapsed = Math.max(elapsedMs - binding.delayMs, 0);
+    const rawProgress =
+      binding.durationMs <= 0 ? 1 : effectiveElapsed / binding.durationMs;
+    const easedProgress = getEasingFunction(binding.easing)(clamp01(rawProgress));
+
+    for (const [property, fromValue] of Object.entries(binding.fromValues)) {
+      const toValue = binding.toValues[property];
+      if (toValue === undefined) {
+        layerValues[property] = fromValue;
+        continue;
+      }
+
+      layerValues[property] =
+        fromValue + (toValue - fromValue) * easedProgress;
+    }
+  }
+
+  return values;
+}
+
+function clamp01(value: number): number {
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
+  return value;
+}
+
+function defaultNow(): number {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now();
+  }
+  return Date.now();
 }
 
 function resolveVariantId(icon: Icon, requestedVariant?: string | number): string {

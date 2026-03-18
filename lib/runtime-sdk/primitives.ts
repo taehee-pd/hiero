@@ -11,7 +11,7 @@ export type IconBaseProps = SVGProps<SVGSVGElement> & {
   renderingMode?: CompiledRenderingMode;
   paletteColors?: Partial<Record<string, string>>;
   state?: string;
-  transition?: boolean | { durationMs?: number; easing?: string };
+  transition?: boolean | { durationMs?: number; easing?: CompiledIcon['transitions'][number]['easing'] };
   animate?: string | null;
   animateRepeat?: 'once' | 'loop' | number;
 };
@@ -246,7 +246,7 @@ function modeOrder(mode: CompiledRenderingMode): number {
 
 function warnDev(message: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[icophone-runtime] ${message}`);
+    console.warn(`[coniva-runtime] ${message}`);
   }
 }
 

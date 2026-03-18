@@ -16,7 +16,7 @@ import type { Project } from '@/lib/schema/types';
 import { exportSourcePayload } from '@/lib/sync-source/export-source-payload';
 import { diffSourcePayloads } from '@/lib/sync-service/diff-source';
 import type { SyncPrResult } from '@/lib/sync-service/sync-pr';
-import type { Conflict, ConflictErrorCode, SuggestedAction } from '@/lib/sync-service/conflicts';
+import type { Conflict, ConflictErrorCode } from '@/lib/sync-service/conflicts';
 import { CONFLICT_ERROR_CODES, CONFLICT_SUGGESTED_ACTIONS } from '@/lib/sync-service/conflicts';
 import { emitSyncEvent } from './analytics';
 import {
@@ -53,6 +53,8 @@ export type UseSyncPrReturn = {
 export function useSyncPr(): UseSyncPrReturn {
   const [state, setState] = useState<SyncState>(INITIAL_SYNC_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const { settings, revision, phase } = state;
+  const connected = isConnected(state);
 
   const connect = useCallback((settings: SyncConnectionSettings) => {
     setState((s) => transitionToReady(s, settings));
@@ -61,7 +63,7 @@ export function useSyncPr(): UseSyncPrReturn {
   const previewChanges = useCallback((project: Project) => {
     try {
       const payload = exportSourcePayload(project);
-      const previousFiles = state.revision?.previousFiles ?? [];
+      const previousFiles = revision?.previousFiles ?? [];
       const diff = diffSourcePayloads(previousFiles, payload.files);
 
       setState((s) =>
@@ -71,11 +73,11 @@ export function useSyncPr(): UseSyncPrReturn {
       const message = err instanceof Error ? err.message : 'Export failed.';
       setState((s) => transitionToValidationFailed(s, message));
     }
-  }, [state.revision]);
+  }, [revision]);
 
   const createPullRequest = useCallback(
     async (project: Project, force = false) => {
-      if (!isConnected(state)) return;
+      if (!connected) return;
 
       abortRef.current?.abort();
       const abort = new AbortController();
@@ -97,7 +99,7 @@ export function useSyncPr(): UseSyncPrReturn {
       }
 
       // 2. Diff
-      const previousFiles = state.revision?.previousFiles ?? [];
+      const previousFiles = revision?.previousFiles ?? [];
       const diff = diffSourcePayloads(previousFiles, files);
 
       setState((s) => transitionToValidating(s, files, diff.iconChanges));
@@ -118,14 +120,14 @@ export function useSyncPr(): UseSyncPrReturn {
           headers: { 'Content-Type': 'application/json' },
           signal: abort.signal,
           body: JSON.stringify({
-            owner: state.settings.owner,
-            repo: state.settings.repo,
-            baseBranch: state.settings.baseBranch,
-            packagePath: state.settings.packagePath || undefined,
+            owner: settings.owner,
+            repo: settings.repo,
+            baseBranch: settings.baseBranch,
+            packagePath: settings.packagePath || undefined,
             actor: { name: 'Icophone User' },
             files,
             previousFiles: previousFiles.length > 0 ? previousFiles : undefined,
-            baseSha: state.revision?.baseBranchHeadSha ?? undefined,
+            baseSha: revision?.baseBranchHeadSha ?? undefined,
             force,
           }),
         });
@@ -223,15 +225,15 @@ export function useSyncPr(): UseSyncPrReturn {
         emitSyncEvent('sync_validation_failed', { reason: message });
       }
     },
-    [state.settings, state.revision],
+    [connected, revision, settings],
   );
 
   const retry = useCallback(
     async (project: Project) => {
-      const force = state.phase === 'conflict_detected';
+      const force = phase === 'conflict_detected';
       await createPullRequest(project, force);
     },
-    [state.phase, createPullRequest],
+    [phase, createPullRequest],
   );
 
   const dismiss = useCallback(() => {

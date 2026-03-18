@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  ArrowUpRight,
   Check,
   ChevronRight,
   FolderOpen,
@@ -14,7 +13,6 @@ import {
   Plus,
   Search,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +30,7 @@ import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { isDesktop } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
+import type { Collection, Icon, Project } from '@/lib/schema/types';
 
 export type ExplorerIcon = {
   id: string;
@@ -405,7 +404,6 @@ export function ExplorerShell() {
       {view.level === 'workspace' ? (
         <WorkspaceView
           iconSets={filteredIconSets}
-          workspace={workspace}
           onEnterProject={enterProject}
           onContextMenu={handleIconSetContext}
         />
@@ -457,18 +455,16 @@ type WorkspaceIconSet = {
   iconCount: number;
   syncLabel: string | null;
   updatedAt: string;
-  icons: Array<{ id: string; name: string; variants: Record<string, any>; [key: string]: any }>;
+  icons: Icon[];
   tokenColors?: Record<string, string>;
 };
 
 function WorkspaceView({
   iconSets,
-  workspace,
   onEnterProject,
   onContextMenu,
 }: {
   iconSets: WorkspaceIconSet[];
-  workspace: any;
   onEnterProject: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, id: string) => void;
 }) {
@@ -540,7 +536,7 @@ function ProjectCard({
               const stateId = variant?.defaultState;
               const svg =
                 firstVariantId && stateId
-                  ? exportSvgString(icon as any, firstVariantId, stateId, iconSet.tokenColors)
+                  ? exportSvgString(icon, firstVariantId, stateId, iconSet.tokenColors)
                   : '';
               return (
                 <div
@@ -607,12 +603,12 @@ function ProjectDetailView({
   onCollectionContext,
   onOpenIconTab,
 }: {
-  project: any;
+  project: Project | null;
   activeIconSetId: string | null;
   visibleIcons: ExplorerIcon[];
   groups: [string, ExplorerIcon[]][];
   filtered: ExplorerIcon[];
-  collections: any[];
+  collections: Collection[];
   selectionSet: Set<string>;
   favoritesSet: Set<string>;
   activeFilter: ActiveFilter;

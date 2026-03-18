@@ -1,5 +1,9 @@
 import type { Icon, Layer, PaintRef, Variant } from '../schema';
-import type { InterpolatedValues, ResolvedTransition } from '../runtime-core';
+import type {
+  AnimatedValue,
+  InterpolatedValues,
+  ResolvedTransition,
+} from '../runtime-core';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MANAGED_DEFS_ATTR = 'data-managed-by';
@@ -555,9 +559,17 @@ function createLayerElement(
   return pathEl;
 }
 
-function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, number>) {
+function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, AnimatedValue>) {
   if (values.opacity !== undefined) {
-    entry.element.style.opacity = String(values.opacity);
+    entry.element.style.opacity = String(clamp01(asNumber(values.opacity)));
+  }
+
+  if (values.fill !== undefined && typeof values.fill === 'string') {
+    entry.element.setAttribute('fill', values.fill);
+  }
+
+  if (values.stroke !== undefined && typeof values.stroke === 'string') {
+    entry.element.setAttribute('stroke', values.stroke);
   }
 
   const transform = buildAnimatedTransform(entry.baseTransform, values);
@@ -572,7 +584,7 @@ function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, num
   }
 
   if (values.pathLength !== undefined) {
-    const normalized = clamp01(values.pathLength);
+    const normalized = clamp01(asNumber(values.pathLength));
     const pathLength = entry.pathLength;
     entry.element.style.strokeDasharray = String(pathLength);
     entry.element.style.strokeDashoffset = String(pathLength * (1 - normalized));
@@ -609,23 +621,6 @@ function ensureManagedDefs(target: SVGSVGElement): SVGDefsElement {
   return defs;
 }
 
-function buildAttributeTransform(layer: Layer): string {
-  const t = layer.transform;
-  if (!t) return '';
-
-  const parts: string[] = [];
-  if (t.x !== undefined || t.y !== undefined) {
-    parts.push(`translate(${t.x ?? 0}, ${t.y ?? 0})`);
-  }
-  if (t.rotate !== undefined) {
-    parts.push(`rotate(${t.rotate})`);
-  }
-  if (t.scaleX !== undefined || t.scaleY !== undefined) {
-    parts.push(`scale(${t.scaleX ?? 1}, ${t.scaleY ?? 1})`);
-  }
-  return parts.join(' ');
-}
-
 function buildCssTransformFromLayer(layer: Layer): string {
   const t = layer.transform;
   if (!t) return '';
@@ -651,7 +646,7 @@ function buildCssTransformFromLayer(layer: Layer): string {
 
 function buildAnimatedTransform(
   baseTransform: string,
-  values: Record<string, number>,
+  values: Record<string, AnimatedValue>,
 ): string {
   const parts: string[] = [];
 
@@ -670,16 +665,22 @@ function buildAnimatedTransform(
   }
 
   if (values.translateX !== undefined || values.translateY !== undefined) {
-    parts.push(`translate(${values.translateX ?? 0}px, ${values.translateY ?? 0}px)`);
+    parts.push(
+      `translate(${asNumber(values.translateX) ?? 0}px, ${asNumber(values.translateY) ?? 0}px)`,
+    );
   }
   if (values.rotate !== undefined) {
-    parts.push(`rotate(${values.rotate}deg)`);
+    parts.push(`rotate(${asNumber(values.rotate)}deg)`);
   }
   if (values.scale !== undefined) {
-    parts.push(`scale(${values.scale})`);
+    parts.push(`scale(${asNumber(values.scale)})`);
   }
 
   return parts.join(' ');
+}
+
+function asNumber(value: AnimatedValue | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 function getPathLength(pathEl: SVGPathElement): number {

@@ -9,7 +9,7 @@
  */
 
 import type { Icon } from '@/lib/schema/types';
-import type { SyncSourceManifest, SourcePayload } from './types';
+import type { SourcePayload } from './types';
 
 // ---------------------------------------------------------------------------
 // Icon name validation

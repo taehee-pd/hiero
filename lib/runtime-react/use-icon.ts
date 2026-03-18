@@ -1,8 +1,9 @@
 import {
   startTransition,
+  useCallback,
   useEffect,
-  useEffectEvent,
   useMemo,
+  useRef,
   useSyncExternalStore,
 } from 'react';
 
@@ -42,12 +43,15 @@ export function useIcon({
   effectRepeat,
   onStateChange,
 }: UseIconOptions): UseIconResult {
+  const initialStateRef = useRef<string | undefined>(undefined);
+  initialStateRef.current = state ?? defaultState;
+
   const store = useMemo(
     () =>
       createIconRuntimeStore(payload, {
-        initialStateId: state ?? defaultState,
+        initialStateId: initialStateRef.current,
       }),
-    [defaultState, payload],
+    [payload],
   );
 
   useEffect(() => () => store.destroy(), [store]);
@@ -58,7 +62,7 @@ export function useIcon({
     store.getSnapshot,
   );
 
-  const emitStateChange = useEffectEvent((stateId: string) => {
+  const emitStateChange = useCallback((stateId: string) => {
     if (!onStateChange) {
       return;
     }
@@ -66,7 +70,7 @@ export function useIcon({
     startTransition(() => {
       onStateChange(stateId);
     });
-  });
+  }, [onStateChange]);
 
   useEffect(() => {
     if (state === undefined) {

@@ -1,4 +1,9 @@
 import { loadPaperGlobal } from './paper-runtime';
+import type {
+  PaperCompoundPath,
+  PaperRemovable,
+  PaperScopeInstance,
+} from './paper-runtime';
 
 export type BooleanMode = 'unite' | 'subtract' | 'intersect' | 'exclude';
 
@@ -31,7 +36,19 @@ function resolveIdenticalInput(mode: BooleanMode, pathData: string): string {
   return pathData;
 }
 
-function extractPathData(item: any): string {
+type PaperPathDataSource = {
+  pathData?: string;
+  getPathData?: () => string;
+} | null | undefined;
+
+type PaperBooleanCompoundPath = PaperCompoundPath & {
+  [key in BooleanMode]: (
+    other: PaperBooleanCompoundPath,
+    options: { insert: boolean },
+  ) => PaperBooleanCompoundPath;
+};
+
+function extractPathData(item: PaperPathDataSource): string {
   const pathData =
     typeof item?.pathData === 'string'
       ? item.pathData
@@ -42,7 +59,10 @@ function extractPathData(item: any): string {
   return normalizePathData(pathData);
 }
 
-function cleanupScope(scope: any, ...items: any[]) {
+function cleanupScope(
+  scope: (Pick<PaperScopeInstance, 'project' | 'view'> & { remove?: () => void }) | null | undefined,
+  ...items: Array<PaperRemovable | null | undefined>
+) {
   for (const item of items) {
     if (item && typeof item.remove === 'function') {
       try {
@@ -91,9 +111,9 @@ export async function booleanOp(
   const scope = new paperGlobal.PaperScope();
   scope.setup(new paperGlobal.Size(1, 1));
 
-  let left: any = null;
-  let right: any = null;
-  let result: any = null;
+  let left: PaperBooleanCompoundPath | null = null;
+  let right: PaperBooleanCompoundPath | null = null;
+  let result: PaperBooleanCompoundPath | null = null;
 
   try {
     scope.activate();
@@ -101,11 +121,11 @@ export async function booleanOp(
     left = new scope.CompoundPath({
       pathData: normalizePathData(pathA),
       insert: false,
-    });
+    }) as PaperBooleanCompoundPath;
     right = new scope.CompoundPath({
       pathData: normalizePathData(pathB),
       insert: false,
-    });
+    }) as PaperBooleanCompoundPath;
 
     const normalizedA = extractPathData(left);
     const normalizedB = extractPathData(right);

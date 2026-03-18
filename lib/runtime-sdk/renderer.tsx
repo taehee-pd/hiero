@@ -39,7 +39,7 @@ export type TransitionResolution =
       mode: 'transition';
       transition: CompiledTransition;
       durationMs: number;
-      easing: string;
+      easing: CompiledTransition['easing'];
     };
 
 export function resolveTransitionPlan(

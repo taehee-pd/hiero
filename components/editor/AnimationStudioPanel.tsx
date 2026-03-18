@@ -81,7 +81,10 @@ export function AnimationStudioPanel() {
 
   const handleRename = (effect: Effect) => {
     if (!iconId) return;
-    const nextEasing = prompt('Easing', effect.easing ?? 'linear');
+    const nextEasing = prompt(
+      'Easing',
+      typeof effect.easing === 'string' ? effect.easing : 'linear',
+    );
     if (!nextEasing) return;
     editorStore.getState().patchEffect(iconId, effect.id, { easing: nextEasing });
   };
@@ -124,7 +127,7 @@ export function AnimationStudioPanel() {
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Transition Timeline</p>
             {selectedTransition ? (
-              <EasingPicker value={selectedTransition.easing ?? 'linear'} onSelect={(value) => {
+              <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={(value) => {
                 if (!iconId || !selectedTransition) return;
                 patchTransition(iconId, selectedTransition.id, { easing: value });
               }} />
@@ -159,7 +162,9 @@ export function AnimationStudioPanel() {
               <div key={effect.id} className="flex items-center justify-between rounded-lg border border-border/80 p-2">
                 <div>
                   <p className="text-sm font-medium">{effect.kind}</p>
-                  <p className="text-xs text-muted-foreground">{effect.durationMs}ms • {effect.easing ?? 'linear'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {effect.durationMs}ms • {typeof effect.easing === 'string' ? effect.easing : 'spring'}
+                  </p>
                 </div>
                 <div className="flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => handleRename(effect)}>Edit</Button>

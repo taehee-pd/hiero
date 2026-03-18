@@ -2,7 +2,7 @@ import type { RPCSchema } from 'electrobun/bun';
 
 export type DesktopContextMenuKind = 'layerPanel' | 'canvas' | 'explorerIcon';
 
-export type IcophoneRPC = {
+export type ConivaRPC = {
   bun: RPCSchema<{
     requests: {
       openProject: { params: {}; response: { path: string; data: string } | null };

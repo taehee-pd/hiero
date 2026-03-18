@@ -566,4 +566,20 @@ describe('runtime dom renderer', () => {
 
     renderer.unmount();
   });
+
+  test('applyFrame applies animated fill and stroke colors', () => {
+    const container = createMockContainer();
+    const renderer = new DomRenderer(container, makeIcon());
+
+    renderer.mount('v24');
+    renderer.applyFrame('idle', 0.5, {
+      base: { fill: '#00ff00', stroke: '#0000ff' },
+    });
+
+    const base = container.querySelector('path[data-layer-id="base"]') as MockElement | null;
+    expect(base?.getAttribute('fill')).toBe('#00ff00');
+    expect(base?.getAttribute('stroke')).toBe('#0000ff');
+
+    renderer.unmount();
+  });
 });

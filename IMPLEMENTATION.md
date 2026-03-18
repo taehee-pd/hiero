@@ -86,37 +86,37 @@ Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-im
 - [x] Add shared runtime payload types for exporter + runtime modules. (`lib/compiler-contracts/types.ts`)
 - [x] Define in-repo module boundaries for `runtime-core`, `runtime-dom`, and `runtime-react`. (`lib/runtime-core/`, `lib/runtime-dom/`, `lib/runtime-react/`)
 
-### Phase R1 - Runtime JSON exporter
+### Phase R1 - Runtime JSON exporter (complete)
 - [x] Implement `lib/export/export-runtime-json.ts`.
 - [x] Emit deterministic `index.json`, `meta.json`, and per-variant payload files.
-- [ ] Add explicit Draw annotation export from editor guide points.
-- [ ] Add Variable Draw participation export for draw-capable layers.
-- [ ] Add Magic Replace continuity metadata for preserved enclosure layers.
+- [x] Add explicit Draw annotation export from editor guide points. (`buildDrawAnnotation()` + test coverage in `tests/runtime-json-export.test.ts:97-177`)
+- [x] Add Variable Draw participation export for draw-capable layers. (`variableDraw.participatingLayerIds` + test at line 178-180)
+- [x] Add Magic Replace continuity metadata for preserved enclosure layers. (`getPreservedLayerIds()` + `magicReplace` emission + test at line 182-189)
 - [x] Preserve gradient paint descriptors in runtime payloads.
 - [x] Materialize only valid icon-level transitions/effects per variant.
-- [ ] Add exporter diagnostics for invalid runtime transitions.
+- [x] Add exporter diagnostics for invalid runtime transitions. (`RuntimeExportDiagnostic` with 5 codes + test at lines 197-244)
 - [x] Add deterministic export coverage for runtime-json. (`tests/export-runtime-json.test.ts`, `tests/runtime-json-export.test.ts`)
 
-### Phase R2 - Runtime core (partially implemented)
+### Phase R2 - Runtime core (complete)
 - [x] Build `IconRuntime` state machine and frame scheduler. (`lib/runtime-core/`)
-- [ ] Execute Draw On / Draw Off from exported annotation data.
-- [ ] Support Variable Draw progress on participating layers.
-- [ ] Support Magic Replace continuity with preserved enclosures.
-- [ ] Implement `replace` and `track` transition strategies.
+- [x] Execute Draw On / Draw Off from exported annotation data. (`lib/runtime-core/draw-executor.ts` + tests)
+- [x] Support Variable Draw progress on participating layers. (`computeVariableDrawValues()` + tests)
+- [x] Support Magic Replace continuity with preserved enclosures. (`resolveTransition` `preserveLayerIds` option + tests)
+- [x] Implement `replace` and `track` transition strategies. (verified with unmatched-layer fallback test)
 - [x] Support named easings and cubic-bezier parsing.
-- [ ] Add effect playback and snapshot composition.
+- [x] Add effect playback and snapshot composition. (`lib/runtime-core/effect-scheduler.ts` — bounce, pulse, rotate, breathe, wiggle, scale, appear, disappear, lineDrawOn/Off + tests)
 - [x] Add frame checkpoint tests for state changes and interruptions. (`tests/runtime-core.test.ts`)
 
-### Phase R3 - Runtime DOM (partially implemented)
+### Phase R3 - Runtime DOM (complete)
 - [x] Build SVG renderer for runtime snapshots. (`lib/runtime-dom/`)
-- [ ] Support efficient DOM updates across animated frames.
+- [x] Support efficient DOM updates across animated frames. (diff-based `setState` + test for shared-layer identity preservation)
 - [x] Add browser-level tests for mount/update/unmount behavior. (`tests/runtime-dom.test.ts`, `tests/runtime-svg-renderer.test.tsx`)
 
-### Phase R4 - Runtime React (partially implemented)
+### Phase R4 - Runtime React (complete)
 - [x] Build `<Icon />` and `useIcon` on top of the runtime store. (`lib/runtime-sdk/`)
-- [ ] Wire `useSyncExternalStore` subscriptions and prop-driven state changes.
-- [ ] Add integration coverage for controlled and uncontrolled animation flows.
-- [ ] Add a demo icon path in the app for end-to-end validation.
+- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/VibeIcon.tsx` + `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
+- [x] Add integration coverage for controlled and uncontrolled animation flows. (`tests/runtime-react.test.tsx` — 9 tests)
+- [x] Add a demo icon path in the app for end-to-end validation. (`app/demo/runtime/page.tsx` — Hamburger/Close + Chevron + export pipeline validation)
 
 ### Phase R5 - Platform capability layer
 - [ ] Define target platform, delivery mode, capability, and export-outcome types.

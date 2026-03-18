@@ -29,7 +29,11 @@ export class DomRenderer {
     this.doc = resolveDocument(container);
   }
 
-  mount(variantId: string, renderSize?: number): void {
+  mount(
+    variantId: string,
+    renderSize?: number,
+    options?: { label?: string; existingSvg?: SVGSVGElement },
+  ): void {
     const variant = this.icon.variants[variantId];
     if (!variant) {
       throw new Error(`Variant "${variantId}" does not exist in icon "${this.icon.id}".`);
@@ -37,7 +41,14 @@ export class DomRenderer {
 
     this.unmount();
 
-    const svg = this.doc.createElementNS(SVG_NS, 'svg');
+    let svg: SVGSVGElement;
+    if (options?.existingSvg) {
+      svg = options.existingSvg;
+    } else {
+      svg = this.doc.createElementNS(SVG_NS, 'svg');
+      this.container.appendChild(svg);
+    }
+
     const [vx, vy, vw, vh] = variant.viewBox;
     svg.setAttribute('xmlns', SVG_NS);
     svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
@@ -45,8 +56,12 @@ export class DomRenderer {
     svg.setAttribute('width', String(resolvedSize));
     svg.setAttribute('height', String(resolvedSize));
     svg.setAttribute('fill', 'none');
+    svg.setAttribute('overflow', 'hidden');
+    svg.style.display = 'block';
 
-    this.container.appendChild(svg);
+    // Accessibility
+    applyAccessibilityAttributes(svg, options?.label);
+
     this.svg = svg;
     this.variant = variant;
     this.setState(variant.defaultState);
@@ -103,29 +118,65 @@ export class DomRenderer {
     defs.replaceChildren();
     this.clearTransitionElements();
 
-    for (const entry of this.layerElements.values()) {
-      entry.element.remove();
+    const newLayers = getRenderableLayers(state.layers);
+    const newLayerIds = new Set(newLayers.map((l) => l.id));
+    const newLayerById = new Map(newLayers.map((layer) => [layer.id, layer]));
+
+    // Remove layers that no longer exist in the new state
+    for (const [id, entry] of this.layerElements) {
+      if (!newLayerIds.has(id)) {
+        entry.element.remove();
+        this.layerElements.delete(id);
+      }
     }
-    this.layerElements.clear();
 
-    const layers = getRenderableLayers(state.layers);
-    const layerById = new Map(layers.map((layer) => [layer.id, layer]));
+    // Update existing layers in-place or create new ones
+    for (const layer of newLayers) {
+      const existing = this.layerElements.get(layer.id);
+      if (existing) {
+        // Clear residual animation styles before reapplying state
+        existing.element.style.removeProperty('opacity');
+        existing.element.style.removeProperty('transform');
+        existing.element.style.removeProperty('transform-box');
+        existing.element.style.removeProperty('transform-origin');
+        existing.element.style.removeProperty('stroke-dasharray');
+        existing.element.style.removeProperty('stroke-dashoffset');
+        // Diff update: reapply geometry, style, and transform in-place
+        applyLayerGeometry(existing.element, layer);
+        applyLayerStyle(existing.element, layer, defs, layer.id);
+        applyTransformAttribute(existing.element, layer);
+        applyClipPath(existing.element, layer, newLayerById, defs, layer.id);
+        existing.layer = layer;
+        existing.baseTransform = buildCssTransformFromLayer(layer);
+        existing.pathLength = getPathLength(existing.element);
+      } else {
+        // New layer: create element
+        const pathEl = createLayerElement(
+          this.doc,
+          layer,
+          defs,
+          newLayerById,
+          layer.id,
+        );
+        svg.appendChild(pathEl);
+        this.layerElements.set(layer.id, {
+          element: pathEl,
+          layer,
+          baseTransform: buildCssTransformFromLayer(layer),
+          pathLength: getPathLength(pathEl),
+        });
+      }
+    }
 
-    for (const layer of layers) {
-      const pathEl = createLayerElement(
-        this.doc,
-        layer,
-        defs,
-        layerById,
-        layer.id,
-      );
-      svg.appendChild(pathEl);
-      this.layerElements.set(layer.id, {
-        element: pathEl,
-        layer,
-        baseTransform: buildAttributeTransform(layer),
-        pathLength: getPathLength(pathEl),
-      });
+    // Re-order DOM elements to match the sorted layer sequence.
+    // appendChild moves already-attached elements, so iterating in
+    // order ensures correct z-ordering even when new layers were
+    // inserted between existing ones.
+    for (const layer of newLayers) {
+      const entry = this.layerElements.get(layer.id);
+      if (entry) {
+        svg.appendChild(entry.element);
+      }
     }
 
     if (defs.childNodes.length === 0) {
@@ -195,7 +246,7 @@ export class DomRenderer {
       this.transitionLayerElements.set(key, {
         element: pathEl,
         layer: binding.toLayer,
-        baseTransform: buildAttributeTransform(binding.toLayer),
+        baseTransform: buildCssTransformFromLayer(binding.toLayer),
         pathLength: getPathLength(pathEl),
       });
     });
@@ -269,11 +320,36 @@ export class DomRenderer {
   }
 }
 
-function getRenderableLayers(layers: Record<string, Layer>): Layer[] {
+export function getRenderableLayers(layers: Record<string, Layer>): Layer[] {
   return Object.keys(layers)
     .sort((a, b) => a.localeCompare(b))
     .map((id) => layers[id]!)
     .filter((layer) => layer.visible !== false && !!layer.path?.d && !layer.isClipMask);
+}
+
+function applyAccessibilityAttributes(svg: SVGSVGElement, label?: string): void {
+  if (label) {
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', label);
+    svg.removeAttribute('aria-hidden');
+  } else {
+    svg.setAttribute('aria-hidden', 'true');
+    svg.removeAttribute('role');
+    svg.removeAttribute('aria-label');
+  }
+  svg.setAttribute('focusable', 'false');
+}
+
+/**
+ * Resolve a PaintRef to a simple CSS color string for SSR.
+ * Gradients return 'none' (handled by the driver post-hydration).
+ */
+export function resolvePaintToString(paint: PaintRef | undefined): string {
+  if (!paint) return 'none';
+  if (paint.mode === 'currentColor') return 'currentColor';
+  if (paint.mode === 'fixed') return paint.value;
+  if (paint.mode === 'token') return 'currentColor';
+  return 'none';
 }
 
 function applyLayerGeometry(el: SVGPathElement, layer: Layer): void {
@@ -327,11 +403,20 @@ function applyLayerStyle(
 }
 
 function applyTransformAttribute(el: SVGPathElement, layer: Layer): void {
-  const transform = buildAttributeTransform(layer);
+  // Apply transforms as CSS style (not SVG attribute) so that
+  // transform-origin: center and transform-box: fill-box are respected.
+  // This makes steady-state rendering consistent with CSS-animated transforms,
+  // avoiding visual snaps when transitions complete and setState is called.
+  const transform = buildCssTransformFromLayer(layer);
+  el.removeAttribute('transform');
   if (transform) {
-    el.setAttribute('transform', transform);
+    el.style.transform = transform;
+    el.style.transformBox = 'fill-box';
+    el.style.transformOrigin = 'center';
   } else {
-    el.removeAttribute('transform');
+    el.style.removeProperty('transform');
+    el.style.removeProperty('transform-box');
+    el.style.removeProperty('transform-origin');
   }
 }
 
@@ -475,12 +560,46 @@ function buildAttributeTransform(layer: Layer): string {
   return parts.join(' ');
 }
 
+function buildCssTransformFromLayer(layer: Layer): string {
+  const t = layer.transform;
+  if (!t) return '';
+
+  const parts: string[] = [];
+  if (t.x !== undefined || t.y !== undefined) {
+    parts.push(`translate(${t.x ?? 0}px, ${t.y ?? 0}px)`);
+  }
+  if (t.rotate !== undefined) {
+    parts.push(`rotate(${t.rotate}deg)`);
+  }
+  if (t.scaleX !== undefined || t.scaleY !== undefined) {
+    const sx = t.scaleX ?? 1;
+    const sy = t.scaleY ?? 1;
+    if (sx === sy) {
+      parts.push(`scale(${sx})`);
+    } else {
+      parts.push(`scale(${sx}, ${sy})`);
+    }
+  }
+  return parts.join(' ');
+}
+
 function buildAnimatedTransform(
   baseTransform: string,
   values: Record<string, number>,
 ): string {
   const parts: string[] = [];
-  if (baseTransform) {
+
+  // When animated values include transform-related properties, they define
+  // the absolute transform (not a delta on top of the base). This prevents
+  // double-transforms when animating FROM a state that has its own transforms
+  // (e.g., closed→open where the closed state already has rotate/translate).
+  const hasAnimatedTransform =
+    values.translateX !== undefined ||
+    values.translateY !== undefined ||
+    values.rotate !== undefined ||
+    values.scale !== undefined;
+
+  if (baseTransform && !hasAnimatedTransform) {
     parts.push(baseTransform);
   }
 

@@ -1,0 +1,268 @@
+import { getEasingFunction } from './easing';
+import type { InterpolatedValues, FrameHandle } from './scheduler';
+import type { DrawAnnotation } from './draw-executor';
+import { computeDrawOnValues, computeDrawOffValues } from './draw-executor';
+
+/**
+ * Runtime effect definition from the exported payload.
+ */
+export type EffectDefinition = {
+  kind: string;
+  durationMs: number;
+  easing?: string;
+  delay?: number;
+  repeat?: number | 'infinite';
+  direction?: 'normal' | 'reverse' | 'alternate';
+};
+
+export type EffectFrameCallback = (values: InterpolatedValues) => void;
+export type EffectCompleteCallback = () => void;
+
+export type EffectSchedulerOptions = {
+  now?: () => number;
+  requestFrame?: (callback: FrameRequestCallback) => FrameHandle;
+  cancelFrame?: (handle: FrameHandle) => void;
+  onFrame?: EffectFrameCallback;
+  /** Required for lineDrawOn/lineDrawOff effects */
+  drawAnnotation?: DrawAnnotation;
+  /** Layer IDs the effect applies to (for non-draw effects) */
+  targetLayerIds?: string[];
+};
+
+/**
+ * Schedules frame-by-frame playback of a standalone effect.
+ *
+ * Effects differ from transitions:
+ * - They're not tied to state changes
+ * - They can repeat (finite or infinite)
+ * - They have a single `kind` that determines the transform/opacity deltas
+ */
+export class EffectScheduler {
+  private readonly effect: EffectDefinition;
+  private readonly easing: (t: number) => number;
+  private readonly now: () => number;
+  private readonly requestFrame: (callback: FrameRequestCallback) => FrameHandle;
+  private readonly cancelFrame: (handle: FrameHandle) => void;
+  private readonly onFrameCallback: EffectFrameCallback;
+  private readonly drawAnnotation?: DrawAnnotation;
+  private readonly targetLayerIds: string[];
+  private readonly completeListeners = new Set<EffectCompleteCallback>();
+
+  private activeHandle: FrameHandle | null = null;
+  private startedAt = 0;
+  private running = false;
+  private currentIteration = 0;
+
+  constructor(effect: EffectDefinition, options: EffectSchedulerOptions = {}) {
+    this.effect = effect;
+    this.easing = getEasingFunction(effect.easing ?? 'linear');
+    this.now = options.now ?? defaultNow;
+    this.requestFrame = options.requestFrame ?? defaultRequestFrame;
+    this.cancelFrame = options.cancelFrame ?? defaultCancelFrame;
+    this.onFrameCallback = options.onFrame ?? (() => {});
+    this.drawAnnotation = options.drawAnnotation;
+    this.targetLayerIds = options.targetLayerIds ?? [];
+  }
+
+  start(): void {
+    if (this.running) this.cancel();
+    this.running = true;
+    this.currentIteration = 0;
+    this.startedAt = this.now();
+    this.emitFrame(0);
+
+    if (this.effect.durationMs <= 0) {
+      this.emitFrame(1);
+      this.finish();
+      return;
+    }
+
+    this.scheduleNextFrame();
+  }
+
+  cancel(): void {
+    if (this.activeHandle !== null) {
+      this.cancelFrame(this.activeHandle);
+      this.activeHandle = null;
+    }
+    this.running = false;
+  }
+
+  onComplete(callback: EffectCompleteCallback): () => void {
+    this.completeListeners.add(callback);
+    return () => this.completeListeners.delete(callback);
+  }
+
+  private scheduleNextFrame(): void {
+    this.activeHandle = this.requestFrame(() => {
+      if (!this.running) return;
+
+      const elapsed = this.now() - this.startedAt;
+      const durationMs = this.effect.durationMs;
+      const delayMs = this.effect.delay ?? 0;
+
+      if (elapsed < delayMs) {
+        this.scheduleNextFrame();
+        return;
+      }
+
+      const effectElapsed = elapsed - delayMs;
+      const rawProgress = effectElapsed / durationMs;
+      const maxIterations = this.effect.repeat === 'infinite' ? Infinity : (this.effect.repeat ?? 1);
+
+      if (rawProgress >= maxIterations) {
+        this.emitFrame(1);
+        this.finish();
+        return;
+      }
+
+      this.currentIteration = Math.floor(rawProgress);
+      const iterationProgress = rawProgress - this.currentIteration;
+
+      // Handle alternate direction
+      const direction = this.effect.direction ?? 'normal';
+      let progress: number;
+      if (direction === 'reverse') {
+        progress = 1 - iterationProgress;
+      } else if (direction === 'alternate') {
+        progress = this.currentIteration % 2 === 0 ? iterationProgress : 1 - iterationProgress;
+      } else {
+        progress = iterationProgress;
+      }
+
+      this.emitFrame(progress);
+      this.scheduleNextFrame();
+    });
+  }
+
+  private emitFrame(rawProgress: number): void {
+    const easedProgress = this.easing(clamp01(rawProgress));
+    const values = computeEffectValues(
+      this.effect.kind,
+      easedProgress,
+      this.targetLayerIds,
+      this.drawAnnotation,
+    );
+    this.onFrameCallback(values);
+  }
+
+  private finish(): void {
+    this.cancel();
+    for (const listener of this.completeListeners) {
+      listener();
+    }
+  }
+}
+
+/**
+ * Compute per-layer transform/opacity deltas for a single effect frame.
+ */
+export function computeEffectValues(
+  kind: string,
+  progress: number,
+  targetLayerIds: string[],
+  drawAnnotation?: DrawAnnotation,
+): InterpolatedValues {
+  switch (kind) {
+    case 'lineDrawOn':
+      return drawAnnotation ? computeDrawOnValues(drawAnnotation, progress) : {};
+    case 'lineDrawOff':
+      return drawAnnotation ? computeDrawOffValues(drawAnnotation, progress) : {};
+    case 'bounce':
+      return applyToLayers(targetLayerIds, computeBounce(progress));
+    case 'pulse':
+      return applyToLayers(targetLayerIds, computePulse(progress));
+    case 'rotate':
+      return applyToLayers(targetLayerIds, computeRotate(progress));
+    case 'breathe':
+      return applyToLayers(targetLayerIds, computeBreathe(progress));
+    case 'wiggle':
+      return applyToLayers(targetLayerIds, computeWiggle(progress));
+    case 'scale':
+      return applyToLayers(targetLayerIds, computeScale(progress));
+    case 'appear':
+      return applyToLayers(targetLayerIds, { opacity: progress });
+    case 'disappear':
+      return applyToLayers(targetLayerIds, { opacity: 1 - progress });
+    default:
+      return {};
+  }
+}
+
+function applyToLayers(
+  layerIds: string[],
+  values: Record<string, number>,
+): InterpolatedValues {
+  const result: InterpolatedValues = {};
+  for (const id of layerIds) {
+    result[id] = { ...values };
+  }
+  return result;
+}
+
+// --- Effect math ---
+
+function computeBounce(t: number): Record<string, number> {
+  // Bounce: translateY goes up then back down
+  // Peak at t=0.5, return to 0 at t=1
+  const y = -Math.sin(t * Math.PI) * 8;
+  return { translateY: y };
+}
+
+function computePulse(t: number): Record<string, number> {
+  // Pulse: scale up then back to 1
+  // Peak scale at t=0.5
+  const s = 1 + Math.sin(t * Math.PI) * 0.15;
+  return { scale: s };
+}
+
+function computeRotate(t: number): Record<string, number> {
+  // Full 360 rotation over the effect duration
+  return { rotate: t * 360 };
+}
+
+function computeBreathe(t: number): Record<string, number> {
+  // Breathe: opacity pulses between 0.4 and 1.0
+  const opacity = 0.4 + Math.sin(t * Math.PI) * 0.6;
+  return { opacity };
+}
+
+function computeWiggle(t: number): Record<string, number> {
+  // Wiggle: small oscillating rotation
+  const angle = Math.sin(t * Math.PI * 4) * 12;
+  return { rotate: angle };
+}
+
+function computeScale(t: number): Record<string, number> {
+  // Scale: grow from 1 to 1.2 then back to 1
+  const s = 1 + Math.sin(t * Math.PI) * 0.2;
+  return { scale: s };
+}
+
+function clamp01(value: number): number {
+  if (value <= 0) return 0;
+  if (value >= 1) return 1;
+  return value;
+}
+
+function defaultNow(): number {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now();
+  }
+  return Date.now();
+}
+
+function defaultRequestFrame(callback: FrameRequestCallback): FrameHandle {
+  if (typeof requestAnimationFrame === 'function') {
+    return requestAnimationFrame(callback);
+  }
+  return setTimeout(() => callback(defaultNow()), 16);
+}
+
+function defaultCancelFrame(handle: FrameHandle): void {
+  if (typeof cancelAnimationFrame === 'function' && typeof handle === 'number') {
+    cancelAnimationFrame(handle);
+    return;
+  }
+  clearTimeout(handle);
+}

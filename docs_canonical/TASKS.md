@@ -343,7 +343,7 @@ animation quality. Phase E should be implemented before Phases A-D.
   is active, transitions snap via `setState()` (no scheduler created)
   and effects are suppressed.
 
-- [ ] **E4 — Generated component API (promote from Phase 5B).**
+- [x] **E4 — Generated component API (promote from Phase 5B).**
   The codegen pipeline should produce per-icon components:
   `export function ChevronRight(props) { return <VibeIcon icon={data} {...props} /> }`.
   TypeScript autocomplete for icon names via barrel exports. Tree-shakeable
@@ -351,27 +351,29 @@ animation quality. Phase E should be implemented before Phases A-D.
   from schema). This is the PRIMARY consumer API — nobody should import
   raw JSON schema objects.
 
-- [ ] **E5 — Bundle size targets and tree-shaking.**
+- [x] **E5 — Bundle size targets and tree-shaking.**
   Runtime core target: <10KB gzipped. Per-icon data: <2KB gzipped.
   Tree-shaking: icons individually importable, unused icons don't bundle.
   Code-split animation engine: static SVG render path loads zero animation
-  JS; animation JS loads on first interaction. Measure and enforce via
-  CI size check.
+  JS; animation JS loads on first interaction. Measurement is enforced via
+  `scripts/check-runtime-size.ts` and CI workflow steps.
 
-- [ ] **E6 — Vanilla JS API.**
+- [x] **E6 — Vanilla JS API.**
   `createIcon(container, iconData, options)` — framework-agnostic entry
-  point. Same `IconDriver` interface, no React dependency. Already exists
-  as `createIconDriver` in `lib/runtime-dom/driver.ts` — needs to be
-  documented and exported as first-class API. Vue/Svelte/Angular wrappers
-  become thin layers over this.
+  point. Same `IconDriver` interface, no React dependency. Implemented as
+  `createIcon(...)` (first-class alias over `createIconDriver`) in
+  `lib/runtime-dom/driver.ts`, with variant auto-resolution and docs.
+  Vue/Svelte/Angular wrappers become thin layers over this.
 
-- [ ] **E7 — CSS transition fallback for simple animations.**
+- [x] **E7 — CSS transition fallback for simple animations.**
   For simple property animations (opacity, transform), use CSS transitions
   instead of JS rAF. Only use JS for: morph (path `d` interpolation),
   draw (pathLength), complex multi-property interpolation. CSS transitions
   are more battery-efficient, respect `prefers-reduced-motion` natively,
   and run on the compositor thread. Detect which tracks need JS vs CSS
-  at transition resolution time.
+  at transition resolution time. Runtime now plans CSS fallback for track
+  transitions with transform/opacity-only tracks, while JS schedulers remain
+  for morph, draw/pathLength, and fallback crossfade cases.
 
 ---
 

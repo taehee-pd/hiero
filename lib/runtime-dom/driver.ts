@@ -1,4 +1,4 @@
-import type { Icon } from '../schema';
+import type { Icon, TimelineTrack } from '../schema';
 import {
   StateMachine,
   TransitionScheduler,
@@ -10,8 +10,17 @@ import {
   type DrawAnnotation,
   type VariableDrawConfig,
   type EffectDefinition,
+  type ResolvedTransition,
 } from '../runtime-core';
-import { DomRenderer } from './renderer';
+import { DomRenderer, type CssTrackTransitionPlan } from './renderer';
+
+const CSS_FALLBACK_TRACKS = new Set<TimelineTrack['property']>([
+  'opacity',
+  'rotate',
+  'translateX',
+  'translateY',
+  'scale',
+]);
 
 export type IconDriverStateListener = () => void;
 
@@ -47,6 +56,24 @@ export type CreateIconDriverOptions = {
   preserveLayerIds?: string[];
 };
 
+export type CreateIconOptions = CreateIconDriverOptions & {
+  /** Optional variant selector (ID or size). Defaults to the first variant. */
+  variant?: string | number;
+};
+
+/**
+ * Framework-agnostic runtime API. This is the first-class vanilla JS entry point.
+ */
+export function createIcon(
+  container: HTMLElement,
+  iconData: Icon,
+  options: CreateIconOptions = {},
+): IconDriver {
+  const variantId = resolveVariantId(iconData, options.variant);
+  const { variant: _variant, ...driverOptions } = options;
+  return createIconDriver(container, iconData, variantId, driverOptions);
+}
+
 export function createIconDriver(
   container: HTMLElement,
   icon: Icon,
@@ -68,6 +95,7 @@ export function createIconDriver(
 
   let activeScheduler: TransitionScheduler | null = null;
   let activeEffectScheduler: EffectScheduler | null = null;
+  let activeCssFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   const stateListeners = new Set<IconDriverStateListener>();
 
   function notifyStateListeners() {
@@ -76,9 +104,18 @@ export function createIconDriver(
     }
   }
 
-  const unsubscribe = stateMachine.onStateChange((state, transition) => {
+  function cancelActiveTransitions() {
     activeScheduler?.cancel();
     activeScheduler = null;
+    if (activeCssFallbackTimer !== null) {
+      clearTimeout(activeCssFallbackTimer);
+      activeCssFallbackTimer = null;
+    }
+    renderer.clearCssTrackTransitions();
+  }
+
+  const unsubscribe = stateMachine.onStateChange((state, transition) => {
+    cancelActiveTransitions();
     notifyStateListeners();
 
     if (!transition || shouldReduceMotion(reduceMotionSetting)) {
@@ -97,6 +134,17 @@ export function createIconDriver(
     const resolved = resolveTransition(transition, fromState, toState, {
       preserveLayerIds: options.preserveLayerIds,
     });
+
+    const cssPlan = planCssTrackTransition(resolved);
+    if (cssPlan) {
+      renderer.applyCssTrackTransition(state.id, cssPlan);
+      activeCssFallbackTimer = setTimeout(() => {
+        renderer.clearCssTrackTransitions();
+        activeCssFallbackTimer = null;
+      }, cssPlan.durationMs + 20);
+      return;
+    }
+
     const scheduler = new TransitionScheduler(resolved, {
       onFrame: (progress, interpolatedValues: InterpolatedValues) => {
         renderer.applyFrame(state.id, progress, interpolatedValues, resolved);
@@ -159,8 +207,7 @@ export function createIconDriver(
       renderer.applyFrame(stateMachine.currentState.id, 0, values);
     },
     destroy() {
-      activeScheduler?.cancel();
-      activeScheduler = null;
+      cancelActiveTransitions();
       activeEffectScheduler?.cancel();
       activeEffectScheduler = null;
       stateListeners.clear();
@@ -169,4 +216,78 @@ export function createIconDriver(
       renderer.unmount();
     },
   };
+}
+
+export function planCssTrackTransition(
+  resolved: ResolvedTransition,
+): CssTrackTransitionPlan | null {
+  const bindings: CssTrackTransitionPlan['bindings'] = [];
+
+  for (const binding of resolved.layerBindings) {
+    if (binding.preserved) return null;
+    if (binding.morph || binding.fallback) return null;
+    if (binding.tracks.length === 0) return null;
+
+    const fromId = binding.fromLayer?.id;
+    const toId = binding.toLayer?.id;
+    if (!fromId || !toId || fromId !== toId) {
+      return null;
+    }
+
+    const fromValues: Record<string, number> = {};
+    const toValues: Record<string, number> = {};
+
+    for (const track of binding.tracks) {
+      if (!CSS_FALLBACK_TRACKS.has(track.property)) {
+        return null;
+      }
+      if (track.keyframes.length === 0) {
+        return null;
+      }
+      fromValues[track.property] = track.keyframes[0]!;
+      toValues[track.property] = track.keyframes[track.keyframes.length - 1]!;
+    }
+
+    bindings.push({
+      layerId: toId,
+      fromValues,
+      toValues,
+      durationMs: Math.max(0, binding.durationMs ?? resolved.durationMs),
+      delayMs: Math.max(0, binding.delayMs ?? 0),
+      easing: binding.easing ?? resolved.easing,
+    });
+  }
+
+  if (bindings.length === 0) {
+    return null;
+  }
+
+  const durationMs = Math.max(...bindings.map((binding) => binding.delayMs + binding.durationMs), 0);
+  return {
+    durationMs,
+    bindings,
+  };
+}
+
+function resolveVariantId(icon: Icon, requestedVariant?: string | number): string {
+  if (requestedVariant !== undefined) {
+    const explicit = icon.variants[String(requestedVariant)];
+    if (explicit) {
+      return explicit.id;
+    }
+
+    const numeric = typeof requestedVariant === 'number' ? requestedVariant : Number.parseFloat(requestedVariant);
+    if (Number.isFinite(numeric)) {
+      const match = Object.values(icon.variants).find((variant) => variant.size === numeric);
+      if (match) {
+        return match.id;
+      }
+    }
+  }
+
+  const first = Object.values(icon.variants)[0];
+  if (!first) {
+    throw new Error(`Icon "${icon.id}" does not define any variants.`);
+  }
+  return first.id;
 }

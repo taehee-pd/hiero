@@ -1,3 +1,10 @@
+/**
+ * @deprecated Use `lib/sync-service/sync-pr.ts` instead.
+ * This legacy module predates the Phase C-F sync service refactor.
+ * See `lib/sync-service/` for the production-ready implementation
+ * with conflict detection, analytics, and structured error handling.
+ */
+
 import { exportSvgString } from '@/lib/export/export-svg';
 import { generateIconLibrary, type FileMap } from '@/lib/export/export-react/generate-library';
 import type { Project } from '@/lib/schema/types';

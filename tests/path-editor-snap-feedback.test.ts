@@ -29,23 +29,23 @@ function createProjectFixture(): Project {
             size: 24,
             viewBox: [0, 0, 24, 24],
             defaultState: 'default',
-          },
-        },
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              moving: {
-                id: 'moving',
-                visible: true,
-                path: { d: 'M1 1 L2 2' },
-                style: {},
-              },
-              anchor: {
-                id: 'anchor',
-                visible: true,
-                path: { d: 'M8.3 10.7 L12.3 14.7' },
-                style: {},
+            states: {
+              default: {
+                id: 'default',
+                layers: {
+                  moving: {
+                    id: 'moving',
+                    visible: true,
+                    path: { d: 'M1 1 L2 2' },
+                    style: {},
+                  },
+                  anchor: {
+                    id: 'anchor',
+                    visible: true,
+                    path: { d: 'M8.3 10.7 L12.3 14.7' },
+                    style: {},
+                  },
+                },
               },
             },
           },

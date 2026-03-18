@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+// TODO(deprecation): Migrate to lib/sync-service/ — see lib/sync-service/index.ts
 import { syncIconsToGitHub, type SyncOptions, type SyncResult } from '@/lib/integrations/github/sync-icons';
 
 type SyncPanelProps = {

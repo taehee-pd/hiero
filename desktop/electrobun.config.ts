@@ -2,6 +2,23 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ElectrobunConfig } from 'electrobun/bun';
 
+/**
+ * Require an environment variable for production builds.
+ * Prevents signing with placeholder credentials.
+ */
+function requireSigningEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable ${name} for code signing. ` +
+      `Set ${name} in CI secrets or disable signing by unsetting ELECTROBUN_BUILD_ENV.`,
+    );
+  }
+  return value;
+}
+
+const isStableBuild = process.env['ELECTROBUN_BUILD_ENV'] === 'stable';
+
 type ExtendedElectrobunConfig = ElectrobunConfig & {
   app: ElectrobunConfig['app'] & {
     // Electrobun does not type document associations yet, but we keep the
@@ -102,20 +119,21 @@ const config: ExtendedElectrobunConfig = {
       maintainer: 'Icophone Team <desktop@icophone.app>',
     },
   },
-  signing: {
-    mac: {
-      teamId: process.env['APPLE_TEAM_ID'] ?? 'TEAMID1234',
-      certificateName:
-        process.env['APPLE_DEVELOPER_IDENTITY'] ?? 'Developer ID Application: Example, Inc. (TEAMID1234)',
-      appleId: process.env['APPLE_NOTARIZATION_APPLE_ID'] ?? 'developer@example.com',
-      appSpecificPassword: process.env['APPLE_NOTARIZATION_PASSWORD'] ?? 'app-specific-password',
-    },
-    win: {
-      certificateSubject: process.env['WINDOWS_CERT_SUBJECT'] ?? 'CN=Icophone Desktop',
-      timestampServer:
-        process.env['WINDOWS_TIMESTAMP_SERVER'] ?? 'http://timestamp.digicert.com',
-    },
-  },
+  signing: isStableBuild
+    ? {
+        mac: {
+          teamId: requireSigningEnv('APPLE_TEAM_ID'),
+          certificateName: requireSigningEnv('APPLE_DEVELOPER_IDENTITY'),
+          appleId: requireSigningEnv('APPLE_NOTARIZATION_APPLE_ID'),
+          appSpecificPassword: requireSigningEnv('APPLE_NOTARIZATION_PASSWORD'),
+        },
+        win: {
+          certificateSubject: requireSigningEnv('WINDOWS_CERT_SUBJECT'),
+          timestampServer:
+            process.env['WINDOWS_TIMESTAMP_SERVER'] ?? 'https://timestamp.digicert.com',
+        },
+      }
+    : undefined,
 };
 
 export default config;

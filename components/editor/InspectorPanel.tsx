@@ -1989,15 +1989,11 @@ function PaintField({
     const activeStop = gradientPaint.stops[activeIndex];
     const nextStop = gradientPaint.stops[activeIndex + 1];
     const prevStop = gradientPaint.stops[activeIndex - 1];
-    let nextOffset = 0.5;
-
-    if (nextStop) {
-      nextOffset = (activeStop.offset + nextStop.offset) / 2;
-    } else if (prevStop) {
-      nextOffset = clamp((prevStop.offset + activeStop.offset) / 2, 0, 1);
-    } else {
-      nextOffset = clamp(activeStop.offset + 0.1, 0, 1);
-    }
+    const nextOffset = nextStop
+      ? (activeStop.offset + nextStop.offset) / 2
+      : prevStop
+        ? clamp((prevStop.offset + activeStop.offset) / 2, 0, 1)
+        : clamp(activeStop.offset + 0.1, 0, 1);
 
     const newStop: GradientStop = {
       offset: nextOffset,

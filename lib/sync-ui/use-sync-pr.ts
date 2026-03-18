@@ -16,6 +16,8 @@ import type { Project } from '@/lib/schema/types';
 import { exportSourcePayload } from '@/lib/sync-source/export-source-payload';
 import { diffSourcePayloads } from '@/lib/sync-service/diff-source';
 import type { SyncPrResult } from '@/lib/sync-service/sync-pr';
+import type { Conflict, ConflictErrorCode, SuggestedAction } from '@/lib/sync-service/conflicts';
+import { CONFLICT_ERROR_CODES, CONFLICT_SUGGESTED_ACTIONS } from '@/lib/sync-service/conflicts';
 import { emitSyncEvent } from './analytics';
 import {
   type SyncState,
@@ -145,10 +147,15 @@ export function useSyncPr(): UseSyncPrReturn {
             const conflictBody = body as {
               conflicts?: Array<{ kind: string; message: string }>;
             };
-            const conflicts = (conflictBody.conflicts ?? []).map((c) => ({
-              kind: c.kind as 'base-sha-drift',
-              message: c.message,
-            }));
+            const conflicts = (conflictBody.conflicts ?? []).map((c) => {
+              const kind = c.kind as Conflict['kind'];
+              return {
+                kind,
+                code: CONFLICT_ERROR_CODES[kind] ?? (c.kind as ConflictErrorCode),
+                message: c.message,
+                suggestedActions: CONFLICT_SUGGESTED_ACTIONS[kind] ?? [],
+              } satisfies Conflict;
+            });
             setState((s) => transitionToConflictDetected(s, conflicts));
             emitSyncEvent('sync_conflict_detected', {
               conflictCount: conflicts.length,
@@ -179,7 +186,15 @@ export function useSyncPr(): UseSyncPrReturn {
           return;
         }
 
-        // Success
+        // Success — narrow the discriminated union
+        if (result.kind !== 'success') {
+          // error variant — surface the message
+          setState((s) =>
+            transitionToValidationFailed(s, result.message ?? 'Unexpected sync error.'),
+          );
+          return;
+        }
+
         setState((s) =>
           transitionToPrCreated(
             s,

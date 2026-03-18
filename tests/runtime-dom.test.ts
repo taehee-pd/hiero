@@ -134,13 +134,13 @@ function findMatches(root: MockElement, selector: string): MockElement[] {
 
 function matchesSelector(element: MockElement, selector: string): boolean {
   const match = selector.match(
-    /^(?<tag>[a-zA-Z]+)?(?:#(?<id>[\w-]+))?(?:\[(?<attr>[\w-]+)(?:="(?<value>[^"]*)")?\])?$/,
+    /^([a-zA-Z]+)?(?:#([\w-]+))?(?:\[([\w-]+)(?:="([^"]*)")?\])?$/,
   );
-  if (!match?.groups) {
+  if (!match) {
     return false;
   }
 
-  const { tag, id, attr, value } = match.groups;
+  const [, tag, id, attr, value] = match;
   if (tag && element.tagName !== tag.toLowerCase()) {
     return false;
   }
@@ -371,9 +371,9 @@ describe('runtime dom renderer', () => {
     );
 
     const source = container.querySelector<SVGPathElement>('path[data-layer-id="base"]');
-    const target = container
-      .querySelectorAll<SVGPathElement>('path[data-layer-id="badge"]')
-      .find((element) => element.getAttribute('data-transition-role') === 'to');
+    const target = Array.from(
+      container.querySelectorAll<SVGPathElement>('path[data-layer-id="badge"]'),
+    ).find((element) => element.getAttribute('data-transition-role') === 'to');
     expect(source?.style.opacity).toBe('0.75');
     expect(target?.style.opacity).toBe('0.25');
 

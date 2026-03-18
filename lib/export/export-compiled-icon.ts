@@ -121,6 +121,7 @@ function buildResolvedLayers(
   layers: Record<string, Layer>,
 ): Record<CompiledRenderingMode, CompiledLayer[]> {
   const ordered = Object.keys(layers)
+    .sort((a, b) => a.localeCompare(b))
     .map((layerId) => layers[layerId]!)
     .filter((layer) => layer.visible !== false && !layer.isClipMask && Boolean(layer.path?.d));
 
@@ -235,7 +236,7 @@ function buildCompiledEffects(icon: Icon): CompiledEffect[] {
 
   return Object.keys(icon.effects)
     .sort((a, b) => a.localeCompare(b))
-    .map((effectId) => toCompiledEffect(icon.effects?.[effectId]!))
+    .map((effectId) => toCompiledEffect(icon.effects![effectId]!))
     .filter((effect): effect is CompiledEffect => effect !== null);
 }
 

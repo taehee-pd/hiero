@@ -54,11 +54,15 @@ const TEST_ICON_CHANGES: IconChange[] = [
 const TEST_CONFLICTS: Conflict[] = [
   {
     kind: 'base-sha-drift',
+    code: 'STALE_BASE_REVISION',
     message: 'Branch advanced since export.',
+    suggestedActions: ['refresh-and-re-export', 'force-sync'],
   },
   {
     kind: 'icon-deleted-remotely',
+    code: 'ICON_DELETED_REMOTELY',
     message: 'play was deleted remotely.',
+    suggestedActions: ['discard-deleted-icons', 'refresh-and-re-export', 'force-sync'],
     iconDirs: ['play'],
   },
 ];

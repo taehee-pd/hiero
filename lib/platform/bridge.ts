@@ -1,3 +1,49 @@
+/**
+ * Platform bridge — unified API surface for web and desktop (Electrobun).
+ *
+ * ## Boundary contract
+ *
+ * Every exported function works in both environments:
+ * - **Web**: falls back to browser primitives (file picker, Blob download, `window.open`).
+ * - **Desktop**: delegates to the Electrobun native process via JSON-RPC over `__electrobunBunBridge`.
+ *
+ * Callers must never import Electrobun-specific APIs directly. All native
+ * access flows through `electrobunRequest()`, keeping the shared web/desktop
+ * surface boundary intact.
+ *
+ * ## RPC channels (desktop → native)
+ *
+ * | Method                  | Direction       | Purpose                                    |
+ * |-------------------------|-----------------|--------------------------------------------|
+ * | `openProject`           | web → native    | Show native open-file dialog               |
+ * | `saveProject`           | web → native    | Write project JSON to disk                 |
+ * | `saveProjectAs`         | web → native    | Write project JSON with save-as dialog     |
+ * | `exportSvg`             | web → native    | Write SVG file to disk                     |
+ * | `exportReactLibrary`    | web → native    | Write React component library to disk      |
+ * | `exportSvgPackage`      | web → native    | Write SVG package to disk                  |
+ * | `importSvgFiles`        | web → native    | Show file picker for SVG imports           |
+ * | `getRecentProjects`     | web → native    | List recently opened projects              |
+ * | `compileExportBundle`   | web → native    | Compile and export icon bundle             |
+ * | `openExternal`          | web → native    | Open URL in system browser                 |
+ * | `showContextMenu`       | web → native    | Show native right-click menu               |
+ * | `setWindowTitle`        | web → native    | Update window title bar                    |
+ * | `confirmUnsavedChanges` | web → native    | Show native save/discard/cancel dialog     |
+ * | `resolveQuitDecision`   | web → native    | Signal quit lifecycle decision to native    |
+ * | `getDesktopSettings`    | web → native    | Read desktop-specific preferences          |
+ * | `installUpdate`         | web → native    | Trigger auto-update installation           |
+ *
+ * ## Event channels (native → web)
+ *
+ * | Message ID                | Direction       | Purpose                                  |
+ * |---------------------------|-----------------|------------------------------------------|
+ * | `menuTriggered`           | native → web    | Native menu or shortcut activated         |
+ * | `projectSaved`            | native → web    | Confirm disk write completed              |
+ * | `projectOpenedFromDisk`   | native → web    | File association / drag-drop open         |
+ * | `confirmQuit`             | native → web    | Window close or app quit requested        |
+ * | `updateAvailable`         | native → web    | New version available for install         |
+ *
+ * @module
+ */
 'use client';
 
 export type ProjectOpenResult = { path: string; data: string } | null;

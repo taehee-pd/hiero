@@ -35,6 +35,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Type check
+        run: bun run type-check
+
+      - name: Lint
+        run: bun run lint
+
       - name: Run unit tests (sync-source + sync-service + compile + e2e + conflicts)
         run: bun test tests/sync-source.test.ts tests/sync-service.test.ts tests/compile-pipeline.test.ts tests/e2e-pr-sync-to-build.test.ts tests/sync-conflicts.test.ts
 

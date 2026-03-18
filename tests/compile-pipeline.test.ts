@@ -8,13 +8,13 @@ import {
   isCompiledIcon,
   isIconChangeRecord,
   isPackageManifest,
-  type Project,
 } from '../lib/compiler-contracts';
+import type { IconSet as Project } from '../lib/schema/types';
 import { compileProject, runCompileCommand } from '../lib/export/compile-pipeline';
 import e2eProjectFixture from './fixtures/e2e/compiler-project.json';
 
 function makeProject(): Project {
-  return structuredClone(e2eProjectFixture) as Project;
+  return structuredClone(e2eProjectFixture) as unknown as Project;
 }
 
 describe('compile pipeline end-to-end', () => {

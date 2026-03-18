@@ -21,7 +21,7 @@ const FIXED_GENERATED_AT = '2026-03-15T00:00:00.000Z';
 
 /** Returns a deep clone of the multi-icon project fixture. */
 export function makeProject(): Project {
-  return structuredClone(prSyncProjectFixture) as Project;
+  return structuredClone(prSyncProjectFixture) as unknown as Project;
 }
 
 /**

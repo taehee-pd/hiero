@@ -78,12 +78,12 @@ describe('hamburger close sample icon', () => {
     expect(completeCount).toBe(0);
 
     nowValue = 150;
-    frameCallback?.(150);
+    (frameCallback as FrameRequestCallback | null)?.(150);
     expect(progressValues[1]).toBe(0.5);
     expect(completeCount).toBe(0);
 
     nowValue = 300;
-    frameCallback?.(300);
+    (frameCallback as FrameRequestCallback | null)?.(300);
     expect(progressValues[2]).toBe(1);
     expect(completeCount).toBe(1);
   });

@@ -80,7 +80,7 @@ describe('export react codegen', () => {
     const code = generateIconComponent(makeIcon('star', 'star icon'));
     const source = ts.createSourceFile('StarIcon.tsx', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
-    expect(source.parseDiagnostics).toHaveLength(0);
+    expect((source as any).parseDiagnostics).toHaveLength(0);
     expect(code).toContain("forwardRef<SVGSVGElement, StarIconProps>");
   });
 

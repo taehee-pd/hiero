@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { RuntimeSvgRenderer } from '@/lib/runtime-dom';
-import { Icon, SAMPLE_RUNTIME_EXPORT, useIcon } from '@/lib/runtime-react';
+import { Icon } from '@/lib/runtime-react/icon';
+import { SAMPLE_RUNTIME_PAYLOAD } from '@/lib/runtime-react/demo-fixture';
+import { useIcon } from '@/lib/runtime-react/use-icon';
 
-const payload = SAMPLE_RUNTIME_EXPORT.variant;
+const payload = SAMPLE_RUNTIME_PAYLOAD;
 
 export function RuntimeDemo() {
   const [controlledState, setControlledState] = useState<'default' | 'active'>('default');
@@ -59,7 +61,9 @@ export function RuntimeDemo() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="studio-kicker">Controlled</p>
-                    <h2 className="mt-2 text-lg font-semibold">`<Icon />` prop flow</h2>
+                    <h2 className="mt-2 text-lg font-semibold">
+                      <code>{'<Icon />'}</code> prop flow
+                    </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
                       Parent state owns the icon state, and effects can be triggered through props.
                     </p>
@@ -114,7 +118,9 @@ export function RuntimeDemo() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="studio-kicker">Uncontrolled</p>
-                    <h2 className="mt-2 text-lg font-semibold">`useIcon()` local flow</h2>
+                    <h2 className="mt-2 text-lg font-semibold">
+                      <code>useIcon()</code> local flow
+                    </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
                       The hook owns runtime state, exposes imperative controls, and streams a
                       snapshot into the SVG renderer.

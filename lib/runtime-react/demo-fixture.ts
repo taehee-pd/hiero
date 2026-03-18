@@ -76,3 +76,5 @@ export const SAMPLE_RUNTIME_EXPORT = exportRuntimeIconVariant(
   runtimeIcon.id,
   runtimeVariant.id,
 );
+
+export const SAMPLE_RUNTIME_PAYLOAD = SAMPLE_RUNTIME_EXPORT.variant;

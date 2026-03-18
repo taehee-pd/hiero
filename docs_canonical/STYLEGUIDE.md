@@ -56,5 +56,6 @@ There is some variation across files. Because no canonical formatter config is c
 
 ## Known Conflicts / Notes
 
-- The repository advertises linting through `package.json`, but there is no repo-level ESLint, Prettier, Biome, or `.editorconfig` file committed at the root.
+- A root-level ESLint flat config (`eslint.config.mjs`) exists and currently scopes linting to repository JavaScript/config files.
+- There is still no repository-wide Prettier, Biome, or `.editorconfig` policy committed at the root.
 - Product naming is not standardized across source and docs. Do not infer a new naming standard from this file alone.

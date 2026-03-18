@@ -53,6 +53,21 @@ describe('rawSvgAdapter — paste mode', () => {
     expect(result.warnings.length).toBeGreaterThanOrEqual(2);
   });
 
+
+  test('throws parse_failed on malformed SVG input', async () => {
+    try {
+      await rawSvgAdapter.fetch({
+        mode: 'raw-svg-string',
+        svgContent: '<div>not svg</div>',
+      });
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ExternalIconImportError);
+      expect((err as ExternalIconImportError).code).toBe('parse_failed');
+      expect((err as ExternalIconImportError).severity).toBe('error');
+    }
+  });
+
   test('throws on empty SVG content', async () => {
     try {
       await rawSvgAdapter.fetch({
@@ -62,7 +77,7 @@ describe('rawSvgAdapter — paste mode', () => {
       expect.unreachable('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(ExternalIconImportError);
-      expect((err as ExternalIconImportError).code).toBe('EMPTY_SVG');
+      expect((err as ExternalIconImportError).code).toBe('invalid_source_input');
     }
   });
 });
@@ -131,7 +146,7 @@ describe('rawSvgAdapter — unsupported mode', () => {
       expect.unreachable('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(ExternalIconImportError);
-      expect((err as ExternalIconImportError).code).toBe('UNSUPPORTED_MODE');
+      expect((err as ExternalIconImportError).code).toBe('unsupported_source_format');
       expect((err as ExternalIconImportError).adapterId).toBe('raw-svg');
     }
   });

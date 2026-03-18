@@ -135,7 +135,7 @@ describe('Lucide adapter — fetch', () => {
     } catch (err) {
       expect(err).toBeInstanceOf(ExternalIconImportError);
       const e = err as ExternalIconImportError;
-      expect(e.code).toBe('ICON_NOT_FOUND');
+      expect(e.code).toBe('icon_not_found');
       expect(e.adapterId).toBe('lucide');
     }
   });
@@ -149,7 +149,7 @@ describe('Lucide adapter — fetch', () => {
       expect.unreachable('should have thrown');
     } catch (err) {
       expect(err).toBeInstanceOf(ExternalIconImportError);
-      expect((err as ExternalIconImportError).code).toBe('UNSUPPORTED_MODE');
+      expect((err as ExternalIconImportError).code).toBe('unsupported_source_format');
     }
   });
 });

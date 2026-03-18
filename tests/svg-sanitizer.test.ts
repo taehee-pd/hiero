@@ -91,7 +91,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     expect(result.svg).toContain('<path');
     expect(result.warnings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'STRIPPED_DANGEROUS_ELEMENT', context: 'script' }),
+        expect.objectContaining({ code: 'unsupported_feature_dropped', context: 'script' }),
       ]),
     );
   });
@@ -103,7 +103,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     const result = sanitizeSvg(input);
     expect(result.svg).not.toContain('foreignObject');
     expect(result.svg).not.toContain('hack');
-    expect(result.warnings.some((w) => w.code === 'STRIPPED_DANGEROUS_ELEMENT')).toBe(true);
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
   });
 
   test('strips event handler attributes', () => {
@@ -113,14 +113,14 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     expect(result.svg).not.toContain('onload');
     expect(result.svg).not.toContain('alert');
     expect(result.svg).toContain('<path');
-    expect(result.warnings.filter((w) => w.code === 'STRIPPED_EVENT_HANDLER')).toHaveLength(2);
+    expect(result.warnings.filter((w) => w.code === 'unsupported_feature_dropped')).toHaveLength(2);
   });
 
   test('strips javascript: URIs in href', () => {
     const input = wrap(`<use href="javascript:alert(1)"/>`);
     const result = sanitizeSvg(input);
     expect(result.svg).not.toContain('javascript');
-    expect(result.warnings.some((w) => w.code === 'STRIPPED_DANGEROUS_URI')).toBe(true);
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
   });
 
   test('strips data: URIs', () => {
@@ -131,7 +131,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     const input2 = wrap(`<use href="data:image/svg+xml;base64,PHN2Zz4="/>`);
     const result = sanitizeSvg(input2);
     expect(result.svg).not.toContain('data:');
-    expect(result.warnings.some((w) => w.code === 'STRIPPED_DANGEROUS_URI')).toBe(true);
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
   });
 
   test('strips inline style attributes', () => {
@@ -139,7 +139,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     const result = sanitizeSvg(input);
     expect(result.svg).not.toContain('style=');
     expect(result.svg).not.toContain('background');
-    expect(result.warnings.some((w) => w.code === 'STRIPPED_STYLE_ATTRIBUTE')).toBe(true);
+    expect(result.warnings.some((w) => w.code === 'style_dependency_removed')).toBe(true);
   });
 
   test('strips <animate> and animation elements', () => {
@@ -154,7 +154,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     const result = sanitizeSvg(input);
     expect(result.svg).not.toContain('iframe');
     expect(result.svg).not.toContain('embed');
-    expect(result.warnings.filter((w) => w.code === 'STRIPPED_DANGEROUS_ELEMENT')).toHaveLength(2);
+    expect(result.warnings.filter((w) => w.code === 'unsupported_feature_dropped')).toHaveLength(2);
   });
 
   test('strips unknown/custom attributes', () => {
@@ -162,7 +162,7 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     const result = sanitizeSvg(input);
     expect(result.svg).not.toContain('data-custom');
     expect(result.svg).not.toContain('aria-label');
-    expect(result.warnings.filter((w) => w.code === 'STRIPPED_UNKNOWN_ATTRIBUTE')).toHaveLength(2);
+    expect(result.warnings.filter((w) => w.code === 'unsupported_feature_dropped')).toHaveLength(2);
   });
 });
 
@@ -175,7 +175,7 @@ describe('sanitizeSvg — warning quality', () => {
     const input = wrap(`<script>a</script><script>b</script><path d="M0 0"/>`);
     const result = sanitizeSvg(input);
     const scriptWarnings = result.warnings.filter(
-      (w) => w.code === 'STRIPPED_DANGEROUS_ELEMENT' && w.context === 'script',
+      (w) => w.code === 'unsupported_feature_dropped' && w.context === 'script',
     );
     expect(scriptWarnings).toHaveLength(2);
   });
@@ -183,8 +183,15 @@ describe('sanitizeSvg — warning quality', () => {
   test('warnings include element context for attributes', () => {
     const input = wrap(`<rect x="0" y="0" width="10" height="10" onclick="alert(1)"/>`);
     const result = sanitizeSvg(input);
-    const w = result.warnings.find((w) => w.code === 'STRIPPED_EVENT_HANDLER');
+    const w = result.warnings.find((w) => w.code === 'unsupported_feature_dropped');
     expect(w?.context).toBe('rect[onclick]');
+  });
+
+
+  test('warnings use warning severity', () => {
+    const input = wrap(`<path d="M0 0" onclick="alert(1)"/>`);
+    const result = sanitizeSvg(input);
+    expect(result.warnings.every((w) => w.severity === 'warning')).toBe(true);
   });
 
   test('clean SVG produces zero warnings', () => {

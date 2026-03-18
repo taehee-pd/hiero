@@ -26,7 +26,7 @@ This keeps the toolbar and editor features shared across web and desktop without
 
 ## Local Dev Workflow
 
-Use [package.json](/Users/taehee/IconStudio/package.json) `desktop:dev` from the repo root for local desktop work.
+Use [package.json](../package.json) `desktop:dev` from the repo root for local desktop work.
 
 That script:
 
@@ -36,7 +36,7 @@ That script:
 
 ## Electrobun Patch Note
 
-The current repo carries a local Electrobun compatibility patch in [desktop/scripts/patch-electrobun-wrapper.cjs](/Users/taehee/IconStudio/desktop/scripts/patch-electrobun-wrapper.cjs).
+The current repo carries a local Electrobun compatibility patch in [desktop/scripts/patch-electrobun-wrapper.cjs](../desktop/scripts/patch-electrobun-wrapper.cjs).
 
 This is needed because the published `electrobun` package currently has two issues that block this project:
 

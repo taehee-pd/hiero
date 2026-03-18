@@ -33,6 +33,7 @@ const descriptor: ExternalIconSourceDescriptor = {
   capabilities: {
     // TODO: Declare which input modes your adapter supports.
     inputModes: ['library-icon-name'],
+    sourceType: 'library',
     // TODO: Set to true and implement search() if your source is browsable.
     searchable: false,
     displayName: 'My Icon Library',
@@ -50,7 +51,7 @@ export const myLibraryAdapter: ExternalIconAdapter = {
     // Guard: reject unsupported modes early.
     if (request.mode !== 'library-icon-name') {
       throw new ExternalIconImportError({
-        code: 'UNSUPPORTED_MODE',
+        code: 'unsupported_source_format',
         message: `"${ADAPTER_ID}" does not support input mode "${request.mode}"`,
         adapterId: ADAPTER_ID,
         request,
@@ -64,6 +65,7 @@ export const myLibraryAdapter: ExternalIconAdapter = {
     const suggestedName = request.name ?? request.iconId;
 
     return {
+      intermediate: { kind: 'svg-source', svgContent },
       svgContent,
       suggestedName,
       // TODO: Add tags from your library's metadata if available.

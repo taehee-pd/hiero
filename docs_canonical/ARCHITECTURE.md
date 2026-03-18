@@ -49,6 +49,7 @@ These modules support the editor UI but do not define the canonical document sha
 ### Import and Export
 
 - `lib/import/`: converts SVG input into schema-compliant icon data.
+- `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
 - `lib/export/`: produces SVG, runtime JSON, compiled icon artifacts, package manifests, change diffs, and generated React component outputs.
 - `lib/compiler-contracts/`: validates compiled/exported artifact shapes.
 

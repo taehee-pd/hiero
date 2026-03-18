@@ -1,5 +1,5 @@
 {
-  "name": "icophone",
+  "name": "icon-authoring-tool",
   "version": "0.1.0",
   "private": true,
   "description": "Icon design studio for stateful, animated SVG icons",
@@ -16,11 +16,13 @@
     "test:import": "bun test tests/adapter-sdk.test.ts tests/lucide-adapter.test.ts tests/normalized-ir.test.ts tests/raw-svg-adapter.test.ts tests/svg-normalizer.test.ts tests/svg-sanitizer.test.ts tests/svg-import.test.ts tests/svg-import-flow.test.ts tests/import-svg.test.ts",
     "type-check": "tsc --noEmit",
     "compile:icons": "bun scripts/compile-icons.ts",
+    "compile:from-source": "bun scripts/compile-from-source.ts",
     "desktop:dev": "sh scripts/start-desktop-dev.sh",
     "desktop:build": "bun run desktop/scripts/build-production.ts",
     "desktop:dist": "bun run desktop/scripts/build-production.ts --dist",
     "build:icons:package": "bun scripts/build-icons-package.ts",
     "validate:icons:package": "bun scripts/validate-icons-package.ts",
+    "validate:source-export": "bun scripts/validate-source-export.ts --source .",
     "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts"
   },
   "dependencies": {

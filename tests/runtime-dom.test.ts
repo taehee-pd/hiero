@@ -364,7 +364,7 @@ describe('runtime dom renderer', () => {
             fromLayer,
             toLayer,
             tracks: [],
-            fallback: 'crossfade',
+            fallback: 'fade-through',
           },
         ],
       },

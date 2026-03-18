@@ -65,6 +65,7 @@ Workspace support is not only planned; it is implemented in the schema and edito
 
 ## Known Conflicts / Notes
 
+- Legacy operational docs were normalized to repository-relative links to avoid machine-specific path assumptions.
 - Product naming is inconsistent across the repository. Current names found in code and docs include `Icophone`, `IconStudio`, `Icon Studio`, and `Icon Authoring Tool`.
-- The root `package.json` still uses the placeholder package name `my-project`, while the desktop package is named `icophone-desktop`.
-- Legacy docs in `docs/plans/` contain future-state design material. Use them as planning context, not as the default source of current repository truth.
+- Root package metadata now uses `icon-authoring-tool`, while the desktop package remains `icophone-desktop`; cross-package naming is still mixed.
+- Legacy docs in `docs/plans/` contain future-state design material. Use `docs/plans/STATUS.md` as the entrypoint, and treat canonical docs as repository truth.

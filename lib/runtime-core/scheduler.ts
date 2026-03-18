@@ -128,11 +128,27 @@ function buildInterpolatedValues(
 
     const layerValues = (values[layerId] ??= {});
     for (const track of binding.tracks) {
-      layerValues[track.property] = interpolateKeyframes(track.keyframes, progress);
+            const localProgress = localBindingProgress(progress, binding, layerBindings);
+      layerValues[track.property] = interpolateKeyframes(track.keyframes, localProgress);
     }
   }
 
   return values;
+}
+
+
+function localBindingProgress(
+  globalProgress: number,
+  binding: ResolvedLayerBinding,
+  allBindings: ResolvedLayerBinding[],
+): number {
+  const totalMs = Math.max(
+    ...allBindings.map((candidate) => (candidate.delayMs ?? 0) + (candidate.durationMs ?? 0)),
+    1,
+  );
+  const elapsed = clamp01(globalProgress) * totalMs;
+  const duration = Math.max(binding.durationMs ?? 0, 1);
+  return clamp01((elapsed - (binding.delayMs ?? 0)) / duration);
 }
 
 function interpolateKeyframes(keyframes: number[], progress: number): number {

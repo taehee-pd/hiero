@@ -27,6 +27,11 @@ Recommended command:
 
 - `bun test`
 
+Repository script entrypoints include:
+
+- `corepack pnpm test` (full Bun suite)
+- `corepack pnpm test:sync` (sync/export integration-focused suite)
+
 ## Test Directory Structure
 
 - `tests/`: primary test suites
@@ -72,5 +77,5 @@ Testing should be paired with build checks where relevant:
 
 ## Known Conflicts / Notes
 
-- The root `package.json` does not currently define a `test` script even though the repository clearly contains an active Bun test suite.
+- The root `package.json` now defines `test` as `bun test`, so repository-level test entrypoints are explicit.
 - Legacy planning docs state that test runner formalization is still pending; that remains true from an operational-policy standpoint even though the practical runner is identifiable from the codebase.

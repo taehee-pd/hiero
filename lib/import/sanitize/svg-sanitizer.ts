@@ -79,7 +79,8 @@ function walkAndSanitize(element: Element, warnings: ExternalIconWarning[]): voi
     // Strip dangerous elements entirely (including children)
     if (DANGEROUS_ELEMENTS.has(tagName)) {
       warnings.push({
-        code: 'STRIPPED_DANGEROUS_ELEMENT',
+        code: 'unsupported_feature_dropped',
+        severity: 'warning',
         message: `Stripped dangerous <${tagName}> element`,
         context: tagName,
       });
@@ -90,7 +91,8 @@ function walkAndSanitize(element: Element, warnings: ExternalIconWarning[]): voi
     // Strip unknown elements entirely (including children)
     if (!ALLOWED_ELEMENTS.has(tagName)) {
       warnings.push({
-        code: 'STRIPPED_UNKNOWN_ELEMENT',
+        code: 'unsupported_feature_dropped',
+        severity: 'warning',
         message: `Stripped unknown <${tagName}> element`,
         context: tagName,
       });
@@ -131,7 +133,8 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
     // Event handlers (onclick, onload, onerror, etc.)
     if (isEventHandler(attrLower)) {
       warnings.push({
-        code: 'STRIPPED_EVENT_HANDLER',
+        code: 'unsupported_feature_dropped',
+        severity: 'warning',
         message: `Stripped event handler "${attrName}" from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });
@@ -142,7 +145,8 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
     // Style attribute — strip entirely, do not execute embedded CSS
     if (isStyleAttribute(attrLower)) {
       warnings.push({
-        code: 'STRIPPED_STYLE_ATTRIBUTE',
+        code: 'style_dependency_removed',
+        severity: 'warning',
         message: `Stripped inline style from <${tagName}>`,
         context: `${tagName}[style]`,
       });
@@ -154,7 +158,8 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
     const value = element.getAttribute(attrName) ?? '';
     if (hasDangerousUri(value)) {
       warnings.push({
-        code: 'STRIPPED_DANGEROUS_URI',
+        code: 'unsupported_feature_dropped',
+        severity: 'warning',
         message: `Stripped attribute "${attrName}" with dangerous URI scheme from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });
@@ -165,7 +170,8 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
     // Not on the allowlist
     if (!ALLOWED_ATTRIBUTES.has(attrLower)) {
       warnings.push({
-        code: 'STRIPPED_UNKNOWN_ATTRIBUTE',
+        code: 'unsupported_feature_dropped',
+        severity: 'warning',
         message: `Stripped unknown attribute "${attrName}" from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });

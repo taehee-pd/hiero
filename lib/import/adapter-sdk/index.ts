@@ -6,6 +6,7 @@ export type {
   ExternalIconAdapterCapabilities,
   ExternalIconImportRequest,
   ExternalIconImportResult,
+  ExternalIconIntermediateRepresentation,
   ExternalIconInputMode,
   ExternalIconProvenance,
   ExternalIconSearchResult,

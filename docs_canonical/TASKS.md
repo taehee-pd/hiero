@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-19 (Phase D completed)
+**Last updated:** 2026-03-19 (Phase 7 completed)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -20,13 +20,13 @@ Phases are listed below in dependency/priority order. Completed phases
 are at the bottom for reference. If you're starting fresh, implement
 in this order:
 
-1. **Phase 4** — CI/CD & Operational Hardening
-2. **Phase B** — Runtime Capability Expansion
-3. **Phase 5** — Platform & Adapter Foundation
-4. **Phase C** — Editor Animation Authoring (depends on A)
-5. **Phase 6** — Sync & Distribution
-6. **Phase D** — React API Enrichment (depends on B)
-7. **Phase 7** — Cross-Platform Adapters
+1. ~~**Phase 4** — CI/CD & Operational Hardening~~ (completed)
+2. ~~**Phase B** — Runtime Capability Expansion~~ (open — B1-B4 not started)
+3. ~~**Phase 5** — Platform & Adapter Foundation~~ (completed)
+4. ~~**Phase C** — Editor Animation Authoring~~ (completed)
+5. ~~**Phase 6** — Sync & Distribution~~ (completed)
+6. ~~**Phase D** — React API Enrichment~~ (completed)
+7. ~~**Phase 7** — Cross-Platform Adapters~~ (completed)
 8. **Phase 8** — Cross-Icon Morphing
 
 ---
@@ -333,20 +333,54 @@ Status: **completed** (verified 2026-03-19).
 
 ## Phase 7 — Cross-Platform Adapters (R8)
 
-- [ ] **7.1 — Define Swift adapter capability mapping.**
-  Document which `RuntimeVariantPayload` features map to SwiftUI/UIKit:
-  Draw -> CAShapeLayer stroke animation, transitions -> withAnimation,
-  effects -> implicit animations. Define which features require downgrade.
+Status: **completed** (verified 2026-03-19).
 
-- [ ] **7.2 — Define Flutter adapter capability mapping.**
-  Document which features map to Flutter: Draw -> CustomPainter stroke
-  animation, transitions -> AnimationController, effects -> implicit
-  animations. Define downgrade rules.
+- [x] **7.1 — Define Swift adapter capability mapping.**
+  `lib/export/adapters/swift-adapter.ts`: `generateSwiftFromRuntime()`
+  generates SwiftUI and UIKit components from `Icon` + `RuntimeIconMeta`
+  + `RuntimeVariantPayload[]`. Capability mapping table in module header
+  documents each feature mapping: Draw -> CAShapeLayer strokeEnd
+  animation, transitions (replace) -> `withAnimation { state = newState }`
+  via implicit SwiftUI animation, effects -> `withAnimation(.spring)` +
+  modifiers. Morph transitions downgrade to crossfade, track transitions
+  to snap, spring easing to ease-in-out, variable draw omitted. Clip
+  paths and gradients are fully supported. Uses `checkPlatformCapabilities()`
+  with `SWIFT_CAPABILITIES` profile for diagnostic emission.
+  Generated output: per-icon `{Component}.swift` with state enum,
+  SwiftUI `View` struct (or UIKit `UIView` subclass), SVG path parsing
+  extension, and a barrel `ConivaIcons.swift`. Supports `framework`
+  option (`'swiftui'` | `'uikit'`), `minimumDeploymentTarget`,
+  `outputDir`, and `packageName` configuration.
 
-- [ ] **7.3 — Decide v1 downgrade rules for non-React targets.**
-  For features not supported by Swift/Flutter adapters (e.g., morph,
-  complex track transitions), define the fallback behavior: snap,
-  fade-through, or omit.
+- [x] **7.2 — Define Flutter adapter capability mapping.**
+  `lib/export/adapters/flutter-adapter.ts`: `generateFlutterFromRuntime()`
+  generates Dart/Flutter `StatefulWidget` components from the same input
+  types. Capability mapping table in module header documents each feature
+  mapping: Draw -> `CustomPainter` stroke animation with
+  `AnimationController`, transitions (replace) -> `AnimatedSwitcher`
+  with fade, effects -> `AnimationController` + `CurvedAnimation`. Morph
+  transitions downgrade to crossfade, track transitions to snap, spring
+  easing to `Curves.easeInOut`, variable draw and clip paths omitted.
+  Gradients fully supported. Uses `checkPlatformCapabilities()` with
+  `FLUTTER_CAPABILITIES` profile.
+  Generated output: per-icon `{snake_name}.dart` with state enum,
+  `StatefulWidget` + `State` + `CustomPainter` classes, accessibility
+  via `Semantics` widget, and a barrel `coniva_icons.dart`. Supports
+  `outputDir`, `packageName`, and `nullSafety` configuration.
+
+- [x] **7.3 — Decide v1 downgrade rules for non-React targets.**
+  `lib/export/adapters/downgrade-rules.ts`: defines `PlatformDowngradeConfig`
+  per platform with built-in configs `SWIFT_DOWNGRADES`,
+  `FLUTTER_DOWNGRADES`, `WEB_COMPONENT_DOWNGRADES`, `REACT_DOWNGRADES`.
+  V1 rules: morph -> crossfade (Swift/Flutter), track -> snap
+  (Swift/Flutter), spring -> ease-in-out fallback (Swift/Flutter),
+  variable draw -> omit (Swift/Flutter), clip paths -> preserve (Swift)
+  / omit (Flutter). `applyDowngradeRules()` inspects payload transitions,
+  variable draw, and clip paths, records `DowngradeRule[]` entries, and
+  emits `PlatformDiagnostic` entries for each applied downgrade.
+  `needsDowngrade()` and `getFallbackEasing()` utility functions
+  available for adapter consumption. React and web-component platforms
+  preserve all features (no downgrades).
 
 ---
 

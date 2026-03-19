@@ -36,6 +36,10 @@ Root script entrypoints mirror these operations as `compile:from-source` and `va
 
 This pipeline accepts either a legacy project/workspace file or canonical source-export files and emits deterministic compiled artifacts.
 
+Cross-platform adapter generation:
+
+Adapters in `lib/export/adapters/` generate platform-native components from runtime payloads. They are invoked by sync connectors (`lib/sync-service/connectors/`) during local-directory or Git PR sync. Supported platforms: React (`react-adapter.ts`), Swift/SwiftUI/UIKit (`swift-adapter.ts`), Flutter/Dart (`flutter-adapter.ts`). Downgrade rules (`downgrade-rules.ts`) handle features unsupported on each platform (e.g., morph -> crossfade on Swift/Flutter).
+
 ## Deployment and Release
 
 Desktop release flow exists in-repo:

@@ -2,7 +2,7 @@
 
 ## Status
 
-This repository does not currently contain a fully formalized code style policy or formatter configuration. The guidance below is derived from the existing codebase and should be treated as the safest observed conventions.
+This repository uses Prettier as its formatter, configured via `.prettierrc.json` and `.prettierignore` at the root. The `format` and `format:check` scripts enforce formatting in CI (Phase 4B.1). ESLint (`eslint.config.mjs`) enforces `@typescript-eslint/no-explicit-any` as error (4B.2) and `react-hooks/exhaustive-deps` as error (4B.3).
 
 When in doubt, match the surrounding file rather than imposing a new house style.
 
@@ -40,13 +40,7 @@ Observed naming patterns:
 
 ## Formatting Guidance
 
-Observed formatting is mostly consistent with:
-
-- semicolon-terminated TypeScript in most modules
-- single quotes in many source files
-- multiline JSX props when readability benefits
-
-There is some variation across files. Because no canonical formatter config is committed, preserve local consistency in edited files.
+The repository uses Prettier with the configuration in `.prettierrc.json`. Run `corepack pnpm format` to format, or `corepack pnpm format:check` to verify. The Prettier rollout is scoped primarily to CI/tooling and new runtime files; some legacy files may not yet be fully formatted.
 
 ## Import and Export Preferences
 
@@ -56,6 +50,6 @@ There is some variation across files. Because no canonical formatter config is c
 
 ## Known Conflicts / Notes
 
-- A root-level ESLint flat config (`eslint.config.mjs`) exists and currently scopes linting to repository JavaScript/config files.
-- There is still no repository-wide Prettier, Biome, or `.editorconfig` policy committed at the root.
-- Product naming is not standardized across source and docs. Do not infer a new naming standard from this file alone.
+- A root-level ESLint flat config (`eslint.config.mjs`) exists with `no-explicit-any` and `exhaustive-deps` errors enabled.
+- Prettier is committed at the root (`.prettierrc.json`, `.prettierignore`) and enforced in CI via `format:check`.
+- Product naming uses `Coniva` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).

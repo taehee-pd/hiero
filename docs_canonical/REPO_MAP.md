@@ -37,7 +37,8 @@ The same product codebase also supports a desktop shell through Electrobun. In a
 - `lib/editor-renderer-svg/`: SVG rendering for the editor surface and transition preview application.
 - `lib/editor-overlay-canvas/`: overlay rendering for guides, selections, and editor-only affordances.
 - `lib/import/`: SVG import and normalization.
-- `lib/export/`: SVG export, runtime JSON export, compiled package generation, React generation, and diffing.
+- `lib/export/`: SVG export, runtime JSON export, compiled package generation, and diffing.
+- `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter), downgrade rules, storybook generation, and manifest cleanup.
 - `lib/compiler-contracts/`: compiled artifact types and validators.
 - `lib/runtime-core/`, `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
 - `lib/platform/`: desktop bridge and route helpers shared with the web app.
@@ -51,8 +52,9 @@ High-level flow:
 3. `editor-core`, renderers, and components provide authoring behavior and visualization.
 4. `import` converts external SVG into the internal schema.
 5. `export` and `compiler-contracts` generate downstream artifacts.
-6. `runtime-*` packages consume exported or compiled icon data for rendering/animation.
-7. `desktop/` wraps the shared app and exposes native capabilities through the platform bridge.
+6. `export/adapters` transform runtime payloads into platform-native components (React, Swift, Flutter) with downgrade rules for unsupported features.
+7. `runtime-*` packages consume exported or compiled icon data for rendering/animation.
+8. `desktop/` wraps the shared app and exposes native capabilities through the platform bridge.
 
 ## Current Data Model Surface
 

@@ -43,10 +43,18 @@ Representative areas covered:
 
 - `tests/runtime-core.test.ts`
 - `tests/runtime-dom.test.ts`
+- `tests/runtime-react.test.tsx`
 - `tests/export-runtime-json.test.ts`
 - `tests/compile-pipeline.test.ts`
 - `tests/workspace-store.test.ts`
 - `tests/svg-import.test.ts`
+- `tests/platform-types.test.ts`
+- `tests/react-adapter.test.ts`
+- `tests/manifest-cleanup.test.ts`
+- `tests/storybook-generator.test.ts`
+- `tests/phase-c-editor-animation.test.ts`
+- `tests/phase-d-react-api.test.tsx`
+- `tests/phase6-sync-distribution.test.ts`
 
 ## Testing Conventions
 
@@ -59,7 +67,7 @@ Observed conventions in the current codebase:
 
 ## Coverage Expectations
 
-No formal coverage threshold or coverage tooling configuration is committed in the repository.
+Phase A runtime/export surfaces have a scoped LCOV threshold gate via `scripts/check-coverage.ts` (line coverage >= 60%) enforced in CI. The coverage scope includes `lib/export/export-runtime-json.ts`, `lib/runtime-core/`, `lib/runtime-dom/`, and `lib/runtime-react/`.
 
 Safe working expectation for contributors and agents:
 
@@ -74,6 +82,17 @@ Testing should be paired with build checks where relevant:
 - use `bun test` for logic and output verification
 - use `corepack pnpm build` for Next.js build validation
 - use `corepack pnpm desktop:build` or `desktop:dist` when changing desktop build or release behavior
+
+## Export Adapter Test Expectations
+
+Cross-platform export adapters (`lib/export/adapters/`) should have tests covering:
+
+- Adapter output structure (file paths, barrel exports, component shape)
+- Downgrade rule application (morph -> crossfade, spring -> ease-in-out, etc.)
+- Platform diagnostic emission via `checkPlatformCapabilities()`
+- Stale-file manifest computation (`manifest-cleanup.ts`)
+
+Existing tests: `tests/react-adapter.test.ts`, `tests/manifest-cleanup.test.ts`, `tests/storybook-generator.test.ts`, `tests/platform-types.test.ts`. Swift and Flutter adapter tests are not yet formalized as standalone test files.
 
 ## Known Conflicts / Notes
 

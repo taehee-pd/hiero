@@ -50,7 +50,8 @@ These modules support the editor UI but do not define the canonical document sha
 
 - `lib/import/`: converts SVG input into schema-compliant icon data.
 - `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
-- `lib/export/`: produces SVG, runtime JSON, compiled icon artifacts, package manifests, change diffs, and generated React component outputs.
+- `lib/export/`: produces SVG, runtime JSON, compiled icon artifacts, package manifests, change diffs, and generated component outputs.
+- `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter) and downgrade rules for cross-platform export.
 - `lib/compiler-contracts/`: validates compiled/exported artifact shapes.
 
 The export layer is already active and is not only a roadmap concern.
@@ -86,13 +87,28 @@ The sync service (`lib/sync-service/`) is a layered module:
 
 **Conflict model:** Optimistic concurrency using `baseSha` tracking. Before any mutations, the pipeline checks for base-SHA drift, remote icon changes, remote icon deletions, manifest conflicts, branch name collisions, and auth expiry. Each conflict carries a machine-readable error code and a list of suggested recovery actions.
 
+### Export Adapters
+
+`lib/export/adapters/` contains platform-specific code generators that transform runtime icon payloads into native components:
+
+| File | Platform | Output |
+|------|----------|--------|
+| `react-adapter.ts` | React/TypeScript | `ConivaIcon`-wrapping `.tsx` components with typed props |
+| `swift-adapter.ts` | Swift (SwiftUI/UIKit) | `.swift` views with state enums, SVG path parsing |
+| `flutter-adapter.ts` | Flutter/Dart | `StatefulWidget` classes with `CustomPainter`, `AnimatedSwitcher` |
+| `downgrade-rules.ts` | All non-React | Platform-specific feature downgrade configs and rule application |
+| `storybook-generator.ts` | React (Storybook) | `.stories.tsx` files with argTypes |
+| `manifest-cleanup.ts` | All | Deterministic stale-file detection and manifest management |
+
+Adapters are pure transforms (`Icon + RuntimeVariantPayload[] -> GeneratedFile[]`). They do not perform I/O; sync connectors in `lib/sync-service/connectors/` handle file writing. Each adapter checks platform capabilities via `checkPlatformCapabilities()` and applies downgrade rules for unsupported features (e.g., morph -> crossfade on Swift/Flutter, spring easing -> ease-in-out). The architecture boundary between adapters and connectors is documented in `docs/adapter-sync-boundary.md`.
+
 ### Runtime Consumption
 
 The repository contains multiple runtime-focused layers:
 
-- `lib/runtime-core/`: transition resolution, easing, scheduling, and state-machine behavior
+- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, and state-machine behavior
 - `lib/runtime-dom/`: DOM renderer/driver for runtime icons
-- `lib/runtime-react/`: React wrapper components and hooks
+- `lib/runtime-react/`: React wrapper components (`ConivaIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
 - `lib/runtime-sdk/`: compiled icon rendering primitives and renderer logic
 
 These layers consume icon data after authoring/export rather than participating in editor state directly.

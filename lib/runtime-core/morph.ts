@@ -1,7 +1,18 @@
 import { parseSvgPath } from '../editor-core/parse';
 import type { PathPoint } from '../editor-core/path-model';
+import { arcToCubicSegments } from './arc-to-cubic';
+import {
+  crossIconMorph,
+  findOptimalShapeIndex,
+  rotateSubPathSegments,
+  interpolateHandleRotational,
+} from './cross-icon-morph';
 
 export type MorphInterpolator = (t: number) => string;
+
+// Re-export cross-icon morph for external consumers
+export { crossIconMorph } from './cross-icon-morph';
+export { arcToCubicSegments } from './arc-to-cubic';
 
 type CanonicalCommand = {
   command: string;
@@ -223,7 +234,35 @@ function normalizeToCubicPath(d: string): CubicPath | null {
 
     const segments: CubicSegment[] = [];
     for (let index = 1; index < subPath.points.length; index += 1) {
-      const segment = toCubicSegment(subPath.points[index - 1]!, subPath.points[index]!);
+      const prev = subPath.points[index - 1]!;
+      const next = subPath.points[index]!;
+
+      // 8.1a: Handle arc segments by converting to multiple cubic segments
+      if (next.segment?.type === 'arc') {
+        const arc = next.segment;
+        const arcSegments = arcToCubicSegments(
+          prev.position,
+          arc.rx ?? 0,
+          arc.ry ?? 0,
+          arc.xAxisRotation ?? 0,
+          arc.largeArc ? 1 : 0,
+          arc.sweep ? 1 : 0,
+          next.position,
+        );
+        if (arcSegments.length === 0) {
+          // Degenerate arc — treat as line
+          segments.push({
+            c1: clonePoint(prev.position),
+            c2: clonePoint(next.position),
+            end: clonePoint(next.position),
+          });
+        } else {
+          segments.push(...arcSegments);
+        }
+        continue;
+      }
+
+      const segment = toCubicSegment(prev, next);
       if (!segment) {
         return null;
       }
@@ -242,7 +281,27 @@ function normalizeToCubicPath(d: string): CubicPath | null {
 
 function toCubicSegment(prev: PathPoint, next: PathPoint): CubicSegment | null {
   if (next.segment?.type === 'arc') {
-    return null;
+    // 8.1a: Convert arc to cubic bezier segments
+    const arc = next.segment;
+    const segments = arcToCubicSegments(
+      prev.position,
+      arc.rx ?? 0,
+      arc.ry ?? 0,
+      arc.xAxisRotation ?? 0,
+      arc.largeArc ? 1 : 0,
+      arc.sweep ? 1 : 0,
+      next.position,
+    );
+    // Return the last segment (for single-segment approximation in this context);
+    // the full multi-segment conversion is handled in normalizeToCubicPath.
+    if (segments.length === 0) {
+      return {
+        c1: clonePoint(prev.position),
+        c2: clonePoint(next.position),
+        end: clonePoint(next.position),
+      };
+    }
+    return segments[segments.length - 1]!;
   }
 
   if (next.segment?.type === 'quadratic') {
@@ -302,6 +361,16 @@ function alignCubicPaths(from: CubicPath, to: CubicPath): [CubicPath, CubicPath]
     const segmentCount = Math.max(leftSubPath.segments.length, rightSubPath.segments.length);
     padSubPathSegments(leftSubPath, segmentCount);
     padSubPathSegments(rightSubPath, segmentCount);
+
+    // 8.1c: Shape index optimization — find optimal rotation offset
+    // that minimizes total point displacement for closed paths
+    if (leftSubPath.closed && rightSubPath.closed && segmentCount > 1) {
+      const offset = findOptimalShapeIndex(leftSubPath, rightSubPath);
+      if (offset > 0) {
+        const rotated = rotateSubPathSegments(rightSubPath, offset);
+        right[index] = rotated;
+      }
+    }
   }
 
   return [left, right];

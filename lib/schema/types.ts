@@ -223,7 +223,10 @@ export type TimelineTrack =
   | { property: 'scale'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'pathLength'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'fill'; keyframes: string[]; easing?: string | SpringConfig }
-  | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig };
+  | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig }
+  | { property: 'strokeWidth'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'fillOpacity'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig };
 
 export type SpringConfig = {
   type: 'spring';

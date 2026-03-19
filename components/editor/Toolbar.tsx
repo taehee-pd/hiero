@@ -9,6 +9,7 @@ import {
   Save,
   Download,
   FilePlus2,
+  HelpCircle,
   ZoomIn,
   ZoomOut,
   Maximize2,
@@ -16,8 +17,6 @@ import {
   Plus,
   ChevronDown,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
@@ -40,6 +41,7 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   clearCurrentProjectPath,
   exportSvg,
@@ -51,6 +53,7 @@ import {
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
+import { buildEditorRoute } from '@/lib/platform/routes';
 import {
   Select,
   SelectContent,
@@ -66,21 +69,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { buildEditorRoute } from '@/lib/platform/routes';
 
 export function Toolbar() {
+  const router = useRouter();
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
-  const isDirty = useEditorStore((s) => s.isDirty);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
+  const isDirty = useEditorStore((s) => s.isDirty);
   const currentIconName = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
   );
-  const router = useRouter();
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
@@ -94,6 +99,14 @@ export function Toolbar() {
     }
     runNewProject();
   }, [isDirty, runNewProject]);
+
+  const handleCreateBlankIcon = useCallback(() => {
+    if (!activeIconSetId) return;
+    const iconId = editorStore.getState().createBlankIcon();
+    if (!iconId) return;
+    editorStore.getState().openIconTab(activeIconSetId, iconId);
+    router.push(buildEditorRoute(iconId, activeIconSetId));
+  }, [activeIconSetId, router]);
 
   const handleOpenProject = useCallback(async () => {
     const result = await openProject();
@@ -114,9 +127,6 @@ export function Toolbar() {
       window.alert('Failed to parse JSON file.');
     }
   }, []);
-
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
 
   const serializeWorkspace = useCallback(() => {
     const { workspace } = editorStore.getState();
@@ -223,13 +233,6 @@ export function Toolbar() {
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
-  const handleNewIcon = useCallback(() => {
-    if (!activeIconSetId) return;
-    const iconId = editorStore.getState().createBlankIcon();
-    if (!iconId) return;
-    router.push(buildEditorRoute(iconId, activeIconSetId));
-  }, [activeIconSetId, router]);
-
   const handleRenderingModeChange = useCallback(
     (value: string) => {
       if (!currentIconId || !currentVariantId) return;
@@ -259,7 +262,7 @@ export function Toolbar() {
           </div>
 
           <ToolbarGroup>
-            <ToolbarButton icon={Plus} label="New Icon" onClick={handleNewIcon} />
+            <ToolbarButton icon={Plus} label="New Icon" onClick={handleCreateBlankIcon} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -289,7 +292,10 @@ export function Toolbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <ToolbarButton icon={Save} label="Save" onClick={handleSave} shortcut="Cmd/Ctrl+S" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -304,7 +310,7 @@ export function Toolbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={handleExportSvg}>
+                <DropdownMenuItem onSelect={() => void handleExportSvg()}>
                   <Download className="size-4" />
                   Export SVG
                 </DropdownMenuItem>
@@ -326,8 +332,14 @@ export function Toolbar() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact />
-            <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact />
+            <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact shortcut="Cmd/Ctrl+Z" />
+            <ToolbarButton
+              icon={Redo2}
+              label="Redo"
+              onClick={redo}
+              compact
+              shortcut="Shift+Cmd/Ctrl+Z"
+            />
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -360,13 +372,22 @@ export function Toolbar() {
             >
               {Math.round(zoom * 100)}%
             </Badge>
-            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact />
-            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact />
-            <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact />
+            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact shortcut="-" />
+            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact shortcut="+" />
+            <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact shortcut="0" />
+            <ToolbarButton
+              icon={HelpCircle}
+              label="Shortcuts"
+              onClick={() => setShortcutsOpen(true)}
+              compact
+              shortcut="?"
+            />
           </ToolbarGroup>
         </div>
       </header>
+
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
       <AlertDialog open={confirmNewProjectOpen} onOpenChange={setConfirmNewProjectOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -389,6 +410,27 @@ export function Toolbar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Keyboard shortcuts</DialogTitle>
+            <DialogDescription>Core editor shortcuts and quick-access tools.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <ShortcutRow label="Select tool" shortcut="V" />
+            <ShortcutRow label="Direct select tool" shortcut="A" />
+            <ShortcutRow label="Pen tool" shortcut="P" />
+            <ShortcutRow label="Shape tool" shortcut="U" />
+            <ShortcutRow label="Undo" shortcut="Cmd/Ctrl+Z" />
+            <ShortcutRow label="Redo" shortcut="Shift+Cmd/Ctrl+Z" />
+            <ShortcutRow label="Toggle guides" shortcut="Cmd/Ctrl+;" />
+            <ShortcutRow label="Toggle snap" shortcut="Shift+Cmd/Ctrl+;" />
+            <ShortcutRow label="Delete selected layer or guides" shortcut="Delete" />
+            <ShortcutRow label="Escape selection / direct-select mode" shortcut="Esc" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -409,11 +451,15 @@ function ToolbarButton({
   label,
   onClick,
   compact,
+  shortcut,
+  disabled,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void | Promise<void>;
   compact?: boolean;
+  shortcut?: string;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
@@ -425,6 +471,7 @@ function ToolbarButton({
             void onClick();
           }}
           aria-label={label}
+          disabled={disabled}
           className={
             compact
               ? 'workspace-tool-button h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80'
@@ -435,7 +482,18 @@ function ToolbarButton({
           {!compact ? <span>{label}</span> : null}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">{shortcut ? `${label} (${shortcut})` : label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function ShortcutRow({ label, shortcut }: { label: string; shortcut: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/60 px-3 py-2">
+      <span>{label}</span>
+      <span className="rounded-md border border-border/70 bg-muted/40 px-2 py-1 font-mono text-xs">
+        {shortcut}
+      </span>
+    </div>
   );
 }

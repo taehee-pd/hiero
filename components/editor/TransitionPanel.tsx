@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, RotateCcw, Trash2, WandSparkles } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
@@ -59,6 +60,7 @@ export function TransitionPanel() {
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
   const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
+  const [deleteTransitionId, setDeleteTransitionId] = useState<string | null>(null);
   const schedulerRef = useRef<TransitionScheduler | null>(null);
 
   const stateIds = useMemo(
@@ -488,7 +490,7 @@ export function TransitionPanel() {
                       size="icon-sm"
                       variant="ghost"
                       className="rounded-xl text-muted-foreground hover:text-foreground"
-                      onClick={() => handleRemoveTransition(transition.id)}
+                      onClick={() => setDeleteTransitionId(transition.id)}
                       aria-label={`Remove ${transition.id}`}
                     >
                       <Trash2 className="size-4" />
@@ -641,6 +643,31 @@ export function TransitionPanel() {
           })}
         </div>
       )}
+      <AlertDialog open={deleteTransitionId !== null} onOpenChange={(open) => !open && setDeleteTransitionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete transition</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTransitionId
+                ? `Delete the ${deleteTransitionId} transition? Any timing, easing, and layer bindings configured for it will be removed.`
+                : 'Delete this transition?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTransitionId) {
+                  handleRemoveTransition(deleteTransitionId);
+                  setDeleteTransitionId(null);
+                }
+              }}
+            >
+              Delete transition
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

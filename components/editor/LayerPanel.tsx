@@ -43,7 +43,10 @@ export function LayerPanel() {
         <div className="flex flex-col gap-2 p-2.5">
           {rows.length === 0 ? (
             <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
-              No layers
+              <p className="font-medium text-foreground">No layers</p>
+              <p className="mt-1 text-muted-foreground">
+                Use the Pen tool (P) or Shape tool (U) to draw, or drag an SVG file onto the canvas.
+              </p>
             </div>
           ) : null}
           {rows.map(({ layer, depth, maskLayerId, clippedLayerIds }) => {

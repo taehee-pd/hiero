@@ -1,4 +1,4 @@
-import type { InterpolatedValues } from './scheduler';
+import type { AnimatedValue, InterpolatedValues, LayerInterpolatedValues } from './scheduler';
 
 /**
  * Compose transition interpolated values with effect deltas.
@@ -7,7 +7,7 @@ import type { InterpolatedValues } from './scheduler';
  * - translateX, translateY, rotate: additive (effect adds to transition)
  * - scale: multiplicative (identity = 1)
  * - opacity: multiplicative (identity = 1)
- * - pathLength, strokeWidth, fillOpacity, strokeOpacity: effect overrides
+ * - pathLength, strokeWidth, fillOpacity, strokeOpacity, fill, stroke: effect overrides
  */
 export function composeValues(
   transitionValues: InterpolatedValues,
@@ -26,30 +26,41 @@ export function composeValues(
 
   for (const layerId of allLayerIds) {
     const base = transitionValues[layerId];
-    const composed: Record<string, number> = base ? { ...base } : {};
+    const composed: LayerInterpolatedValues = base ? { ...base } : {};
 
     for (const effectValues of effectValueSets) {
       const effect = effectValues[layerId];
       if (!effect) continue;
 
       for (const [prop, value] of Object.entries(effect)) {
+        // String values (e.g. fill/stroke colors) always override
+        if (typeof value === 'string') {
+          composed[prop] = value;
+          continue;
+        }
+
+        const numValue = value as number;
         switch (prop) {
           // Additive properties
           case 'translateX':
           case 'translateY':
-          case 'rotate':
-            composed[prop] = (composed[prop] ?? 0) + value;
+          case 'rotate': {
+            const existing = composed[prop];
+            composed[prop] = (typeof existing === 'number' ? existing : 0) + numValue;
             break;
+          }
 
           // Multiplicative properties (identity = 1)
           case 'scale':
-          case 'opacity':
-            composed[prop] = (composed[prop] ?? 1) * value;
+          case 'opacity': {
+            const existing = composed[prop];
+            composed[prop] = (typeof existing === 'number' ? existing : 1) * numValue;
             break;
+          }
 
           // Override properties — effect replaces transition
           default:
-            composed[prop] = value;
+            composed[prop] = numValue;
             break;
         }
       }

@@ -9,6 +9,11 @@
  * 2. Split the arc into segments of at most pi/4 (45 degrees)
  * 3. Approximate each segment with a cubic bezier curve
  *
+ * NOTE: SVG shorthand commands S (smooth cubic) and T (smooth quadratic)
+ * are not handled by this module directly. They should be resolved to
+ * explicit C/Q commands by the caller before arc conversion, by inferring
+ * the reflected control point from the previous segment.
+ *
  * @module
  */
 
@@ -81,7 +86,14 @@ export function arcToCubicSegments(
   // Step 2: Compute (cx', cy') — center on unit circle
   const numerator = Math.max(0, rxSq * rySq - rxSq * y1pSq - rySq * x1pSq);
   const denominator = rxSq * y1pSq + rySq * x1pSq;
-  const sq = denominator === 0 ? 0 : Math.sqrt(numerator / denominator);
+
+  // Degenerate: when denominator is zero the center is undefined;
+  // fall back to a straight line segment from start to end.
+  if (denominator === 0) {
+    return [{ c1: { ...start }, c2: { ...end }, end: { ...end } }];
+  }
+
+  const sq = Math.sqrt(numerator / denominator);
   const sign = largeArcFlag === sweepFlag ? -1 : 1;
 
   const cxp = sign * sq * ((rx * y1p) / ry);
@@ -106,6 +118,12 @@ export function arcToCubicSegments(
     dtheta -= 2 * Math.PI;
   } else if (sweepFlag === 1 && dtheta < 0) {
     dtheta += 2 * Math.PI;
+  }
+
+  // Numerical stability: near-zero dtheta means the arc is essentially
+  // a point or a straight line — return a single line-like segment.
+  if (Math.abs(dtheta) < 1e-6) {
+    return [{ c1: { ...start }, c2: { ...end }, end: { ...end } }];
   }
 
   // Step 5: Split into segments of at most pi/4 and approximate each

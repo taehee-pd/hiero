@@ -55,6 +55,10 @@ Representative areas covered:
 - `tests/phase-c-editor-animation.test.ts`
 - `tests/phase-d-react-api.test.tsx`
 - `tests/phase6-sync-distribution.test.ts`
+- `tests/phase-7-cross-platform.test.ts`
+- `tests/phase-8-morph.test.ts`
+- `tests/phase-78-coverage-boost.test.ts`
+- `tests/morph.test.ts`
 
 ## Testing Conventions
 
@@ -92,7 +96,20 @@ Cross-platform export adapters (`lib/export/adapters/`) should have tests coveri
 - Platform diagnostic emission via `checkPlatformCapabilities()`
 - Stale-file manifest computation (`manifest-cleanup.ts`)
 
-Existing tests: `tests/react-adapter.test.ts`, `tests/manifest-cleanup.test.ts`, `tests/storybook-generator.test.ts`, `tests/platform-types.test.ts`. Swift and Flutter adapter tests are not yet formalized as standalone test files.
+Existing tests: `tests/react-adapter.test.ts`, `tests/manifest-cleanup.test.ts`, `tests/storybook-generator.test.ts`, `tests/platform-types.test.ts`, `tests/phase-7-cross-platform.test.ts`. Swift and Flutter adapter tests are covered in the Phase 7 test file.
+
+## Cross-Icon Morphing Test Expectations
+
+Phase 8 morphing tests (`tests/phase-8-morph.test.ts`, `tests/morph.test.ts`) cover:
+
+- Arc-to-cubic conversion (simple, degenerate, large, elliptical, rotated arcs)
+- Rotational interpolation (t=0, t=1, midpoint, coincident handles)
+- Shape index optimization (open paths, misaligned closed paths, segment rotation)
+- Cross-icon morphing pipeline (sub-path matching, subdivision, centroid collapse, interpolation)
+- Topology incompatibility detection (compatible, stroke-to-fill, subpath mismatch)
+- Coordinated crossfade (opacity curves, scale emphasis, draw-coordinated mode)
+- Geometry change warnings (`detectGeometryBreaks` for subpath/closed/command/point changes)
+- Transition resolver integration (crossIconMorph fallback, topology override, topology analysis attachment)
 
 ## Known Conflicts / Notes
 

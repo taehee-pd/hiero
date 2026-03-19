@@ -71,6 +71,22 @@ export function strictMorph(fromD: string, toD: string): MorphInterpolator {
   };
 }
 
+/**
+ * Attempt a cross-icon morph between two path strings.
+ *
+ * Converts raw SVG path `d` strings to the CubicPath representation
+ * required by crossIconMorph (Phase 8.2).  Returns the interpolator
+ * on success, or null when either path cannot be normalised.
+ */
+export function attemptCrossIconMorph(fromD: string, toD: string): MorphInterpolator | null {
+  const from = normalizeToCubicPath(fromD);
+  const to = normalizeToCubicPath(toD);
+  if (!from || !to) {
+    return null;
+  }
+  return crossIconMorph(from, to);
+}
+
 export function bestGuessMorph(fromD: string, toD: string): MorphInterpolator | null {
   const from = normalizeToCubicPath(fromD);
   const to = normalizeToCubicPath(toD);

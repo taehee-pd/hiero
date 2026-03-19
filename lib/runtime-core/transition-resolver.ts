@@ -6,8 +6,9 @@ import type {
   TimelineTrack,
   Transition,
 } from '../schema';
-import { bestGuessMorph, strictMorph, type MorphInterpolator } from './morph';
+import { attemptCrossIconMorph, bestGuessMorph, strictMorph, type MorphInterpolator } from './morph';
 import { canonicalizeLayerPath, type CanonicalPath } from './path-normalization';
+import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-detection';
 
 export type FallbackMode = 'fade-through' | 'scale-through' | 'slide-through' | 'replace-with-delay';
 export type AnimationType = 'morph' | 'fade-out' | 'fade-in' | 'scale' | 'translate' | 'rotate' | 'replace';
@@ -20,7 +21,7 @@ export type MorphReadiness = {
   bboxSimilarity: number;
   centroidSimilarity: number;
   semanticRoleMatch: number;
-  recommendedStrategy: 'strictMorph' | 'bestGuessMorph' | 'fallback';
+  recommendedStrategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'fallback';
   reasons: string[];
 };
 
@@ -47,6 +48,7 @@ export type ResolvedTransition = {
   easing: string | SpringConfig;
   layerBindings: ResolvedLayerBinding[];
   diagnostics: string[];
+  topologyAnalysis?: TopologyAnalysis;
 };
 
 export type ResolveTransitionOptions = {
@@ -62,6 +64,17 @@ export function resolveTransition(
 ): ResolvedTransition {
   const diagnostics: string[] = [];
   const preserveSet = new Set(options.preserveLayerIds ?? []);
+
+  // 8.3 — Run topology detection BEFORE resolving individual layer bindings.
+  // When topology is incompatible the analysis recommends 'crossfade' or
+  // 'draw-crossfade', which we propagate to bindings that would otherwise
+  // attempt a morph.
+  const topologyAnalysis = analyzeTopologyCompatibility(fromState, toState);
+  if (!topologyAnalysis.compatible) {
+    diagnostics.push(`topologyIncompatible:${topologyAnalysis.incompatibilities.join(',')}`);
+    diagnostics.push(`topologyRecommended:${topologyAnalysis.recommendedStrategy}`);
+  }
+
   const plannedBindings = resolveBindings(transition, fromState, toState);
   const staggerOrder = computeStaggerOrder(plannedBindings, transition.stagger?.mode);
   const layerBindings = plannedBindings.map((binding, index) => {
@@ -80,6 +93,27 @@ export function resolveTransition(
       resolved.morph = undefined;
       resolved.animationType = 'replace';
     }
+
+    // 8.3 — When topology is incompatible, override morph bindings with
+    // the appropriate crossfade strategy so geometry never deforms
+    // across incompatible topologies.
+    if (
+      !topologyAnalysis.compatible &&
+      !resolved.preserved &&
+      resolved.animationType === 'morph'
+    ) {
+      resolved.morph = undefined;
+      if (topologyAnalysis.recommendedStrategy === 'draw-crossfade') {
+        resolved.fallback = 'fade-through';
+        resolved.animationType = 'replace';
+        resolved.diagnostics?.push('topologyOverride:draw-crossfade');
+      } else {
+        resolved.fallback = 'fade-through';
+        resolved.animationType = 'replace';
+        resolved.diagnostics?.push('topologyOverride:crossfade');
+      }
+    }
+
     return resolved;
   });
 
@@ -89,6 +123,7 @@ export function resolveTransition(
     easing: transition.easing ?? 'linear',
     layerBindings,
     diagnostics,
+    topologyAnalysis,
   };
 }
 
@@ -232,6 +267,28 @@ function resolveLayerBinding(
     diagnostics.push('bestGuessMorphFailed');
   }
 
+  // 8.2 — Third-tier fallback: cross-icon morph.
+  // When both strict and bestGuess morph fail (or when the runtime strategy
+  // is explicitly 'crossIconMorph'), attempt the cross-icon morph pipeline
+  // which handles differing sub-path counts via sub-path matching,
+  // De Casteljau subdivision, and centroid collapse.
+  if (runtimeStrategy === 'crossIconMorph' || runtimeStrategy === 'bestGuessMorph' || runtimeStrategy === 'fallback') {
+    try {
+      const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
+      const toCanonical = canonicalizeLayerPath(toLayer)!.d;
+      const crossMorph = attemptCrossIconMorph(fromCanonical, toCanonical);
+      if (crossMorph) {
+        resolved.morph = crossMorph;
+        resolved.animationType = 'morph';
+        diagnostics.push('crossIconMorphUsed');
+        return resolved;
+      }
+      diagnostics.push('crossIconMorphFailed');
+    } catch (error) {
+      diagnostics.push(`crossIconMorphError:${error instanceof Error ? error.message : 'unknown'}`);
+    }
+  }
+
   resolved.fallback = chooseFallbackMode(index);
   resolved.animationType = fallbackToAnimationType(resolved.fallback, fromLayer, toLayer);
   return resolved;
@@ -240,7 +297,7 @@ function resolveLayerBinding(
 function decideRuntimeStrategy(
   declared: Transition['strategy'],
   readiness: MorphReadiness | undefined,
-): 'strictMorph' | 'bestGuessMorph' | 'fallback' {
+): 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'fallback' {
   if (!readiness) return 'fallback';
   if (declared === 'replace' || declared === 'track') {
     return readiness.recommendedStrategy;
@@ -249,6 +306,12 @@ function decideRuntimeStrategy(
     return readiness.recommendedStrategy;
   }
   if (declared === 'bestGuessMorph' && readiness.score < 0.45) {
+    // When bestGuessMorph thresholds aren't met but paths are still
+    // somewhat compatible (centroidSimilarity >= 0.3), try the
+    // cross-icon morph pipeline which handles differing topologies.
+    if (readiness.centroidSimilarity >= 0.3) {
+      return 'crossIconMorph';
+    }
     return 'fallback';
   }
   return declared;
@@ -309,6 +372,12 @@ function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadiness {
     bboxSimilarity >= 0.4
   ) {
     recommendedStrategy = 'bestGuessMorph';
+  } else if (centroidSimilarity >= 0.3) {
+    // 8.2 — Paths are somewhat spatially related but topology differs
+    // (different sub-path counts, command signatures, etc.).
+    // Cross-icon morph can handle these via sub-path matching and
+    // De Casteljau subdivision.
+    recommendedStrategy = 'crossIconMorph';
   }
 
   return {

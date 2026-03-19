@@ -4,6 +4,13 @@ import type { InterpolatedValues, FrameHandle } from './scheduler';
 import type { DrawAnnotation } from './draw-executor';
 import { computeDrawOnValues, computeDrawOffValues } from './draw-executor';
 import { estimateSpringDuration, springProgress } from './spring';
+import { lerpPalette } from './color-interpolation';
+
+/**
+ * Color overrides keyed by layer ID → property → hex string.
+ * Used for variableColor effects that cannot be represented as numeric values.
+ */
+export type ColorOverrides = Record<string, Record<string, string>>;
 
 /**
  * Runtime effect definition from the exported payload.
@@ -15,9 +22,11 @@ export type EffectDefinition = {
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';
+  /** Palette of hex colors for the variableColor effect. */
+  palette?: string[];
 };
 
-export type EffectFrameCallback = (values: InterpolatedValues) => void;
+export type EffectFrameCallback = (values: InterpolatedValues, colorOverrides?: ColorOverrides) => void;
 export type EffectCompleteCallback = () => void;
 
 export type EffectSchedulerOptions = {
@@ -147,6 +156,18 @@ export class EffectScheduler {
     const easedProgress = this.progressAtElapsed(
       clamp01(rawProgress) * Math.max(this.effectiveDurationMs, 1),
     );
+
+    if (this.effect.kind === 'variableColor' && this.effect.palette?.length) {
+      // variableColor produces color overrides, not numeric interpolated values
+      const color = lerpPalette(this.effect.palette, easedProgress);
+      const colorOverrides: ColorOverrides = {};
+      for (const id of this.targetLayerIds) {
+        colorOverrides[id] = { fill: color };
+      }
+      this.onFrameCallback({}, colorOverrides);
+      return;
+    }
+
     const values = computeEffectValues(
       this.effect.kind,
       easedProgress,

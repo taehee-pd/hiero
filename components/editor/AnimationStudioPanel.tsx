@@ -43,7 +43,7 @@ export function AnimationStudioPanel() {
     currentEffect.current = effect;
     setPreviewLabel(effect.kind);
 
-    const maybeRenderer = (window as unknown as { __icophoneDomRenderer?: unknown }).__icophoneDomRenderer;
+    const maybeRenderer = (window as unknown as { __conivaDomRenderer?: unknown }).__conivaDomRenderer;
     if (maybeRenderer) {
       const player = new EffectPlayer(effect, maybeRenderer as never);
       player.setSpeed(speed);

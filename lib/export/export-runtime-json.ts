@@ -170,7 +170,10 @@ export type RuntimeTrackProperty =
   | 'scale'
   | 'pathLength'
   | 'fill'
-  | 'stroke';
+  | 'stroke'
+  | 'strokeWidth'
+  | 'fillOpacity'
+  | 'strokeOpacity';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
@@ -1237,6 +1240,9 @@ const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'pathLength',
   'fill',
   'stroke',
+  'strokeWidth',
+  'fillOpacity',
+  'strokeOpacity',
 ]);
 
 function cloneRuntimeTrack(

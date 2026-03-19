@@ -1,0 +1,44 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": false
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/out",
+      "!**/dist",
+      "!**/ci-artifacts",
+      "!**/desktop/node_modules",
+      "!**/desktop/.electrobun",
+      "!**/desktop/.generated",
+      "!**/desktop/build",
+      "!**/public",
+      "!**/*.lock",
+      "!**/bun.lock",
+      "!**/tsconfig.tsbuildinfo"
+    ]
+  }
+}

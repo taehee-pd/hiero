@@ -14,6 +14,8 @@ import {
   type EffectDefinition,
   type ResolvedTransition,
 } from '../runtime-core';
+import { composeValues } from '../runtime-core/compose-values';
+import type { AnimationEvent, AnimationEventCallback } from '../runtime-core/animation-events';
 import { DomRenderer, type CssTrackTransitionPlan } from './renderer';
 
 const CSS_FALLBACK_TRACKS = new Set<TimelineTrack['property']>([
@@ -34,6 +36,10 @@ export type IconDriver = {
   subscribe: (listener: IconDriverStateListener) => () => void;
   /** Trigger a named effect. Requires effect definitions and optionally draw annotations. */
   triggerEffect: (effectId: string) => void;
+  /** Cancel a specific running effect by ID. */
+  cancelEffect: (effectId: string) => void;
+  /** Cancel all running effects. */
+  cancelAllEffects: () => void;
   /** Set Variable Draw progress (0-1). Requires variableDraw config. */
   setVariableDrawProgress: (progress: number) => void;
   destroy: () => void;
@@ -56,6 +62,8 @@ export type CreateIconDriverOptions = {
   variableDraw?: VariableDrawConfig;
   /** Layer IDs preserved across Magic Replace transitions. */
   preserveLayerIds?: string[];
+  /** Callback for animation lifecycle events. */
+  onAnimationEvent?: AnimationEventCallback;
 };
 
 export type CreateIconOptions = CreateIconDriverOptions & {
@@ -97,13 +105,22 @@ export function createIconDriver(
 
   let activeScheduler: TransitionScheduler | null = null;
   let activeBlendScheduler: BlendScheduler | null = null;
-  let activeEffectScheduler: EffectScheduler | null = null;
+  const activeEffectSchedulers = new Map<string, EffectScheduler>();
   let activeCssFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let activeCssFallbackPlan: CssTrackTransitionPlan | null = null;
   let activeCssFallbackStartedAt = 0;
   let activeTransitionValues: InterpolatedValues = {};
   let activeBlendValues: InterpolatedValues = {};
   const stateListeners = new Set<IconDriverStateListener>();
+
+  // Track latest interpolated values for composition
+  let latestTransitionValues: InterpolatedValues = {};
+  let latestTransitionResolved: ReturnType<typeof resolveTransition> | undefined;
+  let latestTransitionStateId: string | undefined;
+
+  function emitEvent(event: AnimationEvent) {
+    options.onAnimationEvent?.(event);
+  }
 
   function notifyStateListeners() {
     for (const listener of stateListeners) {
@@ -129,6 +146,20 @@ export function createIconDriver(
     );
   }
 
+  function renderComposed() {
+    const stateId = latestTransitionStateId ?? stateMachine.currentState.id;
+    const composed = composeValues(latestTransitionValues, ...Array.from(effectLatestValues.values()));
+    // Merge all color overrides from effects
+    const mergedColors: Record<string, Record<string, string>> = {};
+    for (const colors of effectColorOverrides.values()) {
+      for (const [layerId, props] of Object.entries(colors)) {
+        mergedColors[layerId] = { ...mergedColors[layerId], ...props };
+      }
+    }
+    const hasColors = Object.keys(mergedColors).length > 0;
+    renderer.applyFrame(stateId, 0, composed, latestTransitionResolved, hasColors ? mergedColors : undefined);
+  }
+
   function cancelActiveTransitions() {
     activeScheduler?.cancel();
     activeScheduler = null;
@@ -143,6 +174,10 @@ export function createIconDriver(
     clearAnimatedFrames();
     renderer.clearCssTrackTransitions();
   }
+
+  // Store latest effect values and color overrides per effect ID
+  const effectLatestValues = new Map<string, InterpolatedValues>();
+  const effectColorOverrides = new Map<string, Record<string, Record<string, string>>>();
 
   const unsubscribe = stateMachine.onStateChange((state, transition) => {
     notifyStateListeners();
@@ -195,6 +230,13 @@ export function createIconDriver(
       return;
     }
 
+    emitEvent({
+      type: 'transitionStart',
+      fromState: transition.from,
+      toState: transition.to,
+      timestamp: Date.now(),
+    });
+
     const variant = icon.variants[variantId];
     const fromState = variant.states[transition.from];
     const toState = variant.states[transition.to];
@@ -207,6 +249,8 @@ export function createIconDriver(
     const resolved = resolveTransition(transition, fromState, toState, {
       preserveLayerIds: options.preserveLayerIds,
     });
+    latestTransitionResolved = resolved;
+    latestTransitionStateId = state.id;
 
     const cssPlan = planCssTrackTransition(resolved);
     if (cssPlan && !forceJsScheduler) {
@@ -224,17 +268,32 @@ export function createIconDriver(
 
     const scheduler = new TransitionScheduler(resolved, {
       onFrame: (progress, interpolatedValues: InterpolatedValues) => {
+        latestTransitionValues = interpolatedValues;
         activeTransitionValues = interpolatedValues;
-        renderAnimatedFrame(state.id, progress, resolved);
+        // If effects are active, compose; otherwise render via blend
+        if (activeEffectSchedulers.size > 0) {
+          renderComposed();
+        } else {
+          renderAnimatedFrame(state.id, progress, resolved);
+        }
       },
     });
 
     scheduler.onComplete(() => {
       if (activeScheduler === scheduler) {
         activeScheduler = null;
+        latestTransitionValues = {};
+        latestTransitionResolved = undefined;
+        latestTransitionStateId = undefined;
       }
       activeTransitionValues = {};
       renderer.setState(state.id);
+      emitEvent({
+        type: 'transitionComplete',
+        fromState: transition.from,
+        toState: transition.to,
+        timestamp: Date.now(),
+      });
     });
 
     activeScheduler = scheduler;
@@ -256,29 +315,77 @@ export function createIconDriver(
       const effect = options.effects?.[effectId];
       if (!effect || shouldReduceMotion(reduceMotionSetting)) return;
 
-      activeEffectScheduler?.cancel();
+      // Cancel existing scheduler for this specific effect ID
+      const existing = activeEffectSchedulers.get(effectId);
+      if (existing) {
+        existing.cancel();
+        activeEffectSchedulers.delete(effectId);
+        effectLatestValues.delete(effectId);
+      }
 
-      // Determine target layer IDs from the current state
+      emitEvent({
+        type: 'effectStart',
+        effectId,
+        timestamp: Date.now(),
+      });
+
       const currentState = stateMachine.currentState;
       const layerIds = Object.keys(currentState.layers).sort();
 
-      activeEffectScheduler = new EffectScheduler(effect, {
-        onFrame: (values) => {
-          renderer.applyFrame(
-            currentState.id,
-            0,
-            values,
-          );
+      const scheduler = new EffectScheduler(effect, {
+        onFrame: (values, colorOverrides) => {
+          effectLatestValues.set(effectId, values);
+          if (colorOverrides) {
+            effectColorOverrides.set(effectId, colorOverrides);
+          }
+          if (activeScheduler) {
+            renderComposed();
+          } else {
+            const composed = composeValues({}, ...Array.from(effectLatestValues.values()));
+            const mergedColors: Record<string, Record<string, string>> = {};
+            for (const colors of effectColorOverrides.values()) {
+              for (const [lid, props] of Object.entries(colors)) {
+                mergedColors[lid] = { ...mergedColors[lid], ...props };
+              }
+            }
+            const hasColors = Object.keys(mergedColors).length > 0;
+            renderer.applyFrame(currentState.id, 0, composed, undefined, hasColors ? mergedColors : undefined);
+          }
         },
         drawAnnotation: options.drawAnnotation,
         targetLayerIds: layerIds,
       });
 
-      activeEffectScheduler.onComplete(() => {
-        activeEffectScheduler = null;
+      scheduler.onComplete(() => {
+        activeEffectSchedulers.delete(effectId);
+        effectLatestValues.delete(effectId);
+        effectColorOverrides.delete(effectId);
+        emitEvent({
+          type: 'effectComplete',
+          effectId,
+          timestamp: Date.now(),
+        });
       });
 
-      activeEffectScheduler.start();
+      activeEffectSchedulers.set(effectId, scheduler);
+      scheduler.start();
+    },
+    cancelEffect(effectId: string) {
+      const scheduler = activeEffectSchedulers.get(effectId);
+      if (scheduler) {
+        scheduler.cancel();
+        activeEffectSchedulers.delete(effectId);
+        effectLatestValues.delete(effectId);
+        effectColorOverrides.delete(effectId);
+      }
+    },
+    cancelAllEffects() {
+      for (const scheduler of activeEffectSchedulers.values()) {
+        scheduler.cancel();
+      }
+      activeEffectSchedulers.clear();
+      effectLatestValues.clear();
+      effectColorOverrides.clear();
     },
     setVariableDrawProgress(progress: number) {
       if (!options.variableDraw) return;
@@ -287,8 +394,12 @@ export function createIconDriver(
     },
     destroy() {
       cancelActiveTransitions();
-      activeEffectScheduler?.cancel();
-      activeEffectScheduler = null;
+      for (const scheduler of activeEffectSchedulers.values()) {
+        scheduler.cancel();
+      }
+      activeEffectSchedulers.clear();
+      effectLatestValues.clear();
+      effectColorOverrides.clear();
       stateListeners.clear();
       unsubscribe();
       stateMachine.dispose();

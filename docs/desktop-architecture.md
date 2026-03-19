@@ -1,6 +1,6 @@
 # Desktop Architecture
 
-Icophone now targets two environments from the same product codebase:
+Coniva now targets two environments from the same product codebase:
 
 - Web: the existing Next.js app continues to run independently for browser users and Vercel deployments.
 - Desktop: an Electrobun shell wraps the same editor experience to add native capabilities such as file system access, menus, and future updater/tray integrations.

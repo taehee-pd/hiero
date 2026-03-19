@@ -1,4 +1,6 @@
+export * from './animation-events';
 export * from './color';
+export * from './compose-values';
 export * from './draw-executor';
 export * from './easing';
 export * from './effect-scheduler';

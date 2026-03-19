@@ -168,7 +168,7 @@ function parseProjectName(data: string) {
 }
 
 function defaultProjectFileName(data: string) {
-  return `${slugify(parseProjectName(data))}.icophone.json`;
+  return `${slugify(parseProjectName(data))}.coniva.json`;
 }
 
 function isElectrobunEnvironment() {
@@ -186,13 +186,13 @@ function emitMenuAction(command: DesktopCommand) {
     listener(command);
   }
 
-  window.dispatchEvent(new CustomEvent('icophone:desktop-command', { detail: command }));
-  window.dispatchEvent(new CustomEvent('icophone:menu', { detail: command }));
+  window.dispatchEvent(new CustomEvent('coniva:desktop-command', { detail: command }));
+  window.dispatchEvent(new CustomEvent('coniva:menu', { detail: command }));
 }
 
 function emitProjectSaved(path: string) {
   currentProjectPath = path;
-  window.dispatchEvent(new CustomEvent('icophone:project-saved', { detail: { path } }));
+  window.dispatchEvent(new CustomEvent('coniva:project-saved', { detail: { path } }));
 }
 
 function handleIncomingPacket(packet: ElectrobunPacket) {
@@ -234,7 +234,7 @@ function handleIncomingPacket(packet: ElectrobunPacket) {
     if (payload.path && payload.data) {
       currentProjectPath = payload.path;
       pendingStartupProject = { path: payload.path, data: payload.data };
-      window.dispatchEvent(new CustomEvent('icophone:project-opened-from-disk', { detail: payload }));
+      window.dispatchEvent(new CustomEvent('coniva:project-opened-from-disk', { detail: payload }));
     }
     return;
   }
@@ -242,7 +242,7 @@ function handleIncomingPacket(packet: ElectrobunPacket) {
   if (packet.id === 'confirmQuit') {
     const payload = packet.payload as { reason?: 'quit' | 'windowClose' };
     pendingQuitReason = payload.reason ?? 'quit';
-    window.dispatchEvent(new CustomEvent('icophone:confirm-quit', { detail: payload }));
+    window.dispatchEvent(new CustomEvent('coniva:confirm-quit', { detail: payload }));
     return;
   }
 
@@ -253,7 +253,7 @@ function handleIncomingPacket(packet: ElectrobunPacket) {
         version: payload.version,
         releaseNotes: payload.releaseNotes,
       };
-      window.dispatchEvent(new CustomEvent('icophone:update-available', { detail: pendingUpdateInfo }));
+      window.dispatchEvent(new CustomEvent('coniva:update-available', { detail: pendingUpdateInfo }));
     }
   }
 }
@@ -298,7 +298,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
       reject(new Error(`Timed out waiting for Electrobun request: ${method}`));
     }, REQUEST_TIMEOUT_MS);
 
-    pendingRequests.set(id, { resolve, reject, timeout });
+    pendingRequests.set(id, { resolve: resolve as (value: unknown) => void, reject, timeout });
     window.__electrobunBunBridge?.postMessage(payload);
   }) as T;
 }
@@ -361,7 +361,7 @@ export async function openProject(): Promise<ProjectOpenResult> {
     return result;
   }
 
-  const files = await pickFiles({ accept: '.icophone.json,.json' });
+  const files = await pickFiles({ accept: '.coniva.json,.json' });
   const file = files?.[0];
   if (!file) return null;
 

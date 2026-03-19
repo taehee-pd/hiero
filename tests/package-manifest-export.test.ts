@@ -21,7 +21,7 @@ describe('package manifest generation', () => {
     const outputs = buildCompiledOutputs();
     const result = generatePackageManifestFile(outputs, {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '1.2.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
@@ -47,7 +47,7 @@ describe('package manifest generation', () => {
       [{ path: first.path, compiled }],
       {
         package: {
-          name: '@icophone/icons',
+          name: '@coniva/icons',
           version: '1.2.0',
           builtAt: '2026-03-10T00:00:00.000Z',
         },
@@ -69,7 +69,7 @@ describe('package manifest generation', () => {
       [{ path: first.path, compiled }],
       {
         package: {
-          name: '@icophone/icons',
+          name: '@coniva/icons',
           version: '1.2.0',
           builtAt: '2026-03-10T00:00:00.000Z',
         },
@@ -101,7 +101,7 @@ describe('package manifest generation', () => {
 
     const manifest = generatePackageManifest([animatedIcon, staticIcon], {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '1.2.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
@@ -148,14 +148,14 @@ describe('package manifest generation', () => {
 
     const manifestFromStrategy = generatePackageManifest([strategyMorph], {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '1.2.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
     });
     const manifestFromBinding = generatePackageManifest([bindingMorph], {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '1.2.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
@@ -168,12 +168,12 @@ describe('package manifest generation', () => {
   test('throws when package contains mixed compiled schema versions', () => {
     const outputs = buildCompiledOutputs();
     const mismatch = structuredClone(outputs[1]!);
-    mismatch.compiled.$schema = 'https://icophone.dev/schemas/compiled-icon/2.0.0' as any;
+    mismatch.compiled.$schema = 'https://coniva.dev/schemas/compiled-icon/2.0.0' as any;
 
     expect(() =>
       generatePackageManifest([outputs[0]!, mismatch], {
         package: {
-          name: '@icophone/icons',
+          name: '@coniva/icons',
           version: '1.2.0',
           builtAt: '2026-03-10T00:00:00.000Z',
         },
@@ -184,7 +184,7 @@ describe('package manifest generation', () => {
   test('emits empty collections by default', () => {
     const manifest = generatePackageManifest(buildCompiledOutputs(), {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '1.2.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },

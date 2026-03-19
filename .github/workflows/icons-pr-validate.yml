@@ -83,7 +83,7 @@ jobs:
           bun scripts/compile-from-source.ts \
             --source . \
             --out ci-artifacts/package-preview \
-            --package-name "@icophone/icons" \
+            --package-name "@coniva/icons" \
             --package-version "$VERSION" \
             --built-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --generate-react

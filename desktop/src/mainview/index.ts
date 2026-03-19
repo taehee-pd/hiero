@@ -6,20 +6,20 @@ const rpc = Electroview.defineRPC<ConivaRPC>({
     requests: {},
     messages: {
       menuTriggered: (payload) => {
-        window.dispatchEvent(new CustomEvent('icophone:desktop-command', { detail: payload }));
-        window.dispatchEvent(new CustomEvent('icophone:menu', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:desktop-command', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:menu', { detail: payload }));
       },
       projectSaved: (payload) => {
-        window.dispatchEvent(new CustomEvent('icophone:project-saved', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:project-saved', { detail: payload }));
       },
       projectOpenedFromDisk: (payload) => {
-        window.dispatchEvent(new CustomEvent('icophone:project-opened-from-disk', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:project-opened-from-disk', { detail: payload }));
       },
       confirmQuit: (payload) => {
-        window.dispatchEvent(new CustomEvent('icophone:confirm-quit', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:confirm-quit', { detail: payload }));
       },
       updateAvailable: (payload) => {
-        window.dispatchEvent(new CustomEvent('icophone:update-available', { detail: payload }));
+        window.dispatchEvent(new CustomEvent('coniva:update-available', { detail: payload }));
       },
     },
   },

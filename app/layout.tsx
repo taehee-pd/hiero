@@ -21,7 +21,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Icophone',
+  title: 'Coniva',
   description: 'Icon design studio for stateful, animated SVG icons',
   icons: {
     icon: [

@@ -61,7 +61,7 @@ export function emitSyncEvent(
   // Also dispatch a DOM CustomEvent for external listeners
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
-      new CustomEvent('icophone:sync', {
+      new CustomEvent('coniva:sync', {
         detail: { name, ...payload },
       }),
     );

@@ -8,7 +8,7 @@ import { createWorkspaceFromProject } from './workspace';
 export const SAMPLE_PROJECT: Project = {
   version: '1.0',
   meta: {
-    name: 'Icophone Starter',
+    name: 'Coniva Starter',
     createdAt: '2026-03-03T00:00:00Z',
     updatedAt: '2026-03-03T00:00:00Z',
   },

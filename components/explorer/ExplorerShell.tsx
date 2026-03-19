@@ -110,7 +110,7 @@ export function ExplorerShell() {
     }
   }, []);
 
-  const workspaceName = workspace?.meta.name ?? 'Icophone Workspace';
+  const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
 
   /* ─── Workspace-level data ────────────────── */
 

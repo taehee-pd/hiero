@@ -13,8 +13,10 @@ import {
   interpolateColor,
   estimateSpringDuration,
   resolveTransition,
+  composeValues,
   springProgress,
 } from '../lib/runtime-core';
+import { parseHex, formatHex, lerpLinearRGB, lerpPalette } from '../lib/runtime-core/color-interpolation';
 import type { DrawAnnotation, VariableDrawConfig } from '../lib/runtime-core';
 
 function makeIcon(): Icon {
@@ -644,5 +646,119 @@ describe('effect scheduler', () => {
     expect(resolved.layerBindings[0]?.delayMs).toBe(0);
     expect(resolved.layerBindings[1]?.delayMs).toBe(10);
     expect(resolved.layerBindings[1]?.durationMs).toBe(90);
+  });
+});
+
+// --- B2: composeValues ---
+
+describe('composeValues', () => {
+  test('additive transform properties', () => {
+    const transition = { layer1: { translateX: 10, translateY: 5, rotate: 45 } };
+    const effect = { layer1: { translateX: 3, translateY: -2, rotate: 10 } };
+    const result = composeValues(transition, effect);
+    expect(result.layer1!.translateX).toBe(13);
+    expect(result.layer1!.translateY).toBe(3);
+    expect(result.layer1!.rotate).toBe(55);
+  });
+
+  test('multiplicative scale and opacity', () => {
+    const transition = { layer1: { scale: 1.5, opacity: 0.8 } };
+    const effect = { layer1: { scale: 1.2, opacity: 0.5 } };
+    const result = composeValues(transition, effect);
+    expect(result.layer1!.scale).toBeCloseTo(1.8);
+    expect(result.layer1!.opacity).toBeCloseTo(0.4);
+  });
+
+  test('override for other properties', () => {
+    const transition = { layer1: { pathLength: 0.5, strokeWidth: 2 } };
+    const effect = { layer1: { pathLength: 0.8, strokeWidth: 4 } };
+    const result = composeValues(transition, effect);
+    expect(result.layer1!.pathLength).toBe(0.8);
+    expect(result.layer1!.strokeWidth).toBe(4);
+  });
+
+  test('merges layers from both sources', () => {
+    const transition = { layer1: { opacity: 1 } };
+    const effect = { layer2: { opacity: 0.5 } };
+    const result = composeValues(transition, effect);
+    expect(result.layer1!.opacity).toBe(1);
+    expect(result.layer2!.opacity).toBe(0.5);
+  });
+
+  test('empty effect sets return transition values', () => {
+    const transition = { layer1: { opacity: 0.7 } };
+    const result = composeValues(transition);
+    expect(result.layer1!.opacity).toBe(0.7);
+  });
+
+  test('multiple effect sets compose sequentially', () => {
+    const transition = { layer1: { translateX: 10 } };
+    const effect1 = { layer1: { translateX: 5 } };
+    const effect2 = { layer1: { translateX: 3 } };
+    const result = composeValues(transition, effect1, effect2);
+    expect(result.layer1!.translateX).toBe(18);
+  });
+});
+
+// --- B4: color interpolation ---
+
+describe('color interpolation', () => {
+  test('parseHex parses #RRGGBB', () => {
+    expect(parseHex('#ff0000')).toEqual([255, 0, 0]);
+    expect(parseHex('#00ff00')).toEqual([0, 255, 0]);
+    expect(parseHex('#0000ff')).toEqual([0, 0, 255]);
+  });
+
+  test('parseHex parses #RGB shorthand', () => {
+    expect(parseHex('#f00')).toEqual([255, 0, 0]);
+    expect(parseHex('#0f0')).toEqual([0, 255, 0]);
+  });
+
+  test('parseHex parses #RRGGBBAA (ignores alpha)', () => {
+    expect(parseHex('#ff000080')).toEqual([255, 0, 0]);
+  });
+
+  test('parseHex returns null for invalid input', () => {
+    expect(parseHex('')).toBeNull();
+    expect(parseHex('not-a-color')).toBeNull();
+    expect(parseHex('#xyz')).toBeNull();
+  });
+
+  test('formatHex formats to lowercase #rrggbb', () => {
+    expect(formatHex([255, 0, 0])).toBe('#ff0000');
+    expect(formatHex([0, 128, 255])).toBe('#0080ff');
+  });
+
+  test('lerpLinearRGB at t=0 returns first color', () => {
+    expect(lerpLinearRGB('#ff0000', '#0000ff', 0)).toBe('#ff0000');
+  });
+
+  test('lerpLinearRGB at t=1 returns second color', () => {
+    expect(lerpLinearRGB('#ff0000', '#0000ff', 1)).toBe('#0000ff');
+  });
+
+  test('lerpLinearRGB at t=0.5 produces mid-tone', () => {
+    const mid = lerpLinearRGB('#000000', '#ffffff', 0.5);
+    // In linear RGB, mid-gray is ~188 (not 128) due to gamma
+    const parsed = parseHex(mid);
+    expect(parsed).not.toBeNull();
+    expect(parsed![0]).toBeGreaterThan(170);
+    expect(parsed![0]).toBeLessThan(200);
+  });
+
+  test('lerpPalette interpolates through multiple colors', () => {
+    const palette = ['#ff0000', '#00ff00', '#0000ff'];
+    expect(lerpPalette(palette, 0)).toBe('#ff0000');
+    expect(lerpPalette(palette, 1)).toBe('#0000ff');
+    // At 0.5, should be pure green
+    expect(lerpPalette(palette, 0.5)).toBe('#00ff00');
+  });
+
+  test('lerpPalette handles single-color palette', () => {
+    expect(lerpPalette(['#ff0000'], 0.5)).toBe('#ff0000');
+  });
+
+  test('lerpPalette handles empty palette', () => {
+    expect(lerpPalette([], 0.5)).toBe('#000000');
   });
 });

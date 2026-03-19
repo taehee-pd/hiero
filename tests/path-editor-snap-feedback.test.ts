@@ -164,4 +164,22 @@ describe('path editor snap feedback', () => {
     expect(path).toBeNull();
     editor.destroy();
   });
+
+  test('publishes snap guides while dragging bezier handles and snaps handle endpoint', () => {
+    const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
+
+    (editor as any).startControlDrag('moving', '0:0', 'out', 1, 1);
+    (editor as any).dragControl({ clientX: 8.28, clientY: 10.72, shiftKey: false, altKey: false });
+
+    expect(
+      editorStore.getState().activeSnapGuides.some((guide) => guide.sourceLayerId === 'anchor'),
+    ).toBeTrue();
+
+    (editor as any).commitControlDrag({ clientX: 8.28, clientY: 10.72, shiftKey: false, altKey: false });
+
+    const d =
+      editorStore.getState().project!.icons.snap.variants.v24.states.default.layers.moving.path!.d;
+    expect(d).toContain('C8.3 10.7');
+    editor.destroy();
+  });
 });

@@ -11,7 +11,7 @@ import type { GuideItem, Layer } from '@/lib/schema/types';
 export type SnapTarget = {
   x?: number;
   y?: number;
-  type: 'grid' | 'guide' | 'edge' | 'center' | 'spacing';
+  type: 'grid' | 'guide' | 'edge' | 'center' | 'spacing' | 'anchor';
   sourceLayerId?: string;
 };
 
@@ -184,6 +184,12 @@ export class SnapEngine {
       out.push({ y: bounds.maxY, type: 'edge', sourceLayerId: layerId });
       out.push({ x: centerX, type: 'center', sourceLayerId: layerId });
       out.push({ y: centerY, type: 'center', sourceLayerId: layerId });
+
+      const anchors = this.getLayerAnchors(layer);
+      for (const anchor of anchors) {
+        out.push({ x: anchor.x, type: 'anchor', sourceLayerId: layerId });
+        out.push({ y: anchor.y, type: 'anchor', sourceLayerId: layerId });
+      }
     }
   }
 
@@ -214,6 +220,19 @@ export class SnapEngine {
     const layerCount = current ? Object.keys(current.layers).length : 0;
     return `${iconId}|${variantId}|${stateId}|${projectMarker}|${layerCount}`;
   }
+
+  private getLayerAnchors(layer: Layer): Array<{ x: number; y: number }> {
+    if (!layer.path?.d) return [];
+
+    const editablePath = parseSvgPath(layer.path.d);
+    const anchors: Array<{ x: number; y: number }> = [];
+    for (const subPath of editablePath.subPaths) {
+      for (const point of subPath.points) {
+        anchors.push(applyTransform(point.position, layer.transform));
+      }
+    }
+    return anchors;
+  }
 }
 
 const defaultSnapEngine = new SnapEngine(editorStore);
@@ -240,12 +259,51 @@ function findNearestTarget(
     const distance = Math.abs(candidateValue - value);
     if (distance > tolerance) continue;
 
-    if (!best || distance < best.distance) {
+    if (!best) {
+      best = { target: candidate, value: candidateValue, distance };
+      continue;
+    }
+
+    const candidatePriority = getSnapPriority(candidate.type);
+    const bestPriority = getSnapPriority(best.target.type);
+    if (candidatePriority < bestPriority) {
+      best = { target: candidate, value: candidateValue, distance };
+      continue;
+    }
+    if (candidatePriority > bestPriority) {
+      continue;
+    }
+
+    if (distance < best.distance) {
+      best = { target: candidate, value: candidateValue, distance };
+      continue;
+    }
+
+    if (distance === best.distance && candidateValue < best.value) {
       best = { target: candidate, value: candidateValue, distance };
     }
   }
 
   return best;
+}
+
+function getSnapPriority(type: SnapTarget['type']): number {
+  switch (type) {
+    case 'guide':
+      return 1;
+    case 'anchor':
+      return 2;
+    case 'edge':
+      return 3;
+    case 'center':
+      return 4;
+    case 'grid':
+      return 5;
+    case 'spacing':
+      return 6;
+    default:
+      return Number.MAX_SAFE_INTEGER;
+  }
 }
 
 function areTargetsEquivalent(a: SnapTarget, b: SnapTarget): boolean {

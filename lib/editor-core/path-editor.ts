@@ -952,14 +952,14 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
-    // Shift-constrain handle to 45° increments relative to anchor
     const editable = parseSvgPath(this.originalPathD);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId, true);
     const constrainedPoint = e.shiftKey
-      ? constrainAngle(context.point.position, svgPoint)
-      : svgPoint;
+      ? constrainAngle(context.point.position, snappedPoint)
+      : snappedPoint;
 
     const controlPosition = this.applyControlPosition(
       context.subPath,
@@ -1297,9 +1297,10 @@ export class PathEditor {
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
+    const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId);
     const constrainedPoint = e.shiftKey
-      ? constrainAngle(context.point.position, svgPoint)
-      : svgPoint;
+      ? constrainAngle(context.point.position, snappedPoint)
+      : snappedPoint;
 
     const controlPosition = this.applyControlPosition(
       context.subPath,
@@ -1612,7 +1613,7 @@ export class PathEditor {
     }
 
     if (direction === 'in') {
-      const prev = subPath.points[pointIdx - 1];
+      const prev = subPath.points[pointIdx - 1] ?? (subPath.closed ? subPath.points[subPath.points.length - 1] : null);
       if (!prev) return null;
       if (point.segment?.type !== 'cubic') {
         prev.handleOut ??= this.defaultControlPoint(prev.position, point.position);
@@ -1621,21 +1622,23 @@ export class PathEditor {
       point.handleIn = { x: position.x, y: position.y };
 
       // Mirror opposite handle based on node type
-      if (point.nodeType === 'smooth' && point.handleOut) {
+      if (point.nodeType === 'smooth') {
         const dx = position.x - point.position.x;
         const dy = position.y - point.position.y;
         const len = Math.hypot(dx, dy);
         if (len > 0) {
-          const oppositeLen = Math.hypot(
-            point.handleOut.x - point.position.x,
-            point.handleOut.y - point.position.y,
-          );
+          const oppositeLen = point.handleOut
+            ? Math.hypot(
+                point.handleOut.x - point.position.x,
+                point.handleOut.y - point.position.y,
+              )
+            : len;
           point.handleOut = {
             x: point.position.x - (dx / len) * oppositeLen,
             y: point.position.y - (dy / len) * oppositeLen,
           };
         }
-      } else if (point.nodeType === 'symmetric' && point.handleOut) {
+      } else if (point.nodeType === 'symmetric') {
         point.handleOut = {
           x: 2 * point.position.x - position.x,
           y: 2 * point.position.y - position.y,
@@ -1650,7 +1653,6 @@ export class PathEditor {
     }
 
     const next = subPath.points[pointIdx + 1] ?? (subPath.closed ? subPath.points[0] : null);
-    if (!next && !point.handleIn) return null;
     if (next && next.segment?.type !== 'cubic') {
       next.handleIn ??= this.defaultControlPoint(next.position, point.position);
       next.segment = { type: 'cubic' };
@@ -1658,21 +1660,23 @@ export class PathEditor {
     point.handleOut = { x: position.x, y: position.y };
 
     // Mirror opposite handle based on node type
-    if (point.nodeType === 'smooth' && point.handleIn) {
+    if (point.nodeType === 'smooth') {
       const dx = position.x - point.position.x;
       const dy = position.y - point.position.y;
       const len = Math.hypot(dx, dy);
       if (len > 0) {
-        const oppositeLen = Math.hypot(
-          point.handleIn.x - point.position.x,
-          point.handleIn.y - point.position.y,
-        );
+        const oppositeLen = point.handleIn
+          ? Math.hypot(
+              point.handleIn.x - point.position.x,
+              point.handleIn.y - point.position.y,
+            )
+          : len;
         point.handleIn = {
           x: point.position.x - (dx / len) * oppositeLen,
           y: point.position.y - (dy / len) * oppositeLen,
         };
       }
-    } else if (point.nodeType === 'symmetric' && point.handleIn) {
+    } else if (point.nodeType === 'symmetric') {
       point.handleIn = {
         x: 2 * point.position.x - position.x,
         y: 2 * point.position.y - position.y,

@@ -292,7 +292,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
     params,
   } satisfies ElectrobunPacket);
 
-  return await new Promise<T>((resolve, reject) => {
+  return await new Promise<unknown>((resolve, reject) => {
     const timeout = setTimeout(() => {
       pendingRequests.delete(id);
       reject(new Error(`Timed out waiting for Electrobun request: ${method}`));
@@ -300,7 +300,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
 
     pendingRequests.set(id, { resolve: resolve as (value: unknown) => void, reject, timeout });
     window.__electrobunBunBridge?.postMessage(payload);
-  });
+  }) as T;
 }
 
 async function pickFiles(options: { accept: string; multiple?: boolean }) {

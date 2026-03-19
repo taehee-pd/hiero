@@ -5,7 +5,7 @@
  * Returns an array of human-readable error strings (empty = valid).
  */
 
-import type { NormalizedIcon, NormalizedNode, NormalizedNodeKind } from './types';
+import type { NormalizedNodeKind } from './types';
 
 const VALID_KINDS = new Set<NormalizedNodeKind>([
   'path',

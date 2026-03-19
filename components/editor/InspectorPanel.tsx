@@ -185,9 +185,7 @@ export function InspectorPanel() {
   const activeMaskLayer = clippingSelection[0] ?? null;
   const clipTargetIds = useMemo(
     () =>
-      canMakeClipMask
-        ? clippingSelection.slice(1).map((candidate) => candidate.id)
-        : [],
+      canMakeClipMask ? clippingSelection.slice(1).map((candidate) => candidate.id) : [],
     [canMakeClipMask, clippingSelection],
   );
   const canReleaseClipMask =

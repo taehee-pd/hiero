@@ -5,7 +5,7 @@ This document tracks implementation progress against the planned architecture an
 ## Current status
 
 - **Phase 1 (Foundation/editor authoring):** Complete and covered by deterministic/integration tests.
-- **Phase 2 (Stateful runtime packages):** Not started in this repo structure yet.
+- **Phase 2 (Stateful runtime packages):** Implemented for the current runtime-json, DOM, and React validation scope.
 - **Phase 3/5 editor-side groundwork:** Partially implemented in the editor and export/import stack (guides, gradients, boolean ops, alignment/distribution, SVG IO).
 
 ---
@@ -63,6 +63,16 @@ This document tracks implementation progress against the planned architecture an
 - [x] Deterministic SVG export exists.
 - [x] Token paint resolution, gradient defs, and clip-path emission are implemented.
 
+### `runtime-core`
+- [x] Runtime-json store helpers also exist for payload-driven React/SSR playback. (`lib/runtime-core/store.ts`)
+
+### `runtime-dom`
+- [x] Snapshot SVG rendering helpers also exist for payload-driven React/SSR playback. (`lib/runtime-dom/snapshot-renderer.tsx`)
+
+### `runtime-react`
+- [x] In addition to `VibeIcon`/`useIconState`, direct runtime-json hooks/components exist for payload-driven playback. (`lib/runtime-react/icon.tsx`, `lib/runtime-react/use-icon.ts`)
+- [x] A dedicated runtime-json demo route exists for end-to-end validation. (`app/runtime-demo/page.tsx`)
+
 ### `apps/web`
 - [x] Editor shell layout with side panels and canvas is implemented.
 - [x] File open/save project flow is implemented.
@@ -113,10 +123,11 @@ Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-im
 - [x] Add browser-level tests for mount/update/unmount behavior. (`tests/runtime-dom.test.ts`, `tests/runtime-svg-renderer.test.tsx`)
 
 ### Phase R4 - Runtime React (complete)
-- [x] Build `<Icon />` and `useIcon` on top of the runtime store. (`lib/runtime-sdk/`)
-- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/VibeIcon.tsx` + `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
+- [x] Build the runtime React surfaces on top of the runtime store. (`lib/runtime-react/VibeIcon.tsx`, `lib/runtime-react/icon.tsx`, `lib/runtime-react/useIconState.ts`, `lib/runtime-react/use-icon.ts`)
+- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/VibeIcon.tsx`, `lib/runtime-react/use-icon.ts`, `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
 - [x] Add integration coverage for controlled and uncontrolled animation flows. (`tests/runtime-react.test.tsx` — 9 tests)
 - [x] Add a demo icon path in the app for end-to-end validation. (`app/demo/runtime/page.tsx` — Hamburger/Close + Chevron + export pipeline validation)
+- [x] Keep the payload-first runtime-json React adapter path and SSR snapshot renderer alongside the mainline API. (`tests/runtime-react-phase4.test.tsx`, `app/runtime-demo/page.tsx`)
 
 ### Phase R5 - Platform capability layer
 - [ ] Define target platform, delivery mode, capability, and export-outcome types.

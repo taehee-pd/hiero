@@ -5,22 +5,49 @@ on:
     paths:
       - 'app/**'
       - 'components/**'
-      - 'lib/**'
       - 'hooks/**'
+      - 'lib/**'
       - 'styles/**'
+      - 'tests/**'
+      - 'scripts/**'
       - 'package.json'
+      - 'pnpm-lock.yaml'
       - 'tsconfig.json'
       - 'next.config.mjs'
+      - 'postcss.config.mjs'
+      - 'eslint.config.mjs'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - '.github/workflows/web-app-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'hooks/**'
+      - 'lib/**'
+      - 'styles/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'next.config.mjs'
+      - 'postcss.config.mjs'
+      - 'eslint.config.mjs'
+      - '.prettierrc.json'
+      - '.prettierignore'
+      - '.github/workflows/web-app-ci.yml'
 
 concurrency:
-  group: web-app-ci-${{ github.head_ref }}
+  group: web-app-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & test
+  validate:
+    name: Validate web app
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -43,8 +70,20 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Test
-        run: bun test tests/
+      - name: Run Phase A coverage slice
+        run: bun run test:phase-a:coverage
 
-      - name: Build
+      - name: Enforce coverage thresholds
+        run: bun run check:coverage
+
+      - name: Build web app
         run: bun run build
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-app-coverage
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore

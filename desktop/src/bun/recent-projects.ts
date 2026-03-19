@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { join } from 'node:path';
 import { Utils } from 'electrobun/bun';
+import { getProjectNameFromPath } from '../shared/naming';
 
 export type RecentProject = {
   path: string;
@@ -14,7 +15,7 @@ const RECENT_PROJECTS_FILE = join(Utils.paths.userData, 'recent-projects.json');
 export async function addRecent(path: string, name?: string) {
   const nextEntry: RecentProject = {
     path,
-    name: sanitizeProjectName(name) ?? basename(path, '.coniva.json'),
+    name: sanitizeProjectName(name) ?? getProjectNameFromPath(path),
     updatedAt: new Date().toISOString(),
   };
 

@@ -1,55 +1,78 @@
-# Desktop Code Signing & Notarization
+# Desktop Signing and Notarization
 
-This document describes the environment variables and CI secrets required to
-produce signed and notarized desktop builds. Code signing is only enabled
-when `ELECTROBUN_BUILD_ENV=stable` is set. Without this variable, builds
-skip signing entirely (safe for local development and CI validation).
+This document describes the release-time signing requirements for the
+Electrobun desktop shell.
 
-## Required CI Secrets
+## When signing happens
 
-### macOS
+Signing and notarization are only enabled for stable distribution builds:
 
-| Variable | Description |
-|---|---|
-| `APPLE_TEAM_ID` | Apple Developer Team ID (10-character alphanumeric) |
-| `APPLE_DEVELOPER_IDENTITY` | Code-signing certificate identity, e.g. `Developer ID Application: Your Name (TEAMID)` |
-| `APPLE_NOTARIZATION_APPLE_ID` | Apple ID email used for notarization submissions |
-| `APPLE_NOTARIZATION_PASSWORD` | App-specific password for the Apple ID (generate at appleid.apple.com) |
+- `ELECTROBUN_BUILD_ENV=stable` turns on the release signing path in
+  `desktop/electrobun.config.ts`
+- non-stable builds skip signing and are safe to run with local/dev
+  credentials absent
 
-### Windows
+If a stable build is requested without the required secrets, the build
+fails fast instead of silently producing an unsigned release artifact.
 
-| Variable | Description |
-|---|---|
-| `WINDOWS_CERT_SUBJECT` | Certificate subject name for Authenticode signing |
-| `WINDOWS_TIMESTAMP_SERVER` | *(Optional)* Timestamp server URL. Defaults to `https://timestamp.digicert.com` |
+## Required macOS secrets
 
-## Build Modes
+Set these environment variables for signed macOS builds:
 
-- **Development** (`ELECTROBUN_BUILD_ENV` unset or any value other than `stable`):
-  Signing is skipped. Builds target the current platform only.
+- `APPLE_TEAM_ID`
+- `APPLE_DEVELOPER_IDENTITY`
+- `APPLE_NOTARIZATION_APPLE_ID`
+- `APPLE_NOTARIZATION_PASSWORD`
 
-- **Stable** (`ELECTROBUN_BUILD_ENV=stable`):
-  All signing environment variables above are required — the build will fail
-  with a clear error if any are missing. Builds target all platforms.
+The config treats the developer identity as both the signing certificate
+name and the macOS code-signing gate.
 
-## Release Configuration
+## Required Windows secret
 
-| Variable | Default | Description |
-|---|---|---|
-| `CONIVA_RELEASE_BASE_URL` | `https://updates.coniva.app/releases` | Base URL for release artifacts and `latest.json` manifest |
-| `CONIVA_UPDATE_ENDPOINT` | `${CONIVA_RELEASE_BASE_URL}/latest.json` | Endpoint the desktop app polls for update checks |
+Set this environment variable for signed Windows builds:
 
-## Safety Guards
+- `WINDOWS_CERT_SUBJECT`
 
-The `requireSigningEnv()` function in `electrobun.config.ts` throws a
-descriptive error if any required signing variable is missing during a
-stable build. This prevents unsigned artifacts from accidentally being
-released. The guard does **not** validate credential correctness — only
-that the variables are set.
+Optional:
 
-## CI Workflow
+- `WINDOWS_TIMESTAMP_SERVER` defaults to `https://timestamp.digicert.com`
 
-For CI validation (`desktop-ci.yml`), the desktop app is built without
-`ELECTROBUN_BUILD_ENV`, so signing is skipped entirely. The stable-build
-release pipeline should set `ELECTROBUN_BUILD_ENV=stable` and provide all
-secrets listed above.
+## Release flow
+
+The desktop release script is:
+
+```bash
+bun run desktop/scripts/release.ts --version <semver> --notes "<notes>"
+```
+
+That script:
+
+- bumps `desktop/package.json`
+- rebuilds the web export
+- stages the desktop mainview
+- runs the desktop distribution build
+- validates the generated `latest.json` manifest before writing it
+
+## Update manifest validation
+
+The release manifest is validated by:
+
+```bash
+bun run desktop/scripts/validate-latest-json.ts
+```
+
+Pass `--file <path>` to validate an existing manifest outside the default
+`desktop/artifacts/latest.json` location.
+
+The validator checks:
+
+- top-level `version`, `releaseDate`, and `releaseNotes` fields
+- the `platforms` map
+- each platform entry's `downloadUrl` and `files` array
+
+## Compatibility notes
+
+- Legacy `ICOPHONE_*` environment variables still work as fallbacks
+  while the new `CONIVA_*` names are preferred.
+- Legacy `.icophone.json` project files remain loadable so older desktop
+  files still open in the renamed shell.

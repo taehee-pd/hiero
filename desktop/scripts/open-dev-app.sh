@@ -17,6 +17,12 @@ case "$OS-$ARCH" in
     ;;
 esac
 
+LEGACY_APP_PATH="${APP_PATH/Coniva/Icophone}"
+
+if [ ! -d "$APP_PATH" ] && [ -d "$LEGACY_APP_PATH" ]; then
+  APP_PATH="$LEGACY_APP_PATH"
+fi
+
 if [ ! -d "$APP_PATH" ]; then
   echo "Desktop app bundle not found at:"
   echo "  $APP_PATH"

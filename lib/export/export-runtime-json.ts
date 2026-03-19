@@ -7,10 +7,13 @@ import type {
   LayerBinding,
   PaintRef,
   Project,
+  TimelineTrack,
+  SpringConfig,
   State,
   Transition,
   Variant,
 } from '@/lib/schema/types';
+import { resolveTransition } from '@/lib/runtime-core/transition-resolver';
 
 export type RuntimeCoreLayer = {
   d: string;
@@ -43,8 +46,8 @@ export type RuntimeCoreJson = {
       to: string;
       strategy: Transition['strategy'];
       durationMs: number;
-      easing?: string;
-      layerBindings: Transition['layerBindings'];
+      easing?: string | SpringConfig;
+      layerBindings: RuntimeLayerBinding[];
     }
   >;
   tokens?: {
@@ -166,19 +169,23 @@ export type RuntimeTrackProperty =
   | 'translateY'
   | 'scale'
   | 'pathLength'
+  | 'fill'
+  | 'stroke'
   | 'strokeWidth'
   | 'fillOpacity'
   | 'strokeOpacity';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
-  keyframes: number[];
+  keyframes: number[] | string[];
 };
 
 export type RuntimeLayerBinding = {
   fromLayerId?: string;
   toLayerId?: string;
   tracks?: RuntimeTrack[];
+  delayMs?: number;
+  durationMs?: number;
   morph?: { topology: 'strict' | 'bestGuess' };
 };
 
@@ -192,7 +199,7 @@ export type RuntimeTransition = {
   to: string;
   strategy: 'track' | 'morph' | 'replace';
   durationMs: number;
-  easing: string;
+  easing: string | SpringConfig;
   layerBindings: RuntimeLayerBinding[];
   magicReplace?: RuntimeMagicReplace;
 };
@@ -200,7 +207,7 @@ export type RuntimeTransition = {
 export type RuntimeEffect = {
   kind: string;
   durationMs: number;
-  easing?: string;
+  easing?: string | SpringConfig;
 };
 
 export type RuntimeDrawGuidePoint = {
@@ -469,23 +476,22 @@ function buildRuntimeJsonTransitions(
         return acc;
       }
 
-      acc[transitionId] = {
-        from: transition.from,
-        to: transition.to,
-        strategy: transition.strategy,
-        durationMs: transition.durationMs,
-        easing: transition.easing,
-        layerBindings: transition.layerBindings.map((binding) => ({
-          fromLayerId: binding.fromLayerId,
-          toLayerId: binding.toLayerId,
-          tracks: binding.tracks
-            ? binding.tracks.map((track) => ({
-                property: track.property,
-                keyframes: [...track.keyframes],
-              }))
-            : undefined,
-          morph: binding.morph
-            ? {
+	      acc[transitionId] = {
+	        from: transition.from,
+	        to: transition.to,
+	        strategy: transition.strategy,
+	        durationMs: transition.durationMs,
+	        easing: transition.easing,
+	        layerBindings: transition.layerBindings.map((binding) => ({
+	          fromLayerId: binding.fromLayerId,
+	          toLayerId: binding.toLayerId,
+	          delayMs: binding.delayMs,
+	          durationMs: binding.durationMs,
+	          tracks: binding.tracks
+	            ? binding.tracks.map(cloneRuntimeTrack)
+	            : undefined,
+	          morph: binding.morph
+	            ? {
                 topology: binding.morph.topology,
                 mixer: binding.morph.mixer,
               }
@@ -869,7 +875,10 @@ function toRuntimeTransition(
   drawLayerIds: Set<string>,
   diagnostics: RuntimeExportDiagnostic[],
 ): RuntimeTransition | null {
-  if (!variant.states[transition.from] || !variant.states[transition.to]) {
+  const fromState = variant.states[transition.from];
+  const toState = variant.states[transition.to];
+
+  if (!fromState || !toState) {
     diagnostics.push({
       level: 'warning',
       code: 'invalid-transition',
@@ -881,8 +890,10 @@ function toRuntimeTransition(
     return null;
   }
 
+  const resolvedTransition = resolveTransition(transition, fromState, toState);
+
   const runtimeBindings: RuntimeLayerBinding[] = [];
-  for (const binding of transition.layerBindings) {
+  for (const [index, binding] of transition.layerBindings.entries()) {
     const runtimeBinding = toRuntimeLayerBinding(
       icon,
       variant,
@@ -893,6 +904,13 @@ function toRuntimeTransition(
     );
     if (!runtimeBinding) {
       return null;
+    }
+    const resolvedBinding = resolvedTransition.layerBindings[index];
+    if (runtimeBinding.delayMs === undefined && resolvedBinding?.delayMs !== undefined) {
+      runtimeBinding.delayMs = resolvedBinding.delayMs;
+    }
+    if (runtimeBinding.durationMs === undefined && resolvedBinding?.durationMs !== undefined) {
+      runtimeBinding.durationMs = resolvedBinding.durationMs;
     }
     runtimeBindings.push(runtimeBinding);
   }
@@ -1001,13 +1019,16 @@ function toRuntimeLayerBinding(
         return null;
       }
 
-      tracks.push({
-        property: track.property,
-        keyframes: [...track.keyframes],
-      });
+      tracks.push(cloneRuntimeTrack(track));
     }
 
     runtimeBinding.tracks = tracks;
+  }
+  if (binding.delayMs !== undefined) {
+    runtimeBinding.delayMs = binding.delayMs;
+  }
+  if (binding.durationMs !== undefined) {
+    runtimeBinding.durationMs = binding.durationMs;
   }
 
   if (transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph') {
@@ -1217,7 +1238,18 @@ const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'translateY',
   'scale',
   'pathLength',
+  'fill',
+  'stroke',
   'strokeWidth',
   'fillOpacity',
   'strokeOpacity',
 ]);
+
+function cloneRuntimeTrack(
+  track: TimelineTrack,
+): RuntimeTrack {
+  return {
+    property: track.property,
+    keyframes: [...track.keyframes] as RuntimeTrack['keyframes'],
+  };
+}

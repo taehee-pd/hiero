@@ -166,7 +166,7 @@ Guardrails (`lib/sync-source/source-of-truth.ts`) enforce this at build time:
 ## Known Conflicts / Notes
 
 - Some legacy docs describe runtime/export work as future phases, but the repository already contains real runtime and export implementations under `lib/export/` and `lib/runtime-*`.
-- Desktop architecture docs are broadly accurate, but naming in those docs still uses `Coniva` rather than a single settled product name.
+- Desktop architecture docs now use `Coniva` as the desktop product name, with `icophone` retained only for compatibility surfaces such as legacy project files and update env vars.
 
 ## Sync Pipeline Known Limitations
 

@@ -8,7 +8,10 @@ replacement and should avoid speculative items that are not grounded in
 repository evidence. The ordering favors repository-stability and operational
 needs over product feature speculation.
 
-**Last updated:** 2026-03-19
+Maintenance rule: update this file after every materially completed repository
+change so the task status and implementation notes continue to match the code.
+
+**Last updated:** 2026-03-18
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -17,16 +20,14 @@ Phases are listed below in dependency/priority order. Completed phases
 are at the bottom for reference. If you're starting fresh, implement
 in this order:
 
-1. **Phase E** — Adoption Readiness (E1-E3 done; E4-E7 next)
-2. **Phase 4** — CI/CD & Operational Hardening
-3. **Phase A** — Animation Engine Hardening
-4. **Phase B** — Runtime Capability Expansion
-5. **Phase 5** — Platform & Adapter Foundation
-6. **Phase C** — Editor Animation Authoring (depends on A)
-7. **Phase 6** — Sync & Distribution
-8. **Phase D** — React API Enrichment (depends on B)
-9. **Phase 7** — Cross-Platform Adapters
-10. **Phase 8** — Cross-Icon Morphing (can parallel with A)
+1. **Phase 4** — CI/CD & Operational Hardening
+2. **Phase B** — Runtime Capability Expansion
+3. **Phase 5** — Platform & Adapter Foundation
+4. **Phase C** — Editor Animation Authoring (depends on A)
+5. **Phase 6** — Sync & Distribution
+6. **Phase D** — React API Enrichment (depends on B)
+7. **Phase 7** — Cross-Platform Adapters
+8. **Phase 8** — Cross-Icon Morphing
 
 ---
 
@@ -164,65 +165,68 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase 4 — CI/CD & Operational Hardening
 
-Status: **completed** (verified 2026-03-19).
+Status: **completed** (verified 2026-03-18).
 
 ### 4A — CI Workflows
 
 - [x] **4A.1 — Web app CI workflow.**
-  `.github/workflows/web-app-ci.yml`: triggered on PRs touching `app/`,
-  `components/`, `lib/`, `hooks/`, `styles/`, `package.json`, `tsconfig.json`.
-  Steps: checkout, Bun setup, install, format:check, type-check, lint, test, build.
+  `.github/workflows/web-app-ci.yml` now runs on shared web/runtime path
+  changes and executes install, `format:check`, `type-check`, `lint`,
+  `test:phase-a:coverage`, `check:coverage`, and `build`.
 
 - [x] **4A.2 — Desktop app CI workflow.**
-  `.github/workflows/desktop-ci.yml`: triggered on PRs touching `desktop/`.
-  Runs on `macos-latest`. Steps: install, type-check, build static export,
-  desktop:build (unsigned — `ELECTROBUN_BUILD_ENV` unset). Verifies build output.
+  `.github/workflows/desktop-ci.yml` now runs on `desktop/**` plus the
+  shared root app/runtime paths that feed the desktop static export.
+  It installs root and desktop dependencies, runs `format:check`,
+  `type-check`, `lint`, `test:phase-a`, and `desktop:build`, then
+  uploads `desktop/build/` as an artifact.
 
 - [x] **4A.3 — Test coverage reporting.**
-  Added `test:coverage` script (`bun test --coverage tests/`). Bun's
-  built-in V8 coverage is available. No hard threshold enforced yet —
-  baseline measurement pending.
+  Bun coverage is enabled through `test:phase-a:coverage`, and
+  `scripts/check-coverage.ts` now enforces a scoped Phase A runtime gate
+  against LCOV paths under `lib/export/export-runtime-json.ts`,
+  `lib/runtime-core/`, `lib/runtime-dom/`, and `lib/runtime-react/`.
+  The initial enforced threshold is line coverage `>= 60%`; Bun's LCOV
+  output does not currently provide function totals in this repo, so the
+  function threshold is set to `0` until Bun emits stable function data.
 
 ### 4B — Code Quality
 
-- [x] **4B.1 — Commit to Biome as code formatter.**
-  `biome.json` configured with: 2-space indent, single quotes, trailing
-  commas, 100-char line width. ESLint remains for semantic linting.
-  Scripts: `format` (write), `format:check` (CI). Added to `web-app-ci.yml`.
+- [x] **4B.1 — Commit to a code formatter (Prettier or Biome).**
+  The repo now uses Prettier via `.prettierrc.json`, `.prettierignore`,
+  and root `format` / `format:check` scripts. The rollout is intentionally
+  scoped to the new CI/tooling files for low churn while still giving the
+  new workflows a stable formatter gate.
 
 - [x] **4B.2 — Tighten `@typescript-eslint/no-explicit-any` to error.**
-  All 37 source-file `any` usages fixed across 6 files. Created typed
-  `PaperGlobal`/`PaperScope` interfaces for Paper.js interop, typed
-  RPC handler params in desktop code, replaced loose `any` with `unknown`
-  or proper schema types. Rule promoted to `error` in `eslint.config.mjs`.
+  `eslint.config.mjs` now treats explicit `any` as an error. Remaining
+  `any` usage in the previously noisy desktop/runtime/editor slices was
+  replaced with narrower structural types or `unknown`.
 
 - [x] **4B.3 — Enable `eslint-plugin-react-hooks` exhaustive-deps as error.**
-  Fixed 8 violations across 5 files: wrapped unstable derived values in
-  `useMemo`, added missing deps, removed unnecessary deps. Two
-  intentional exclusions in `VibeIcon.tsx` documented with eslint-disable
-  comments. Rule promoted to `error`.
+  `eslint.config.mjs` now treats `react-hooks/exhaustive-deps` as an
+  error. The React component and runtime-react hook surfaces were updated
+  so `bun run lint` passes cleanly under the stricter rule.
 
 ### 4C — Product Naming & Desktop Hardening
 
-- [x] **4C.1 — Product naming: full rename to Coniva.**
-  Renamed all `icophone` → `coniva` across 55+ files: package.json names,
-  desktop app identifier (`com.coniva.app`), schema URIs
-  (`https://coniva.dev/schemas/*`), CI package name (`@coniva/icons`),
-  file extension (`.coniva.json`), custom events (`coniva:*`), env vars
-  (`CONIVA_*`), branch naming, and runtime warn prefix. Schema validators
-  accept both old (`icophone.dev`) and new (`coniva.dev`) URIs for
-  backward compatibility.
+- [x] **4C.1 — Product naming consistency audit.**
+  The desktop surface now uses `Coniva` across the app name, package
+  metadata, runtime warning prefix, and desktop-facing labels. Legacy
+  `.icophone.json` project files remain loadable for compatibility, and
+  the release/update env vars still accept the older `ICOPHONE_*`
+  names while preferring `CONIVA_*` when present.
 
 - [x] **4C.2 — Desktop code signing/notarization hardening.**
-  `desktop/SIGNING.md` documents all required CI secrets (Apple and
-  Windows), the `ELECTROBUN_BUILD_ENV=stable` guard, release URL
-  configuration, and the safety guard behavior.
+  `desktop/SIGNING.md` now documents the required macOS and Windows
+  signing/notarization secrets, the `ELECTROBUN_BUILD_ENV=stable`
+  guardrail, and the release-time failure mode when secrets are missing.
 
 - [x] **4C.3 — Desktop auto-update endpoint validation.**
-  `tests/desktop-release-manifest.test.ts` (10 tests): validates
-  `ReleaseManifest` schema shape, `inferPlatformKey` filename parsing,
-  and `isInstallerArtifact` extension detection. Utility functions
-  extracted to `desktop/scripts/release-utils.ts`.
+  `desktop/scripts/release.ts` validates the generated manifest before
+  writing `desktop/artifacts/latest.json`, and
+  `desktop/scripts/validate-latest-json.ts` provides a standalone schema
+  check for existing release manifests.
 
 ---
 
@@ -346,7 +350,7 @@ animation quality. Phase E should be implemented before Phases A-D.
   is active, transitions snap via `setState()` (no scheduler created)
   and effects are suppressed.
 
-- [ ] **E4 — Generated component API (promote from Phase 5B).**
+- [x] **E4 — Generated component API (promote from Phase 5B).**
   The codegen pipeline should produce per-icon components:
   `export function ChevronRight(props) { return <VibeIcon icon={data} {...props} /> }`.
   TypeScript autocomplete for icon names via barrel exports. Tree-shakeable
@@ -354,27 +358,29 @@ animation quality. Phase E should be implemented before Phases A-D.
   from schema). This is the PRIMARY consumer API — nobody should import
   raw JSON schema objects.
 
-- [ ] **E5 — Bundle size targets and tree-shaking.**
+- [x] **E5 — Bundle size targets and tree-shaking.**
   Runtime core target: <10KB gzipped. Per-icon data: <2KB gzipped.
   Tree-shaking: icons individually importable, unused icons don't bundle.
   Code-split animation engine: static SVG render path loads zero animation
-  JS; animation JS loads on first interaction. Measure and enforce via
-  CI size check.
+  JS; animation JS loads on first interaction. Measurement is enforced via
+  `scripts/check-runtime-size.ts` and CI workflow steps.
 
-- [ ] **E6 — Vanilla JS API.**
+- [x] **E6 — Vanilla JS API.**
   `createIcon(container, iconData, options)` — framework-agnostic entry
-  point. Same `IconDriver` interface, no React dependency. Already exists
-  as `createIconDriver` in `lib/runtime-dom/driver.ts` — needs to be
-  documented and exported as first-class API. Vue/Svelte/Angular wrappers
-  become thin layers over this.
+  point. Same `IconDriver` interface, no React dependency. Implemented as
+  `createIcon(...)` (first-class alias over `createIconDriver`) in
+  `lib/runtime-dom/driver.ts`, with variant auto-resolution and docs.
+  Vue/Svelte/Angular wrappers become thin layers over this.
 
-- [ ] **E7 — CSS transition fallback for simple animations.**
+- [x] **E7 — CSS transition fallback for simple animations.**
   For simple property animations (opacity, transform), use CSS transitions
   instead of JS rAF. Only use JS for: morph (path `d` interpolation),
   draw (pathLength), complex multi-property interpolation. CSS transitions
   are more battery-efficient, respect `prefers-reduced-motion` natively,
   and run on the compositor thread. Detect which tracks need JS vs CSS
-  at transition resolution time.
+  at transition resolution time. Runtime now plans CSS fallback for track
+  transitions with transform/opacity-only tracks, while JS schedulers remain
+  for morph, draw/pathLength, and fallback crossfade cases.
 
 ---
 
@@ -383,88 +389,83 @@ animation quality. Phase E should be implemented before Phases A-D.
 Addresses critical gaps relative to SF Symbols + Framer Motion quality.
 All changes are in `lib/runtime-core/` and `lib/schema/types.ts`.
 
-- [ ] **A1 — Cubic-bezier custom easing.**
-  `lib/runtime-core/easing.ts`: parse `cubic-bezier(x1,y1,x2,y2)`
-  strings via Newton-Raphson t-solving. Add `steps(n, 'start'|'end')`
-  for stepped animations. No schema changes needed — easing field
-  already accepts arbitrary strings. The current 6 hardcoded presets
-  remain as shortcuts.
+Status: **completed** (verified 2026-03-18).
 
-- [ ] **A2 — Spring physics engine.**
-  New `lib/runtime-core/spring.ts`: `SpringSolver` class implementing
-  an analytical damped harmonic oscillator (stiffness, damping, mass,
-  velocity). `springProgress(config, elapsed)` returns progress with
-  overshoot for underdamped springs. `estimateSpringDuration(config)`
-  returns settling time. Presets: gentle, bouncy, stiff, slow.
-  Schema: add `SpringConfig` type, widen `Transition.easing` and
-  `Effect.easing` to `string | SpringConfig`. `durationMs` becomes a
-  hard cap when spring is active. Properties clamp individually in the
-  renderer (not at scheduler level) to allow overshoot on transform
-  properties while clamping opacity to [0,1].
+- [x] **A1 — Cubic-bezier custom easing.**
+  `lib/runtime-core/easing.ts` now parses `cubic-bezier(x1,y1,x2,y2)`
+  with Newton-Raphson solving plus binary-search fallback, and supports
+  `steps(n, start|end)` alongside the existing preset shortcuts.
+  Tests: `tests/runtime-core.test.ts` — cubic-bezier + steps assertions.
 
-- [ ] **A3 — Color interpolation.**
-  New `lib/runtime-core/color.ts`: `interpolateColor(from, to, t)` with
-  hex parsing (#RGB, #RRGGBB, #RRGGBBAA) and linear RGB lerp (not sRGB,
-  for perceptually correct transitions). Schema: add `fill` and `stroke`
-  properties to `TimelineTrack` with string keyframes. Renderer: handle
-  color values in `applyAnimatedValues` by setting fill/stroke attributes.
+- [x] **A2 — Spring physics engine.**
+  `lib/runtime-core/spring.ts` adds `SpringSolver`,
+  `springProgress(config, elapsedMs)`, `estimateSpringDuration(config)`,
+  and presets (`gentle`, `bouncy`, `stiff`, `slow`). Schema widened via
+  `SpringConfig` in `lib/schema/types.ts`, and runtime schedulers/store
+  now accept `string | SpringConfig` easings with duration caps.
+  Tests: `tests/runtime-core.test.ts` — spring overshoot/duration and
+  scheduler interruption coverage.
 
-- [ ] **A4 — Guide point-aware Draw execution.**
-  `lib/runtime-core/draw-executor.ts`: use guide point `t` values to
-  determine each layer's active range within overall progress, instead
-  of uniform distribution. Layer with `[{t:0},{t:0.3}]` reveals between
-  progress 0.0–0.3. Fallback to uniform when no guide points available.
+- [x] **A3 — Color interpolation.**
+  `lib/runtime-core/color.ts` adds hex color interpolation for
+  `#RGB`, `#RRGGBB`, and `#RRGGBBAA`. `TimelineTrack` now supports
+  `fill` and `stroke` string keyframes. DOM and preview renderers apply
+  animated color values directly to SVG attributes, and runtime/export
+  contracts carry the widened track shape.
+  Tests: `tests/runtime-core.test.ts` — `interpolateColor(...)`;
+  `tests/runtime-dom.test.ts` — animated fill/stroke application.
 
-- [ ] **A5 — Per-layer stagger controls.**
-  Schema: add optional `delayMs`/`durationMs` to `LayerBinding`; add
-  `stagger` to `Transition` with `mode` (linear/from-center/from-edges/
-  random), `perLayerMs`, and optional `easing`. In `transition-resolver.ts`,
-  `computeDelay` checks: explicit binding delay first, then stagger
-  config, then role-based fallback.
+- [x] **A4 — Guide point-aware Draw execution.**
+  `lib/runtime-core/draw-executor.ts` now derives per-layer reveal
+  windows from guide point `t` ranges and falls back to uniform timing
+  when guide timing is absent or non-differentiated.
+  Tests: `tests/runtime-core.test.ts` — guide timing range assertions.
 
-- [ ] **A6 — Animation interruption with blend-out.**
-  `lib/runtime-core/scheduler.ts`: `interrupt(blendOutMs)` captures
-  current interpolated values, lerps to rest position over the blend
-  duration. `lib/runtime-dom/driver.ts`: call `interrupt(80)` instead
-  of `cancel()` when a new transition starts mid-animation. Brief
-  overlap period where blending scheduler and new scheduler both run.
+- [x] **A5 — Per-layer stagger controls.**
+  `lib/schema/types.ts` adds optional `delayMs` / `durationMs` to
+  `LayerBinding` plus `Transition.stagger`. `lib/runtime-core/transition-resolver.ts`
+  now honors explicit binding timing first, then stagger modes
+  (`linear`, `from-center`, `from-edges`, `random`), then existing
+  role-based fallback for non-track transitions.
+  Tests: `tests/runtime-core.test.ts` — stagger and explicit override
+  resolution coverage.
+
+- [x] **A6 — Animation interruption with blend-out.**
+  `lib/runtime-core/scheduler.ts` adds `interrupt(blendOutMs)` via a
+  blend scheduler that eases captured values back toward rest, and
+  `lib/runtime-dom/driver.ts` now interrupts active schedulers with an
+  80ms blend when a new transition starts mid-flight, composing overlap
+  frames in the driver.
+  Tests: `tests/runtime-core.test.ts` — interrupt/blend scheduler
+  coverage; runtime DOM suites remain green.
 
 ---
 
 ## Phase B — Runtime Capability Expansion
 
-Status: **completed** (verified 2026-03-19).
+- [ ] **B1 — Additional animatable properties.**
+  Schema: add `strokeWidth`, `fillOpacity`, `strokeOpacity` to
+  `TimelineTrack` property union. Renderer: handle new properties in
+  `applyAnimatedValues`. Compiler contracts: extend
+  `CompiledTrackProperty`. Export: add to `SUPPORTED_TRACK_PROPERTIES`.
 
-- [x] **B1 — Additional animatable properties.**
-  Added `strokeWidth`, `fillOpacity`, `strokeOpacity` to
-  `CompiledTrackProperty` (`lib/compiler-contracts/types.ts`),
-  `RuntimeTrackProperty` and `SUPPORTED_TRACK_PROPERTIES`
-  (`lib/export/export-runtime-json.ts`). Renderer applies via SVG
-  attributes in `applyAnimatedValues()` (`lib/runtime-dom/renderer.ts`).
+- [ ] **B2 — Parallel effect + transition execution.**
+  `lib/runtime-dom/driver.ts`: replace single `activeEffectScheduler`
+  with `Map<string, EffectScheduler>`. Different effects stack; same
+  effect ID replaces. Add `cancelEffect(effectId)` and
+  `cancelAllEffects()` to `IconDriver`. Renderer: compose transition
+  values + effect deltas (effects are additive for transforms,
+  multiplicative for opacity).
 
-- [x] **B2 — Parallel effect + transition execution.**
-  `lib/runtime-dom/driver.ts`: replaced single `activeEffectScheduler`
-  with `Map<string, EffectScheduler>`. Added `cancelEffect(effectId)`
-  and `cancelAllEffects()` to `IconDriver`. New
-  `lib/runtime-core/compose-values.ts` handles value composition:
-  additive transforms, multiplicative scale/opacity, override for others.
-  Tests: `tests/runtime-core.test.ts` — "composeValues" describe block.
+- [ ] **B3 — Animation callbacks.**
+  `AnimationEvent` type: transitionStart/Complete, effectStart/Complete.
+  `CreateIconDriverOptions.onAnimationEvent` callback. VibeIcon props:
+  `onTransitionStart`, `onTransitionComplete`, `onEffectComplete`.
 
-- [x] **B3 — Animation callbacks.**
-  `lib/runtime-core/animation-events.ts`: `AnimationEvent` type with
-  `transitionStart`, `transitionComplete`, `effectStart`, `effectComplete`.
-  `CreateIconDriverOptions.onAnimationEvent` callback wired in driver.
-  `VibeIcon` props: `onTransitionStart`, `onTransitionComplete`,
-  `onEffectComplete` — callbacks stabilized via `useRef`.
-
-- [x] **B4 — variableColor implementation.**
-  `lib/runtime-core/color-interpolation.ts`: `parseHex()`,
-  `lerpLinearRGB()`, `lerpPalette()` with linear RGB interpolation.
-  `EffectDefinition.palette?: string[]` added to effect-scheduler.
-  `variableColor` case in `emitFrame()` cycles through palette colors
-  and emits `ColorOverrides` through a separate channel. Renderer
-  applies color overrides via `setAttribute('fill', hex)`.
-  Tests: `tests/runtime-core.test.ts` — "color interpolation" describe block.
+- [ ] **B4 — variableColor implementation.**
+  Schema: add optional `palette?: string[]` to `Effect`.
+  `lib/runtime-core/effect-scheduler.ts`: variableColor case cycles
+  through palette colors per layer role using A3 color utilities.
 
 ---
 

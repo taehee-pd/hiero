@@ -21,7 +21,6 @@ import {
   type ExternalIconAdapter,
   type ExternalIconImportRequest,
   type ExternalIconImportResult,
-  type ExternalIconSearchResult,
   type ExternalIconSourceDescriptor,
 } from '../adapter-sdk';
 

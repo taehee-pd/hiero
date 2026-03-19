@@ -49,6 +49,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The desktop shell lives under `desktop/` and wraps the same app with native menus, file dialogs, and desktop file I/O.
 
+The shell is branded as Coniva. Legacy `.icophone.json` files and
+`ICOPHONE_*` release env vars still work for compatibility while the
+desktop path finishes its rename.
+
 Use:
 
 ```bash
@@ -88,6 +92,58 @@ The patch is reapplied automatically on `pnpm --dir desktop install`.
 
 - The overlay canvas is editor-only; it does not affect SVG export output.
 - Geometry source-of-truth remains SVG `d` path data in the schema layer model.
+
+
+## Runtime Consumption APIs (Phase E4–E7)
+
+### Generated React component API (E4)
+
+The React codegen path emits per-icon wrapper components that call `VibeIcon` and embed each icon payload.
+
+Generated components expose icon-specific TypeScript unions for:
+- variant IDs and sizes
+- state IDs
+- effect IDs
+
+This is the primary consumer API; consumers should import generated components rather than raw schema objects.
+
+### Vanilla JS API (E6)
+
+Use `createIcon(container, iconData, options)` from `lib/runtime-dom` to mount and drive icons without React.
+
+```ts
+import { createIcon } from '@/lib/runtime-dom';
+
+const driver = createIcon(containerEl, iconData, {
+  variant: 24,
+  initialState: 'default',
+  reduceMotion: 'system',
+});
+
+driver.transitionTo('active');
+driver.triggerEffect('pulse');
+```
+
+### CSS transition fallback (E7)
+
+For track transitions that only animate `opacity` and transform properties (`rotate`, `translateX`, `translateY`, `scale`), runtime-dom now prefers CSS transitions.
+
+JS frame scheduling is still used for:
+- morph interpolation (`d`)
+- draw/pathLength animation
+- fallback crossfade/magic-replace visuals
+
+### Runtime size budget check (E5)
+
+Run:
+
+```bash
+bun run check:runtime-size
+```
+
+This enforces:
+- runtime-core source bundle proxy: `<10KB` gzipped
+- per-icon compiled fixture payload: `<2KB` gzipped
 
 ## Compiler Pipeline (end-to-end)
 

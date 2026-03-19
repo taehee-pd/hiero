@@ -1,4 +1,8 @@
-import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
+import type {
+  AnimatedValue,
+  InterpolatedValues,
+  ResolvedTransition,
+} from '@/lib/runtime-core';
 import type { Layer, PaintRef, RenderingMode, State } from '@/lib/schema/types';
 import { resolveLayerStyleForRendering } from '@/lib/rendering/resolve-layer-style';
 
@@ -116,9 +120,17 @@ function getBaseElements(target: SVGSVGElement, layerId: string) {
   };
 }
 
-function applyAnimatedValues(element: SVGPathElement, values: Record<string, number>) {
+function applyAnimatedValues(element: SVGPathElement, values: Record<string, AnimatedValue>) {
   if (values.opacity !== undefined) {
-    element.style.opacity = String(values.opacity);
+    element.style.opacity = String(clamp01(asNumber(values.opacity)));
+  }
+
+  if (values.fill !== undefined && typeof values.fill === 'string') {
+    element.setAttribute('fill', values.fill);
+  }
+
+  if (values.stroke !== undefined && typeof values.stroke === 'string') {
+    element.setAttribute('stroke', values.stroke);
   }
 
   const transform = buildAnimatedTransform(values);
@@ -133,7 +145,7 @@ function applyAnimatedValues(element: SVGPathElement, values: Record<string, num
   }
 
   if (values.pathLength !== undefined) {
-    const normalized = clamp01(values.pathLength);
+    const normalized = clamp01(asNumber(values.pathLength));
     const pathLength = Math.max(element.getAttribute('d')?.length ?? 1, 1);
     element.style.strokeDasharray = String(pathLength);
     element.style.strokeDashoffset = String(pathLength * (1 - normalized));
@@ -152,18 +164,22 @@ function clearAnimatedValues(element: SVGPathElement) {
   element.style.removeProperty('stroke-dashoffset');
 }
 
-function buildAnimatedTransform(values: Record<string, number>): string {
+function buildAnimatedTransform(values: Record<string, AnimatedValue>): string {
   const parts: string[] = [];
   if (values.translateX !== undefined || values.translateY !== undefined) {
-    parts.push(`translate(${values.translateX ?? 0}px, ${values.translateY ?? 0}px)`);
+    parts.push(`translate(${asNumber(values.translateX)}px, ${asNumber(values.translateY)}px)`);
   }
   if (values.rotate !== undefined) {
-    parts.push(`rotate(${values.rotate}deg)`);
+    parts.push(`rotate(${asNumber(values.rotate)}deg)`);
   }
   if (values.scale !== undefined) {
-    parts.push(`scale(${values.scale})`);
+    parts.push(`scale(${asNumber(values.scale)})`);
   }
   return parts.join(' ');
+}
+
+function asNumber(value: AnimatedValue | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
 function createPreviewPath(

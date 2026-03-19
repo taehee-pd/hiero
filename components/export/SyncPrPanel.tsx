@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { useSyncPr } from '@/lib/sync-ui/use-sync-pr';
-import { isConnected, isInProgress, canCreatePr, canRetry, phaseLabel } from '@/lib/sync-ui/sync-state';
+import { isInProgress, canRetry } from '@/lib/sync-ui/sync-state';
 import { SyncDiffPreview } from './SyncDiffPreview';
 import { SyncConflictPanel } from './SyncConflictPanel';
 
@@ -111,7 +111,6 @@ export function SyncPrPanel({
     setShowDiff(false);
   };
 
-  const connected = isConnected(state);
   const busy = isInProgress(state);
   const retriable = canRetry(state);
 

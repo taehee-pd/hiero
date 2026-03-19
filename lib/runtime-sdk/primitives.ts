@@ -11,7 +11,7 @@ export type IconBaseProps = SVGProps<SVGSVGElement> & {
   renderingMode?: CompiledRenderingMode;
   paletteColors?: Partial<Record<string, string>>;
   state?: string;
-  transition?: boolean | { durationMs?: number; easing?: string };
+  transition?: boolean | { durationMs?: number; easing?: CompiledIcon['transitions'][number]['easing'] };
   animate?: string | null;
   animateRepeat?: 'once' | 'loop' | number;
 };

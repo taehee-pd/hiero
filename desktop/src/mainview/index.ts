@@ -31,4 +31,4 @@ const rpc = Electroview.defineRPC<ConivaRPC>({
   }
 ).electrobun = window.__electrobun;
 new Electroview({ rpc });
-rpc.send('webviewReady');
+rpc.send('webviewReady', undefined);

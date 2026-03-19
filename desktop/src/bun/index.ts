@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { compileProject } from '../../../lib/export/compile-pipeline';
 import { isProject } from '../../../lib/schema/guards';
@@ -16,7 +16,13 @@ import {
   getRecent,
 } from './recent-projects';
 import { buildContextMenu } from './context-menus';
-import type { ConivaRPC } from '../shared/rpc-types';
+import type { ConivaRPC, DesktopContextMenuKind } from '../shared/rpc-types';
+import {
+  DESKTOP_PRODUCT_NAME,
+  getProjectFileName,
+  isProjectFilePath,
+  slugify,
+} from '../shared/naming';
 
 type DesktopSettings = {
   autoSaveEnabled: boolean;
@@ -25,6 +31,54 @@ type DesktopSettings = {
 type PendingLaunchProject = {
   path: string;
   data: string;
+};
+
+type SaveProjectRequest = {
+  data: string;
+  path?: string;
+};
+
+type SaveProjectAsRequest = {
+  data: string;
+};
+
+type ExportSvgRequest = {
+  svg: string;
+  defaultName: string;
+};
+
+type ExportFilesRequest = {
+  files: Record<string, string>;
+};
+
+type CompileExportBundleRequest = {
+  project: string;
+  generateReact: boolean;
+};
+
+type OpenExternalRequest = {
+  url: string;
+};
+
+type ShowContextMenuRequest = {
+  menu: DesktopContextMenuKind;
+  payload?: Record<string, unknown>;
+};
+
+type SetWindowTitleRequest = {
+  projectName?: string | null;
+  isDirty: boolean;
+};
+
+type ResolveQuitDecisionRequest = {
+  decision: 'quit' | 'discard' | 'cancel';
+};
+
+type ResizeEvent = {
+  data?: {
+    width?: number;
+    height?: number;
+  };
 };
 
 const SETTINGS_FILE = join(Utils.paths.userData, 'settings.json');
@@ -38,7 +92,11 @@ const DEFAULT_WINDOW_FRAME = {
   height: 880,
 };
 
-const runtimeMode = process.env['ELECTROBUN_BUILD_ENV'] ?? process.env['CONIVA_DESKTOP_MODE'] ?? 'dev';
+const runtimeMode =
+  process.env['ELECTROBUN_BUILD_ENV'] ??
+  process.env['CONIVA_DESKTOP_MODE'] ??
+  process.env['ICOPHONE_DESKTOP_MODE'] ??
+  'dev';
 const isDev = runtimeMode === 'dev';
 let webviewIsReady = false;
 let allowNextQuit = false;
@@ -49,7 +107,7 @@ let correctingWindowFrame = false;
 let pendingQuitResolver: ((decision: 'quit' | 'discard' | 'cancel') => void) | null = null;
 let pendingLaunchProject = await readLaunchProjectFromArgv(process.argv);
 const windowState = {
-  projectName: 'Coniva',
+  projectName: DESKTOP_PRODUCT_NAME,
   isDirty: false,
 };
 
@@ -64,7 +122,7 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
         await addRecent(selectedPath, parseProjectName(data));
         return { path: selectedPath, data };
       },
-      saveProject: async ({ data, path }: { data: string; path?: string }) => {
+      saveProject: async ({ data, path }: SaveProjectRequest) => {
         if (!path) {
           return await saveProjectAs(data);
         }
@@ -74,10 +132,10 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
         sendToWebview('projectSaved', { path });
         return { path };
       },
-      saveProjectAs: async ({ data }: { data: string }) => {
+      saveProjectAs: async ({ data }: SaveProjectAsRequest) => {
         return await saveProjectAs(data);
       },
-      exportSvg: async ({ svg, defaultName }: { svg: string; defaultName: string }) => {
+      exportSvg: async ({ svg, defaultName }: ExportSvgRequest) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -85,14 +143,14 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
         await writeFile(filePath, svg);
         return { path: filePath };
       },
-      exportReactLibrary: async ({ files }: { files: Record<string, string> }) => {
+      exportReactLibrary: async ({ files }: ExportFilesRequest) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
         await writeFiles(targetDirectory, files);
         return { path: targetDirectory };
       },
-      exportSvgPackage: async ({ files }: { files: Record<string, string> }) => {
+      exportSvgPackage: async ({ files }: ExportFilesRequest) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -121,7 +179,7 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
       getRecentProjects: async () => {
         return await getRecent();
       },
-      compileExportBundle: async ({ project, generateReact }: { project: string; generateReact: boolean }) => {
+      compileExportBundle: async ({ project, generateReact }: CompileExportBundleRequest) => {
         const parsed = JSON.parse(project) as unknown;
         if (!isProject(parsed)) {
           return null;
@@ -140,15 +198,15 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
           files: Object.fromEntries(result.files.map((file) => [file.path, file.contents])),
         };
       },
-      openExternal: async ({ url }: { url: string }) => {
+      openExternal: async ({ url }: OpenExternalRequest) => {
         return Utils.openExternal(url);
       },
-      showContextMenu: async ({ menu, payload }: { menu: string; payload?: Record<string, unknown> }) => {
+      showContextMenu: async ({ menu, payload }: ShowContextMenuRequest) => {
         ContextMenu.showContextMenu(buildContextMenu(menu, payload));
         return null;
       },
-      setWindowTitle: async ({ projectName, isDirty }: { projectName?: string | null; isDirty: boolean }) => {
-        windowState.projectName = projectName?.trim() || 'Coniva';
+      setWindowTitle: async ({ projectName, isDirty }: SetWindowTitleRequest) => {
+        windowState.projectName = projectName?.trim() || DESKTOP_PRODUCT_NAME;
         windowState.isDirty = isDirty;
         updateWindowTitle();
         return null;
@@ -164,7 +222,7 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
         });
         return response === 0 ? 'save' : response === 1 ? 'discard' : 'cancel';
       },
-      resolveQuitDecision: async ({ decision }: { decision: 'quit' | 'discard' | 'cancel' }) => {
+      resolveQuitDecision: async ({ decision }: ResolveQuitDecisionRequest) => {
         pendingQuitResolver?.(decision);
         return null;
       },
@@ -184,8 +242,7 @@ const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
       },
     },
   },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Electrobun's defineElectrobunRPC generic constraints are too narrow for the handler object literal; a cast is required until upstream types improve.
-} as any) as ReturnType<typeof defineElectrobunRPC<ConivaRPC>>;
+});
 const sendToWebview = rpc.send as (channel: string, payload?: unknown) => void;
 
 const mainWindow = new BrowserWindow({
@@ -213,7 +270,7 @@ Electrobun.events.on('before-quit', (event) => {
   event.response = { allow: false };
   void requestQuitWithGuard('quit');
 });
-mainWindow.on('resize', (event: { data?: { width?: number; height?: number } }) => {
+mainWindow.on('resize', (event: ResizeEvent) => {
   const { width, height } = event?.data ?? {};
   if (correctingWindowFrame) return;
   if (typeof width !== 'number' || typeof height !== 'number') return;
@@ -302,7 +359,7 @@ function setApplicationMenu() {
       label: 'Help',
       submenu: [
         { label: 'Documentation', action: 'help.documentation' },
-        { label: 'About Coniva', action: 'help.about' },
+        { label: `About ${DESKTOP_PRODUCT_NAME}`, action: 'help.about' },
       ],
     },
   ]);
@@ -342,7 +399,7 @@ function dispatchMenuAction(action: string, payload?: Record<string, unknown>) {
 async function chooseProjectFile() {
   const paths = await Utils.openFileDialog({
     startingFolder: Utils.paths.documents,
-    allowedFileTypes: 'json,coniva.json',
+    allowedFileTypes: 'json,coniva.json,icophone.json',
     canChooseFiles: true,
     canChooseDirectory: false,
     allowsMultipleSelection: false,
@@ -366,7 +423,7 @@ async function saveProjectAs(data: string) {
 
   // Electrobun currently exposes an open dialog, so we pick a directory and
   // write a default file name inside it until a native save dialog lands.
-  const filePath = join(targetDirectory, getProjectFileName(data));
+  const filePath = join(targetDirectory, getProjectFileName(parseProjectName(data)));
   await writeFile(filePath, data);
   await addRecent(filePath, parseProjectName(data));
   sendToWebview('projectSaved', { path: filePath });
@@ -378,20 +435,8 @@ async function writeFile(path: string, data: string) {
   await Bun.write(path, data);
 }
 
-function getProjectFileName(data: string) {
-  return ensureExtension(slugify(parseProjectName(data)), '.coniva.json');
-}
-
 function ensureExtension(fileName: string, extension: string) {
   return fileName.endsWith(extension) ? fileName : `${fileName}${extension}`;
-}
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'untitled';
 }
 
 async function writeFiles(targetDirectory: string, files: Record<string, string>) {
@@ -496,10 +541,6 @@ async function readLaunchProjectFromArgv(argv: string[]): Promise<PendingLaunchP
   }
 }
 
-function isProjectFilePath(value: string) {
-  return value.endsWith('.coniva.json') && existsSync(value);
-}
-
 function parseProjectName(data: string) {
   try {
     const parsed = JSON.parse(data) as { meta?: { name?: string } };
@@ -593,6 +634,7 @@ async function readLatestReleaseNotes(fallbackVersion: string) {
     const buildConfig = await BuildConfig.get();
     const endpoint =
       process.env['CONIVA_UPDATE_ENDPOINT'] ??
+      process.env['ICOPHONE_UPDATE_ENDPOINT'] ??
       (typeof buildConfig.runtime?.updateEndpoint === 'string'
         ? buildConfig.runtime.updateEndpoint
         : null);

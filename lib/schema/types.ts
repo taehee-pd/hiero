@@ -157,7 +157,8 @@ export type Transition = {
   to: string;
   strategy: 'track' | 'strictMorph' | 'bestGuessMorph' | 'replace';
   durationMs: number;
-  easing?: string;
+  easing?: string | SpringConfig;
+  stagger?: TransitionStagger;
   layerBindings: LayerBinding[];
 };
 
@@ -165,6 +166,8 @@ export type LayerBinding = {
   fromLayerId?: string;
   toLayerId?: string;
   tracks?: TimelineTrack[];
+  delayMs?: number;
+  durationMs?: number;
   morph?: {
     topology: 'strict' | 'bestGuess';
     mixer?: 'native' | 'flubber';
@@ -177,7 +180,23 @@ export type TimelineTrack =
   | { property: 'translateX'; keyframes: number[] }
   | { property: 'translateY'; keyframes: number[] }
   | { property: 'scale'; keyframes: number[] }
-  | { property: 'pathLength'; keyframes: number[] };
+  | { property: 'pathLength'; keyframes: number[] }
+  | { property: 'fill'; keyframes: string[] }
+  | { property: 'stroke'; keyframes: string[] };
+
+export type SpringConfig = {
+  type: 'spring';
+  stiffness: number;
+  damping: number;
+  mass?: number;
+  velocity?: number;
+};
+
+export type TransitionStagger = {
+  mode: 'linear' | 'from-center' | 'from-edges' | 'random';
+  perLayerMs: number;
+  easing?: string;
+};
 
 export type TopologyContract = {
   locked: boolean;
@@ -272,7 +291,7 @@ export type Effect = {
     | 'lineDrawOn'
     | 'lineDrawOff';
   durationMs: number;
-  easing?: string;
+  easing?: string | SpringConfig;
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';

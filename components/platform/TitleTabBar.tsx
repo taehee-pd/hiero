@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { buildEditorRoute } from '@/lib/platform/routes';

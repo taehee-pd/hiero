@@ -66,6 +66,6 @@ Workspace support is not only planned; it is implemented in the schema and edito
 ## Known Conflicts / Notes
 
 - Legacy operational docs were normalized to repository-relative links to avoid machine-specific path assumptions.
-- Product naming is inconsistent across the repository. Current names found in code and docs include `Coniva`, `IconStudio`, `Icon Studio`, and `Icon Authoring Tool`.
-- Root package metadata now uses `icon-authoring-tool`, while the desktop package remains `coniva-desktop`; cross-package naming is still mixed.
+- Product naming is still mixed in a few compatibility surfaces, but the desktop shell now uses `Coniva` as the canonical product name. Legacy `icophone` identifiers remain only where the release/update and project-file compatibility layers still need them.
+- Root package metadata now uses `icon-authoring-tool`, while the desktop package metadata has been normalized to `coniva-desktop`.
 - Legacy docs in `docs/plans/` contain future-state design material. Use `docs/plans/STATUS.md` as the entrypoint, and treat canonical docs as repository truth.

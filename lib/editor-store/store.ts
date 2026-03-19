@@ -677,17 +677,6 @@ function getVariantById(
   return project.icons[iconId]?.variants[variantId] ?? null;
 }
 
-function getVariantStateById(
-  project: Project | null,
-  iconId: string | null | undefined,
-  variantId: string | null | undefined,
-  stateId: string | null | undefined,
-): State | null {
-  const variant = getVariantById(project, iconId, variantId);
-  if (!variant || !stateId) return null;
-  return variant.states[stateId] ?? null;
-}
-
 function buildVariantName(size: number, existingNames: string[], preferredName?: string): string {
   const baseName = (preferredName?.trim() || String(size)).slice(0, 64);
   if (!existingNames.includes(baseName)) return baseName;

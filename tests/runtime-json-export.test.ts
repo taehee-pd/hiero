@@ -242,4 +242,64 @@ describe('runtime-json export', () => {
       ),
     ).toBeTrue();
   });
+
+  test('bakes resolved stagger timing into exported runtime transitions', () => {
+    const project = structuredClone(SAMPLE_PROJECT);
+    const icon = project.icons['icon-chevron']!;
+    const variant = icon.variants.v24;
+    const defaultState = variant.states.default;
+
+    variant.states.active = {
+      ...structuredClone(defaultState),
+      id: 'active',
+      layers: {
+        ...structuredClone(defaultState.layers),
+        chevron: {
+          ...structuredClone(defaultState.layers.chevron),
+          transform: { x: 2 },
+        },
+        'bg-circle': {
+          ...structuredClone(defaultState.layers['bg-circle']),
+          transform: { y: -2 },
+        },
+      },
+    };
+
+    icon.transitions = {
+      staggered: {
+        id: 'staggered',
+        from: 'default',
+        to: 'active',
+        strategy: 'track',
+        durationMs: 240,
+        easing: 'linear',
+        stagger: { mode: 'linear', perLayerMs: 40 },
+        layerBindings: [
+          {
+            fromLayerId: 'bg-circle',
+            toLayerId: 'bg-circle',
+            tracks: [{ property: 'translateY', keyframes: [0, -2] }],
+          },
+          {
+            fromLayerId: 'chevron',
+            toLayerId: 'chevron',
+            tracks: [{ property: 'translateX', keyframes: [0, 2] }],
+          },
+        ],
+      },
+    };
+
+    const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
+    const runtimeTransition = exported.variant.transitions.staggered;
+
+    expect(runtimeTransition).toBeDefined();
+    expect(runtimeTransition?.layerBindings[0]).toMatchObject({
+      delayMs: 0,
+      durationMs: 240,
+    });
+    expect(runtimeTransition?.layerBindings[1]).toMatchObject({
+      delayMs: 40,
+      durationMs: 200,
+    });
+  });
 });

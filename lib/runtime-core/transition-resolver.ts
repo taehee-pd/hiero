@@ -1,4 +1,11 @@
-import type { Layer, LayerBinding, State, TimelineTrack, Transition } from '../schema';
+import type {
+  Layer,
+  LayerBinding,
+  SpringConfig,
+  State,
+  TimelineTrack,
+  Transition,
+} from '../schema';
 import { bestGuessMorph, strictMorph, type MorphInterpolator } from './morph';
 import { canonicalizeLayerPath, type CanonicalPath } from './path-normalization';
 
@@ -27,7 +34,7 @@ export type ResolvedLayerBinding = {
   readiness?: MorphReadiness;
   delayMs?: number;
   durationMs?: number;
-  easing?: string;
+  easing?: string | SpringConfig;
   diagnostics?: string[];
   /** When true, this layer is preserved across a Magic Replace transition
    *  and should not be crossfaded or removed/recreated. */
@@ -37,7 +44,7 @@ export type ResolvedLayerBinding = {
 export type ResolvedTransition = {
   strategy: Transition['strategy'];
   durationMs: number;
-  easing: string;
+  easing: string | SpringConfig;
   layerBindings: ResolvedLayerBinding[];
   diagnostics: string[];
 };
@@ -56,8 +63,15 @@ export function resolveTransition(
   const diagnostics: string[] = [];
   const preserveSet = new Set(options.preserveLayerIds ?? []);
   const plannedBindings = resolveBindings(transition, fromState, toState);
+  const staggerOrder = computeStaggerOrder(plannedBindings, transition.stagger?.mode);
   const layerBindings = plannedBindings.map((binding, index) => {
-    const resolved = resolveLayerBinding(binding, transition, index, plannedBindings.length);
+    const resolved = resolveLayerBinding(
+      binding,
+      transition,
+      index,
+      plannedBindings.length,
+      staggerOrder[index] ?? index,
+    );
     // Mark preserved layers — skip crossfade/morph, keep stable
     const layerId = resolved.fromLayer?.id ?? resolved.toLayer?.id;
     if (layerId && preserveSet.has(layerId)) {
@@ -150,6 +164,7 @@ function resolveLayerBinding(
   transition: Transition,
   index: number,
   total: number,
+  staggerIndex: number,
 ): ResolvedLayerBinding {
   const fromLayer = binding.fromLayer;
   const toLayer = binding.toLayer;
@@ -162,9 +177,15 @@ function resolveLayerBinding(
     tracks: transition.strategy === 'track' ? [...(binding.tracks ?? [])] : [],
     animationType: 'replace',
     readiness,
-    delayMs: computeDelay(index, total, fromLayer, toLayer, transition.strategy),
-    durationMs: Math.max(0, transition.durationMs - computeDelay(index, total, fromLayer, toLayer, transition.strategy)),
-    easing: transition.easing ?? 'linear',
+    delayMs: computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
+    durationMs:
+      binding.durationMs ??
+      Math.max(
+        0,
+        transition.durationMs -
+          computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
+      ),
+    easing: transition.stagger?.easing ?? transition.easing ?? 'linear',
     diagnostics,
   };
 
@@ -370,23 +391,76 @@ function fallbackToAnimationType(
 }
 
 function computeDelay(
-  index: number,
+  binding: LayerBinding,
+  transition: Transition,
+  staggerIndex: number,
   total: number,
   fromLayer: Layer | undefined,
   toLayer: Layer | undefined,
-  strategy: Transition['strategy'],
 ): number {
-  if (strategy === 'track') return 0;
+  if (binding.delayMs !== undefined) {
+    return Math.max(0, binding.delayMs);
+  }
+
+  if (transition.stagger) {
+    return Math.max(0, staggerIndex * transition.stagger.perLayerMs);
+  }
+
+  if (transition.strategy === 'track') {
+    return 0;
+  }
+
   const role = toLayer?.role ?? fromLayer?.role;
   if (!fromLayer && toLayer) {
-    return Math.max(0, total - index) * 12;
+    return Math.max(0, total - staggerIndex) * 12;
   }
   if (fromLayer && !toLayer) {
     return 0;
   }
   if (role === 'primary') return 0;
   if (role === 'secondary') return 24;
-  return 16 + index * 8;
+  return 16 + staggerIndex * 8;
+}
+
+function computeStaggerOrder(
+  bindings: Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }>,
+  mode: Transition['stagger'] extends infer T
+    ? T extends { mode: infer Mode }
+      ? Mode
+      : never
+    : never = 'linear',
+): number[] {
+  const baseOrder = bindings.map((_, index) => index);
+  switch (mode) {
+    case 'from-center':
+      return [...baseOrder].sort((left, right) => {
+        const center = (bindings.length - 1) / 2;
+        return Math.abs(left - center) - Math.abs(right - center) || left - right;
+      });
+    case 'from-edges':
+      return [...baseOrder].sort((left, right) => {
+        const edgeDistanceLeft = Math.min(left, bindings.length - 1 - left);
+        const edgeDistanceRight = Math.min(right, bindings.length - 1 - right);
+        return edgeDistanceLeft - edgeDistanceRight || left - right;
+      });
+    case 'random':
+      return [...baseOrder].sort((left, right) => {
+        const leftId = bindings[left]?.toLayer?.id ?? bindings[left]?.fromLayer?.id ?? String(left);
+        const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
+        return hashString(leftId) - hashString(rightId);
+      });
+    case 'linear':
+    default:
+      return baseOrder;
+  }
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash;
 }
 
 function clamp01(value: number): number {

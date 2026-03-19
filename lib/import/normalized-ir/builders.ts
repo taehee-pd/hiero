@@ -12,7 +12,6 @@ import type {
   NormalizedGeometry,
   NormalizedStyle,
   NormalizedTransform,
-  NormalizedSourceMeta,
   PathGeometry,
   RectGeometry,
   CircleGeometry,

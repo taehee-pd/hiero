@@ -681,7 +681,7 @@ describe('E2E: PR sync to release pipeline', () => {
       // Compile
       const result = compileProject(reconstructed, {
         package: {
-          name: '@icophone/icons',
+          name: '@coniva/icons',
           version: '1.0.0',
           builtAt: '2026-03-15T00:00:00.000Z',
         },

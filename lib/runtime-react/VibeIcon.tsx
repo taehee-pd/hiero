@@ -3,9 +3,10 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 
-import type { Icon, Layer, PaintRef, Variant } from '../schema';
+import type { Icon, Layer, Variant } from '../schema';
 import { createIconDriver, type IconDriver } from '../runtime-dom';
 import { getRenderableLayers, resolvePaintToString } from '../runtime-dom/renderer';
+import type { AnimationEvent } from '../runtime-core/animation-events';
 
 export type VibeIconProps = {
   icon: Icon;
@@ -20,6 +21,12 @@ export type VibeIconProps = {
   color?: string;
   className?: string;
   style?: React.CSSProperties;
+  /** Called when a state transition begins. */
+  onTransitionStart?: (fromState: string, toState: string) => void;
+  /** Called when a state transition completes. */
+  onTransitionComplete?: (fromState: string, toState: string) => void;
+  /** Called when an effect completes. */
+  onEffectComplete?: (effectId: string) => void;
 };
 
 export function VibeIcon({
@@ -33,9 +40,16 @@ export function VibeIcon({
   color,
   className,
   style,
+  onTransitionStart,
+  onTransitionComplete,
+  onEffectComplete,
 }: VibeIconProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const driverRef = useRef<IconDriver | null>(null);
+
+  // Stable refs for animation callbacks — avoid driver re-creation on callback change
+  const callbacksRef = useRef({ onTransitionStart, onTransitionComplete, onEffectComplete });
+  callbacksRef.current = { onTransitionStart, onTransitionComplete, onEffectComplete };
 
   const resolvedVariant = resolveVariant(icon, variant);
   const resolvedState = resolveState(resolvedVariant, state);
@@ -58,6 +72,20 @@ export function VibeIcon({
       label,
       reduceMotion,
       existingSvg: svg,
+      onAnimationEvent: (event: AnimationEvent) => {
+        const cbs = callbacksRef.current;
+        switch (event.type) {
+          case 'transitionStart':
+            cbs.onTransitionStart?.(event.fromState!, event.toState!);
+            break;
+          case 'transitionComplete':
+            cbs.onTransitionComplete?.(event.fromState!, event.toState!);
+            break;
+          case 'effectComplete':
+            cbs.onEffectComplete?.(event.effectId!);
+            break;
+        }
+      },
     });
     driverRef.current = driver;
 
@@ -67,16 +95,23 @@ export function VibeIcon({
         driverRef.current = null;
       }
     };
+    // Driver is created once per icon/variant/size identity.
+    // `label`, `reduceMotion`, and `resolvedState` are intentionally excluded:
+    // state changes are handled via `driver.transitionTo()` without recreating the driver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [icon, renderedSize, resolvedVariant.id]);
 
   // Subscribe to the driver's current state via useSyncExternalStore.
+  // The callback only accesses driverRef, so no props are needed in deps.
+  // Re-subscription when the driver is recreated is already handled by the
+  // effect above that depends on [icon, renderedSize, resolvedVariant.id].
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       const driver = driverRef.current;
       if (!driver) return () => {};
       return driver.subscribe(onStoreChange);
     },
-    [icon, renderedSize, resolvedVariant.id],
+    [],
   );
 
   const getSnapshot = useCallback(() => {
@@ -110,6 +145,10 @@ export function VibeIcon({
     }
 
     driver.transitionTo(resolvedState);
+    // `label` and `reduceMotion` are intentionally excluded: they are only
+    // used when `animate === false` forces a full driver recreation, which is
+    // already covered by the driver lifecycle effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animate, currentDriverState, icon, renderedSize, resolvedState, resolvedVariant.id]);
 
   // Render static SVG with layers for SSR. The driver replaces this on hydration.

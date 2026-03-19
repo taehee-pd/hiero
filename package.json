@@ -1,5 +1,5 @@
 {
-  "name": "icon-authoring-tool",
+  "name": "coniva",
   "version": "0.1.0",
   "private": true,
   "description": "Icon design studio for stateful, animated SVG icons",
@@ -23,7 +23,10 @@
     "build:icons:package": "bun scripts/build-icons-package.ts",
     "validate:icons:package": "bun scripts/validate-icons-package.ts",
     "validate:source-export": "bun scripts/validate-source-export.ts --source .",
-    "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts"
+    "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "test:coverage": "bun test --coverage tests/"
   },
   "dependencies": {
     "@fontsource/work-sans": "^5.2.8",
@@ -80,6 +83,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/bun": "^1.3.10",

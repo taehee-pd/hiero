@@ -14,7 +14,7 @@ const RECENT_PROJECTS_FILE = join(Utils.paths.userData, 'recent-projects.json');
 export async function addRecent(path: string, name?: string) {
   const nextEntry: RecentProject = {
     path,
-    name: sanitizeProjectName(name) ?? basename(path, '.icophone.json'),
+    name: sanitizeProjectName(name) ?? basename(path, '.coniva.json'),
     updatedAt: new Date().toISOString(),
   };
 

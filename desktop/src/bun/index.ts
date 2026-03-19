@@ -16,7 +16,7 @@ import {
   getRecent,
 } from './recent-projects';
 import { buildContextMenu } from './context-menus';
-import type { IcophoneRPC } from '../shared/rpc-types';
+import type { ConivaRPC } from '../shared/rpc-types';
 
 type DesktopSettings = {
   autoSaveEnabled: boolean;
@@ -38,7 +38,7 @@ const DEFAULT_WINDOW_FRAME = {
   height: 880,
 };
 
-const runtimeMode = process.env['ELECTROBUN_BUILD_ENV'] ?? process.env['ICOPHONE_DESKTOP_MODE'] ?? 'dev';
+const runtimeMode = process.env['ELECTROBUN_BUILD_ENV'] ?? process.env['CONIVA_DESKTOP_MODE'] ?? 'dev';
 const isDev = runtimeMode === 'dev';
 let webviewIsReady = false;
 let allowNextQuit = false;
@@ -49,11 +49,11 @@ let correctingWindowFrame = false;
 let pendingQuitResolver: ((decision: 'quit' | 'discard' | 'cancel') => void) | null = null;
 let pendingLaunchProject = await readLaunchProjectFromArgv(process.argv);
 const windowState = {
-  projectName: 'Icophone',
+  projectName: 'Coniva',
   isDirty: false,
 };
 
-const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
+const rpc = defineElectrobunRPC<ConivaRPC>('bun', {
   handlers: {
     requests: {
       openProject: async () => {
@@ -64,7 +64,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         await addRecent(selectedPath, parseProjectName(data));
         return { path: selectedPath, data };
       },
-      saveProject: async ({ data, path }: any) => {
+      saveProject: async ({ data, path }: { data: string; path?: string }) => {
         if (!path) {
           return await saveProjectAs(data);
         }
@@ -74,10 +74,10 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         sendToWebview('projectSaved', { path });
         return { path };
       },
-      saveProjectAs: async ({ data }: any) => {
+      saveProjectAs: async ({ data }: { data: string }) => {
         return await saveProjectAs(data);
       },
-      exportSvg: async ({ svg, defaultName }: any) => {
+      exportSvg: async ({ svg, defaultName }: { svg: string; defaultName: string }) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -85,14 +85,14 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         await writeFile(filePath, svg);
         return { path: filePath };
       },
-      exportReactLibrary: async ({ files }: any) => {
+      exportReactLibrary: async ({ files }: { files: Record<string, string> }) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
         await writeFiles(targetDirectory, files);
         return { path: targetDirectory };
       },
-      exportSvgPackage: async ({ files }: any) => {
+      exportSvgPackage: async ({ files }: { files: Record<string, string> }) => {
         const targetDirectory = await chooseDirectory(Utils.paths.documents);
         if (!targetDirectory) return null;
 
@@ -121,7 +121,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
       getRecentProjects: async () => {
         return await getRecent();
       },
-      compileExportBundle: async ({ project, generateReact }: any) => {
+      compileExportBundle: async ({ project, generateReact }: { project: string; generateReact: boolean }) => {
         const parsed = JSON.parse(project) as unknown;
         if (!isProject(parsed)) {
           return null;
@@ -129,7 +129,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
 
         const result = compileProject(parsed, {
           package: {
-            name: `@icophone/${slugify(parsed.meta.name)}`,
+            name: `@coniva/${slugify(parsed.meta.name)}`,
             version: '1.0.0',
             builtAt: new Date().toISOString(),
           },
@@ -140,15 +140,15 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
           files: Object.fromEntries(result.files.map((file) => [file.path, file.contents])),
         };
       },
-      openExternal: async ({ url }: any) => {
+      openExternal: async ({ url }: { url: string }) => {
         return Utils.openExternal(url);
       },
-      showContextMenu: async ({ menu, payload }: any) => {
+      showContextMenu: async ({ menu, payload }: { menu: string; payload?: Record<string, unknown> }) => {
         ContextMenu.showContextMenu(buildContextMenu(menu, payload));
         return null;
       },
-      setWindowTitle: async ({ projectName, isDirty }: any) => {
-        windowState.projectName = projectName?.trim() || 'Icophone';
+      setWindowTitle: async ({ projectName, isDirty }: { projectName?: string | null; isDirty: boolean }) => {
+        windowState.projectName = projectName?.trim() || 'Coniva';
         windowState.isDirty = isDirty;
         updateWindowTitle();
         return null;
@@ -164,7 +164,7 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
         });
         return response === 0 ? 'save' : response === 1 ? 'discard' : 'cancel';
       },
-      resolveQuitDecision: async ({ decision }: any) => {
+      resolveQuitDecision: async ({ decision }: { decision: 'quit' | 'discard' | 'cancel' }) => {
         pendingQuitResolver?.(decision);
         return null;
       },
@@ -184,7 +184,8 @@ const rpc = defineElectrobunRPC<IcophoneRPC>('bun', {
       },
     },
   },
-} as any) as ReturnType<typeof defineElectrobunRPC<IcophoneRPC>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Electrobun's defineElectrobunRPC generic constraints are too narrow for the handler object literal; a cast is required until upstream types improve.
+} as any) as ReturnType<typeof defineElectrobunRPC<ConivaRPC>>;
 const sendToWebview = rpc.send as (channel: string, payload?: unknown) => void;
 
 const mainWindow = new BrowserWindow({
@@ -212,7 +213,7 @@ Electrobun.events.on('before-quit', (event) => {
   event.response = { allow: false };
   void requestQuitWithGuard('quit');
 });
-mainWindow.on('resize', (event: any) => {
+mainWindow.on('resize', (event: { data?: { width?: number; height?: number } }) => {
   const { width, height } = event?.data ?? {};
   if (correctingWindowFrame) return;
   if (typeof width !== 'number' || typeof height !== 'number') return;
@@ -301,7 +302,7 @@ function setApplicationMenu() {
       label: 'Help',
       submenu: [
         { label: 'Documentation', action: 'help.documentation' },
-        { label: 'About Icophone', action: 'help.about' },
+        { label: 'About Coniva', action: 'help.about' },
       ],
     },
   ]);
@@ -341,7 +342,7 @@ function dispatchMenuAction(action: string, payload?: Record<string, unknown>) {
 async function chooseProjectFile() {
   const paths = await Utils.openFileDialog({
     startingFolder: Utils.paths.documents,
-    allowedFileTypes: 'json,icophone.json',
+    allowedFileTypes: 'json,coniva.json',
     canChooseFiles: true,
     canChooseDirectory: false,
     allowsMultipleSelection: false,
@@ -378,7 +379,7 @@ async function writeFile(path: string, data: string) {
 }
 
 function getProjectFileName(data: string) {
-  return ensureExtension(slugify(parseProjectName(data)), '.icophone.json');
+  return ensureExtension(slugify(parseProjectName(data)), '.coniva.json');
 }
 
 function ensureExtension(fileName: string, extension: string) {
@@ -462,7 +463,7 @@ async function requestQuitWithGuard(reason: 'quit' | 'windowClose') {
 
 function updateWindowTitle() {
   // With hiddenInset title bar, keep the title empty so native title text
-  // doesn't overlap the custom TitleTabBar. The app name ("Icophone") shows
+  // doesn't overlap the custom TitleTabBar. The app name ("Coniva") shows
   // in the Dock and Cmd+Tab via the Electrobun app config.
   mainWindow.setTitle('');
 }
@@ -496,7 +497,7 @@ async function readLaunchProjectFromArgv(argv: string[]): Promise<PendingLaunchP
 }
 
 function isProjectFilePath(value: string) {
-  return value.endsWith('.icophone.json') && existsSync(value);
+  return value.endsWith('.coniva.json') && existsSync(value);
 }
 
 function parseProjectName(data: string) {
@@ -591,7 +592,7 @@ async function readLatestReleaseNotes(fallbackVersion: string) {
   try {
     const buildConfig = await BuildConfig.get();
     const endpoint =
-      process.env['ICOPHONE_UPDATE_ENDPOINT'] ??
+      process.env['CONIVA_UPDATE_ENDPOINT'] ??
       (typeof buildConfig.runtime?.updateEndpoint === 'string'
         ? buildConfig.runtime.updateEndpoint
         : null);

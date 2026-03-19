@@ -356,7 +356,7 @@ async function getCompiledIconSchemaVersions(
       throw new Error(`Validation failed: invalid compiled icon file at ${icon.compiledPath}.`);
     }
 
-    const schemaVersionMatch = parsed.$schema.match(/^https:\/\/icophone\.dev\/schemas\/compiled-icon\/([^/]+)$/);
+    const schemaVersionMatch = parsed.$schema.match(/^https:\/\/(?:coniva|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
     if (!schemaVersionMatch) {
       throw new Error(`Validation failed: unexpected compiled icon schema URI: ${parsed.$schema}`);
     }

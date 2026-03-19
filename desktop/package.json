@@ -1,6 +1,6 @@
 {
-  "name": "icophone-desktop",
-  "version": "0.1.0",
+  "name": "coniva-desktop",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {

@@ -58,20 +58,20 @@ const desktopPackageJson = JSON.parse(
   readFileSync(join(import.meta.dir, 'package.json'), 'utf8'),
 ) as { version: string };
 const releaseBaseUrl =
-  process.env['ICOPHONE_RELEASE_BASE_URL'] ?? 'https://updates.icophone.app/releases';
+  process.env['CONIVA_RELEASE_BASE_URL'] ?? 'https://updates.coniva.app/releases';
 const updateEndpoint =
-  process.env['ICOPHONE_UPDATE_ENDPOINT'] ?? `${releaseBaseUrl.replace(/\/+$/, '')}/latest.json`;
+  process.env['CONIVA_UPDATE_ENDPOINT'] ?? `${releaseBaseUrl.replace(/\/+$/, '')}/latest.json`;
 
 const config: ExtendedElectrobunConfig = {
   app: {
-    name: 'Icophone',
-    identifier: 'com.icophone.app',
+    name: 'Coniva',
+    identifier: 'com.coniva.app',
     version: desktopPackageJson.version,
-    description: 'Desktop shell for the Icophone icon authoring studio.',
+    description: 'Desktop shell for the Coniva icon authoring studio.',
     fileAssociations: [
       {
-        name: 'Icophone Project',
-        extensions: ['icophone.json'],
+        name: 'Coniva Project',
+        extensions: ['coniva.json'],
         mimeType: 'application/json',
         role: 'editor',
       },
@@ -116,7 +116,7 @@ const config: ExtendedElectrobunConfig = {
     },
     linuxDeb: {
       category: 'Graphics',
-      maintainer: 'Icophone Team <desktop@icophone.app>',
+      maintainer: 'Coniva Team <desktop@coniva.app>',
     },
   },
   signing: isStableBuild

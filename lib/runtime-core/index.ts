@@ -1,3 +1,5 @@
+export * from './animation-events';
+export * from './compose-values';
 export * from './draw-executor';
 export * from './easing';
 export * from './effect-scheduler';

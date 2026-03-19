@@ -6,10 +6,10 @@ ARCH="$(uname -m)"
 
 case "$OS-$ARCH" in
   Darwin-arm64)
-    APP_PATH="$(cd "$(dirname "$0")/.." && pwd)/build/dev-macos-arm64/Icophone-dev.app"
+    APP_PATH="$(cd "$(dirname "$0")/.." && pwd)/build/dev-macos-arm64/Coniva-dev.app"
     ;;
   Darwin-x86_64)
-    APP_PATH="$(cd "$(dirname "$0")/.." && pwd)/build/dev-macos-x64/Icophone-dev.app"
+    APP_PATH="$(cd "$(dirname "$0")/.." && pwd)/build/dev-macos-x64/Coniva-dev.app"
     ;;
   *)
     echo "Unsupported desktop dev launcher target: $OS-$ARCH"

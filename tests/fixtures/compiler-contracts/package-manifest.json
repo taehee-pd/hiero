@@ -1,7 +1,7 @@
 {
-  "$schema": "https://icophone.dev/schemas/manifest/1.0.0",
+  "$schema": "https://coniva.dev/schemas/manifest/1.0.0",
   "package": {
-    "name": "@icophone/icons",
+    "name": "@coniva/icons",
     "version": "1.2.0",
     "builtAt": "2026-03-09T09:00:00.000Z",
     "iconSchemaVersion": "1.0.0",

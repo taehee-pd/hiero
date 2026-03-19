@@ -48,7 +48,7 @@ function makeProject(): Project {
 
 const COMPILE_OPTIONS = {
   package: {
-    name: '@icophone/icons',
+    name: '@coniva/icons',
     version: '1.0.0',
     builtAt: '2026-01-01T00:00:00.000Z',
   },

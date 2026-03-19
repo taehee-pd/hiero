@@ -47,7 +47,7 @@ export async function syncIconsToGitHub(options: SyncOptions): Promise<SyncResul
     options.token,
   );
 
-  const branch = `icophone/update-icons-${formatTimestamp(new Date())}`;
+  const branch = `coniva/update-icons-${formatTimestamp(new Date())}`;
   await client.createBranch(
     options.owner,
     options.repo,
@@ -217,7 +217,7 @@ async function listFilesUnderPath(
 
 function guessPackageName(packagePath: string): string {
   const segment = packagePath.split('/').filter(Boolean).pop();
-  return segment ? `@icophone/${segment}` : '@icophone/icons';
+  return segment ? `@coniva/${segment}` : '@coniva/icons';
 }
 
 function formatTimestamp(date: Date): string {

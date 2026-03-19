@@ -1,9 +1,9 @@
 export const COMPILED_ICON_SCHEMA_URI =
-  'https://icophone.dev/schemas/compiled-icon/1.0.0' as const;
+  'https://coniva.dev/schemas/compiled-icon/1.0.0' as const;
 export const PACKAGE_MANIFEST_SCHEMA_URI =
-  'https://icophone.dev/schemas/manifest/1.0.0' as const;
+  'https://coniva.dev/schemas/manifest/1.0.0' as const;
 export const ICON_CHANGE_RECORD_SCHEMA_URI =
-  'https://icophone.dev/schemas/change-record/1.0.0' as const;
+  'https://coniva.dev/schemas/change-record/1.0.0' as const;
 
 export type CompiledRenderingMode =
   | 'monochrome'
@@ -23,7 +23,10 @@ export type CompiledTrackProperty =
   | 'translateX'
   | 'translateY'
   | 'scale'
-  | 'pathLength';
+  | 'pathLength'
+  | 'strokeWidth'
+  | 'fillOpacity'
+  | 'strokeOpacity';
 
 export type CompiledEffectKind =
   | 'bounce'

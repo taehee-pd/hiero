@@ -499,7 +499,7 @@ async function checkCompileFromSource(
     const builtAt = new Date().toISOString();
     const result = compileProject(project, {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '0.0.0-ci',
         builtAt,
       },
@@ -515,7 +515,7 @@ async function checkCompileFromSource(
     // Verify deterministic — compile again with same timestamp and compare
     const result2 = compileProject(project, {
       package: {
-        name: '@icophone/icons',
+        name: '@coniva/icons',
         version: '0.0.0-ci',
         builtAt,
       },

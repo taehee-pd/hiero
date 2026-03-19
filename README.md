@@ -107,7 +107,7 @@ After a PR sync merges source files, this is the only build path used in CI:
 bun scripts/compile-from-source.ts \
   --source . \
   --out ./.artifacts/icons \
-  --package-name @icophone/icons \
+  --package-name @coniva/icons \
   --package-version 1.0.0 \
   --generate-react
 ```
@@ -120,7 +120,7 @@ For compiling directly from a project/workspace JSON file (editor-local only, no
 bun scripts/compile-icons.ts \
   --project tests/fixtures/e2e/compiler-project.json \
   --out ./.artifacts/icons \
-  --package-name @icophone/icons \
+  --package-name @coniva/icons \
   --package-version 1.0.0 \
   --generate-react
 ```
@@ -157,13 +157,13 @@ ICONS_PACKAGE_VERSION=1.2.3 bun run build:icons:package
 ### Local validation
 
 ```bash
-bun run validate:icons:package --package-name @icophone/icons --package-version 1.2.3
+bun run validate:icons:package --package-name @coniva/icons --package-version 1.2.3
 ```
 
 ### Local release dry-run
 
 ```bash
-bun run release:icons:dry-run --package-version 1.2.3 --package-name @icophone/icons
+bun run release:icons:dry-run --package-version 1.2.3 --package-name @coniva/icons
 ```
 
 This dry-run builds, validates, and runs `npm pack --dry-run` against `dist/icons-package`.
@@ -188,15 +188,15 @@ This repository uses explicit version input for package publishing.
 ### Consumer usage (React / Next.js)
 
 ```tsx
-import { IcChevronRight } from '@icophone/icons';
-import Play24 from '@icophone/icons/sizes/24/IcPlay';
-import { IcPlay } from '@icophone/icons/collections/media';
+import { IcChevronRight } from '@coniva/icons';
+import Play24 from '@coniva/icons/sizes/24/IcPlay';
+import { IcPlay } from '@coniva/icons/collections/media';
 ```
 
 Per-icon import:
 
 ```tsx
-import IcChevronRight from '@icophone/icons/icons/IcChevronRight';
+import IcChevronRight from '@coniva/icons/icons/IcChevronRight';
 ```
 
 ## GitHub PR Sync Pipeline

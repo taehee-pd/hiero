@@ -213,7 +213,7 @@ export function TransitionPanel() {
       applyPreviewFrame(nextPreview, 0);
       startScheduler(nextPreview, 0, nextPreview.speed);
     },
-    [activePreview?.speed, applyPreviewFrame, currentIcon, currentStateId, currentVariant, startScheduler],
+    [activePreview?.speed, activePreview?.transitionId, applyPreviewFrame, currentIcon, currentStateId, currentVariant, setSelectedTransitionId, startScheduler],
   );
 
   const handleTogglePlayback = useCallback(() => {

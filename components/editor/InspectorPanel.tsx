@@ -183,9 +183,13 @@ export function InspectorPanel() {
     clippingSelection.length >= 2 &&
     clippingSelection.every((candidate) => Boolean(candidate.path?.d));
   const activeMaskLayer = clippingSelection[0] ?? null;
-  const clipTargetIds = canMakeClipMask
-    ? clippingSelection.slice(1).map((candidate) => candidate.id)
-    : [];
+  const clipTargetIds = useMemo(
+    () =>
+      canMakeClipMask
+        ? clippingSelection.slice(1).map((candidate) => candidate.id)
+        : [],
+    [canMakeClipMask, clippingSelection],
+  );
   const canReleaseClipMask =
     selection.layerIds.length === 1 &&
     Boolean(layer?.isClipMask || layer?.clipPathLayerId);

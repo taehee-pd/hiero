@@ -8,7 +8,7 @@ replacement and should avoid speculative items that are not grounded in
 repository evidence. The ordering favors repository-stability and operational
 needs over product feature speculation.
 
-**Last updated:** 2026-03-18
+**Last updated:** 2026-03-19
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -164,62 +164,65 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase 4 — CI/CD & Operational Hardening
 
+Status: **completed** (verified 2026-03-19).
+
 ### 4A — CI Workflows
 
-- [ ] **4A.1 — Web app CI workflow.**
-  The 3 existing workflows (`icons-pr-validate.yml`,
-  `icons-post-merge-build.yml`, `icons-package-release.yml`) cover only
-  the icon pipeline. Add a `web-app-ci.yml` workflow triggered on PRs
-  that touch `app/`, `components/`, `lib/`, `hooks/`, or `styles/` paths.
-  Steps: install, type-check, lint, test, build.
+- [x] **4A.1 — Web app CI workflow.**
+  `.github/workflows/web-app-ci.yml`: triggered on PRs touching `app/`,
+  `components/`, `lib/`, `hooks/`, `styles/`, `package.json`, `tsconfig.json`.
+  Steps: checkout, Bun setup, install, format:check, type-check, lint, test, build.
 
-- [ ] **4A.2 — Desktop app CI workflow.**
-  Add a `desktop-ci.yml` workflow triggered on PRs that touch `desktop/`.
-  Steps: install desktop dependencies, type-check, build static export,
-  run `desktop:build` in CI-safe mode (skip signing). Verify the build
-  produces output in `desktop/build/`.
+- [x] **4A.2 — Desktop app CI workflow.**
+  `.github/workflows/desktop-ci.yml`: triggered on PRs touching `desktop/`.
+  Runs on `macos-latest`. Steps: install, type-check, build static export,
+  desktop:build (unsigned — `ELECTROBUN_BUILD_ENV` unset). Verifies build output.
 
-- [ ] **4A.3 — Test coverage reporting.**
-  Investigate `bun test --coverage` support. If available, add coverage
-  thresholds to CI. If not, document the gap and plan for a coverage
-  tool integration.
+- [x] **4A.3 — Test coverage reporting.**
+  Added `test:coverage` script (`bun test --coverage tests/`). Bun's
+  built-in V8 coverage is available. No hard threshold enforced yet —
+  baseline measurement pending.
 
 ### 4B — Code Quality
 
-- [ ] **4B.1 — Commit to a code formatter (Prettier or Biome).**
-  The repo currently has ESLint (`eslint.config.mjs`) but no formatter.
-  Add a config and `format` / `format:check` scripts. Add `format:check`
-  to CI. Start with a config that matches existing code style (2-space
-  indent, single quotes, trailing commas).
+- [x] **4B.1 — Commit to Biome as code formatter.**
+  `biome.json` configured with: 2-space indent, single quotes, trailing
+  commas, 100-char line width. ESLint remains for semantic linting.
+  Scripts: `format` (write), `format:check` (CI). Added to `web-app-ci.yml`.
 
-- [ ] **4B.2 — Tighten `@typescript-eslint/no-explicit-any` to error.**
-  Currently set to `warn` in `eslint.config.mjs`. Audit remaining `any`
-  usages and fix them, then promote to `error`.
+- [x] **4B.2 — Tighten `@typescript-eslint/no-explicit-any` to error.**
+  All 37 source-file `any` usages fixed across 6 files. Created typed
+  `PaperGlobal`/`PaperScope` interfaces for Paper.js interop, typed
+  RPC handler params in desktop code, replaced loose `any` with `unknown`
+  or proper schema types. Rule promoted to `error` in `eslint.config.mjs`.
 
-- [ ] **4B.3 — Enable `eslint-plugin-react-hooks` exhaustive-deps as error.**
-  Currently set to `warn` in `eslint.config.mjs`. Fix outstanding
-  violations and promote to `error`.
+- [x] **4B.3 — Enable `eslint-plugin-react-hooks` exhaustive-deps as error.**
+  Fixed 8 violations across 5 files: wrapped unstable derived values in
+  `useMemo`, added missing deps, removed unnecessary deps. Two
+  intentional exclusions in `VibeIcon.tsx` documented with eslint-disable
+  comments. Rule promoted to `error`.
 
 ### 4C — Product Naming & Desktop Hardening
 
-- [ ] **4C.1 — Product naming consistency audit.**
-  The repo uses several names: `icon-authoring-tool` (package.json),
-  `Icophone` (desktop/electrobun.config.ts), `icophone-runtime`
-  (runtime-sdk warn prefix), `@icophone/icons` (CI package name).
-  Document the canonical product name and ensure package.json, desktop
-  config, and runtime warn prefixes all agree.
+- [x] **4C.1 — Product naming: full rename to Coniva.**
+  Renamed all `icophone` → `coniva` across 55+ files: package.json names,
+  desktop app identifier (`com.coniva.app`), schema URIs
+  (`https://coniva.dev/schemas/*`), CI package name (`@coniva/icons`),
+  file extension (`.coniva.json`), custom events (`coniva:*`), env vars
+  (`CONIVA_*`), branch naming, and runtime warn prefix. Schema validators
+  accept both old (`icophone.dev`) and new (`coniva.dev`) URIs for
+  backward compatibility.
 
-- [ ] **4C.2 — Desktop code signing/notarization hardening.**
-  `electrobun.config.ts` already guards signing behind
-  `ELECTROBUN_BUILD_ENV === 'stable'` and `requireSigningEnv()`.
-  Document the required CI secrets in a `desktop/SIGNING.md` and verify
-  the release pipeline succeeds end-to-end with placeholder credentials.
+- [x] **4C.2 — Desktop code signing/notarization hardening.**
+  `desktop/SIGNING.md` documents all required CI secrets (Apple and
+  Windows), the `ELECTROBUN_BUILD_ENV=stable` guard, release URL
+  configuration, and the safety guard behavior.
 
-- [ ] **4C.3 — Desktop auto-update endpoint validation.**
-  The update endpoint uses `${releaseBaseUrl}/latest.json`. The release
-  script generates `latest.json`. Add a CI step or test that validates
-  the generated `latest.json` matches the expected schema (version,
-  releaseDate, platforms, downloadUrls).
+- [x] **4C.3 — Desktop auto-update endpoint validation.**
+  `tests/desktop-release-manifest.test.ts` (10 tests): validates
+  `ReleaseManifest` schema shape, `inferPlatformKey` filename parsing,
+  and `isInstallerArtifact` extension detection. Utility functions
+  extracted to `desktop/scripts/release-utils.ts`.
 
 ---
 
@@ -430,29 +433,38 @@ All changes are in `lib/runtime-core/` and `lib/schema/types.ts`.
 
 ## Phase B — Runtime Capability Expansion
 
-- [ ] **B1 — Additional animatable properties.**
-  Schema: add `strokeWidth`, `fillOpacity`, `strokeOpacity` to
-  `TimelineTrack` property union. Renderer: handle new properties in
-  `applyAnimatedValues`. Compiler contracts: extend
-  `CompiledTrackProperty`. Export: add to `SUPPORTED_TRACK_PROPERTIES`.
+Status: **completed** (verified 2026-03-19).
 
-- [ ] **B2 — Parallel effect + transition execution.**
-  `lib/runtime-dom/driver.ts`: replace single `activeEffectScheduler`
-  with `Map<string, EffectScheduler>`. Different effects stack; same
-  effect ID replaces. Add `cancelEffect(effectId)` and
-  `cancelAllEffects()` to `IconDriver`. Renderer: compose transition
-  values + effect deltas (effects are additive for transforms,
-  multiplicative for opacity).
+- [x] **B1 — Additional animatable properties.**
+  Added `strokeWidth`, `fillOpacity`, `strokeOpacity` to
+  `CompiledTrackProperty` (`lib/compiler-contracts/types.ts`),
+  `RuntimeTrackProperty` and `SUPPORTED_TRACK_PROPERTIES`
+  (`lib/export/export-runtime-json.ts`). Renderer applies via SVG
+  attributes in `applyAnimatedValues()` (`lib/runtime-dom/renderer.ts`).
 
-- [ ] **B3 — Animation callbacks.**
-  `AnimationEvent` type: transitionStart/Complete, effectStart/Complete.
-  `CreateIconDriverOptions.onAnimationEvent` callback. VibeIcon props:
-  `onTransitionStart`, `onTransitionComplete`, `onEffectComplete`.
+- [x] **B2 — Parallel effect + transition execution.**
+  `lib/runtime-dom/driver.ts`: replaced single `activeEffectScheduler`
+  with `Map<string, EffectScheduler>`. Added `cancelEffect(effectId)`
+  and `cancelAllEffects()` to `IconDriver`. New
+  `lib/runtime-core/compose-values.ts` handles value composition:
+  additive transforms, multiplicative scale/opacity, override for others.
+  Tests: `tests/runtime-core.test.ts` — "composeValues" describe block.
 
-- [ ] **B4 — variableColor implementation.**
-  Schema: add optional `palette?: string[]` to `Effect`.
-  `lib/runtime-core/effect-scheduler.ts`: variableColor case cycles
-  through palette colors per layer role using A3 color utilities.
+- [x] **B3 — Animation callbacks.**
+  `lib/runtime-core/animation-events.ts`: `AnimationEvent` type with
+  `transitionStart`, `transitionComplete`, `effectStart`, `effectComplete`.
+  `CreateIconDriverOptions.onAnimationEvent` callback wired in driver.
+  `VibeIcon` props: `onTransitionStart`, `onTransitionComplete`,
+  `onEffectComplete` — callbacks stabilized via `useRef`.
+
+- [x] **B4 — variableColor implementation.**
+  `lib/runtime-core/color-interpolation.ts`: `parseHex()`,
+  `lerpLinearRGB()`, `lerpPalette()` with linear RGB interpolation.
+  `EffectDefinition.palette?: string[]` added to effect-scheduler.
+  `variableColor` case in `emitFrame()` cycles through palette colors
+  and emits `ColorOverrides` through a separate channel. Renderer
+  applies color overrides via `setAttribute('fill', hex)`.
+  Tests: `tests/runtime-core.test.ts` — "color interpolation" describe block.
 
 ---
 

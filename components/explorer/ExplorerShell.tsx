@@ -32,6 +32,7 @@ import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { isDesktop } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
+import type { Workspace, Project, Icon, Variant, Collection } from '@/lib/schema/types';
 
 export type ExplorerIcon = {
   id: string;
@@ -111,7 +112,7 @@ export function ExplorerShell() {
     }
   }, []);
 
-  const workspaceName = workspace?.meta.name ?? 'Icophone Workspace';
+  const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
 
   /* ─── Workspace-level data ────────────────── */
 
@@ -457,7 +458,7 @@ type WorkspaceIconSet = {
   iconCount: number;
   syncLabel: string | null;
   updatedAt: string;
-  icons: Array<{ id: string; name: string; variants: Record<string, any>; [key: string]: any }>;
+  icons: Array<Pick<Icon, 'id' | 'name' | 'variants'>>;
   tokenColors?: Record<string, string>;
 };
 
@@ -468,7 +469,7 @@ function WorkspaceView({
   onContextMenu,
 }: {
   iconSets: WorkspaceIconSet[];
-  workspace: any;
+  workspace: Workspace | null;
   onEnterProject: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, id: string) => void;
 }) {
@@ -540,7 +541,7 @@ function ProjectCard({
               const stateId = variant?.defaultState;
               const svg =
                 firstVariantId && stateId
-                  ? exportSvgString(icon as any, firstVariantId, stateId, iconSet.tokenColors)
+                  ? exportSvgString(icon as Icon, firstVariantId, stateId, iconSet.tokenColors)
                   : '';
               return (
                 <div
@@ -607,12 +608,12 @@ function ProjectDetailView({
   onCollectionContext,
   onOpenIconTab,
 }: {
-  project: any;
+  project: Project | null;
   activeIconSetId: string | null;
   visibleIcons: ExplorerIcon[];
   groups: [string, ExplorerIcon[]][];
   filtered: ExplorerIcon[];
-  collections: any[];
+  collections: Collection[];
   selectionSet: Set<string>;
   favoritesSet: Set<string>;
   activeFilter: ActiveFilter;

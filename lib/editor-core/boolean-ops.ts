@@ -1,4 +1,4 @@
-import { loadPaperGlobal } from './paper-runtime';
+import { loadPaperGlobal, type PaperItem, type PaperScope, type PaperCompoundPath } from './paper-runtime';
 
 export type BooleanMode = 'unite' | 'subtract' | 'intersect' | 'exclude';
 
@@ -31,7 +31,7 @@ function resolveIdenticalInput(mode: BooleanMode, pathData: string): string {
   return pathData;
 }
 
-function extractPathData(item: any): string {
+function extractPathData(item: Pick<PaperItem, 'pathData' | 'getPathData'> | null): string {
   const pathData =
     typeof item?.pathData === 'string'
       ? item.pathData
@@ -42,7 +42,7 @@ function extractPathData(item: any): string {
   return normalizePathData(pathData);
 }
 
-function cleanupScope(scope: any, ...items: any[]) {
+function cleanupScope(scope: PaperScope | null, ...items: (PaperItem | null)[]) {
   for (const item of items) {
     if (item && typeof item.remove === 'function') {
       try {
@@ -91,9 +91,9 @@ export async function booleanOp(
   const scope = new paperGlobal.PaperScope();
   scope.setup(new paperGlobal.Size(1, 1));
 
-  let left: any = null;
-  let right: any = null;
-  let result: any = null;
+  let left: PaperCompoundPath | null = null;
+  let right: PaperCompoundPath | null = null;
+  let result: PaperItem | null = null;
 
   try {
     scope.activate();
@@ -121,7 +121,7 @@ export async function booleanOp(
       return '';
     }
 
-    result = left[mode](right, { insert: false });
+    result = left[mode](right, { insert: false }) as PaperItem;
 
     return extractPathData(result);
   } finally {

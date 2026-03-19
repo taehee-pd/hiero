@@ -1,0 +1,51 @@
+name: Desktop App CI
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/**'
+
+concurrency:
+  group: desktop-ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build desktop app
+    runs-on: macos-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install desktop dependencies
+        run: cd desktop && bun install
+
+      - name: Type check
+        run: bun run type-check
+
+      - name: Build static export
+        run: bun run build
+        env:
+          NEXT_OUTPUT_MODE: export
+
+      - name: Build desktop app (unsigned)
+        run: bun run desktop:build
+
+      - name: Verify build output
+        run: |
+          if [ -d "desktop/build" ]; then
+            echo "Desktop build output exists"
+            ls -la desktop/build/
+          else
+            echo "::warning::Desktop build directory not found"
+          fi

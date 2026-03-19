@@ -1,4 +1,4 @@
-// Icophone Schema Types — canonical data model for icon projects.
+// Coniva Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
 export type GitHubSyncSettings = {

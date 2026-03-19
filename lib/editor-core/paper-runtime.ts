@@ -1,4 +1,93 @@
-export type PaperGlobal = any;
+/** Minimal typed surface of the Paper.js runtime used across the codebase. */
+export interface PaperPoint {
+  x: number;
+  y: number;
+}
+
+export interface PaperSize {
+  width: number;
+  height: number;
+}
+
+export interface PaperRectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  clone(): PaperRectangle;
+  intersects(rect: PaperRectangle): boolean;
+  expand(hor: number, ver: number): PaperRectangle;
+}
+
+export interface PaperColor {
+  _class: 'Color';
+}
+
+export interface PaperItem {
+  pathData?: string;
+  bounds: PaperRectangle;
+  strokeBounds: PaperRectangle;
+  fillColor: PaperColor | null;
+  strokeColor: PaperColor | null;
+  strokeWidth: number;
+  dashArray?: number[];
+  translate(delta: PaperPoint): void;
+  rotate(angle: number, center: PaperPoint): void;
+  scale(hor: number, ver: number, center: PaperPoint): void;
+  remove(): void;
+  sendToBack(): void;
+  bringToFront(): void;
+  getPathData?: () => string;
+}
+
+export interface PaperCompoundPath extends PaperItem {
+  unite(path: PaperItem, options?: { insert?: boolean }): PaperItem;
+  subtract(path: PaperItem, options?: { insert?: boolean }): PaperItem;
+  intersect(path: PaperItem, options?: { insert?: boolean }): PaperItem;
+  exclude(path: PaperItem, options?: { insert?: boolean }): PaperItem;
+}
+
+export interface PaperProject {
+  clear(): void;
+  remove(): void;
+}
+
+export interface PaperView {
+  viewSize: PaperSize;
+  update(): void;
+  remove(): void;
+}
+
+export interface PaperScope {
+  project: PaperProject;
+  view: PaperView;
+  activate(): void;
+  setup(element: HTMLCanvasElement | PaperSize): void;
+  remove(): void;
+  Point: new (x: number, y: number) => PaperPoint;
+  Size: new (width: number, height: number) => PaperSize;
+  Color: new (value: string) => PaperColor;
+  Rectangle: new (...args: unknown[]) => PaperRectangle;
+  CompoundPath: new (arg: string | Record<string, unknown>) => PaperCompoundPath;
+  PointText: new (options: Record<string, unknown>) => PaperItem;
+  Path: {
+    Line: new (from: PaperPoint, to: PaperPoint) => PaperItem;
+    Rectangle: new (options: Record<string, unknown>) => PaperItem;
+    Circle: new (options: Record<string, unknown>) => PaperItem;
+    Ellipse: new (options: Record<string, unknown>) => PaperItem;
+  };
+}
+
+export interface PaperGlobal {
+  PaperScope: new () => PaperScope;
+  Size: new (width: number, height: number) => PaperSize;
+  Point: new (x: number, y: number) => PaperPoint;
+  Color: new (value: string) => PaperColor;
+  Rectangle: new (...args: unknown[]) => PaperRectangle;
+  CompoundPath: new (arg: string | Record<string, unknown>) => PaperCompoundPath;
+  Path: PaperScope['Path'];
+  PointText: new (options: Record<string, unknown>) => PaperItem;
+}
 
 type PaperWindow = Window & { paper?: PaperGlobal };
 

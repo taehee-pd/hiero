@@ -1,6 +1,6 @@
 # Desktop Build Pipeline
 
-Icophone ships as two targets:
+Coniva ships as two targets:
 
 - Web: the standard Next.js app.
 - Desktop: a static Next.js export packaged into Electrobun and served from `views://mainview/index.html`.

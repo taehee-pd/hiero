@@ -72,6 +72,7 @@ export class DomRenderer {
     progress: number,
     interpolatedValues: InterpolatedValues,
     transition?: ResolvedTransition,
+    colorOverrides?: Record<string, Record<string, string>>,
   ): void {
     this.ensureMounted();
     const hasTransitionVisuals = hasVisualTransitionBindings(transition);
@@ -98,6 +99,17 @@ export class DomRenderer {
       }
 
       applyAnimatedValues(entry, values);
+    }
+
+    // Apply color overrides (e.g. from variableColor effect)
+    if (colorOverrides) {
+      for (const [layerId, colors] of Object.entries(colorOverrides)) {
+        const entry = this.layerElements.get(layerId);
+        if (!entry) continue;
+        for (const [prop, value] of Object.entries(colors)) {
+          entry.element.setAttribute(prop, value);
+        }
+      }
     }
 
     if (transition && hasTransitionVisuals) {
@@ -513,6 +525,17 @@ function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, num
   } else {
     entry.element.style.removeProperty('stroke-dasharray');
     entry.element.style.removeProperty('stroke-dashoffset');
+  }
+
+  // Additional animatable SVG presentation attributes
+  if (values.fillOpacity !== undefined) {
+    entry.element.setAttribute('fill-opacity', String(values.fillOpacity));
+  }
+  if (values.strokeOpacity !== undefined) {
+    entry.element.setAttribute('stroke-opacity', String(values.strokeOpacity));
+  }
+  if (values.strokeWidth !== undefined) {
+    entry.element.setAttribute('stroke-width', String(values.strokeWidth));
   }
 }
 

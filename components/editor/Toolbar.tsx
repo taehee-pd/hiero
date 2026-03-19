@@ -58,7 +58,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function Toolbar() {
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Icophone');
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -85,7 +85,7 @@ export function Toolbar() {
         editorStore.getState().loadProject(json);
       } else {
         clearCurrentProjectPath();
-        window.alert('Invalid Icophone workspace file.');
+        window.alert('Invalid Coniva workspace file.');
       }
     } catch {
       clearCurrentProjectPath();

@@ -18,7 +18,7 @@ export function generateIconComponent(
     lines.push("import type { CSSProperties } from 'react';");
   }
   if (useRuntime) {
-    lines.push("import { RuntimeIcon } from '@icophone/runtime-react';");
+    lines.push("import { RuntimeIcon } from '@coniva/runtime-react';");
   }
   lines.push('');
 

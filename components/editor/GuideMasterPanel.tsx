@@ -38,7 +38,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
-  const guideMasters = project?.guideMasters ?? {};
+  const guideMasters = useMemo(() => project?.guideMasters ?? {}, [project?.guideMasters]);
   const guideMasterList = useMemo(() => Object.values(guideMasters), [guideMasters]);
   const activeMasterId = activeGuideMaster?.id ?? null;
   const groupedMasters = useMemo(() => {

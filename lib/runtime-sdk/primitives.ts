@@ -246,7 +246,7 @@ function modeOrder(mode: CompiledRenderingMode): number {
 
 function warnDev(message: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[icophone-runtime] ${message}`);
+    console.warn(`[coniva-runtime] ${message}`);
   }
 }
 

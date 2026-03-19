@@ -16,7 +16,7 @@ import type { Project } from '@/lib/schema/types';
 import { exportSourcePayload } from '@/lib/sync-source/export-source-payload';
 import { diffSourcePayloads } from '@/lib/sync-service/diff-source';
 import type { SyncPrResult } from '@/lib/sync-service/sync-pr';
-import type { Conflict, ConflictErrorCode, SuggestedAction } from '@/lib/sync-service/conflicts';
+import type { Conflict, ConflictErrorCode } from '@/lib/sync-service/conflicts';
 import { CONFLICT_ERROR_CODES, CONFLICT_SUGGESTED_ACTIONS } from '@/lib/sync-service/conflicts';
 import { emitSyncEvent } from './analytics';
 import {
@@ -122,7 +122,7 @@ export function useSyncPr(): UseSyncPrReturn {
             repo: state.settings.repo,
             baseBranch: state.settings.baseBranch,
             packagePath: state.settings.packagePath || undefined,
-            actor: { name: 'Icophone User' },
+            actor: { name: 'Coniva User' },
             files,
             previousFiles: previousFiles.length > 0 ? previousFiles : undefined,
             baseSha: state.revision?.baseBranchHeadSha ?? undefined,
@@ -223,7 +223,7 @@ export function useSyncPr(): UseSyncPrReturn {
         emitSyncEvent('sync_validation_failed', { reason: message });
       }
     },
-    [state.settings, state.revision],
+    [state],
   );
 
   const retry = useCallback(

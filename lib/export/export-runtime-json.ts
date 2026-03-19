@@ -165,7 +165,10 @@ export type RuntimeTrackProperty =
   | 'translateX'
   | 'translateY'
   | 'scale'
-  | 'pathLength';
+  | 'pathLength'
+  | 'strokeWidth'
+  | 'fillOpacity'
+  | 'strokeOpacity';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
@@ -1214,4 +1217,7 @@ const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'translateY',
   'scale',
   'pathLength',
+  'strokeWidth',
+  'fillOpacity',
+  'strokeOpacity',
 ]);

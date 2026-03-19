@@ -71,8 +71,8 @@ At runtime, the app uses Electrobun’s built-in updater API:
 
 Release notes for the in-app banner are read from the summary endpoint configured by:
 
-- `ICOPHONE_UPDATE_ENDPOINT`
+- `CONIVA_UPDATE_ENDPOINT`
 
 If unset, the desktop config defaults to:
 
-- `https://updates.icophone.app/releases/latest.json`
+- `https://updates.coniva.app/releases/latest.json`

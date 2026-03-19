@@ -75,13 +75,13 @@ export function DesktopCommandBridge() {
       });
     };
 
-    window.addEventListener('icophone:project-opened-from-disk', handleStartupProject);
-    window.addEventListener('icophone:confirm-quit', handleConfirmQuitEvent);
-    window.addEventListener('icophone:update-available', handleUpdateAvailable);
+    window.addEventListener('coniva:project-opened-from-disk', handleStartupProject);
+    window.addEventListener('coniva:confirm-quit', handleConfirmQuitEvent);
+    window.addEventListener('coniva:update-available', handleUpdateAvailable);
     const initialStartupProject = consumePendingStartupProject();
     if (initialStartupProject) {
       handleStartupProject(
-        new CustomEvent('icophone:project-opened-from-disk', { detail: initialStartupProject }),
+        new CustomEvent('coniva:project-opened-from-disk', { detail: initialStartupProject }),
       );
     }
     if (consumePendingQuitReason()) {
@@ -98,7 +98,7 @@ export function DesktopCommandBridge() {
 
     const syncTitle = () => {
       const { project, isDirty } = editorStore.getState();
-      const projectName = project?.meta.name ?? 'Icophone';
+      const projectName = project?.meta.name ?? 'Coniva';
       const nextKey = `${projectName}::${isDirty}`;
       if (nextKey === lastTitleKey) return;
 
@@ -124,9 +124,9 @@ export function DesktopCommandBridge() {
       cancelled = true;
       unsubscribeMenu();
       unsubscribeStore();
-      window.removeEventListener('icophone:project-opened-from-disk', handleStartupProject);
-      window.removeEventListener('icophone:confirm-quit', handleConfirmQuitEvent);
-      window.removeEventListener('icophone:update-available', handleUpdateAvailable);
+      window.removeEventListener('coniva:project-opened-from-disk', handleStartupProject);
+      window.removeEventListener('coniva:confirm-quit', handleConfirmQuitEvent);
+      window.removeEventListener('coniva:update-available', handleUpdateAvailable);
       window.clearInterval(autoSaveInterval);
     };
   }, [router]);
@@ -292,7 +292,7 @@ async function handleDesktopCommand(
       await openExternal(DOCUMENTATION_URL);
       return;
     case 'help.about':
-      window.alert('Icophone\nIcon design studio for stateful, animated SVG icons.');
+      window.alert('Coniva\nIcon design studio for stateful, animated SVG icons.');
       return;
     case 'context.layer.rename':
       renameLayer(command.payload);

@@ -27,6 +27,63 @@ type CubicSubPath = {
 type CubicPath = CubicSubPath[];
 
 // ---------------------------------------------------------------------------
+// 8.2 pre — Winding order normalization (GSAP/Flubber pattern)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the signed area of the polygon formed by sub-path segment endpoints.
+ * Positive = clockwise (in screen coordinates where Y points down),
+ * negative = counter-clockwise.
+ */
+function computeSignedArea(sub: CubicSubPath): number {
+  const points: Point[] = [sub.start];
+  for (const seg of sub.segments) {
+    points.push(seg.end);
+  }
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const curr = points[i]!;
+    const next = points[(i + 1) % points.length]!;
+    area += (curr.x * next.y - next.x * curr.y);
+  }
+  return area / 2;
+}
+
+/**
+ * Ensure a sub-path has clockwise winding order (positive signed area
+ * in screen coordinates). If the sub-path is counter-clockwise, reverse
+ * segment order and swap control points so the morph interpolates
+ * consistently between source and target.
+ */
+function ensureClockwise(sub: CubicSubPath): CubicSubPath {
+  const area = computeSignedArea(sub);
+  // Area >= 0 means already clockwise (or degenerate); leave as-is
+  if (area >= 0) return sub;
+
+  // Reverse: walk segments backwards, swapping c1/c2 to maintain
+  // cubic bezier direction after reversal.
+  const n = sub.segments.length;
+  if (n === 0) return sub;
+
+  const reversedSegments: CubicSegment[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const seg = sub.segments[i]!;
+    const prevEnd = i === 0 ? sub.start : sub.segments[i - 1]!.end;
+    reversedSegments.push({
+      c1: { ...seg.c2 },
+      c2: { ...seg.c1 },
+      end: { ...prevEnd },
+    });
+  }
+
+  return {
+    start: { ...sub.segments[n - 1]!.end },
+    segments: reversedSegments,
+    closed: sub.closed,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 8.2a — Sub-path matching
 // ---------------------------------------------------------------------------
 
@@ -69,8 +126,15 @@ export function matchSubPaths(from: CubicPath, to: CubicPath): SubPathMatch[] {
 }
 
 /**
- * Compute similarity between two sub-paths using centroid proximity
- * and bbox similarity.
+ * Compute similarity between two sub-paths using centroid proximity,
+ * bbox similarity, area similarity, and segment count similarity.
+ *
+ * Weight distribution:
+ * - Centroid proximity: 35%
+ * - BBox similarity:    30%
+ * - Area similarity:    10%
+ * - Segment count:       5%
+ * - Closed bonus:       20%
  */
 function computeSubPathSimilarity(a: CubicSubPath, b: CubicSubPath): number {
   const centroidA = computeSubPathCentroid(a);
@@ -96,10 +160,28 @@ function computeSubPathSimilarity(a: CubicSubPath, b: CubicSubPath): number {
     1 - (Math.abs(aw - bw) / Math.max(aw, bw) + Math.abs(ah - bh) / Math.max(ah, bh)) / 2,
   );
 
+  // Area similarity (shoelace formula on endpoints)
+  const areaA = Math.abs(computeSignedArea(a));
+  const areaB = Math.abs(computeSignedArea(b));
+  const maxArea = Math.max(areaA, areaB, 0.001);
+  const areaScore = 1 - Math.abs(areaA - areaB) / maxArea;
+
+  // Segment count similarity
+  const segA = a.segments.length;
+  const segB = b.segments.length;
+  const maxSeg = Math.max(segA, segB, 1);
+  const segCountScore = 1 - Math.abs(segA - segB) / maxSeg;
+
   // Closed compatibility bonus
   const closedBonus = a.closed === b.closed ? 0.2 : 0;
 
-  return centroidScore * 0.4 + bboxScore * 0.4 + closedBonus;
+  return (
+    centroidScore * 0.35 +
+    bboxScore * 0.30 +
+    areaScore * 0.10 +
+    segCountScore * 0.05 +
+    closedBonus
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -107,10 +189,29 @@ function computeSubPathSimilarity(a: CubicSubPath, b: CubicSubPath): number {
 // ---------------------------------------------------------------------------
 
 /**
+ * Estimate the arc length of a cubic bezier segment using the
+ * chord-length + control-polygon-length heuristic:
+ *   arcLength ~= (chordLength + controlPolygonLength) / 2
+ */
+export function estimateCubicArcLength(start: Point, segment: CubicSegment): number {
+  const chordLength = Math.hypot(
+    segment.end.x - start.x,
+    segment.end.y - start.y,
+  );
+  const controlPolygonLength =
+    Math.hypot(segment.c1.x - start.x, segment.c1.y - start.y) +
+    Math.hypot(segment.c2.x - segment.c1.x, segment.c2.y - segment.c1.y) +
+    Math.hypot(segment.end.x - segment.c2.x, segment.end.y - segment.c2.y);
+
+  return (chordLength + controlPolygonLength) / 2;
+}
+
+/**
  * Subdivide cubic segments to equalize curve counts within sub-path pairs.
  *
  * Uses De Casteljau subdivision to split longer segments.
- * Distribution formula: stepsPerSegment = longer.length / shorter.length
+ * Distributes extra subdivisions proportionally by arc length so that
+ * longer segments receive more splits (arc-length aware distribution).
  */
 export function subdivideCubicSegments(
   segments: CubicSegment[],
@@ -130,24 +231,58 @@ export function subdivideCubicSegments(
     return segments.slice(0, targetCount);
   }
 
-  const result: CubicSegment[] = [];
-  const subdivisionsPerSegment = targetCount / segments.length;
+  // Compute arc lengths for proportional distribution
+  const arcLengths: number[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const prevEnd = i === 0 ? startPoint : segments[i - 1]!.end;
+    arcLengths.push(estimateCubicArcLength(prevEnd, segments[i]!));
+  }
+  const totalArcLength = arcLengths.reduce((s, l) => s + l, 0);
 
-  let remaining = targetCount;
+  // Distribute subdivisions proportionally by arc length
+  const extraSplits = targetCount - segments.length;
+  const splitsPerSegment = new Array<number>(segments.length).fill(1);
+
+  if (totalArcLength > 0) {
+    // Assign extra splits proportionally, then use largest-remainder method
+    // to ensure exact total
+    const rawExtra = arcLengths.map((l) => (l / totalArcLength) * extraSplits);
+    const flooredExtra = rawExtra.map((r) => Math.floor(r));
+    let assignedExtra = flooredExtra.reduce((s, v) => s + v, 0);
+    const remainders = rawExtra.map((r, i) => ({ idx: i, rem: r - flooredExtra[i]! }));
+    remainders.sort((a, b) => b.rem - a.rem);
+
+    for (let i = 0; assignedExtra < extraSplits; i++, assignedExtra++) {
+      flooredExtra[remainders[i]!.idx]! += 1;
+    }
+
+    for (let i = 0; i < segments.length; i++) {
+      splitsPerSegment[i] = 1 + flooredExtra[i]!;
+    }
+  } else {
+    // Degenerate: uniform fallback
+    const uniform = targetCount / segments.length;
+    let remaining = targetCount;
+    for (let i = 0; i < segments.length; i++) {
+      const splits = i === segments.length - 1
+        ? remaining
+        : Math.round(uniform);
+      splitsPerSegment[i] = splits;
+      remaining -= splits;
+    }
+  }
+
+  const result: CubicSegment[] = [];
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i]!;
     const prevEnd = i === 0 ? startPoint : segments[i - 1]!.end;
-    const splits = i === segments.length - 1
-      ? remaining
-      : Math.round(subdivisionsPerSegment);
+    const splits = splitsPerSegment[i]!;
 
     if (splits <= 1) {
       result.push(segment);
-      remaining -= 1;
     } else {
       const subdivided = splitCubicSegment(prevEnd, segment, splits);
       result.push(...subdivided);
-      remaining -= subdivided.length;
     }
   }
 
@@ -336,8 +471,12 @@ export function createCentroidCollapsedSubPath(
 export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolator | null {
   if (from.length === 0 && to.length === 0) return null;
 
+  // Step 0: Normalize winding order to clockwise for consistent morphing
+  const normalizedFrom = from.map(ensureClockwise);
+  const normalizedTo = to.map(ensureClockwise);
+
   // Step 1: Match sub-paths
-  const matches = matchSubPaths(from, to);
+  const matches = matchSubPaths(normalizedFrom, normalizedTo);
   const matchedFrom = new Set(matches.map((m) => m.fromIndex));
   const matchedTo = new Set(matches.map((m) => m.toIndex));
 
@@ -347,8 +486,8 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
 
   // Add matched pairs
   for (const match of matches) {
-    let fromSub = cloneSubPath(from[match.fromIndex]!);
-    let toSub = cloneSubPath(to[match.toIndex]!);
+    let fromSub = cloneSubPath(normalizedFrom[match.fromIndex]!);
+    let toSub = cloneSubPath(normalizedTo[match.toIndex]!);
 
     // Step 2: Equalize segment counts
     const targetSegments = Math.max(fromSub.segments.length, toSub.segments.length);
@@ -377,34 +516,51 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
     alignedTo.push(toSub);
   }
 
-  // Step 4: Handle unmatched sub-paths
-  for (let i = 0; i < from.length; i++) {
+  // Step 4: Handle unmatched sub-paths with coordinated timing
+  const unmatchedFromIndices: number[] = [];
+  const unmatchedToIndices: number[] = [];
+  for (let i = 0; i < normalizedFrom.length; i++) {
     if (!matchedFrom.has(i)) {
-      const fromSub = cloneSubPath(from[i]!);
+      const fromSub = cloneSubPath(normalizedFrom[i]!);
       const collapsed = createCentroidCollapsedSubPath(fromSub);
       alignedFrom.push(fromSub);
       alignedTo.push(collapsed);
+      unmatchedFromIndices.push(alignedFrom.length - 1);
     }
   }
-  for (let i = 0; i < to.length; i++) {
+  for (let i = 0; i < normalizedTo.length; i++) {
     if (!matchedTo.has(i)) {
-      const toSub = cloneSubPath(to[i]!);
+      const toSub = cloneSubPath(normalizedTo[i]!);
       const collapsed = createCentroidCollapsedSubPath(toSub);
       alignedFrom.push(collapsed);
       alignedTo.push(toSub);
+      unmatchedToIndices.push(alignedFrom.length - 1);
     }
   }
 
-  // Step 5: Build interpolator
+  // Track which aligned indices are unmatched for eased interpolation
+  const disappearingSet = new Set(unmatchedFromIndices);
+  const appearingSet = new Set(unmatchedToIndices);
+
+  // Step 5: Build interpolator with coordinated timing for unmatched paths
   return (t: number): string => {
-    if (t <= 0) return serializePath(from);
-    if (t >= 1) return serializePath(to);
+    if (t <= 0) return serializePath(normalizedFrom);
+    if (t >= 1) return serializePath(normalizedTo);
 
     const result: CubicSubPath[] = [];
     for (let i = 0; i < alignedFrom.length; i++) {
       const fromSub = alignedFrom[i]!;
       const toSub = alignedTo[i]!;
-      result.push(interpolateSubPath(fromSub, toSub, t));
+      // Apply eased timing for unmatched (disappearing/appearing) sub-paths
+      let effectiveT = t;
+      if (disappearingSet.has(i)) {
+        // from→collapsed: easeInCubic for natural collapse
+        effectiveT = easeInCubic(t);
+      } else if (appearingSet.has(i)) {
+        // collapsed→to: easeOutCubic for natural expansion
+        effectiveT = easeOutCubic(t);
+      }
+      result.push(interpolateSubPath(fromSub, toSub, effectiveT));
     }
     return serializePath(result);
   };
@@ -453,6 +609,9 @@ export function interpolateHandleRotational(
 // Interpolation helpers
 // ---------------------------------------------------------------------------
 
+/** Epsilon below which anchor points are considered coincident. */
+const ANCHOR_EPSILON = 0.001;
+
 function interpolateSubPath(from: CubicSubPath, to: CubicSubPath, t: number): CubicSubPath {
   const start = lerpPoint(from.start, to.start, t);
   const segCount = Math.min(from.segments.length, to.segments.length);
@@ -465,20 +624,31 @@ function interpolateSubPath(from: CubicSubPath, to: CubicSubPath, t: number): Cu
     const fromSeg = from.segments[i]!;
     const toSeg = to.segments[i]!;
 
-    // Use rotational interpolation for control points
     const interpolatedEnd = lerpPoint(fromSeg.end, toSeg.end, t);
-    const c1 = interpolateHandleRotational(
-      lerpPoint(prevFromEnd, prevToEnd, t),
-      fromSeg.c1,
-      toSeg.c1,
-      t,
+
+    // Compute anchor for c1 (previous end point interpolated)
+    const c1Anchor = lerpPoint(prevFromEnd, prevToEnd, t);
+    // Compute anchor for c2 (current end point interpolated)
+    const c2Anchor = interpolatedEnd;
+
+    // Fallback: when anchor points are within epsilon distance,
+    // rotational interpolation amplifies errors, so use linear lerp instead.
+    const c1AnchorDist = Math.hypot(
+      prevFromEnd.x - prevToEnd.x,
+      prevFromEnd.y - prevToEnd.y,
     );
-    const c2 = interpolateHandleRotational(
-      interpolatedEnd,
-      fromSeg.c2,
-      toSeg.c2,
-      t,
+    const c2AnchorDist = Math.hypot(
+      fromSeg.end.x - toSeg.end.x,
+      fromSeg.end.y - toSeg.end.y,
     );
+
+    const c1 = c1AnchorDist < ANCHOR_EPSILON
+      ? lerpPoint(fromSeg.c1, toSeg.c1, t)
+      : interpolateHandleRotational(c1Anchor, fromSeg.c1, toSeg.c1, t);
+
+    const c2 = c2AnchorDist < ANCHOR_EPSILON
+      ? lerpPoint(fromSeg.c2, toSeg.c2, t)
+      : interpolateHandleRotational(c2Anchor, fromSeg.c2, toSeg.c2, t);
 
     segments.push({ c1, c2, end: interpolatedEnd });
     prevFromEnd = fromSeg.end;
@@ -506,6 +676,21 @@ function serializePath(path: CubicPath): string {
     }
   }
   return parts.join(' ');
+}
+
+// ---------------------------------------------------------------------------
+// Easing helpers for coordinated unmatched sub-path timing
+// ---------------------------------------------------------------------------
+
+/** Cubic ease-in: accelerating from zero velocity. */
+function easeInCubic(t: number): number {
+  return t * t * t;
+}
+
+/** Cubic ease-out: decelerating to zero velocity. */
+function easeOutCubic(t: number): number {
+  const t1 = t - 1;
+  return t1 * t1 * t1 + 1;
 }
 
 // ---------------------------------------------------------------------------

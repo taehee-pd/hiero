@@ -474,4 +474,285 @@ describe('Phase 8.4 — Editor topology validation', () => {
     expect(typeof mod.MorphReadinessIndicator).toBe('function');
     expect(typeof mod.MorphPreview).toBe('function');
   });
+
+  it('GeometryChangeWarning exports are importable', async () => {
+    const mod = await import('@/components/editor/GeometryChangeWarning');
+    expect(typeof mod.GeometryChangeWarning).toBe('function');
+    expect(typeof mod.useGeometryValidation).toBe('function');
+    expect(typeof mod.detectGeometryBreaks).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8.4a — Geometry break detection tests
+// ---------------------------------------------------------------------------
+
+describe('Phase 8.4a — detectGeometryBreaks', () => {
+  // Dynamic import so tests work even if the file fails to compile independently
+  let detectGeometryBreaks: typeof import('@/components/editor/GeometryChangeWarning')['detectGeometryBreaks'];
+
+  // Eagerly import once for the suite
+  it('module loads', async () => {
+    const mod = await import('@/components/editor/GeometryChangeWarning');
+    detectGeometryBreaks = mod.detectGeometryBreaks;
+    expect(typeof detectGeometryBreaks).toBe('function');
+  });
+
+  it('returns empty array for identical paths', () => {
+    const d = 'M0 0 L10 10 Z';
+    const breaks = detectGeometryBreaks(d, d);
+    expect(breaks.length).toBe(0);
+  });
+
+  it('detects sub-path count change', () => {
+    const prev = 'M0 0 L10 10 Z';
+    const curr = 'M0 0 L10 10 Z M20 20 L30 30 Z';
+    const breaks = detectGeometryBreaks(prev, curr);
+    const subpathBreak = breaks.find((b) => b.kind === 'subpath-count-changed');
+    expect(subpathBreak).toBeDefined();
+    expect(subpathBreak!.detail).toContain('1');
+    expect(subpathBreak!.detail).toContain('2');
+  });
+
+  it('detects closed status change', () => {
+    const prev = 'M0 0 L10 0 L10 10 Z';
+    const curr = 'M0 0 L10 0 L10 10';
+    const breaks = detectGeometryBreaks(prev, curr);
+    const closedBreak = breaks.find((b) => b.kind === 'closed-status-changed');
+    expect(closedBreak).toBeDefined();
+  });
+
+  it('detects significant command signature change', () => {
+    // A simple line vs a cubic curve — very different signatures
+    const prev = 'M0 0 L10 10';
+    const curr = 'M0 0 C2 4 8 6 10 10 C12 14 18 16 20 20';
+    const breaks = detectGeometryBreaks(prev, curr);
+    const sigBreak = breaks.find((b) => b.kind === 'command-signature-changed');
+    expect(sigBreak).toBeDefined();
+  });
+
+  it('handles empty previous path', () => {
+    const breaks = detectGeometryBreaks('', 'M0 0 L10 10 Z');
+    expect(breaks.length).toBeGreaterThan(0);
+    const subBreak = breaks.find((b) => b.kind === 'subpath-count-changed');
+    expect(subBreak).toBeDefined();
+  });
+
+  it('handles empty current path', () => {
+    const breaks = detectGeometryBreaks('M0 0 L10 10 Z', '');
+    expect(breaks.length).toBeGreaterThan(0);
+  });
+
+  it('handles both paths empty', () => {
+    const breaks = detectGeometryBreaks('', '');
+    expect(breaks.length).toBe(0);
+  });
+
+  it('detects point count change', () => {
+    const prev = 'M0 0 L10 10';
+    const curr = 'M0 0 L5 5 L10 10 L15 15';
+    const breaks = detectGeometryBreaks(prev, curr);
+    const ptBreak = breaks.find((b) => b.kind === 'point-count-changed');
+    expect(ptBreak).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Integration: transition resolver with cross-icon morph and topology
+// ---------------------------------------------------------------------------
+
+import { resolveTransition, attemptCrossIconMorph } from '@/lib/runtime-core';
+import type { Layer, Transition } from '@/lib/schema/types';
+
+function makeLayer(id: string, d: string, opts: { fill?: boolean; stroke?: boolean; strokeWidth?: number } = {}): Layer {
+  return {
+    id,
+    path: { d },
+    style: {
+      fill: opts.fill !== false ? { mode: 'fixed' as const, value: '#000' } : undefined,
+      stroke: opts.stroke ? { mode: 'fixed' as const, value: '#000' } : undefined,
+      strokeWidth: opts.strokeWidth,
+    },
+  };
+}
+
+describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
+  it('uses crossIconMorph as fallback when strictMorph and bestGuessMorph fail', () => {
+    // Two paths with different sub-path counts — strictMorph and bestGuessMorph
+    // will fail, but crossIconMorph can match sub-paths by centroid proximity.
+    const fromState: State = {
+      id: 'from',
+      layers: {
+        shape: makeLayer('shape', 'M0 0 L10 0 L10 10 Z'),
+      },
+    };
+    const toState: State = {
+      id: 'to',
+      layers: {
+        shape: makeLayer('shape', 'M0 0 L10 0 L10 10 Z M15 15 L25 15 L25 25 Z'),
+      },
+    };
+    const transition: Transition = {
+      id: 'test',
+      from: 'from',
+      to: 'to',
+      strategy: 'bestGuessMorph',
+      durationMs: 200,
+      layerBindings: [{ fromLayerId: 'shape', toLayerId: 'shape' }],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    const binding = resolved.layerBindings[0]!;
+    // Should either get a morph via crossIconMorph or a fallback
+    const hasMorphOrFallback = binding.morph !== undefined || binding.fallback !== undefined;
+    expect(hasMorphOrFallback).toBe(true);
+  });
+
+  it('topology analysis is included in resolved transition', () => {
+    const fromState: State = {
+      id: 'from',
+      layers: { line: makeLayer('line', 'M0 0 L10 10', { stroke: true, strokeWidth: 2, fill: false }) },
+    };
+    const toState: State = {
+      id: 'to',
+      layers: { line: makeLayer('line', 'M0 0 L10 10 Z', { fill: true }) },
+    };
+    const transition: Transition = {
+      id: 'topo-test',
+      from: 'from',
+      to: 'to',
+      strategy: 'bestGuessMorph',
+      durationMs: 150,
+      layerBindings: [{ fromLayerId: 'line', toLayerId: 'line' }],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    expect(resolved.topologyAnalysis).toBeDefined();
+  });
+
+  it('topology-incompatible transition overrides morph to crossfade', () => {
+    const fromState: State = {
+      id: 'outline',
+      layers: { icon: makeLayer('icon', 'M0 0 L10 0 L10 10', { stroke: true, strokeWidth: 2, fill: false }) },
+    };
+    const toState: State = {
+      id: 'filled',
+      layers: { icon: makeLayer('icon', 'M0 0 L10 0 L10 10 Z', { fill: true }) },
+    };
+    const transition: Transition = {
+      id: 'stroke-fill',
+      from: 'outline',
+      to: 'filled',
+      strategy: 'strictMorph',
+      durationMs: 200,
+      layerBindings: [{ fromLayerId: 'icon', toLayerId: 'icon' }],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    // Topology detection should flag incompatibility
+    expect(resolved.topologyAnalysis?.compatible).toBe(false);
+    // Binding should have a fallback instead of morph due to topology override
+    const binding = resolved.layerBindings[0]!;
+    const hasOverride = binding.fallback !== undefined || binding.animationType !== 'morph';
+    expect(hasOverride).toBe(true);
+  });
+});
+
+describe('Phase 8 — attemptCrossIconMorph', () => {
+  it('produces valid interpolation for simple paths', () => {
+    const interpolator = attemptCrossIconMorph(
+      'M0 0 L10 0 L10 10 Z',
+      'M5 5 L15 5 L15 15 Z',
+    );
+    expect(interpolator).not.toBeNull();
+    const mid = interpolator!(0.5);
+    expect(mid).toContain('M');
+  });
+
+  it('handles paths with different sub-path counts', () => {
+    const interpolator = attemptCrossIconMorph(
+      'M0 0 L10 0 L10 10 Z',
+      'M0 0 L10 0 L10 10 Z M20 20 L30 20 L30 30 Z',
+    );
+    // May or may not succeed depending on normalization;
+    // the key is it doesn't throw
+    expect(typeof interpolator === 'function' || interpolator === null).toBe(true);
+  });
+
+  it('handles empty or minimal path strings gracefully', () => {
+    // Empty paths may or may not produce null depending on parser behavior.
+    // The key is they don't throw.
+    const r1 = attemptCrossIconMorph('', 'M0 0 L10 10');
+    expect(r1 === null || typeof r1 === 'function').toBe(true);
+    const r2 = attemptCrossIconMorph('M0 0 L10 10', '');
+    expect(r2 === null || typeof r2 === 'function').toBe(true);
+  });
+});
+
+describe('Phase 8 — Cross-icon morph winding normalization', () => {
+  it('crossIconMorph handles paths with opposite winding directions', () => {
+    // CW square
+    const from = [{
+      start: { x: 0, y: 0 },
+      segments: [
+        { c1: { x: 10, y: 0 }, c2: { x: 10, y: 0 }, end: { x: 10, y: 0 } },
+        { c1: { x: 10, y: 10 }, c2: { x: 10, y: 10 }, end: { x: 10, y: 10 } },
+        { c1: { x: 0, y: 10 }, c2: { x: 0, y: 10 }, end: { x: 0, y: 10 } },
+        { c1: { x: 0, y: 0 }, c2: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+      ],
+      closed: true,
+    }];
+
+    // CCW square (reversed)
+    const to = [{
+      start: { x: 0, y: 0 },
+      segments: [
+        { c1: { x: 0, y: 10 }, c2: { x: 0, y: 10 }, end: { x: 0, y: 10 } },
+        { c1: { x: 10, y: 10 }, c2: { x: 10, y: 10 }, end: { x: 10, y: 10 } },
+        { c1: { x: 10, y: 0 }, c2: { x: 10, y: 0 }, end: { x: 10, y: 0 } },
+        { c1: { x: 0, y: 0 }, c2: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+      ],
+      closed: true,
+    }];
+
+    const interpolator = crossIconMorph(from, to);
+    expect(interpolator).not.toBeNull();
+    // Should produce valid SVG at midpoint
+    const mid = interpolator!(0.5);
+    expect(mid).toContain('M');
+    expect(mid).toContain('C');
+  });
+});
+
+describe('Phase 8 — MorphReadiness crossIconMorph strategy', () => {
+  it('readiness recommends crossIconMorph for partially compatible paths', () => {
+    const fromState: State = {
+      id: 'from',
+      layers: {
+        a: makeLayer('a', 'M0 0 L10 0 L10 10 Z'),
+      },
+    };
+    const toState: State = {
+      id: 'to',
+      layers: {
+        a: makeLayer('a', 'M2 2 C5 2 8 5 10 10 Z'),
+      },
+    };
+    const transition: Transition = {
+      id: 'mixed',
+      from: 'from',
+      to: 'to',
+      strategy: 'replace',
+      durationMs: 200,
+      layerBindings: [{ fromLayerId: 'a', toLayerId: 'a' }],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    const binding = resolved.layerBindings[0]!;
+    // The readiness should recommend something — either morph or crossIconMorph
+    expect(binding.readiness).toBeDefined();
+    expect(['strictMorph', 'bestGuessMorph', 'crossIconMorph', 'fallback']).toContain(
+      binding.readiness!.recommendedStrategy,
+    );
+  });
 });

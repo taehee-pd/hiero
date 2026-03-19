@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-19 (Phase 7 completed)
+**Last updated:** 2026-03-19 (Phase 8 completed)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -27,7 +27,7 @@ in this order:
 5. ~~**Phase 6** — Sync & Distribution~~ (completed)
 6. ~~**Phase D** — React API Enrichment~~ (completed)
 7. ~~**Phase 7** — Cross-Platform Adapters~~ (completed)
-8. **Phase 8** — Cross-Icon Morphing
+8. ~~**Phase 8** — Cross-Icon Morphing~~ (completed)
 
 ---
 
@@ -649,90 +649,133 @@ Status: **completed** (verified 2026-03-19).
 
 ## Phase 8 — Cross-Icon Morphing & Advanced Transitions (R9)
 
+Status: **completed** (verified 2026-03-19).
+
 Research into SF Symbols 7, GSAP MorphSVG, Flubber, and production icon
 patterns identifies three distinct transition categories requiring
-different algorithms.
+different algorithms. All three categories are now implemented with
+industry-class algorithms.
 
 ### 8.1 — Same-icon state morphing improvements
 
 `strictMorph()` and `bestGuessMorph()` in `lib/runtime-core/morph.ts`
-are partially implemented. Improvements needed:
+are fully implemented with production-quality algorithms.
 
-- [ ] **8.1a — Arc-to-cubic conversion.**
-  Currently arcs are rejected (`normalizeToCubicPath` returns null for
-  arc segments). Add A→C conversion using pi/4 arc segments on the unit
-  circle, scaled to the original ellipse (standard algorithm).
+- [x] **8.1a — Arc-to-cubic conversion.**
+  `lib/runtime-core/arc-to-cubic.ts`: `arcToCubicSegments()` converts SVG
+  arc commands to cubic bezier sequences using the standard pi/4 arc
+  segment approximation (W3C algorithm). Handles degenerate cases (zero
+  radius, same start/end, near-zero dtheta, zero denominator), radius
+  correction when too small, and elliptical/rotated arcs. Last segment
+  endpoint is snapped to exact target. Integrated into
+  `normalizeToCubicPath()` in `morph.ts` so arcs are no longer rejected.
+  Tests: `tests/phase-8-morph.test.ts` — simple arcs, degenerate arcs,
+  large arcs, elliptical arcs, rotated arcs.
 
-- [ ] **8.1b — Rotational interpolation.**
-  Replace raw x,y coordinate interpolation in `strictMorph` with
-  GSAP-style angle+length interpolation of control point handles
-  relative to their anchors. Prevents mid-morph kinks.
+- [x] **8.1b — Rotational interpolation.**
+  `lib/runtime-core/cross-icon-morph.ts`: `interpolateHandleRotational()`
+  converts control point handles to polar coordinates (angle+length)
+  relative to their anchor, interpolates angle via shortest-arc path
+  (unwraps ±π boundary), interpolates length linearly. Prevents
+  mid-morph kinks. Falls back to linear lerp when anchor points are
+  within epsilon distance (< 0.001) to prevent amplified errors.
+  Tests: `tests/phase-8-morph.test.ts` — t=0, t=1, midpoint, coincident.
 
-- [ ] **8.1c — Shape index optimization.**
-  Auto-compute optimal point correspondence offset that minimizes sum
-  of squared point displacements, instead of sequential index matching.
-  Similar to GSAP's `shapeIndex: 'auto'`.
+- [x] **8.1c — Shape index optimization.**
+  `findOptimalShapeIndex()` in `cross-icon-morph.ts` tests all rotation
+  offsets (0..n-1) for closed paths, computing sum of squared distances
+  for endpoints and control points (weighted 0.5). Picks the offset
+  that minimizes total displacement. Applied in both `alignCubicPaths()`
+  (morph.ts) and `crossIconMorph()` (cross-icon-morph.ts).
+  Tests: open paths return 0, misaligned closed paths find non-zero offset.
 
 ### 8.2 — Cross-icon morphing (e.g., play→pause, search→close)
 
-New algorithm for morphing between different icons that share similar
-topology but different geometry. Common cases: hamburger→X, play→pause,
-plus→close, arrow direction changes, lock→unlock, sort→filter.
+`lib/runtime-core/cross-icon-morph.ts`: complete 5-step pipeline for
+morphing between different icons. Integrated into the transition resolver
+as a third-tier fallback after strictMorph and bestGuessMorph.
 
-- [ ] **8.2a — Sub-path matching.**
-  Pair sub-paths between source and target icons by centroid proximity
-  and bbox similarity (reuse `computeReadiness` scoring from
-  `transition-resolver.ts`).
+- [x] **8.2a — Sub-path matching.**
+  `matchSubPaths()` scores all from→to sub-path pairs by centroid
+  proximity (35%), bounding box similarity (30%), area similarity (10%),
+  segment count similarity (5%), and closed status bonus (20%). Greedy
+  matching by best score first. Winding order is normalized to clockwise
+  before matching via `ensureClockwise()` (shoelace formula).
 
-- [ ] **8.2b — Segment-level De Casteljau subdivision.**
-  Extend `alignCubicPaths` with per-segment subdivision to equalize
-  curve counts within each sub-path pair. Distribution formula:
-  `stepSecond = longer.length / shorter.length`.
+- [x] **8.2b — Segment-level De Casteljau subdivision.**
+  `subdivideCubicSegments()` and `splitCubicSegment()` use De Casteljau's
+  algorithm to split cubic bezier segments at equal parameter intervals.
+  Arc-length aware subdivision distributes extra splits to the longest
+  segments first using `estimateCubicArcLength()` (chord+control-polygon
+  heuristic). Distribution: `stepsPerSegment = longer / shorter`.
 
-- [ ] **8.2c — Shape index for each sub-path pair.**
-  Find optimal rotation offset per paired sub-path that minimizes
-  total displacement. Test all offsets and pick the minimum.
+- [x] **8.2c — Shape index for each sub-path pair.**
+  Applied per matched sub-path pair in `crossIconMorph()`. For closed
+  paths, `findOptimalShapeIndex()` tests all offsets and picks minimum
+  displacement. `rotateSubPathSegments()` reorders segments by offset.
 
-- [ ] **8.2d — Unmatched sub-path handling.**
-  Collapse unmatched sub-paths to their centroid point (existing
-  degenerate path creation) with coordinated fade-in/fade-out.
+- [x] **8.2d — Unmatched sub-path handling.**
+  `createCentroidCollapsedSubPath()` creates degenerate sub-paths at
+  the centroid with the same segment count as the template. Coordinated
+  easing: disappearing sub-paths use `easeInCubic(t)`, appearing
+  sub-paths use `easeOutCubic(t)` for natural fade-in/fade-out timing.
 
 ### 8.3 — Line-to-solid icon transitions (topology-incompatible)
 
-SF Symbols does NOT morph geometry between outline and filled variants.
-Apple uses layer-level crossfade. This is correct because topology
-changes fundamentally (open stroked paths vs. closed filled paths).
+`lib/runtime-core/topology-detection.ts`: SF Symbols-inspired approach.
+Integrated into the transition resolver — topology analysis runs before
+binding resolution and overrides morph bindings to crossfade when
+topology is incompatible.
 
-- [ ] **8.3a — Topology incompatibility detection.**
-  Detect when source and target have incompatible topology: different
-  sub-path count, different closed/open status, or fill mode change
-  (stroked→filled). Auto-select crossfade strategy.
+- [x] **8.3a — Topology incompatibility detection.**
+  `analyzeTopologyCompatibility()` detects: subpath-count-mismatch,
+  closed-open-mismatch, fill-mode-change, stroke-to-fill-change,
+  path-type-mismatch. Auto-selects 'morph', 'crossfade', or
+  'draw-crossfade' strategy. Results attached to `ResolvedTransition`
+  as `topologyAnalysis`.
+  Tests: compatible topology, stroke-to-fill detection, subpath mismatch.
 
-- [ ] **8.3b — Coordinated crossfade with emphasis.**
-  Outgoing icon fades out (opacity 1→0) while incoming fades in (0→1).
-  Add scale pulse on incoming (1.0→1.12→1.0 via spring easing) for
-  tactile feedback. Covers: heart outline→filled, bookmark outline→
-  filled, eye→eye-slash, volume→mute.
+- [x] **8.3b — Coordinated crossfade with emphasis.**
+  `computeCrossfadeFrame()`: outgoing fades out linearly (1→0), incoming
+  fades in with easeOutCubic (delayed start at t=0.1), incoming scale
+  pulse (1.0→1.12→1.0 via easeOutBack * sin(π*t)) for tactile feedback.
+  Tests: t=0, t=1, midpoint visibility, scale overshoot.
 
-- [ ] **8.3c — Draw-coordinated crossfade (SF Symbols 7 style).**
-  When Magic Replace + Draw metadata are available, outgoing layers
-  use Draw Off while incoming layers use Draw On, creating the
-  handwriting-style transition that SF Symbols 7 introduced.
+- [x] **8.3c — Draw-coordinated crossfade (SF Symbols 7 style).**
+  `computeDrawCrossfadeFrame()`: when draw annotation available, outgoing
+  uses Draw Off (1→0, slightly ahead via 1.2x speed), incoming uses
+  Draw On (0→1, delayed 15%). `shouldUseDrawCrossfade()` requires
+  annotation with 2+ layers. Without annotation, draw progress stays
+  at 1 (no draw animation, just opacity crossfade).
+  Tests: with/without annotation, t=0 initial state, outgoing/incoming
+  progress at various t values.
 
 ### 8.4 — Editor topology validation
 
-- [ ] **8.4a — Geometry change warnings.**
-  Warn in editor when user changes geometry that breaks an existing
-  strict-morph transition's topology contract. Check on path edit commit.
+- [x] **8.4a — Geometry change warnings.**
+  `components/editor/GeometryChangeWarning.tsx`: `GeometryChangeWarning`
+  component and `useGeometryValidation` hook. `detectGeometryBreaks()`
+  pure function compares previous and current path d-strings via
+  `canonicalizePath()`, detecting: subpath-count-changed,
+  closed-status-changed, command-signature-changed, point-count-changed.
+  Warns which transitions are affected and offers "Downgrade to crossfade"
+  action. Tests: `tests/phase-8-morph.test.ts` — all break types, empty
+  paths, identical paths.
 
-- [ ] **8.4b — Morph readiness indicator in TransitionPanel.**
-  Show morph readiness score with green/yellow/red indicator. The
-  existing `computeReadiness` scoring in `transition-resolver.ts`
-  provides the data; the editor needs to surface it.
+- [x] **8.4b — Morph readiness indicator in TransitionPanel.**
+  `components/editor/MorphReadinessIndicator.tsx`: `MorphReadinessIndicator`
+  shows green/yellow/red score indicator with breakdown of all 6 readiness
+  dimensions (commands, sub-paths, closed/open, bbox, centroid, role).
+  Displays recommended strategy badge and topology warnings inline.
+  Uses `computeReadiness` from `transition-resolver.ts` and
+  `analyzeTopologyCompatibility` from `topology-detection.ts`.
 
-- [ ] **8.4c — Morph quality preview.**
-  Preview morph interpolation at 0%, 25%, 50%, 75%, 100% in the
-  TransitionPanel before committing, so users can evaluate quality.
+- [x] **8.4c — Morph quality preview.**
+  `MorphPreview` component in `MorphReadinessIndicator.tsx`: renders SVG
+  path at 0%, 25%, 50%, 75%, 100% progress using the morph interpolator.
+  Falls back to snap (from→to at 50%) when no interpolator is provided.
+  Configurable size and viewBox.
+  Tests: `tests/phase-8-morph.test.ts` — type-level import validation.
 
 ---
 

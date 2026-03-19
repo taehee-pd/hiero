@@ -40,7 +40,8 @@ The same product codebase also supports a desktop shell through Electrobun. In a
 - `lib/export/`: SVG export, runtime JSON export, compiled package generation, and diffing.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter), downgrade rules, storybook generation, and manifest cleanup.
 - `lib/compiler-contracts/`: compiled artifact types and validators.
-- `lib/runtime-core/`, `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
+- `lib/runtime-core/`: transition resolution, morph interpolation (strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, and state-machine behavior.
+- `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
 - `lib/platform/`: desktop bridge and route helpers shared with the web app.
 
 ## Dependency Shape

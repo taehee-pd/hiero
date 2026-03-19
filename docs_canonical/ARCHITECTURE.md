@@ -106,12 +106,27 @@ Adapters are pure transforms (`Icon + RuntimeVariantPayload[] -> GeneratedFile[]
 
 The repository contains multiple runtime-focused layers:
 
-- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, and state-machine behavior
+- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, and state-machine behavior
 - `lib/runtime-dom/`: DOM renderer/driver for runtime icons
 - `lib/runtime-react/`: React wrapper components (`ConivaIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
 - `lib/runtime-sdk/`: compiled icon rendering primitives and renderer logic
 
 These layers consume icon data after authoring/export rather than participating in editor state directly.
+
+#### Morphing and Transition Pipeline
+
+The runtime-core morphing pipeline resolves how icon state transitions are animated:
+
+| Module | Responsibility |
+|--------|---------------|
+| `morph.ts` | `strictMorph()` (same-command paths), `bestGuessMorph()` (normalized cubics), `attemptCrossIconMorph()` (cross-icon fallback) |
+| `cross-icon-morph.ts` | Sub-path matching, De Casteljau subdivision, shape index optimization, rotational interpolation, winding normalization |
+| `arc-to-cubic.ts` | SVG arc (A) → cubic bezier (C) conversion using pi/4 segment approximation |
+| `path-normalization.ts` | Canonical path representation, geometry stats (subpath count, bbox, centroid), transform application |
+| `topology-detection.ts` | Incompatibility detection (stroke→fill, subpath mismatch, closed/open), crossfade strategy selection |
+| `transition-resolver.ts` | Orchestrates layer binding resolution, morph strategy selection (strict→bestGuess→crossIcon→fallback), topology override |
+
+The morph strategy selection cascade is: `strictMorph` (exact command match) → `bestGuessMorph` (normalized cubic alignment) → `crossIconMorph` (sub-path matching + subdivision) → fallback (crossfade/scale/slide). Topology detection runs before binding resolution and overrides morph bindings to crossfade when topology is incompatible (e.g., outline→filled icon transitions).
 
 ### Platform Boundary
 

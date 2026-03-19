@@ -1,0 +1,286 @@
+'use client';
+
+import { useCallback, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/kibo-ui/button';
+import { Input } from '@/components/kibo-ui/input';
+import { Label } from '@/components/kibo-ui/label';
+import type { Effect, TimelineTrack, SpringConfig } from '@/lib/schema/types';
+import { EasingPicker } from './EasingPicker';
+
+const EFFECT_KINDS: Effect['kind'][] = [
+  'bounce',
+  'pulse',
+  'breathe',
+  'wiggle',
+  'rotate',
+  'scale',
+  'appear',
+  'disappear',
+  'variableColor',
+  'lineDrawOn',
+  'lineDrawOff',
+  'custom',
+];
+
+const TRACK_PROPERTIES = [
+  'opacity',
+  'rotate',
+  'translateX',
+  'translateY',
+  'scale',
+] as const;
+
+type CustomTrack = {
+  property: string;
+  keyframes: number[];
+  easing?: string | SpringConfig;
+};
+
+export function CustomEffectBuilder({
+  effect,
+  onUpdate,
+  onRemove,
+}: {
+  effect: Effect;
+  onUpdate: (patch: Partial<Effect>) => void;
+  onRemove: () => void;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <button
+            type="button"
+            className="text-sm font-semibold text-foreground hover:underline"
+            onClick={() => setIsExpanded((v) => !v)}
+          >
+            {effect.id}
+          </button>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {effect.kind} • {effect.durationMs}ms
+            {effect.repeat && effect.repeat !== 1 ? ` • repeat: ${effect.repeat}` : ''}
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={onRemove}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+
+      {isExpanded ? (
+        <div className="mt-3 grid gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Kind</Label>
+              <select
+                value={effect.kind}
+                onChange={(e) => onUpdate({ kind: e.target.value as Effect['kind'] })}
+                className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+              >
+                {EFFECT_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>{kind}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Duration (ms)</Label>
+              <Input
+                type="number" min="0" step="50"
+                value={effect.durationMs}
+                className="h-7 text-xs"
+                onChange={(e) =>
+                  onUpdate({ durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0) })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Delay (ms)</Label>
+              <Input
+                type="number" min="0" step="50"
+                value={effect.delay ?? 0}
+                className="h-7 text-xs"
+                onChange={(e) =>
+                  onUpdate({ delay: Math.max(Number.parseInt(e.target.value, 10) || 0, 0) })
+                }
+              />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Repeat</Label>
+              <Input
+                type="text"
+                value={effect.repeat === 'infinite' ? 'infinite' : String(effect.repeat ?? 1)}
+                className="h-7 text-xs"
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  if (val === 'infinite') {
+                    onUpdate({ repeat: 'infinite' });
+                  } else {
+                    const n = Number.parseInt(val, 10);
+                    if (Number.isFinite(n) && n > 0) onUpdate({ repeat: n });
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Direction</Label>
+              <select
+                value={effect.direction ?? 'normal'}
+                onChange={(e) =>
+                  onUpdate({ direction: e.target.value as Effect['direction'] })
+                }
+                className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+              >
+                <option value="normal">normal</option>
+                <option value="reverse">reverse</option>
+                <option value="alternate">alternate</option>
+              </select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] text-muted-foreground">Easing</Label>
+              <EasingPicker
+                value={effect.easing ?? 'linear'}
+                onSelect={(val) => onUpdate({ easing: val })}
+              />
+            </div>
+          </div>
+
+          {/* Custom tracks editor — only shown for 'custom' kind */}
+          {effect.kind === 'custom' ? (
+            <CustomTracksEditor
+              tracks={effect.customTracks ?? []}
+              onUpdate={(tracks) => onUpdate({ customTracks: tracks })}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CustomTracksEditor({
+  tracks,
+  onUpdate,
+}: {
+  tracks: TimelineTrack[];
+  onUpdate: (tracks: TimelineTrack[]) => void;
+}) {
+  const addTrack = useCallback(() => {
+    const usedProps = new Set(tracks.map((t) => t.property));
+    const nextProp = TRACK_PROPERTIES.find((p) => !usedProps.has(p)) ?? 'opacity';
+    onUpdate([
+      ...tracks,
+      { property: nextProp, keyframes: [0, 1, 0] } as TimelineTrack,
+    ]);
+  }, [onUpdate, tracks]);
+
+  const removeTrack = useCallback(
+    (index: number) => {
+      onUpdate(tracks.filter((_, i) => i !== index));
+    },
+    [onUpdate, tracks],
+  );
+
+  const updateTrack = useCallback(
+    (index: number, patch: Partial<CustomTrack>) => {
+      onUpdate(
+        tracks.map((track, i) => {
+          if (i !== index) return track;
+          return { ...track, ...patch } as TimelineTrack;
+        }),
+      );
+    },
+    [onUpdate, tracks],
+  );
+
+  return (
+    <div className="mt-2 grid gap-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-[10px] uppercase text-muted-foreground">Custom Tracks</Label>
+        <Button
+          type="button" size="sm" variant="outline"
+          className="h-6 gap-1 rounded-lg text-[10px]"
+          onClick={addTrack}
+        >
+          <Plus className="size-3" /> Add Track
+        </Button>
+      </div>
+
+      {tracks.map((track, index) => (
+        <div
+          key={`${track.property}-${index}`}
+          className="grid gap-1.5 rounded-lg border border-border/50 bg-muted/10 p-2"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <select
+              value={track.property}
+              onChange={(e) =>
+                updateTrack(index, { property: e.target.value })
+              }
+              className="h-6 rounded border border-border bg-background px-1.5 text-[11px] text-foreground"
+            >
+              {TRACK_PROPERTIES.map((prop) => (
+                <option key={prop} value={prop}>{prop}</option>
+              ))}
+            </select>
+
+            <div className="flex items-center gap-1">
+              <EasingPicker
+                value={track.easing ?? 'linear'}
+                onSelect={(val) =>
+                  updateTrack(index, {
+                    easing: val === 'linear' ? undefined : val,
+                  } as Partial<CustomTrack>)
+                }
+              />
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                onClick={() => removeTrack(index)}
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-0.5">
+            <Label className="text-[10px] text-muted-foreground">
+              Keyframes (comma-separated)
+            </Label>
+            <Input
+              type="text"
+              value={
+                track.property !== 'fill' && track.property !== 'stroke'
+                  ? (track.keyframes as number[]).join(', ')
+                  : ''
+              }
+              className="h-6 text-[11px]"
+              onChange={(e) => {
+                const values = e.target.value
+                  .split(',')
+                  .map((s) => Number.parseFloat(s.trim()))
+                  .filter(Number.isFinite);
+                if (values.length > 0) {
+                  updateTrack(index, { keyframes: values });
+                }
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

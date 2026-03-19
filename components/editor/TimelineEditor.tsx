@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { resolveTransition } from '@/lib/runtime-core';
 import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
 type NumericTrackProperty = Exclude<TimelineTrack['property'], 'fill' | 'stroke'>;
@@ -142,6 +143,21 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
     }));
   }, [updateTransition]);
 
+  // C3 — Per-track easing update
+  const handleTrackEasingChange = useCallback((bindingIndex: number, property: string, easing: EasingValue) => {
+    updateTransition((draft) => ({
+      ...draft,
+      layerBindings: draft.layerBindings.map((binding, idx) => {
+        if (idx !== bindingIndex) return binding;
+        const tracks = (binding.tracks ?? []).map((track) => {
+          if (track.property !== property) return track;
+          return { ...track, easing: easing === 'linear' ? undefined : easing };
+        });
+        return { ...binding, tracks };
+      }),
+    }));
+  }, [updateTransition]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
@@ -189,12 +205,29 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
           <div className="absolute bottom-0 top-0 z-20 w-px bg-primary" style={{ left: `${playhead * 100}%` }} />
           {rows.map((row, rowIndex) => {
             const keyframes = row.track?.keyframes ?? [];
+            const trackEasing = row.track?.easing;
+
             return (
               <div
                 key={`${row.layerId}-${row.property}-${rowIndex}`}
-                className={cn('relative grid grid-cols-[180px_1fr] border-b border-border/60 text-xs', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
+                className={cn('relative grid grid-cols-[180px_auto_1fr] border-b border-border/60 text-xs', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
               >
-                <div className="truncate px-2 py-2 font-medium text-foreground">{row.layerId} · {row.property}</div>
+                <div className="truncate px-2 py-2 font-medium text-foreground">
+                  {row.layerId} · {row.property}
+                </div>
+
+                {/* C3 — Per-track easing indicator */}
+                <div className="flex items-center px-1">
+                  {row.track ? (
+                    <EasingPicker
+                      value={trackEasing ?? 'linear'}
+                      onSelect={(val) => handleTrackEasingChange(row.bindingIndex, row.property, val)}
+                    />
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground/40">—</span>
+                  )}
+                </div>
+
                 <div
                   className="relative h-8 cursor-crosshair"
                   onClick={(event) => {

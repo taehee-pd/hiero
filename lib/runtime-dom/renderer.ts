@@ -171,12 +171,17 @@ export class DomRenderer {
       entry.element.style.transition = transitionParts.join(', ');
     }
 
-    queueMicrotask(() => {
-      for (const binding of plan.bindings) {
-        const entry = this.layerElements.get(binding.layerId);
-        if (!entry) continue;
-        applyAnimatedValues(entry, binding.toValues);
-      }
+    // Apply to-values in a separate frame so the browser commits the
+    // from-values first, allowing the CSS transition to fire.
+    // A double-requestAnimationFrame guarantees a style-recalc boundary.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        for (const binding of plan.bindings) {
+          const entry = this.layerElements.get(binding.layerId);
+          if (!entry) continue;
+          applyAnimatedValues(entry, binding.toValues);
+        }
+      });
     });
   }
 

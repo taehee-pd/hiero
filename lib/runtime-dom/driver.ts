@@ -64,6 +64,13 @@ export type CreateIconDriverOptions = {
   preserveLayerIds?: string[];
   /** Callback for animation lifecycle events. */
   onAnimationEvent?: AnimationEventCallback;
+  /**
+   * Always use the JS `TransitionScheduler` instead of CSS `transition`
+   * fallback. Set to `true` when the host framework (React, Vue, etc.)
+   * manages the same DOM elements — CSS transitions applied by the driver
+   * would be overwritten by the framework's reconciliation cycle.
+   */
+  preferJsScheduler?: boolean;
 };
 
 export type CreateIconOptions = CreateIconDriverOptions & {
@@ -253,7 +260,7 @@ export function createIconDriver(
     latestTransitionStateId = state.id;
 
     const cssPlan = planCssTrackTransition(resolved);
-    if (cssPlan && !forceJsScheduler) {
+    if (cssPlan && !forceJsScheduler && !options.preferJsScheduler) {
       activeCssFallbackPlan = cssPlan;
       activeCssFallbackStartedAt = defaultNow();
       renderer.applyCssTrackTransition(state.id, cssPlan);

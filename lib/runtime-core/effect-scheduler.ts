@@ -24,6 +24,12 @@ export type EffectDefinition = {
   direction?: 'normal' | 'reverse' | 'alternate';
   /** Palette of hex colors for the variableColor effect. */
   palette?: string[];
+  /** Custom keyframed tracks for the 'custom' effect kind. */
+  customTracks?: Array<{
+    property: string;
+    keyframes: number[];
+    easing?: string | SpringConfig;
+  }>;
 };
 
 export type EffectFrameCallback = (values: InterpolatedValues, colorOverrides?: ColorOverrides) => void;
@@ -173,6 +179,7 @@ export class EffectScheduler {
       easedProgress,
       this.targetLayerIds,
       this.drawAnnotation,
+      this.effect.customTracks,
     );
     this.onFrameCallback(values);
   }
@@ -193,6 +200,7 @@ export function computeEffectValues(
   progress: number,
   targetLayerIds: string[],
   drawAnnotation?: DrawAnnotation,
+  customTracks?: EffectDefinition['customTracks'],
 ): InterpolatedValues {
   switch (kind) {
     case 'lineDrawOn':
@@ -215,9 +223,42 @@ export function computeEffectValues(
       return applyToLayers(targetLayerIds, { opacity: progress });
     case 'disappear':
       return applyToLayers(targetLayerIds, { opacity: 1 - progress });
+    case 'custom':
+      return computeCustomEffect(progress, targetLayerIds, customTracks);
     default:
       return {};
   }
+}
+
+function computeCustomEffect(
+  progress: number,
+  targetLayerIds: string[],
+  customTracks?: EffectDefinition['customTracks'],
+): InterpolatedValues {
+  if (!customTracks || customTracks.length === 0) return {};
+
+  const values: Record<string, number> = {};
+  for (const track of customTracks) {
+    let easedProgress = progress;
+    if (track.easing && typeof track.easing === 'string') {
+      easedProgress = getEasingFunction(track.easing)(clamp01(progress));
+    }
+
+    if (track.keyframes.length === 0) continue;
+    if (track.keyframes.length === 1) {
+      values[track.property] = track.keyframes[0]!;
+      continue;
+    }
+
+    const scaled = clamp01(easedProgress) * (track.keyframes.length - 1);
+    const index = Math.min(Math.floor(scaled), track.keyframes.length - 2);
+    const localProgress = scaled - index;
+    const start = track.keyframes[index]!;
+    const end = track.keyframes[index + 1]!;
+    values[track.property] = start + (end - start) * localProgress;
+  }
+
+  return applyToLayers(targetLayerIds, values);
 }
 
 function applyToLayers(

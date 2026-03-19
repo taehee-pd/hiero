@@ -9,6 +9,41 @@ export type GitHubSyncSettings = {
   exportFormat: 'react' | 'svg' | 'both';
 };
 
+/**
+ * A sync target describes how generated adapter output is delivered
+ * to a consuming repository or directory.
+ */
+export type SyncTarget = {
+  id: string;
+  /** Human-readable label (e.g. "Production React Repo"). */
+  name: string;
+  /** The target platform adapter to use. */
+  platform: 'react' | 'swift' | 'flutter' | 'web-component';
+  /** How the output is delivered. */
+  deliveryMode: 'local-directory' | 'git-pr';
+  /** Adapter-specific configuration. */
+  adapterConfig?: {
+    /** Runtime package import path (React adapter). */
+    runtimePackage?: string;
+    /** Emit TypeScript. Default true. */
+    typescript?: boolean;
+    /** Output subdirectory inside the target. */
+    outputDir?: string;
+  };
+  /** Local-directory connector config. */
+  localDirectory?: {
+    path: string;
+  };
+  /** Git PR connector config. */
+  gitPr?: {
+    owner: string;
+    repo: string;
+    baseBranch: string;
+    /** Path prefix inside the repo (e.g. "packages/icons"). */
+    packagePath?: string;
+  };
+};
+
 export type IconSet = {
   version: '1.0';
   meta: { name: string; createdAt: string; updatedAt: string };
@@ -18,6 +53,7 @@ export type IconSet = {
   exportProfiles?: ExportProfile[];
   collections?: Record<string, Collection>;
   sync?: GitHubSyncSettings;
+  syncTargets?: SyncTarget[];
 };
 
 export type Project = IconSet;
@@ -151,6 +187,10 @@ export type PaintRef =
 
 export type GradientStop = { offset: number; color: string; opacity?: number };
 
+export type StateTrigger = {
+  event: 'hover' | 'tap' | 'longPress' | 'focus' | 'auto';
+};
+
 export type Transition = {
   id: string;
   from: string;
@@ -160,6 +200,7 @@ export type Transition = {
   easing?: string | SpringConfig;
   stagger?: TransitionStagger;
   layerBindings: LayerBinding[];
+  triggers?: StateTrigger[];
 };
 
 export type LayerBinding = {
@@ -175,14 +216,14 @@ export type LayerBinding = {
 };
 
 export type TimelineTrack =
-  | { property: 'opacity'; keyframes: number[] }
-  | { property: 'rotate'; keyframes: number[] }
-  | { property: 'translateX'; keyframes: number[] }
-  | { property: 'translateY'; keyframes: number[] }
-  | { property: 'scale'; keyframes: number[] }
-  | { property: 'pathLength'; keyframes: number[] }
-  | { property: 'fill'; keyframes: string[] }
-  | { property: 'stroke'; keyframes: string[] };
+  | { property: 'opacity'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'rotate'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'translateX'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'translateY'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'scale'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'pathLength'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'fill'; keyframes: string[]; easing?: string | SpringConfig }
+  | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig };
 
 export type SpringConfig = {
   type: 'spring';
@@ -289,12 +330,14 @@ export type Effect = {
     | 'disappear'
     | 'variableColor'
     | 'lineDrawOn'
-    | 'lineDrawOff';
+    | 'lineDrawOff'
+    | 'custom';
   durationMs: number;
   easing?: string | SpringConfig;
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';
+  customTracks?: TimelineTrack[];
 };
 
 export type RenderingMode =

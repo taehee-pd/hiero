@@ -1,4 +1,4 @@
-import type { AnimatedValue, InterpolatedValues, LayerInterpolatedValues } from './scheduler';
+import type { InterpolatedValues, LayerInterpolatedValues } from './scheduler';
 
 /**
  * Compose transition interpolated values with effect deltas.

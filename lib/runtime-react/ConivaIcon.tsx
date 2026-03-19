@@ -8,7 +8,7 @@ import { createIconDriver, type IconDriver } from '../runtime-dom';
 import { getRenderableLayers, resolvePaintToString } from '../runtime-dom/renderer';
 import type { AnimationEvent } from '../runtime-core/animation-events';
 
-export type VibeIconProps = {
+export type ConivaIconProps = {
   icon: Icon;
   variant?: string | number;
   state?: string;
@@ -30,7 +30,7 @@ export type VibeIconProps = {
   onEffectComplete?: (effectId: string) => void;
 };
 
-export function VibeIcon({
+export function ConivaIcon({
   icon,
   variant,
   state,
@@ -45,7 +45,7 @@ export function VibeIcon({
   onTransitionStart,
   onTransitionComplete,
   onEffectComplete,
-}: VibeIconProps) {
+}: ConivaIconProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const driverRef = useRef<IconDriver | null>(null);
 

@@ -3,7 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { Icon, State } from '../lib/schema';
-import { VibeIcon, useIconState } from '../lib/runtime-react';
+import { ConivaIcon, useIconState } from '../lib/runtime-react';
 
 function makeTestIcon(): Icon {
   const defaultState: State = {
@@ -62,49 +62,49 @@ function makeTestIcon(): Icon {
   };
 }
 
-describe('VibeIcon', () => {
+describe('ConivaIcon', () => {
   test('renders a container div with correct dimensions', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('width:24px');
     expect(html).toContain('height:24px');
   });
 
   test('renders with custom size override', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} size={48} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} size={48} />);
     expect(html).toContain('width:48px');
     expect(html).toContain('height:48px');
   });
 
   test('renders with color prop', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} color="#ff0000" />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} color="#ff0000" />);
     expect(html).toContain('color:#ff0000');
   });
 
   test('renders with className', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} className="icon-cls" />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} className="icon-cls" />);
     expect(html).toContain('class="icon-cls"');
   });
 
   test('resolves variant by size number', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} variant={16} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} variant={16} />);
     expect(html).toContain('width:16px');
     expect(html).toContain('height:16px');
   });
 
   test('resolves variant by id string', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} variant="v16" />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} variant="v16" />);
     expect(html).toContain('width:16px');
   });
 
   test('falls back to first variant for unknown variant', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} variant="v999" />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} variant="v999" />);
     // Falls back to first variant by insertion order (v24)
     expect(html).toContain('width:24px');
   });
 
   test('renders with custom style', () => {
     const html = renderToStaticMarkup(
-      <VibeIcon icon={makeTestIcon()} style={{ opacity: 0.5, borderRadius: 4 }} />,
+      <ConivaIcon icon={makeTestIcon()} style={{ opacity: 0.5, borderRadius: 4 }} />,
     );
     expect(html).toContain('opacity:0.5');
     expect(html).toContain('border-radius:4px');
@@ -113,7 +113,7 @@ describe('VibeIcon', () => {
   // --- E1: SSR-safe rendering ---
 
   test('SSR renders SVG with path elements (not empty div)', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('<svg');
     expect(html).toContain('<path');
     expect(html).toContain('d="M0 0H24V24H0Z"');
@@ -121,13 +121,13 @@ describe('VibeIcon', () => {
   });
 
   test('SSR renders layers with correct fill and stroke', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('fill="#fff"');
     expect(html).toContain('stroke="currentColor"');
   });
 
   test('SSR renders viewBox and dimensions on SVG', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('viewBox="0 0 24 24"');
     expect(html).toContain('width="24"');
     expect(html).toContain('height="24"');
@@ -136,21 +136,21 @@ describe('VibeIcon', () => {
   // --- E2: Accessibility ---
 
   test('decorative icon (no label) renders aria-hidden', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('aria-hidden="true"');
     expect(html).not.toContain('role="img"');
     expect(html).not.toContain('aria-label');
   });
 
   test('labeled icon renders role="img" and aria-label', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} label="Right arrow" />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} label="Right arrow" />);
     expect(html).toContain('role="img"');
     expect(html).toContain('aria-label="Right arrow"');
     expect(html).not.toContain('aria-hidden');
   });
 
   test('SVG has focusable="false"', () => {
-    const html = renderToStaticMarkup(<VibeIcon icon={makeTestIcon()} />);
+    const html = renderToStaticMarkup(<ConivaIcon icon={makeTestIcon()} />);
     expect(html).toContain('focusable="false"');
   });
 });

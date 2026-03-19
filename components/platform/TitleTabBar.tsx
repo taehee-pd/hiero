@@ -52,10 +52,10 @@ export function TitleTabBar({
   return (
     <div
       className={cn(
-        'title-tab-bar electrobun-webkit-app-region-drag flex shrink-0 items-end border-b border-border/40 bg-background/60 backdrop-blur-xl backdrop-saturate-150',
+        'title-tab-bar electrobun-webkit-app-region-drag flex shrink-0 items-end border-b border-[var(--border-separator)] bg-[var(--bg-toolbar)] backdrop-blur-xl backdrop-saturate-150',
         desktop ? 'h-10 pl-[78px]' : 'h-9 pl-3',
       )}
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      style={{ WebkitAppRegion: 'drag', fontFamily: 'var(--font-system)' } as React.CSSProperties}
     >
       {/* Explorer tab (always present) */}
       <button
@@ -68,9 +68,9 @@ export function TitleTabBar({
           }
         }}
         className={cn(
-          'title-tab electrobun-webkit-app-region-no-drag flex h-7 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-xs font-medium transition-colors',
+          'title-tab electrobun-webkit-app-region-no-drag flex h-7 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[13px] font-normal transition-colors',
           !activeTabId || openTabs.length === 0
-            ? 'border-border/60 bg-card text-foreground'
+            ? 'border-[var(--border-subtle)] bg-card text-foreground'
             : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground',
         )}
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
@@ -87,9 +87,9 @@ export function TitleTabBar({
             type="button"
             onClick={() => handleTabClick(tab)}
             className={cn(
-              'title-tab electrobun-webkit-app-region-no-drag group flex h-7 max-w-[10rem] items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-xs font-medium transition-colors',
+              'title-tab electrobun-webkit-app-region-no-drag group flex h-7 max-w-[10rem] items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[13px] font-normal transition-colors',
               isActive
-                ? 'border-border/60 bg-card text-foreground'
+                ? 'border-[var(--border-subtle)] bg-card text-foreground'
                 : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground',
             )}
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}

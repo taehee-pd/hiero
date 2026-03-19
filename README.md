@@ -98,7 +98,7 @@ The patch is reapplied automatically on `pnpm --dir desktop install`.
 
 ### Generated React component API (E4)
 
-The React codegen path emits per-icon wrapper components that call `VibeIcon` and embed each icon payload.
+The React codegen path emits per-icon wrapper components that call `ConivaIcon` and embed each icon payload.
 
 Generated components expose icon-specific TypeScript unions for:
 - variant IDs and sizes

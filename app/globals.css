@@ -114,6 +114,40 @@
   --lighter-700: rgba(255, 255, 255, 0.85);
   --lighter-800: rgba(255, 255, 255, 0.90);
   --lighter-900: rgba(255, 255, 255, 0.95);
+
+  /* ── macOS System Colors ── */
+  --system-blue: #007AFF;
+  --system-gray: #8E8E93;
+  --system-gray-2: #AEAEB2;
+  --system-gray-3: #C7C7CC;
+  --system-gray-4: #D1D1D6;
+  --system-gray-5: #E5E5EA;
+  --system-gray-6: #F2F2F7;
+  --system-red: #FF3B30;
+  --system-green: #34C759;
+  --system-orange: #FF9500;
+  --system-yellow: #FFCC00;
+  --system-purple: #AF52DE;
+
+  /* ── macOS-native Typography ── */
+  --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif;
+  --font-system-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-system-rounded: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'SF Pro', 'Helvetica Neue', sans-serif;
+
+  /* ── macOS-native Spacing ── */
+  --toolbar-height: 38px;
+  --sidebar-width: 240px;
+  --inspector-width: 260px;
+
+  /* ── macOS Vibrancy Backgrounds ── */
+  --bg-sidebar: rgba(246, 246, 246, 0.72);
+  --bg-toolbar: rgba(246, 246, 246, 0.82);
+  --bg-inspector: rgba(250, 250, 252, 0.85);
+  --bg-content: #FFFFFF;
+
+  /* ── macOS-native Borders ── */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-separator: rgba(0, 0, 0, 0.1);
 }
 
 /* ══════════════════════════════════════════════════
@@ -313,6 +347,14 @@
   --selection: var(--blue-300);
   --handle: var(--greyscale-000);
   --toolbar-bg: rgba(10, 10, 10, 0.78);
+
+  /* ── macOS Vibrancy (dark) ── */
+  --bg-sidebar: rgba(30, 30, 30, 0.78);
+  --bg-toolbar: rgba(38, 38, 38, 0.85);
+  --bg-inspector: rgba(32, 32, 34, 0.88);
+  --bg-content: #1C1C1E;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-separator: rgba(255, 255, 255, 0.1);
 }
 
 /* ══════════════════════════════════════════════════
@@ -666,16 +708,14 @@
   .workspace-header {
     position: relative;
     z-index: 10;
-    border: 1px solid var(--border);
-    background: var(--toolbar-bg);
-    box-shadow:
-      0 1px 2px var(--darker-100),
-      0 0 0 1px var(--lighter-700) inset;
-    backdrop-filter: blur(18px);
+    border: 1px solid var(--border-subtle);
+    border-bottom-color: var(--border-separator);
+    background: var(--bg-toolbar);
+    backdrop-filter: blur(20px) saturate(1.5);
   }
 
   .workspace-panel-header {
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-separator);
   }
 
   .workspace-kicker {

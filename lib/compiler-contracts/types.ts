@@ -41,7 +41,8 @@ export type CompiledEffectKind =
   | 'scale'
   | 'variableColor'
   | 'lineDrawOn'
-  | 'lineDrawOff';
+  | 'lineDrawOff'
+  | 'custom';
 
 export type CompiledIcon = {
   $schema: typeof COMPILED_ICON_SCHEMA_URI;

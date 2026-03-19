@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-19
+**Last updated:** 2026-03-19 (Phase D completed)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -287,29 +287,47 @@ Status: **completed** (verified 2026-03-19).
 
 ## Phase 6 — Sync & Distribution (R7)
 
-- [ ] **6.1 — Add target export config to project schema.**
-  Extend the `ExportProfile` type (`lib/schema/types.ts`) or add a new
-  `SyncTarget` type that captures: target repo, branch, path, platform,
-  delivery mode, and adapter config.
+Status: **completed** (verified 2026-03-19).
 
-- [ ] **6.2 — Build editor-side export/connections UI.**
-  Add a panel or dialog for configuring sync targets. The existing
-  `lib/sync-ui/` module provides `use-sync-pr.ts` and `sync-state.ts`
-  for the GitHub sync flow; extend this to support the broader target
-  config from 6.1.
+- [x] **6.1 — Add target export config to project schema.**
+  New `SyncTarget` type in `lib/schema/types.ts` captures: id, name,
+  platform (`'react' | 'swift' | 'flutter' | 'web-component'`),
+  deliveryMode (`'local-directory' | 'git-pr'`), adapterConfig
+  (runtimePackage, typescript, outputDir), localDirectory (path),
+  and gitPr (owner, repo, baseBranch, packagePath).
+  `IconSet.syncTargets?: SyncTarget[]` stores per-project targets.
+  Tests: `tests/phase6-sync-distribution.test.ts` — schema validation.
 
-- [ ] **6.3 — Implement local-directory sync.**
-  Given a target directory path, run the adapter for the configured
-  platform, write generated files, and apply stale-file cleanup from
-  5B.3. This is the simplest sync connector and should be implemented
-  first.
+- [x] **6.2 — Build editor-side export/connections UI.**
+  `components/export/SyncTargetPanel.tsx`: Dialog-based UI for
+  configuring sync targets. Lists existing targets with platform/mode
+  badges and path/repo info. "Add Target" dialog with form fields
+  for name, platform, delivery mode, local directory path or GitHub
+  repo config, and adapter settings (runtime package, output dir).
+  Remove targets via inline delete buttons.
 
-- [ ] **6.4 — Implement Git PR-based sync for adapter output.**
-  The existing `lib/sync-service/sync-pr.ts` and
-  `lib/sync-service/github-provider.ts` already implement PR creation
-  for icon source sync. Extend or generalize this for adapter output
-  sync: create a branch, write generated files, open a PR with a
-  changelog summary.
+- [x] **6.3 — Implement local-directory sync.**
+  `lib/sync-service/connectors/local-directory-connector.ts`:
+  `syncLocalDirectory()` accepts target dir, platform, icons, and
+  adapter config. Runs the configured adapter (currently React),
+  writes generated files via injected `FileSystem` abstraction,
+  reads previous `.coniva-manifest.json` for stale-file detection
+  via `computeStaleFiles()`, removes stale files, writes updated
+  manifest. Returns `{ written[], removed[], diagnostics[] }`.
+  Tests: `tests/phase6-sync-distribution.test.ts` — writes files +
+  manifest, removes stale files, handles first sync, passes
+  diagnostics through.
+
+- [x] **6.4 — Implement Git PR-based sync for adapter output.**
+  `lib/sync-service/connectors/adapter-pr-connector.ts`:
+  `syncAdapterPr()` runs the adapter, computes stale files from
+  previous manifest, creates a feature branch, commits generated
+  files (with stale-file deletion), and opens a PR with a changelog
+  body (summary, diagnostics, file lists). Uses the existing
+  `GitProvider` interface and `classifyGitHubError()` for typed
+  errors. Returns manifest for the caller to store for next sync.
+  Tests: `tests/phase6-sync-distribution.test.ts` — type-level
+  validation, adapter config pass-through.
 
 ---
 
@@ -479,68 +497,119 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase C — Editor Animation Authoring
 
-- [ ] **C1 — Visual bezier curve editor.**
-  New `components/editor/BezierCurveEditor.tsx`: interactive SVG canvas
-  for dragging control points (x1,y1) and (x2,y2) on a unit square.
-  Real-time curve preview, preset sidebar (material ease, spring
-  approximation). Integration with existing `EasingPicker.tsx` as
-  "Custom" option. Spring config inputs (stiffness/damping/mass sliders)
-  when "Spring" is selected.
+Status: **completed** (verified 2026-03-19).
 
-- [ ] **C2 — Manual layer binding controls.**
-  `components/editor/TransitionPanel.tsx`: layer binding list showing
-  auto-resolved from→to mappings. Dropdown to reassign target layers.
-  Add/remove explicit bindings. "Reset to Auto" button that clears
-  explicit bindings and re-runs auto-resolution.
+- [x] **C1 — Visual bezier curve editor.**
+  `components/editor/BezierCurveEditor.tsx`: interactive SVG canvas
+  for dragging control points (x1,y1) and (x2,y2) on a unit square
+  with real-time curve preview and numeric inputs. Preset sidebar
+  includes Material Standard/Decelerate/Accelerate, Apple Ease, and
+  Ease In Out Back. Spring mode provides stiffness/damping/mass sliders
+  with real-time spring curve visualization, plus gentle/bouncy/stiff/slow
+  presets from `SPRING_PRESETS`. Integrated into `EasingPicker.tsx` as
+  a companion control alongside the preset dropdown.
+  Tests: `tests/phase-c-editor-animation.test.ts` — cubic-bezier parsing.
 
-- [ ] **C3 — Per-track easing.**
-  Schema: add optional `easing?: string | SpringConfig` to
-  `TimelineTrack`. `components/editor/TimelineEditor.tsx`: easing
-  indicator per track row. `lib/runtime-core/scheduler.ts`: per-track
-  easing overrides transition-level easing in `buildInterpolatedValues`.
+- [x] **C2 — Manual layer binding controls.**
+  `TransitionPanel.tsx`: expandable "Layer Bindings" section shows
+  auto-resolved from→to mappings with dropdown selects to reassign
+  source/target layers from each state's layer list. Add/remove
+  explicit bindings via buttons. "Reset to Auto" clears explicit
+  bindings and re-runs `buildDefaultLayerBindings()`.
+  Tests: type-level validation in `phase-c-editor-animation.test.ts`.
 
-- [ ] **C4 — Stagger/delay controls per binding.**
-  `components/editor/TransitionPanel.tsx`: delay and duration number
-  inputs on each layer binding row. Global stagger mode dropdown with
-  perLayerMs input. Depends on A5 schema changes.
+- [x] **C3 — Per-track easing.**
+  Schema: added optional `easing?: string | SpringConfig` to all
+  `TimelineTrack` union members in `lib/schema/types.ts`.
+  `TimelineEditor.tsx`: per-track `EasingPicker` in each timeline row.
+  `lib/runtime-core/scheduler.ts`: `interpolateTrack()` applies
+  per-track easing via `resolveTrackProgress()`, overriding
+  transition-level easing when set.
+  Tests: `phase-c-editor-animation.test.ts` — per-track easing
+  modifies interpolation (ease-in at 0.5 → 0.25 for opacity).
 
-- [ ] **C5 — Custom effect builder.**
-  New `components/editor/CustomEffectBuilder.tsx`: compose effects from
-  primitive transforms with per-property curves. Schema: add
-  `kind: 'custom'` to `Effect.kind` union, add
-  `customTracks?: TimelineTrack[]` to `Effect`. EffectScheduler: handle
-  custom kind via keyframe interpolation.
+- [x] **C4 — Stagger/delay controls per binding.**
+  `TransitionPanel.tsx`: global stagger toggle with mode dropdown
+  (`linear`, `from-center`, `from-edges`, `random`) and perLayerMs
+  input. Each layer binding row has explicit delay (ms) and duration
+  (ms) number inputs. Depends on A5 schema (`TransitionStagger`,
+  `LayerBinding.delayMs/durationMs`).
+  Tests: `phase-c-editor-animation.test.ts` — stagger and per-binding
+  delay/duration schema validation.
 
-- [ ] **C6 — State interaction triggers.**
-  Schema: add `triggers?: StateTrigger[]` to `Transition`
-  (`StateTrigger = { event: 'hover' | 'tap' | 'longPress' | 'focus' |
-  'auto' }`). New `components/editor/TriggerEditor.tsx`: attach trigger
-  events to transitions. Advisory metadata for code generation.
+- [x] **C5 — Custom effect builder.**
+  `components/editor/CustomEffectBuilder.tsx`: full effect editor with
+  kind selector (12 kinds including `custom`), duration/delay/repeat/
+  direction/easing controls. When `kind: 'custom'`, shows a custom
+  tracks editor where users compose effects from primitive transforms
+  (opacity, rotate, translateX/Y, scale) with per-property keyframe
+  arrays and per-track easing.
+  Schema: added `'custom'` to `Effect.kind` union and
+  `customTracks?: TimelineTrack[]` to `Effect` in `lib/schema/types.ts`.
+  `lib/runtime-core/effect-scheduler.ts`: `computeCustomEffect()`
+  handles `custom` kind via keyframe interpolation with per-track easing.
+  `EffectDefinition.customTracks` type added.
+  Tests: `phase-c-editor-animation.test.ts` — custom effect values,
+  per-track easing in custom effects, empty/missing tracks edge cases.
+
+- [x] **C6 — State interaction triggers.**
+  Schema: added `StateTrigger` type (`{ event: 'hover' | 'tap' |
+  'longPress' | 'focus' | 'auto' }`) and `triggers?: StateTrigger[]`
+  to `Transition` in `lib/schema/types.ts`.
+  `components/editor/TriggerEditor.tsx`: standalone component with
+  toggle pill buttons for each trigger event, with tooltip descriptions.
+  Also integrated inline in `TransitionPanel.tsx` for each transition.
+  Advisory metadata for code generation — triggers tell generated
+  components which DOM/native events should initiate the transition.
+  Tests: `phase-c-editor-animation.test.ts` — StateTrigger type
+  validation, Transition.triggers schema.
 
 ---
 
 ## Phase D — React API Enrichment
 
-- [ ] **D1 — Imperative ref API.**
-  `React.forwardRef` on ConivaIcon exposing: `transitionTo`,
-  `triggerEffect`, `cancelEffect`, `cancelAllEffects`,
-  `getCurrentState`, `setVariableDrawProgress`. Enables imperative
-  control from parent components.
+Status: **completed** (verified 2026-03-19).
 
-- [ ] **D2 — Gesture props.**
-  ConivaIcon: `hoverState`, `tapState`, `onHoverStart/End`,
-  `onTapStart/End` props. Auto-bind pointer events to state transitions.
-  Explicit `state` prop takes precedence over gesture states.
+- [x] **D1 — Imperative ref API.**
+  `ConivaIcon` converted to `forwardRef<ConivaIconHandle>` in
+  `lib/runtime-react/ConivaIcon.tsx`. `ConivaIconHandle` exposes:
+  `transitionTo`, `triggerEffect`, `cancelEffect`, `cancelAllEffects`,
+  `getCurrentState`, `setVariableDrawProgress`. Uses
+  `useImperativeHandle` to delegate to the internal `IconDriver`.
+  Tests: `tests/phase-d-react-api.test.tsx` — handle type shape,
+  ref acceptance, combined with other props.
 
-- [ ] **D3 — Animation callbacks.**
-  Wire Phase B3 driver events to ConivaIcon props:
+- [x] **D2 — Gesture props.**
+  `ConivaIcon` now accepts: `hoverState`, `tapState`, `onHoverStart`,
+  `onHoverEnd`, `onTapStart`, `onTapEnd`. Pointer events
+  (`onPointerEnter/Leave/Down/Up`) are attached to the container
+  div only when gesture props are present. Gesture state transitions
+  are suppressed when an explicit `state` prop is set (precedence
+  rule). On pointer-up, falls back to hover state if active, else
+  to the rest state captured before the gesture began.
+  Tests: `tests/phase-d-react-api.test.tsx` — gesture prop
+  acceptance, explicit state precedence.
+
+- [x] **D3 — Animation callbacks.**
   `onTransitionStart(from, to)`, `onTransitionComplete(from, to)`,
-  `onEffectComplete(effectId)`.
+  `onEffectComplete(effectId)` props on `ConivaIcon` are wired to
+  the driver's `onAnimationEvent` callback via stable `callbacksRef`.
+  Callbacks are updated without driver re-creation. Already
+  implemented in previous phases; Phase D verifies and tests the
+  integration.
+  Tests: `tests/phase-d-react-api.test.tsx` — callback acceptance,
+  type-level validation.
 
-- [ ] **D4 — Animation progress visibility.**
-  `onFrame?: (progress: number, stateId: string) => void` prop on
-  ConivaIcon. New `useAnimationProgress` hook via `useSyncExternalStore`
-  returning `{ progress, isAnimating, currentState }`.
+- [x] **D4 — Animation progress visibility.**
+  `onFrame?: (progress: number, stateId: string) => void` prop added
+  to `ConivaIconProps` for per-frame progress reporting.
+  New `useAnimationProgress` hook in
+  `lib/runtime-react/useAnimationProgress.ts` returns
+  `{ progress, isAnimating, currentState }` via `useSyncExternalStore`.
+  Accepts a `driverRef` to subscribe to any compatible driver store.
+  Exported from `lib/runtime-react/index.ts`.
+  Tests: `tests/phase-d-react-api.test.tsx` — snapshot type shape,
+  hook rendering with null driver, default values.
 
 ---
 

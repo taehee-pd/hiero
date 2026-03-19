@@ -66,7 +66,7 @@ export function generateReactFromRuntime(
   const diagnostics: PlatformDiagnostic[] = [];
   const componentNames: string[] = [];
 
-  for (const { icon, meta, variants } of icons) {
+  for (const { icon, meta: _meta, variants } of icons) {
     // Collect diagnostics from capability check
     for (const variant of variants) {
       const diags = checkPlatformCapabilities(

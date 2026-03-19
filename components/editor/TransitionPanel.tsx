@@ -1,26 +1,22 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pause, Play, RotateCcw, Trash2, WandSparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pause, Play, RotateCcw, Trash2, WandSparkles } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler } from '@/lib/runtime-core';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { Transition, LayerBinding, State } from '@/lib/schema/types';
+import type { Transition, LayerBinding, State, TransitionStagger, StateTrigger } from '@/lib/schema/types';
+import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
-const EASING_OPTIONS = [
-  'linear',
-  'ease-in',
-  'ease-out',
-  'ease-in-out',
-  'ease-in-cubic',
-  'ease-out-cubic',
-] as const;
-
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
+
+const TRIGGER_EVENTS: StateTrigger['event'][] = ['hover', 'tap', 'longPress', 'focus', 'auto'];
+
+const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random'];
 
 type CompatibilityStatus =
   | { tone: 'green'; label: 'Compatible' }
@@ -60,8 +56,9 @@ export function TransitionPanel() {
   const [formTo, setFormTo] = useState('');
   const [formStrategy, setFormStrategy] = useState<Transition['strategy']>('bestGuessMorph');
   const [formDuration, setFormDuration] = useState('240');
-  const [formEasing, setFormEasing] = useState<(typeof EASING_OPTIONS)[number]>('ease-in-out');
+  const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
+  const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const schedulerRef = useRef<TransitionScheduler | null>(null);
 
   const stateIds = useMemo(
@@ -340,6 +337,18 @@ export function TransitionPanel() {
     formTo,
   ]);
 
+  const toggleBindingExpand = useCallback((transitionId: string) => {
+    setExpandedBindings((prev) => {
+      const next = new Set(prev);
+      if (next.has(transitionId)) {
+        next.delete(transitionId);
+      } else {
+        next.add(transitionId);
+      }
+      return next;
+    });
+  }, []);
+
   if (!currentIcon || !currentVariant) {
     return null;
   }
@@ -388,12 +397,10 @@ export function TransitionPanel() {
               onChange={(value) => setFormStrategy(value as Transition['strategy'])}
               options={['track', 'strictMorph', 'bestGuessMorph', 'replace']}
             />
-            <FieldSelect
-              label="Easing"
-              value={formEasing}
-              onChange={(value) => setFormEasing(value as (typeof EASING_OPTIONS)[number])}
-              options={[...EASING_OPTIONS]}
-            />
+            <div className="grid gap-1.5">
+              <Label className="text-xs uppercase text-muted-foreground">Easing</Label>
+              <EasingPicker value={formEasing} onSelect={setFormEasing} />
+            </div>
           </div>
           <div className="grid gap-1.5">
             <Label className="text-xs uppercase text-muted-foreground">Duration (ms)</Label>
@@ -442,6 +449,7 @@ export function TransitionPanel() {
               currentStateId === transition.from || currentStateId === transition.to;
             const compatibility = compatibilityById.get(transition.id);
             const isActive = activePreview?.transitionId === transition.id;
+            const isBindingsExpanded = expandedBindings.has(transition.id);
 
             return (
               <div
@@ -506,14 +514,15 @@ export function TransitionPanel() {
                     }
                     options={['track', 'strictMorph', 'bestGuessMorph', 'replace']}
                   />
-                  <InlineSelect
-                    label="Easing"
-                    value={typeof transition.easing === 'string' ? transition.easing : 'linear'}
-                    onChange={(value) =>
-                      patchTransition(currentIcon.id, transition.id, { easing: value })
-                    }
-                    options={[...EASING_OPTIONS]}
-                  />
+                  <div className="grid gap-1.5">
+                    <Label className="text-[11px] uppercase text-muted-foreground">Easing</Label>
+                    <EasingPicker
+                      value={transition.easing ?? 'linear'}
+                      onSelect={(value) =>
+                        patchTransition(currentIcon.id, transition.id, { easing: value })
+                      }
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-2 grid gap-1.5">
@@ -531,6 +540,46 @@ export function TransitionPanel() {
                       })
                     }
                   />
+                </div>
+
+                {/* C4 — Stagger controls */}
+                <StaggerControls
+                  transition={transition}
+                  onPatch={(patch) => patchTransition(currentIcon.id, transition.id, patch)}
+                />
+
+                {/* C6 — Trigger editor */}
+                <TriggerEditor
+                  triggers={transition.triggers}
+                  onChange={(triggers) =>
+                    patchTransition(currentIcon.id, transition.id, { triggers })
+                  }
+                />
+
+                {/* C2 — Layer binding controls */}
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); toggleBindingExpand(transition.id); }}
+                  >
+                    {isBindingsExpanded
+                      ? <ChevronDown className="size-3.5" />
+                      : <ChevronRight className="size-3.5" />
+                    }
+                    Layer Bindings ({transition.layerBindings.length})
+                  </button>
+
+                  {isBindingsExpanded ? (
+                    <LayerBindingList
+                      transition={transition}
+                      fromState={currentVariant.states[transition.from]}
+                      toState={currentVariant.states[transition.to]}
+                      onPatchTransition={(patch) =>
+                        patchTransition(currentIcon.id, transition.id, patch)
+                      }
+                    />
+                  ) : null}
                 </div>
 
                 {!isPreviewable ? (
@@ -595,6 +644,266 @@ export function TransitionPanel() {
     </section>
   );
 }
+
+// --- C4: Stagger Controls ---
+
+function StaggerControls({
+  transition,
+  onPatch,
+}: {
+  transition: Transition;
+  onPatch: (patch: Partial<Transition>) => void;
+}) {
+  const stagger = transition.stagger;
+  const [enabled, setEnabled] = useState(!!stagger);
+
+  return (
+    <div className="mt-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <Label className="text-[11px] uppercase text-muted-foreground">Stagger</Label>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            if (!e.target.checked) {
+              onPatch({ stagger: undefined });
+            } else {
+              onPatch({
+                stagger: { mode: 'linear', perLayerMs: 40 },
+              });
+            }
+          }}
+          className="accent-primary"
+        />
+      </div>
+      {enabled && stagger ? (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="grid gap-1">
+            <Label className="text-[10px] text-muted-foreground">Mode</Label>
+            <select
+              value={stagger.mode}
+              onChange={(e) =>
+                onPatch({
+                  stagger: { ...stagger, mode: e.target.value as TransitionStagger['mode'] },
+                })
+              }
+              className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
+            >
+              {STAGGER_MODES.map((mode) => (
+                <option key={mode} value={mode}>{mode}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-1">
+            <Label className="text-[10px] text-muted-foreground">Per Layer (ms)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="5"
+              value={stagger.perLayerMs}
+              className="h-7 text-xs"
+              onChange={(e) =>
+                onPatch({
+                  stagger: {
+                    ...stagger,
+                    perLayerMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// --- C6: Trigger Editor ---
+
+function TriggerEditor({
+  triggers,
+  onChange,
+}: {
+  triggers?: StateTrigger[];
+  onChange: (triggers: StateTrigger[]) => void;
+}) {
+  const active = new Set((triggers ?? []).map((t) => t.event));
+
+  return (
+    <div className="mt-2 grid gap-1.5">
+      <Label className="text-[11px] uppercase text-muted-foreground">
+        Interaction Triggers
+      </Label>
+      <div className="flex flex-wrap gap-1">
+        {TRIGGER_EVENTS.map((event) => (
+          <button
+            key={event}
+            type="button"
+            className={cn(
+              'rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors',
+              active.has(event)
+                ? 'bg-primary/15 text-primary'
+                : 'bg-muted text-muted-foreground hover:text-foreground',
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (active.has(event)) {
+                onChange((triggers ?? []).filter((t) => t.event !== event));
+              } else {
+                onChange([...(triggers ?? []), { event }]);
+              }
+            }}
+          >
+            {event}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- C2: Layer Binding List ---
+
+function LayerBindingList({
+  transition,
+  fromState,
+  toState,
+  onPatchTransition,
+}: {
+  transition: Transition;
+  fromState?: State;
+  toState?: State;
+  onPatchTransition: (patch: Partial<Transition>) => void;
+}) {
+  if (!fromState || !toState) return null;
+
+  const fromLayerIds = Object.keys(fromState.layers);
+  const toLayerIds = Object.keys(toState.layers);
+
+  const updateBinding = (index: number, patch: Partial<LayerBinding>) => {
+    const nextBindings = transition.layerBindings.map((binding, i) =>
+      i === index ? { ...binding, ...patch } : binding,
+    );
+    onPatchTransition({ layerBindings: nextBindings });
+  };
+
+  const removeBinding = (index: number) => {
+    onPatchTransition({
+      layerBindings: transition.layerBindings.filter((_, i) => i !== index),
+    });
+  };
+
+  const addBinding = () => {
+    const usedFrom = new Set(transition.layerBindings.map((b) => b.fromLayerId));
+    const usedTo = new Set(transition.layerBindings.map((b) => b.toLayerId));
+    const nextFrom = fromLayerIds.find((id) => !usedFrom.has(id));
+    const nextTo = toLayerIds.find((id) => !usedTo.has(id));
+    onPatchTransition({
+      layerBindings: [
+        ...transition.layerBindings,
+        { fromLayerId: nextFrom, toLayerId: nextTo },
+      ],
+    });
+  };
+
+  const resetToAuto = () => {
+    onPatchTransition({
+      layerBindings: buildDefaultLayerBindings(fromState, toState, transition.strategy),
+    });
+  };
+
+  return (
+    <div className="mt-2 grid gap-1.5">
+      {transition.layerBindings.map((binding, index) => (
+        <div
+          key={`${binding.fromLayerId}-${binding.toLayerId}-${index}`}
+          className="grid gap-1.5 rounded-lg border border-border/50 bg-muted/10 p-2"
+        >
+          <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
+            <select
+              value={binding.fromLayerId ?? ''}
+              onChange={(e) => updateBinding(index, { fromLayerId: e.target.value || undefined })}
+              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[11px] text-foreground"
+            >
+              <option value="">(none)</option>
+              {fromLayerIds.map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-muted-foreground">-&gt;</span>
+            <select
+              value={binding.toLayerId ?? ''}
+              onChange={(e) => updateBinding(index, { toLayerId: e.target.value || undefined })}
+              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[11px] text-foreground"
+            >
+              <option value="">(none)</option>
+              {toLayerIds.map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              onClick={(e) => { e.stopPropagation(); removeBinding(index); }}
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </div>
+
+          {/* C4 — Per-binding delay/duration */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid gap-0.5">
+              <Label className="text-[10px] text-muted-foreground">Delay (ms)</Label>
+              <Input
+                type="number" min="0" step="10"
+                value={binding.delayMs ?? 0}
+                className="h-6 text-[11px]"
+                onChange={(e) =>
+                  updateBinding(index, {
+                    delayMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-[10px] text-muted-foreground">Duration (ms)</Label>
+              <Input
+                type="number" min="0" step="10"
+                value={binding.durationMs ?? transition.durationMs}
+                className="h-6 text-[11px]"
+                onChange={(e) =>
+                  updateBinding(index, {
+                    durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div className="flex gap-1.5">
+        <Button
+          type="button" size="sm" variant="outline"
+          className="h-6 rounded-lg text-[11px]"
+          onClick={(e) => { e.stopPropagation(); addBinding(); }}
+        >
+          Add Binding
+        </Button>
+        <Button
+          type="button" size="sm" variant="ghost"
+          className="h-6 rounded-lg text-[11px]"
+          onClick={(e) => { e.stopPropagation(); resetToAuto(); }}
+        >
+          Reset to Auto
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// --- Helpers ---
 
 function getCompatibilityStatus(
   transition: Transition,

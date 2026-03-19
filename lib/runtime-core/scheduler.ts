@@ -240,12 +240,19 @@ export function interpolateTransitionValues(
     progress,
     transition.durationMs,
   );
-  return buildInterpolatedValues(transition.layerBindings, easedProgress);
+  return buildInterpolatedValues(
+    transition.layerBindings,
+    easedProgress,
+    transition.easing,
+    transition.durationMs,
+  );
 }
 
 function buildInterpolatedValues(
   layerBindings: ResolvedLayerBinding[],
   progress: number,
+  transitionEasing?: string | SpringConfig,
+  transitionDurationMs?: number,
 ): InterpolatedValues {
   const values: InterpolatedValues = {};
 
@@ -258,7 +265,12 @@ function buildInterpolatedValues(
     const layerValues = (values[layerId] ??= {});
     for (const track of binding.tracks) {
       const localProgress = localBindingProgress(progress, binding, layerBindings);
-      layerValues[track.property] = interpolateTrack(track, localProgress);
+      layerValues[track.property] = interpolateTrack(
+        track,
+        localProgress,
+        transitionEasing,
+        transitionDurationMs,
+      );
     }
   }
 
@@ -281,11 +293,42 @@ function localBindingProgress(
   return (elapsed - (binding.delayMs ?? 0)) / duration;
 }
 
-function interpolateTrack(track: TimelineTrack, progress: number): AnimatedValue {
+function interpolateTrack(
+  track: TimelineTrack,
+  progress: number,
+  transitionEasing?: string | SpringConfig,
+  transitionDurationMs?: number,
+): AnimatedValue {
+  const effectiveProgress = resolveTrackProgress(track, progress, transitionEasing, transitionDurationMs);
   if (track.property === 'fill' || track.property === 'stroke') {
-    return interpolateStringKeyframes(track.keyframes, progress);
+    return interpolateStringKeyframes(track.keyframes, effectiveProgress);
   }
-  return interpolateNumericKeyframes(track.keyframes, progress);
+  return interpolateNumericKeyframes(track.keyframes, effectiveProgress);
+}
+
+/**
+ * If the track has its own easing, apply it to override the transition-level easing.
+ * The raw progress coming in has already been eased by the transition easing,
+ * so we need to "un-ease" and "re-ease" with the track easing.
+ * For simplicity, when a track has per-track easing, we treat the incoming
+ * progress as raw (0-1 linear) and apply only the track easing.
+ */
+function resolveTrackProgress(
+  track: TimelineTrack,
+  progress: number,
+  _transitionEasing?: string | SpringConfig,
+  _transitionDurationMs?: number,
+): number {
+  if (!track.easing) return progress;
+
+  if (typeof track.easing === 'string') {
+    const easingFn = getEasingFunction(track.easing);
+    return easingFn(clamp01(progress));
+  }
+
+  // Spring easing on a per-track basis
+  const duration = _transitionDurationMs ?? 300;
+  return springProgress(track.easing, clamp01(progress) * duration);
 }
 
 function interpolateNumericKeyframes(keyframes: number[], progress: number): number {

@@ -20,7 +20,7 @@ export function generateIconComponent(
   if (typescript) {
     lines.push("import type { CSSProperties } from 'react';");
   }
-  lines.push("import { VibeIcon } from '@/lib/runtime-react';");
+  lines.push("import { ConivaIcon } from '@/lib/runtime-react';");
   if (typescript) {
     lines.push("import type { Icon } from '@/lib/schema/types';");
   }
@@ -73,7 +73,7 @@ export function generateIconComponent(
   lines.push(typescript ? `}: ${componentName}Props) {` : '}) {');
 
   lines.push('  return (');
-  lines.push('    <VibeIcon');
+  lines.push('    <ConivaIcon');
   lines.push(typescript ? '      icon={typedIconData}' : '      icon={iconData as any}');
   lines.push('      size={size}');
   lines.push('      color={color}');

@@ -210,13 +210,13 @@ export function Toolbar() {
 
   return (
     <>
-    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-4 py-3">
-      <div className="flex flex-wrap items-center gap-3">
+    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-3 py-1.5" style={{ fontFamily: 'var(--font-system)', minHeight: 'var(--toolbar-height)' }}>
+      <div className="flex flex-wrap items-center gap-2">
         <div className="mr-auto min-w-0">
-          <p className="truncate text-base font-semibold tracking-tight text-foreground">{projectName}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <p className="truncate text-[13px] font-medium tracking-tight text-foreground">{projectName}</p>
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
-            <span className="text-border">/</span>
+            <span className="text-border-subtle">/</span>
             <span>{selectionCount} selected</span>
           </div>
         </div>
@@ -229,9 +229,9 @@ export function Toolbar() {
                 variant="ghost"
                 size="sm"
                 aria-label="Open"
-                className="workspace-tool-button h-9 rounded-xl px-3 text-foreground"
+                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
               >
-                <FolderOpen className="size-4" />
+                <FolderOpen className="size-3.5" />
                 <span>Open</span>
               </Button>
             </DropdownMenuTrigger>
@@ -267,7 +267,7 @@ export function Toolbar() {
           >
             <SelectTrigger
               size="sm"
-              className="workspace-tool-button h-9 rounded-xl px-3 text-foreground"
+              className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground"
               aria-label="Rendering mode"
             >
               <SelectValue placeholder="Rendering Mode" />
@@ -283,7 +283,7 @@ export function Toolbar() {
         </ToolbarGroup>
 
         <ToolbarGroup>
-          <Badge variant="outline" className="min-w-[4.25rem] rounded-xl px-2.5 py-1 text-[11px] font-medium">
+          <Badge variant="outline" className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[11px] font-medium">
             {Math.round(zoom * 100)}%
           </Badge>
           <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact />
@@ -305,7 +305,7 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
 ];
 
 function ToolbarGroup({ children }: { children: React.ReactNode }) {
-  return <div className="workspace-toolbar-group">{children}</div>;
+  return <div className="workspace-toolbar-group gap-0.5 p-[3px]">{children}</div>;
 }
 
 function ToolbarButton({
@@ -331,11 +331,11 @@ function ToolbarButton({
           aria-label={label}
           className={
             compact
-              ? 'workspace-tool-button h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground'
-              : 'workspace-tool-button h-9 rounded-xl px-3 text-foreground'
+              ? 'workspace-tool-button h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80'
+              : 'workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80'
           }
         >
-          <Icon className="size-4" />
+          <Icon className="size-3.5" />
           {!compact ? <span>{label}</span> : null}
         </Button>
       </TooltipTrigger>

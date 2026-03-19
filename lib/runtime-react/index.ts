@@ -1,2 +1,2 @@
-export * from './VibeIcon';
+export * from './ConivaIcon';
 export * from './useIconState';

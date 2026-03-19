@@ -282,9 +282,9 @@ export function InspectorPanel() {
   if (!currentIcon && !layer && !showShapeToolSettings) {
     return (
       <div className="flex h-full flex-col bg-transparent">
-        <div className="px-4 pt-4 pb-3">
-          <span className="workspace-kicker">Inspect</span>
-          <p className="mt-2 text-base font-semibold text-foreground">Nothing selected</p>
+        <div className="px-3 pt-3 pb-2">
+          <span className="workspace-kicker text-[11px]">Inspect</span>
+          <p className="mt-1 text-[13px] font-semibold text-foreground">Nothing selected</p>
         </div>
         <div className="flex flex-1 items-center justify-center px-4">
           <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
@@ -300,14 +300,14 @@ export function InspectorPanel() {
 
   return (
     <div className="flex h-full flex-col bg-transparent">
-      <div className="px-4 pt-4 pb-3">
-        <span className="workspace-kicker">Inspect</span>
-        <p className="mt-2 text-base font-semibold text-foreground">
+      <div className="px-3 pt-3 pb-2">
+        <span className="workspace-kicker text-[11px]">Inspect</span>
+        <p className="mt-1 text-[13px] font-semibold text-foreground">
           {layer ? layer.id : showShapeToolSettings ? 'Shape tool' : currentVariant?.id ?? 'Inspector'}
         </p>
       </div>
       <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-5 px-4 pb-4">
+        <div className="flex flex-col gap-3 px-3 pb-3">
           {currentIcon ? (
             <>
               <Section title="Variants">
@@ -354,7 +354,7 @@ export function InspectorPanel() {
 
                 {currentVariant ? (
                   <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-                    <Label className="text-xs uppercase text-muted-foreground">Weight</Label>
+                    <Label className="text-[11px] uppercase text-[var(--system-gray)]">Weight</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
                         <button
@@ -372,7 +372,7 @@ export function InspectorPanel() {
                         </button>
                       ))}
                     </div>
-                    <Label className="text-xs uppercase text-muted-foreground">Scale</Label>
+                    <Label className="text-[11px] uppercase text-[var(--system-gray)]">Scale</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
                         <button
@@ -427,7 +427,7 @@ export function InspectorPanel() {
                 </div>
 
                 <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-                  <Label className="text-xs uppercase text-muted-foreground">Generate Variant Matrix</Label>
+                  <Label className="text-[11px] uppercase text-[var(--system-gray)]">Generate Variant Matrix</Label>
                   <div className="grid gap-1">
                     <p className="text-[11px] text-muted-foreground">Sizes</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -961,7 +961,7 @@ export function InspectorPanel() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+                  <Label className="w-20 shrink-0 text-[11px] text-[var(--system-gray)]">
                     Type
                   </Label>
                   <div className="flex flex-1 items-center gap-1">
@@ -1479,8 +1479,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <span className="text-sm font-semibold uppercase text-muted-foreground">
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[11px] font-semibold uppercase text-[var(--system-gray)]">
         {title}
       </span>
       {children}
@@ -1525,7 +1525,7 @@ function ReadOnlyField({
 }) {
   return (
     <div className="grid gap-1">
-      <Label className="text-sm uppercase text-muted-foreground">
+      <Label className="text-[11px] uppercase text-[var(--system-gray)]">
         {label}
       </Label>
       <span
@@ -1564,7 +1564,7 @@ function NumberField({
 
   return (
     <div className="grid gap-1">
-      <Label className="text-sm uppercase text-muted-foreground">
+      <Label className="text-[11px] uppercase text-[var(--system-gray)]">
         {label}
       </Label>
       <Input
@@ -1620,7 +1620,7 @@ function AxisField({
 
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] text-[var(--system-gray)]">{label}</Label>
       <Input
         type="text"
         inputMode="decimal"
@@ -1653,7 +1653,7 @@ function IconNumberField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="flex w-20 shrink-0 items-center gap-1 text-xs text-muted-foreground">
+      <Label className="flex w-20 shrink-0 items-center gap-1 text-[11px] text-[var(--system-gray)]">
         <span className="font-mono text-sm leading-none">{icon}</span>
         <span>{label}</span>
       </Label>
@@ -1717,7 +1717,7 @@ function SelectField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-xs text-muted-foreground">
+      <Label className="w-20 shrink-0 text-[11px] text-[var(--system-gray)]">
         {label}
       </Label>
       <select
@@ -2041,7 +2041,7 @@ function PaintField({
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/35 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-sm uppercase text-muted-foreground">
+        <Label className="text-[11px] uppercase text-[var(--system-gray)]">
           {label}
         </Label>
         <div className="flex items-center gap-1.5">
@@ -2299,7 +2299,7 @@ function GradientInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-sm text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] text-[var(--system-gray)]">{label}</Label>
       <Input
         type="number"
         value={value}

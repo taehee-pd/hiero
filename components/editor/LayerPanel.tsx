@@ -32,10 +32,10 @@ export function LayerPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="workspace-panel-header flex items-center justify-between px-4 py-4">
+      <div className="workspace-panel-header flex items-center justify-between px-3 py-2.5">
         <div>
-          <p className="workspace-kicker">Structure</p>
-          <p className="mt-2 text-sm font-semibold text-foreground">Layers</p>
+          <p className="workspace-kicker text-[11px]">Structure</p>
+          <p className="mt-1 text-[13px] font-semibold text-foreground">Layers</p>
         </div>
         <span className="workspace-badge">{rows.length}</span>
       </div>
@@ -56,7 +56,7 @@ export function LayerPanel() {
               <div
                 key={layer.id}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm transition',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-[13px] transition',
                   isSelected
                     ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
                     : 'border-border/80 bg-background/80 hover:border-foreground/12 hover:bg-background',
@@ -98,7 +98,7 @@ export function LayerPanel() {
                     {maskLayerId ? (
                       <Link2 className="size-3 shrink-0 text-muted-foreground" />
                     ) : null}
-                    <p className="truncate text-sm font-medium text-foreground">{layer.id}</p>
+                    <p className="truncate text-[13px] font-medium text-foreground">{layer.id}</p>
                     {isMask ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
                         Mask
@@ -110,7 +110,7 @@ export function LayerPanel() {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-sm uppercase text-muted-foreground">
+                  <p className="mt-0.5 text-[11px] uppercase text-muted-foreground">
                     {maskLayerId
                       ? `clipped by ${maskLayerId}`
                       : clippedLayerIds.length > 0

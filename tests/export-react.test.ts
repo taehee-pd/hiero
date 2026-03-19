@@ -81,7 +81,7 @@ describe('export react codegen', () => {
     const source = ts.createSourceFile('StarIcon.tsx', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
     expect((source as any).parseDiagnostics).toHaveLength(0);
-    expect(code).toContain("import { VibeIcon } from '@/lib/runtime-react';");
+    expect(code).toContain("import { ConivaIcon } from '@/lib/runtime-react';");
   });
 
   test('generated component includes the expected props interface', () => {
@@ -94,7 +94,7 @@ describe('export react codegen', () => {
     expect(code).toContain("state?: \"active\" | \"default\";");
     expect(code).toContain("animate?: boolean;");
     expect(code).toMatch(/variant\?: \"(24|v24)\" \| \"(24|v24)\" \| number;/);
-    expect(code).toContain("import { VibeIcon } from '@/lib/runtime-react';");
+    expect(code).toContain("import { ConivaIcon } from '@/lib/runtime-react';");
   });
 
   test('generateIconLibrary returns expected file map keys', () => {

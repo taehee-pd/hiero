@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-18
+**Last updated:** 2026-03-19
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -134,20 +134,20 @@ Status: **completed** (verified 2026-03-18).
 
 Status: **completed** (verified 2026-03-18).
 
-- [x] **3.1 — Wire `useSyncExternalStore` in VibeIcon.**
+- [x] **3.1 — Wire `useSyncExternalStore` in ConivaIcon.**
   `IconDriver` now exposes `subscribe()` for `useSyncExternalStore`
-  compatibility. `VibeIcon` tracks driver state via
+  compatibility. `ConivaIcon` tracks driver state via
   `useSyncExternalStore(subscribe, getSnapshot, serverSnapshot)`,
   eliminating stale-closure issues during rapid prop changes.
 
-- [x] **3.2 — Prop-driven state changes in VibeIcon.**
+- [x] **3.2 — Prop-driven state changes in ConivaIcon.**
   The state transition effect now compares `currentDriverState`
   (from `useSyncExternalStore`) against the resolved prop state.
   Rapid prop changes during active transitions are handled correctly:
   the driver cancels the active scheduler and starts a new transition.
   `animate={false}` destroys and recreates the driver at the new state.
 
-- [x] **3.3 — Integration tests for VibeIcon controlled/uncontrolled flows.**
+- [x] **3.3 — Integration tests for ConivaIcon controlled/uncontrolled flows.**
   `tests/runtime-react.test.tsx` — 9 tests covering:
   - Container dimensions (default and custom size)
   - Color and className pass-through
@@ -157,7 +157,7 @@ Status: **completed** (verified 2026-03-18).
 
 - [x] **3.4 — End-to-end demo icon path in the web app.**
   `app/demo/runtime/page.tsx` — renders two icons (Hamburger/Close
-  and Chevron) with `VibeIcon`, state toggle button, animate checkbox,
+  and Chevron) with `ConivaIcon`, state toggle button, animate checkbox,
   and a "Export Chevron → Runtime JSON" button that validates the full
   Editor → Export → Runtime → React pipeline in the browser.
 
@@ -232,48 +232,56 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase 5 — Platform & Adapter Foundation (R5-R6)
 
+Status: **completed** (verified 2026-03-19).
+
 ### 5A — Platform Capability Layer (R5)
 
-- [ ] **5A.1 — Define target platform types.**
-  Create `lib/platform/types.ts` (the `lib/platform/` directory already
-  exists with `bridge.ts` and `routes.ts`) defining: `TargetPlatform`
-  (react, swift, flutter, web-component), `DeliveryMode` (package, repo,
-  asset-bundle), `PlatformCapability` (draw, morph, effects, gradients,
-  clip-paths), and `ExportOutcome`.
+- [x] **5A.1 — Define target platform types.**
+  `lib/platform/types.ts`: `TargetPlatform`, `DeliveryMode`,
+  `PlatformCapability`, `PlatformCapabilityProfile`, `ExportOutcome`,
+  `AdapterExportResult`. Built-in profiles: `REACT_CAPABILITIES` (full),
+  `SWIFT_CAPABILITIES`, `FLUTTER_CAPABILITIES`, `WEB_COMPONENT_CAPABILITIES`.
+  Tests: `tests/platform-types.test.ts`.
 
-- [ ] **5A.2 — Add downgrade reporting for unsupported features.**
-  When an export encounters a feature the target platform does not
-  support, emit a diagnostic with downgrade info. Extend
-  `RuntimeExportDiagnostic` or create a separate `PlatformDiagnostic`
-  type.
+- [x] **5A.2 — Add downgrade reporting for unsupported features.**
+  `PlatformDiagnostic` type and `checkPlatformCapabilities()` function
+  in `lib/platform/types.ts`. Inspects `RuntimeVariantPayload` for morph,
+  effects, draw, clip-paths, spring easing, variable draw, and track
+  transitions against a platform profile.
+  Tests: `tests/platform-types.test.ts` — diagnostic emission cases.
 
-- [ ] **5A.3 — Separate adapter transforms from sync connectors.**
-  Document the boundary: adapters transform runtime-json into
-  platform-specific output; sync connectors deliver that output to a
-  target location. This is a design document, not code.
+- [x] **5A.3 — Separate adapter transforms from sync connectors.**
+  `docs/adapter-sync-boundary.md`: defines adapters as pure transforms
+  (`RuntimeVariantPayload[] → ExportOutcome[]`), sync connectors as I/O
+  orchestrators. Module placement: `lib/export/adapters/` for adapters,
+  `lib/sync-service/connectors/` for connectors. Includes data flow
+  diagram and import decision documentation.
 
 ### 5B — React Adapter Family (R6)
 
-- [ ] **5B.1 — Generate icons into generic React repos from runtime-json.**
-  The existing `lib/export/export-react-components.ts` and
-  `lib/export/export-react/` generate React components from the
-  `CompiledIcon` pipeline. Create an equivalent that generates React
-  components from `RuntimeVariantPayload`, embedding the JSON payload
-  and wrapping it with the `VibeIcon` component.
+- [x] **5B.1 — Generate icons into generic React repos from runtime-json.**
+  `lib/export/adapters/react-adapter.ts`: `generateReactFromRuntime()`
+  accepts `Icon` + `RuntimeIconMeta` + `RuntimeVariantPayload[]`,
+  generates per-icon `{ComponentName}.tsx` components wrapping
+  `ConivaIcon` with typed `state`/`variant`/`effect` props, plus a
+  barrel `index.ts`. Tests: `tests/react-adapter.test.ts`.
 
-- [ ] **5B.2 — Vendor or import runtime helpers for React hosts.**
-  Decide whether generated React components import `VibeIcon` from a
-  published runtime-react package or vendor the runtime code inline.
-  Document the decision.
+- [x] **5B.2 — Vendor or import runtime helpers for React hosts.**
+  Decision: import from `@coniva/runtime-react` (published package).
+  Configurable via `runtimePackage` option. Documented in
+  `docs/adapter-sync-boundary.md`.
 
-- [ ] **5B.3 — Add deterministic stale-file cleanup and generated file manifests.**
-  When the React adapter generates files into a target directory, emit
-  a `.manifest.json` listing all generated files. On subsequent runs,
-  delete files in the old manifest but not the new one.
+- [x] **5B.3 — Add deterministic stale-file cleanup and generated file manifests.**
+  `lib/export/adapters/manifest-cleanup.ts`: `ConivaManifest` type,
+  `MANIFEST_FILENAME`, `computeStaleFiles()`, `buildManifest()`,
+  `parseManifest()`, `serializeManifest()`. Pure functions — I/O lives
+  in sync connectors. Tests: `tests/manifest-cleanup.test.ts`.
 
-- [ ] **5B.4 — Thin host integration: Storybook preview.**
-  Create a minimal Storybook story generator that produces stories for
-  each generated React icon component.
+- [x] **5B.4 — Thin host integration: Storybook preview.**
+  `lib/export/adapters/storybook-generator.ts`:
+  `generateStorybookStories()` generates `.stories.tsx` files with
+  `Meta`, `StoryObj`, argTypes for size/color/state/variant/animate.
+  Tests: `tests/storybook-generator.test.ts`.
 
 ---
 
@@ -330,14 +338,14 @@ These are table-stakes requirements that block adoption regardless of
 animation quality. Phase E should be implemented before Phases A-D.
 
 - [x] **E1 — SSR-safe rendering.**
-  `VibeIcon` now renders static SVG inline with `<path>` elements on the
+  `ConivaIcon` now renders static SVG inline with `<path>` elements on the
   server using `getRenderableLayers()` and `resolvePaintToString()`.
   The `IconDriver` hydrates by mounting onto the existing SVG element
-  via the `existingSvg` option. `renderToStaticMarkup(<VibeIcon />)`
+  via the `existingSvg` option. `renderToStaticMarkup(<ConivaIcon />)`
   produces real SVG content, not an empty div.
 
 - [x] **E2 — Accessibility.**
-  VibeIcon: `label` prop sets `role="img"` + `aria-label` on the SVG.
+  ConivaIcon: `label` prop sets `role="img"` + `aria-label` on the SVG.
   When omitted, `aria-hidden="true"` is set (decorative icon).
   `focusable="false"` is always set to prevent keyboard tab-stop.
   `DomRenderer.mount()` accepts `label` and applies accessibility
@@ -345,14 +353,14 @@ animation quality. Phase E should be implemented before Phases A-D.
 
 - [x] **E3 — `prefers-reduced-motion` support.**
   New `lib/runtime-core/motion-preference.ts`: `shouldReduceMotion()`,
-  `getMotionPreference()`, `subscribeMotionPreference()`. VibeIcon:
+  `getMotionPreference()`, `subscribeMotionPreference()`. ConivaIcon:
   `reduceMotion` prop (default `'system'`). Driver: when reduced motion
   is active, transitions snap via `setState()` (no scheduler created)
   and effects are suppressed.
 
 - [x] **E4 — Generated component API (promote from Phase 5B).**
   The codegen pipeline should produce per-icon components:
-  `export function ChevronRight(props) { return <VibeIcon icon={data} {...props} /> }`.
+  `export function ChevronRight(props) { return <ConivaIcon icon={data} {...props} /> }`.
   TypeScript autocomplete for icon names via barrel exports. Tree-shakeable
   (one file per icon). Type-safe state/effect names per icon (generated
   from schema). This is the PRIMARY consumer API — nobody should import
@@ -459,7 +467,7 @@ Status: **completed** (verified 2026-03-18).
 
 - [ ] **B3 — Animation callbacks.**
   `AnimationEvent` type: transitionStart/Complete, effectStart/Complete.
-  `CreateIconDriverOptions.onAnimationEvent` callback. VibeIcon props:
+  `CreateIconDriverOptions.onAnimationEvent` callback. ConivaIcon props:
   `onTransitionStart`, `onTransitionComplete`, `onEffectComplete`.
 
 - [ ] **B4 — variableColor implementation.**
@@ -514,24 +522,24 @@ Status: **completed** (verified 2026-03-18).
 ## Phase D — React API Enrichment
 
 - [ ] **D1 — Imperative ref API.**
-  `React.forwardRef` on VibeIcon exposing: `transitionTo`,
+  `React.forwardRef` on ConivaIcon exposing: `transitionTo`,
   `triggerEffect`, `cancelEffect`, `cancelAllEffects`,
   `getCurrentState`, `setVariableDrawProgress`. Enables imperative
   control from parent components.
 
 - [ ] **D2 — Gesture props.**
-  VibeIcon: `hoverState`, `tapState`, `onHoverStart/End`,
+  ConivaIcon: `hoverState`, `tapState`, `onHoverStart/End`,
   `onTapStart/End` props. Auto-bind pointer events to state transitions.
   Explicit `state` prop takes precedence over gesture states.
 
 - [ ] **D3 — Animation callbacks.**
-  Wire Phase B3 driver events to VibeIcon props:
+  Wire Phase B3 driver events to ConivaIcon props:
   `onTransitionStart(from, to)`, `onTransitionComplete(from, to)`,
   `onEffectComplete(effectId)`.
 
 - [ ] **D4 — Animation progress visibility.**
   `onFrame?: (progress: number, stateId: string) => void` prop on
-  VibeIcon. New `useAnimationProgress` hook via `useSyncExternalStore`
+  ConivaIcon. New `useAnimationProgress` hook via `useSyncExternalStore`
   returning `{ progress, isAnimating, currentState }`.
 
 ---

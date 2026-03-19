@@ -50,7 +50,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} overflow-hidden font-sans antialiased`}
+        className={`${GeistSans.variable} ${GeistMono.variable} overflow-hidden antialiased`}
+        style={{ fontFamily: 'var(--font-system)' }}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <DesktopCommandBridge />

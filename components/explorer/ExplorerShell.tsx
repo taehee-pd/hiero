@@ -332,9 +332,9 @@ export function ExplorerShell() {
     <div className="swift-surface flex h-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
       {desktop && <TitleTabBar onNavigateExplorer={goBackToWorkspace} />}
       {/* ── Top bar ─────────────────────────────── */}
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-border/60 px-4">
+      <header className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4" style={{ fontFamily: 'var(--font-system)' }}>
         {/* Breadcrumb */}
-        <nav className="flex min-w-0 items-center gap-1 text-sm">
+        <nav className="flex min-w-0 items-center gap-1 text-[13px]">
           <button
             type="button"
             onClick={goBackToWorkspace}
@@ -349,7 +349,7 @@ export function ExplorerShell() {
           </button>
           {view.level === 'project' && (
             <>
-              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
               <span className="truncate font-medium text-foreground">{projectName}</span>
             </>
           )}
@@ -359,7 +359,7 @@ export function ExplorerShell() {
 
         {/* Search */}
         <div className="relative w-56">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -475,7 +475,7 @@ function WorkspaceView({
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <LayoutGrid className="size-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Projects</h2>
+            <h2 className="text-[13px] font-semibold text-foreground">Projects</h2>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               {iconSets.length}
             </span>
@@ -627,11 +627,11 @@ function ProjectDetailView({
   return (
     <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)]">
       {/* ── Sidebar ────────────────── */}
-      <aside className="hidden min-h-0 overflow-y-auto border-r border-border/60 lg:block">
-        <div className="space-y-5 px-3 py-4">
+      <aside className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block" style={{ fontFamily: 'var(--font-system)' }}>
+        <div className="space-y-4 px-2.5 py-3">
           {/* Filters */}
           <section>
-            <h3 className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
               Filter
             </h3>
             <div className="grid gap-0.5">
@@ -653,7 +653,7 @@ function ProjectDetailView({
           {/* Categories */}
           {groups.length > 0 && (
             <section>
-              <h3 className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
                 Categories
               </h3>
               <div className="grid gap-0.5">
@@ -672,8 +672,8 @@ function ProjectDetailView({
 
           {/* Collections */}
           <section>
-            <div className="mb-1.5 flex items-center justify-between px-1">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1 flex items-center justify-between px-1.5">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
                 Collections
               </h3>
               <button
@@ -869,10 +869,10 @@ function SidebarButton({
       onClick={onClick}
       onContextMenu={onContextMenu}
       className={cn(
-        'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+        'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-[13px] transition-colors',
         active
-          ? 'bg-accent text-foreground'
-          : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+          ? 'bg-[var(--system-blue)]/10 text-[var(--system-blue)]'
+          : 'text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-foreground',
       )}
     >
       <span className="truncate">{label}</span>

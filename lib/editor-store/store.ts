@@ -92,10 +92,18 @@ export type EditorActions = {
   loadProject(project: ProjectInput, options?: LoadProjectOptions): void;
   newProject(): void;
   markSaved(updatedAt?: string): void;
+  createBlankIcon(options?: { name?: string; size?: number }): string | null;
   insertIcon(icon: Icon): void;
+  renameIcon(iconId: string, name: string): void;
+  duplicateIcon(iconId: string): string | null;
+  removeIcon(iconId: string): void;
   addVariant(iconId: string, variant: VariantInput): void;
   removeVariant(iconId: string, variantId: string): void;
   patchVariant(iconId: string, variantId: string, patch: VariantPatch): void;
+  addState(iconId: string, options?: { name?: string; sourceStateId?: string | null; blank?: boolean }): string | null;
+  renameState(iconId: string, stateId: string, nextStateId: string): string | null;
+  duplicateState(iconId: string, stateId: string, nextStateId?: string): string | null;
+  removeState(iconId: string, stateId: string): void;
   addTransition(iconId: string, transition: Transition): void;
   removeTransition(iconId: string, transitionId: string): void;
   patchTransition(iconId: string, transitionId: string, patch: Partial<Transition>): void;
@@ -732,6 +740,13 @@ function replaceVariantState(
   };
 }
 
+function createEmptyState(stateId: string): State {
+  return {
+    id: stateId,
+    layers: {},
+  };
+}
+
 function getFirstIconId(project: Project | null | undefined) {
   return project ? Object.keys(project.icons)[0] ?? null : null;
 }
@@ -906,6 +921,65 @@ function createActions(): EditorActions {
       });
     },
 
+    createBlankIcon(options) {
+      let createdIconId: string | null = null;
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+
+        const size = clampInteger(options?.size ?? 24, 1);
+        const now = new Date().toISOString();
+        const existingIds = Object.keys(s.project.icons);
+        const baseName = options?.name?.trim() || 'New Icon';
+        const nextIconId = ensureUniqueIconId(toKebabCase(baseName) || 'new-icon', existingIds);
+        const variantId = buildVariantId(size, []);
+        const guideMasterId =
+          Object.values(s.project.guideMasters ?? {}).find((master) => master.targetSize === size)?.id ??
+          Object.values(s.project.guideMasters ?? {})[0]?.id;
+
+        const nextIcon: Icon = {
+          id: nextIconId,
+          name: buildDisplayName(baseName, Object.values(s.project.icons).map((icon) => icon.name)),
+          variants: {
+            [variantId]: {
+              id: variantId,
+              name: String(size),
+              size,
+              viewBox: [0, 0, size, size],
+              guideMasterId,
+              defaultState: 'default',
+              states: {
+                default: createEmptyState('default'),
+              },
+            },
+          },
+          transitions: {},
+        };
+
+        createdIconId = nextIconId;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: now },
+            icons: {
+              ...s.project.icons,
+              [nextIconId]: nextIcon,
+            },
+          },
+          currentIconId: nextIconId,
+          currentVariantId: variantId,
+          currentStateId: 'default',
+          renderingMode: getResolvedRenderingMode(nextIcon.variants[variantId]),
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
+          pointTransformLabel: null,
+          transitionPreview: null,
+        };
+      });
+
+      return createdIconId;
+    },
+
     insertIcon(icon) {
       editorStoreApi.setState((s) => {
         const now = new Date().toISOString();
@@ -945,6 +1019,111 @@ function createActions(): EditorActions {
           renderingMode: getResolvedRenderingMode(
             nextVariantId ? nextIcon.variants[nextVariantId] : null,
           ),
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
+          pointTransformLabel: null,
+          transitionPreview: null,
+        };
+      });
+    },
+
+    renameIcon(iconId, name) {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon || icon.name === trimmed) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                name: trimmed,
+              },
+            },
+          },
+        };
+      });
+    },
+
+    duplicateIcon(iconId) {
+      let createdIconId: string | null = null;
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const duplicate = structuredClone(icon) as Icon;
+        const nextIconId = ensureUniqueIconId(`${icon.id}-copy`, Object.keys(s.project.icons));
+        const nextIconName = buildDisplayName(`${icon.name} Copy`, Object.values(s.project.icons).map((entry) => entry.name));
+        duplicate.id = nextIconId;
+        duplicate.name = nextIconName;
+
+        const nextVariantId = Object.keys(duplicate.variants)[0] ?? null;
+        const nextStateId = nextVariantId ? duplicate.variants[nextVariantId]?.defaultState ?? Object.keys(duplicate.variants[nextVariantId]?.states ?? {})[0] ?? null : null;
+        createdIconId = nextIconId;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [nextIconId]: duplicate,
+            },
+          },
+          currentIconId: nextIconId,
+          currentVariantId: nextVariantId,
+          currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(nextVariantId ? duplicate.variants[nextVariantId] : null),
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
+          pointTransformLabel: null,
+          transitionPreview: null,
+        };
+      });
+
+      return createdIconId;
+    },
+
+    removeIcon(iconId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.icons[iconId]) return s;
+
+        const nextIcons = { ...s.project.icons };
+        delete nextIcons[iconId];
+
+        const nextIconId =
+          s.currentIconId === iconId ? Object.keys(nextIcons)[0] ?? null : s.currentIconId;
+        const nextVariantId = getFirstVariantId({ ...s.project, icons: nextIcons }, nextIconId);
+        const nextStateId = getFirstStateId({ ...s.project, icons: nextIcons }, nextIconId, nextVariantId);
+        const nextTabs = s.openTabs.filter((tab) => tab.iconId !== iconId);
+        const nextActiveTabId =
+          s.activeTabId && nextTabs.some((tab) => tab.id === s.activeTabId)
+            ? s.activeTabId
+            : nextTabs[0]?.id ?? null;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: nextIcons,
+          },
+          currentIconId: nextIconId,
+          currentVariantId: nextVariantId,
+          currentStateId: nextStateId,
+          renderingMode: getResolvedRenderingMode(
+            nextIconId && nextVariantId ? nextIcons[nextIconId]?.variants[nextVariantId] : null,
+          ),
+          openTabs: nextTabs,
+          activeTabId: nextActiveTabId,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
@@ -1142,6 +1321,215 @@ function createActions(): EditorActions {
             s.currentIconId === iconId && s.currentVariantId === variantId
               ? getResolvedRenderingMode({ renderingMode: nextRenderingMode })
               : s.renderingMode,
+        };
+      });
+    },
+
+    addState(iconId, options) {
+      let createdStateId: string | null = null;
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+
+        const existingStateIds = Array.from(
+          new Set(
+            Object.values(icon.variants).flatMap((variant) => Object.keys(variant.states)),
+          ),
+        );
+        const requestedId = toKebabCase(options?.name?.trim() || 'new-state') || 'new-state';
+        const nextStateId = ensureUniqueRecordId(requestedId, existingStateIds);
+        const sourceStateId = options?.sourceStateId ?? s.currentStateId ?? null;
+
+        const nextVariants = Object.fromEntries(
+          Object.entries(icon.variants).map(([variantId, variant]) => {
+            const sourceState =
+              !options?.blank && sourceStateId ? variant.states[sourceStateId] : undefined;
+            return [
+              variantId,
+              {
+                ...variant,
+                states: {
+                  ...variant.states,
+                  [nextStateId]: sourceState
+                    ? cloneStateRecord({ [nextStateId]: { ...sourceState, id: nextStateId } })[nextStateId]!
+                    : createEmptyState(nextStateId),
+                },
+              },
+            ];
+          }),
+        ) as Icon['variants'];
+
+        createdStateId = nextStateId;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: nextVariants,
+              },
+            },
+          },
+          currentStateId: nextStateId,
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
+          transitionPreview: null,
+        };
+      });
+      return createdStateId;
+    },
+
+    renameState(iconId, stateId, nextStateId) {
+      const trimmed = toKebabCase(nextStateId);
+      if (!trimmed) return null;
+
+      let renamedStateId: string | null = null;
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+        if (trimmed === stateId) {
+          renamedStateId = stateId;
+          return s;
+        }
+
+        const existingStateIds = Array.from(
+          new Set(
+            Object.values(icon.variants).flatMap((variant) =>
+              Object.keys(variant.states).filter((id) => id !== stateId),
+            ),
+          ),
+        );
+        const resolvedStateId = ensureUniqueRecordId(trimmed, existingStateIds);
+        const nextVariants = Object.fromEntries(
+          Object.entries(icon.variants).map(([variantId, variant]) => {
+            const state = variant.states[stateId];
+            if (!state) return [variantId, variant];
+
+            const nextStates = { ...variant.states };
+            delete nextStates[stateId];
+            nextStates[resolvedStateId] = cloneStateRecord({
+              [resolvedStateId]: {
+                ...state,
+                id: resolvedStateId,
+              },
+            })[resolvedStateId]!;
+
+            return [
+              variantId,
+              {
+                ...variant,
+                defaultState: variant.defaultState === stateId ? resolvedStateId : variant.defaultState,
+                states: nextStates,
+              },
+            ];
+          }),
+        ) as Icon['variants'];
+
+        const nextTransitions = Object.fromEntries(
+          Object.entries(icon.transitions).map(([transitionId, transition]) => [
+            transitionId,
+            {
+              ...transition,
+              from: transition.from === stateId ? resolvedStateId : transition.from,
+              to: transition.to === stateId ? resolvedStateId : transition.to,
+            },
+          ]),
+        );
+
+        renamedStateId = resolvedStateId;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: nextVariants,
+                transitions: nextTransitions,
+              },
+            },
+          },
+          currentStateId: s.currentStateId === stateId ? resolvedStateId : s.currentStateId,
+          transitionPreview: null,
+        };
+      });
+
+      return renamedStateId;
+    },
+
+    duplicateState(iconId, stateId, nextStateId) {
+      return editorStoreApi.getState().addState(iconId, {
+        name: nextStateId || `${stateId}-copy`,
+        sourceStateId: stateId,
+      });
+    },
+
+    removeState(iconId, stateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const icon = s.project.icons[iconId];
+        if (!icon) return s;
+        const variantsWithState = Object.values(icon.variants).filter((variant) => variant.states[stateId]);
+        if (variantsWithState.length === 0) return s;
+        if (variantsWithState.some((variant) => Object.keys(variant.states).length <= 1)) return s;
+
+        const nextVariants = Object.fromEntries(
+          Object.entries(icon.variants).map(([variantId, variant]) => {
+            if (!variant.states[stateId]) return [variantId, variant];
+
+            const nextStates = { ...variant.states };
+            delete nextStates[stateId];
+            const fallbackStateId =
+              variant.defaultState === stateId ? Object.keys(nextStates)[0] ?? variant.defaultState : variant.defaultState;
+
+            return [
+              variantId,
+              {
+                ...variant,
+                defaultState: fallbackStateId,
+                states: nextStates,
+              },
+            ];
+          }),
+        ) as Icon['variants'];
+
+        const nextTransitions = Object.fromEntries(
+          Object.entries(icon.transitions).filter(([, transition]) => transition.from !== stateId && transition.to !== stateId),
+        );
+
+        const fallbackCurrentStateId =
+          s.currentStateId === stateId
+            ? Object.keys(Object.values(nextVariants)[0]?.states ?? {})[0] ?? null
+            : s.currentStateId;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: nextVariants,
+                transitions: nextTransitions,
+              },
+            },
+          },
+          currentStateId: fallbackCurrentStateId,
+          selectedTransitionId:
+            s.selectedTransitionId && icon.transitions[s.selectedTransitionId] && (icon.transitions[s.selectedTransitionId]?.from === stateId || icon.transitions[s.selectedTransitionId]?.to === stateId)
+              ? null
+              : s.selectedTransitionId,
+          transitionPreview: null,
+          selection: { layerIds: [], pointIds: [] },
+          activeSnapGuides: [],
+          pointMarquee: null,
         };
       });
     },
@@ -1427,7 +1815,6 @@ function createActions(): EditorActions {
         activeSnapGuides: [],
         pointMarquee: null,
         transitionPreview: null,
-        favorites: [],
       });
     },
 
@@ -2658,6 +3045,19 @@ function toKebabCase(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function buildDisplayName(candidate: string, existingNames: string[]) {
+  const trimmed = candidate.trim() || 'Untitled';
+  if (!existingNames.includes(trimmed)) return trimmed;
+
+  let counter = 2;
+  let nextName = `${trimmed} ${counter}`;
+  while (existingNames.includes(nextName)) {
+    counter += 1;
+    nextName = `${trimmed} ${counter}`;
+  }
+  return nextName;
 }
 
 function hasClipMaskTargets(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Undo2,
   Redo2,
@@ -8,11 +9,14 @@ import {
   Save,
   Download,
   FilePlus2,
+  HelpCircle,
   ZoomIn,
   ZoomOut,
   Maximize2,
   Import,
+  Plus,
 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +35,7 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   clearCurrentProjectPath,
   exportSvg,
@@ -42,6 +47,7 @@ import {
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
+import { buildEditorRoute } from '@/lib/platform/routes';
 import {
   Select,
   SelectContent,
@@ -58,20 +64,33 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function Toolbar() {
+  const router = useRouter();
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
+  const isDirty = useEditorStore((s) => s.isDirty);
   const currentIconName = useEditorStore((s) =>
     s.currentIconId ? s.project?.icons[s.currentIconId]?.name ?? null : null,
   );
+  const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  const handleNew = useCallback(() => {
+  const handleNewProject = useCallback(() => {
     clearCurrentProjectPath();
     editorStore.getState().newProject();
   }, []);
+
+  const handleCreateBlankIcon = useCallback(() => {
+    if (!activeIconSetId) return;
+    const iconId = editorStore.getState().createBlankIcon();
+    if (!iconId) return;
+    editorStore.getState().openIconTab(activeIconSetId, iconId);
+    router.push(buildEditorRoute(iconId, activeIconSetId));
+  }, [activeIconSetId, router]);
 
   const handleOpenProject = useCallback(async () => {
     const result = await openProject();
@@ -222,7 +241,24 @@ export function Toolbar() {
         </div>
 
         <ToolbarGroup>
-          <ToolbarButton icon={FilePlus2} label="New" onClick={handleNew} />
+          <ToolbarButton
+            icon={FilePlus2}
+            label="New Project"
+            onClick={() => {
+              if (isDirty) {
+                setConfirmNewProjectOpen(true);
+                return;
+              }
+              handleNewProject();
+            }}
+            shortcut="Cmd/Ctrl+N"
+          />
+          <ToolbarButton
+            icon={Plus}
+            label="New Icon"
+            onClick={handleCreateBlankIcon}
+            disabled={!activeIconSetId}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -238,7 +274,7 @@ export function Toolbar() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => void handleOpenProject()}>
                 <FolderOpen className="size-4" />
-                Open Project
+                Open Workspace
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
                 <Import className="size-4" />
@@ -246,17 +282,44 @@ export function Toolbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <ToolbarButton icon={Save} label="Save" onClick={handleSave} />
-          <ToolbarButton icon={Download} label="Export SVG" onClick={handleExportSvg} />
-          <ToolbarButton icon={Download} label="Export SVG Package" onClick={handleExportSvgPackage} />
-          <ToolbarButton icon={Download} label="Export Runtime JSON" onClick={handleExportRuntimeJson} />
-          <ToolbarButton icon={Download} label="Export React Library" onClick={handleExportReactLibrary} />
+          <ToolbarButton icon={Save} label="Save" onClick={handleSave} shortcut="Cmd/Ctrl+S" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Export"
+                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
+              >
+                <Download className="size-3.5" />
+                <span>Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void handleExportSvg()}>
+                <Download className="size-4" />
+                Export SVG
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportSvgPackage}>
+                <Download className="size-4" />
+                Export SVG Package
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportRuntimeJson}>
+                <Download className="size-4" />
+                Export Runtime JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleExportReactLibrary}>
+                <Download className="size-4" />
+                Export React Library
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <SyncPrPanel />
         </ToolbarGroup>
 
         <ToolbarGroup>
-          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact />
-          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact />
+          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact shortcut="Cmd/Ctrl+Z" />
+          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact shortcut="Shift+Cmd/Ctrl+Z" />
         </ToolbarGroup>
 
         <ToolbarGroup>
@@ -286,13 +349,48 @@ export function Toolbar() {
           <Badge variant="outline" className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[11px] font-medium">
             {Math.round(zoom * 100)}%
           </Badge>
-          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact />
-          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact />
-          <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact />
+          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact shortcut="-" />
+          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact shortcut="+" />
+          <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact shortcut="0" />
+          <ToolbarButton icon={HelpCircle} label="Shortcuts" onClick={() => setShortcutsOpen(true)} compact shortcut="?" />
         </ToolbarGroup>
       </div>
     </header>
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+      <AlertDialog open={confirmNewProjectOpen} onOpenChange={setConfirmNewProjectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create a new project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Unsaved changes in the current workspace will be replaced. Save first if you want to keep this version.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleNewProject}>Create new project</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Keyboard shortcuts</DialogTitle>
+            <DialogDescription>Core editor shortcuts and quick-access tools.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 text-sm">
+            <ShortcutRow label="Select tool" shortcut="V" />
+            <ShortcutRow label="Direct select tool" shortcut="A" />
+            <ShortcutRow label="Pen tool" shortcut="P" />
+            <ShortcutRow label="Shape tool" shortcut="U" />
+            <ShortcutRow label="Undo" shortcut="Cmd/Ctrl+Z" />
+            <ShortcutRow label="Redo" shortcut="Shift+Cmd/Ctrl+Z" />
+            <ShortcutRow label="Toggle guides" shortcut="Cmd/Ctrl+;" />
+            <ShortcutRow label="Toggle snap" shortcut="Shift+Cmd/Ctrl+;" />
+            <ShortcutRow label="Delete selected layer or guides" shortcut="Delete" />
+            <ShortcutRow label="Escape selection / direct-select mode" shortcut="Esc" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -313,11 +411,15 @@ function ToolbarButton({
   label,
   onClick,
   compact,
+  shortcut,
+  disabled,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   onClick: () => void | Promise<void>;
   compact?: boolean;
+  shortcut?: string;
+  disabled?: boolean;
 }) {
   return (
     <Tooltip>
@@ -329,6 +431,7 @@ function ToolbarButton({
             void onClick();
           }}
           aria-label={label}
+          disabled={disabled}
           className={
             compact
               ? 'workspace-tool-button h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80'
@@ -339,7 +442,18 @@ function ToolbarButton({
           {!compact ? <span>{label}</span> : null}
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">{shortcut ? `${label} (${shortcut})` : label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function ShortcutRow({ label, shortcut }: { label: string; shortcut: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/60 px-3 py-2">
+      <span>{label}</span>
+      <span className="rounded-md border border-border/70 bg-muted/40 px-2 py-1 font-mono text-xs">
+        {shortcut}
+      </span>
+    </div>
   );
 }

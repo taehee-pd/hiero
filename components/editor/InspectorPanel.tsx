@@ -97,9 +97,9 @@ const SYMBOL_WEIGHT_OPTIONS: SymbolWeight[] = ['ultralight', 'thin', 'light', 'r
 const SYMBOL_SCALE_OPTIONS: SymbolScale[] = ['small', 'medium', 'large'];
 
 const NODE_TYPE_OPTIONS = [
-  { value: 'static', label: 'Corner', glyph: '∟' },
-  { value: 'smooth', label: 'Smooth', glyph: '∿' },
-  { value: 'symmetric', label: 'Symmetric', glyph: '⇄' },
+  { value: 'static', label: 'Free', glyph: '∟' },
+  { value: 'smooth', label: 'Mirror Angle', glyph: '∿' },
+  { value: 'symmetric', label: 'Mirror Angle + Length', glyph: '⇄' },
 ] as const;
 
 export function InspectorPanel() {

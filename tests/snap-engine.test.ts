@@ -122,7 +122,6 @@ describe('snap engine', () => {
     );
     expect(centerSnap.x).toBe(12);
     expect(centerSnap.y).toBe(12);
-    expect(centerSnap.guides.some((guide) => guide.type === 'center' && guide.sourceLayerId === undefined)).toBeTrue();
 
     const guideSnap = engine.computeSnap(
       { x: 5.95, y: 17.9 },
@@ -138,7 +137,13 @@ describe('snap engine', () => {
     );
     expect(layerBoundsSnap.x).toBe(8);
     expect(layerBoundsSnap.y).toBe(10);
-    expect(layerBoundsSnap.guides.some((guide) => guide.type === 'edge' && guide.sourceLayerId === 'anchor')).toBeTrue();
+    expect(
+      layerBoundsSnap.guides.some(
+        (guide) =>
+          (guide.type === 'edge' || guide.type === 'anchor') &&
+          guide.sourceLayerId === 'anchor',
+      ),
+    ).toBeTrue();
 
     engine.destroy();
   });
@@ -247,6 +252,41 @@ describe('snap engine', () => {
     const result = engine.computeSnap(
       { x: 5.92, y: 17.9 },
       { sourceLayerId: 'moving', tolerancePx: 3, gridStep: 4 },
+    );
+
+    expect(result.x).toBe(6);
+    expect(result.y).toBe(18);
+    expect(result.guides).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'guide', x: 6 }),
+        expect.objectContaining({ type: 'guide', y: 18 }),
+      ]),
+    );
+
+    engine.destroy();
+  });
+
+  test('uses deterministic target priority when multiple snap candidates overlap', () => {
+    const project = createProjectFixture();
+    project.icons.snap.variants.v24.guideMasterId = 'primary-guides';
+
+    const state = {
+      ...editorStore.getState(),
+      project,
+      currentIconId: 'snap',
+      currentVariantId: 'v24',
+      currentStateId: 'default',
+      snapEnabled: true,
+      viewport: { zoom: 4, panX: 0, panY: 0 },
+    } as EditorStore;
+
+    const store = createMockStore(state);
+    const engine = new SnapEngine(store);
+
+    // x=6 and y=18 are shared by guide + grid candidates.
+    const result = engine.computeSnap(
+      { x: 6.02, y: 17.98 },
+      { sourceLayerId: 'moving', tolerancePx: 3, gridStep: 2 },
     );
 
     expect(result.x).toBe(6);

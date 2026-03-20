@@ -18,10 +18,31 @@ import {
   Search,
   Trash2,
 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
@@ -30,13 +51,12 @@ import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { exportSvgString } from '@/lib/export/export-svg';
-import { clearCurrentProjectPath, showNativeContextMenu } from '@/lib/platform/bridge';
+import { clearCurrentProjectPath, isDesktop, showNativeContextMenu } from '@/lib/platform/bridge';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
 import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
-import { isDesktop } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 import type { Collection, Icon, Project } from '@/lib/schema/types';
 
@@ -53,9 +73,7 @@ type ActiveFilter =
   | { kind: 'category'; id: string }
   | { kind: 'collection'; id: string };
 
-type ExplorerView =
-  | { level: 'workspace' }
-  | { level: 'project'; iconSetId: string };
+type ExplorerView = { level: 'workspace' } | { level: 'project'; iconSetId: string };
 
 export function filterIconsByQuery(icons: ExplorerIcon[], query: string) {
   const normalized = query.trim().toLowerCase();
@@ -79,8 +97,6 @@ function categorizeIcons(icons: ExplorerIcon[]) {
   return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 }
 
-/* ─── Main Shell ─────────────────────────────────────────────── */
-
 export function ExplorerShell() {
   const workspace = useEditorStore((s) => s.workspace);
   const project = useEditorStore((s) => s.project);
@@ -92,11 +108,11 @@ export function ExplorerShell() {
     renameCollection,
     toggleFavorite,
     addIconSet,
+    createBlankIcon,
     removeIconSet,
     renameIconSet,
     setActiveIconSet,
     openIconTab,
-    createBlankIcon,
   } = useEditorActions();
   const router = useRouter();
 
@@ -106,7 +122,9 @@ export function ExplorerShell() {
   const [categoryInput, setCategoryInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({ kind: 'all' });
   const [desktop, setDesktop] = useState(false);
-  const [importMode, setImportMode] = useState<'current-project' | 'new-project'>('current-project');
+  const [importMode, setImportMode] = useState<'current-project' | 'new-project'>(
+    'current-project',
+  );
   const [renameDialog, setRenameDialog] = useState<
     | { kind: 'project'; id: string; value: string }
     | { kind: 'collection'; id: string; value: string }
@@ -130,8 +148,6 @@ export function ExplorerShell() {
 
   const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
 
-  /* ─── Workspace-level data ────────────────── */
-
   const iconSets = useMemo(
     () =>
       Object.entries(workspace?.iconSets ?? {})
@@ -147,8 +163,6 @@ export function ExplorerShell() {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [workspace?.iconSets],
   );
-
-  /* ─── Project-level data ────────────────── */
 
   const icons = useMemo(
     () =>
@@ -173,7 +187,9 @@ export function ExplorerShell() {
 
   const visibleIcons = useMemo(() => {
     if (activeFilter.kind === 'all') return filtered;
-    if (activeFilter.kind === 'favorites') return filtered.filter((icon) => favoritesSet.has(icon.id));
+    if (activeFilter.kind === 'favorites') {
+      return filtered.filter((icon) => favoritesSet.has(icon.id));
+    }
     if (activeFilter.kind === 'category') {
       return filtered.filter((icon) => (icon.category || 'uncategorized') === activeFilter.id);
     }
@@ -184,8 +200,8 @@ export function ExplorerShell() {
   }, [activeFilter, favoritesSet, filtered, project?.collections]);
 
   useEffect(() => {
-    if (activeFilter.kind === 'collection') {
-      if (!project?.collections?.[activeFilter.id]) setActiveFilter({ kind: 'all' });
+    if (activeFilter.kind === 'collection' && !project?.collections?.[activeFilter.id]) {
+      setActiveFilter({ kind: 'all' });
     }
   }, [activeFilter, project?.collections]);
 
@@ -193,8 +209,6 @@ export function ExplorerShell() {
     setSelection([]);
     setActiveFilter({ kind: 'all' });
   }, [activeIconSetId]);
-
-  /* ─── Navigation ─────────────────────────── */
 
   const enterProject = useCallback(
     (iconSetId: string) => {
@@ -213,8 +227,6 @@ export function ExplorerShell() {
     setSelection([]);
     setActiveFilter({ kind: 'all' });
   }, []);
-
-  /* ─── Actions ─────────────────────────────── */
 
   const exportIconsToZip = (iconIds: string[], suffix: string) => {
     if (!project || iconIds.length === 0) return;
@@ -246,7 +258,9 @@ export function ExplorerShell() {
   const assignCategory = () => {
     const state = editorStore.getState();
     const nextCategory = categoryInput.trim();
-    if (!project || !workspace || !activeIconSetId || !nextCategory || selection.length === 0) return;
+    if (!project || !workspace || !activeIconSetId || !nextCategory || selection.length === 0) {
+      return;
+    }
 
     const nextProject = structuredClone(project);
     for (const iconId of selection) {
@@ -263,7 +277,9 @@ export function ExplorerShell() {
   };
 
   const toggleSelection = (iconId: string) => {
-    setSelection((prev) => (prev.includes(iconId) ? prev.filter((id) => id !== iconId) : [...prev, iconId]));
+    setSelection((prev) =>
+      prev.includes(iconId) ? prev.filter((id) => id !== iconId) : [...prev, iconId],
+    );
   };
 
   const handleImportSvgFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -271,15 +287,26 @@ export function ExplorerShell() {
     if (files.length === 0) return;
 
     let targetIconSetId = activeIconSetId;
-    const shouldCreateProject = importMode === 'new-project' || !targetIconSetId;
+    if (importMode === 'new-project' || !targetIconSetId) {
+      const suggestedName =
+        files.length === 1
+          ? buildProjectNameFromFile(files[0]?.name ?? 'Imported Icons')
+          : 'Imported Icons';
+      targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
+      if (targetIconSetId) {
+        setActiveIconSet(targetIconSetId);
+        setView({ level: 'project', iconSetId: targetIconSetId });
+        setQuery('');
+        setSelection([]);
+        setActiveFilter({ kind: 'all' });
+      }
+    }
+
+    const state = editorStore.getState();
     const existingIds = new Set(
-      shouldCreateProject
-        ? []
-        : Object.keys(
-            editorStore.getState().workspace?.iconSets[targetIconSetId ?? '']?.icons ??
-              editorStore.getState().project?.icons ??
-              {},
-          ),
+      Object.keys(
+        state.workspace?.iconSets[targetIconSetId ?? '']?.icons ?? state.project?.icons ?? {},
+      ),
     );
 
     for (const file of files) {
@@ -289,18 +316,6 @@ export function ExplorerShell() {
           existingIconIds: existingIds,
           sourceName: file.name,
         });
-
-        if (!targetIconSetId && shouldCreateProject) {
-          const suggestedName =
-            files.length === 1
-              ? buildProjectNameFromFile(file.name)
-              : 'Imported Icons';
-          targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
-          if (targetIconSetId) {
-            setActiveIconSet(targetIconSetId);
-            setView({ level: 'project', iconSetId: targetIconSetId });
-          }
-        }
 
         existingIds.add(icon.id);
         editorStore.getState().insertIcon(icon);
@@ -375,26 +390,25 @@ export function ExplorerShell() {
     setDeleteConfirmValue('');
   }, [activeIconSetId, deleteProjectTarget, removeIconSet]);
 
-  /* ─── Workspace-level search (filter projects by name) ─── */
-
   const filteredIconSets = useMemo(() => {
     if (!query.trim()) return iconSets;
     const q = query.trim().toLowerCase();
     return iconSets.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.syncLabel?.toLowerCase().includes(q),
+      (iconSet) =>
+        iconSet.name.toLowerCase().includes(q) || iconSet.syncLabel?.toLowerCase().includes(q),
     );
   }, [iconSets, query]);
 
-  /* ─── Render ──────────────────────────────── */
-
   return (
-    <div className="swift-surface flex h-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+    <div
+      className="swift-surface flex h-full flex-col overflow-hidden text-foreground"
+      style={{ position: 'fixed', inset: 0 }}
+    >
       {desktop && <TitleTabBar onNavigateExplorer={goBackToWorkspace} />}
-      {/* ── Top bar ─────────────────────────────── */}
-      <header className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4" style={{ fontFamily: 'var(--font-system)' }}>
-        {/* Breadcrumb */}
+      <header
+        className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4"
+        style={{ fontFamily: 'var(--font-system)' }}
+      >
         <nav className="flex min-w-0 items-center gap-1 text-[13px]">
           <button
             type="button"
@@ -418,25 +432,33 @@ export function ExplorerShell() {
 
         <div className="flex-1" />
 
-        {/* Search */}
         <div className="relative w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={view.level === 'workspace' ? 'Search projects\u2026' : 'Search icons\u2026'}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={view.level === 'workspace' ? 'Search projects…' : 'Search icons…'}
             className="h-7 rounded-lg border-border/60 bg-background/60 pl-8 text-xs shadow-none"
           />
         </div>
 
-        {/* Actions */}
         {view.level === 'workspace' && (
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={openImportIntoNewProject}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              onClick={openImportIntoNewProject}
+            >
               <Import className="size-3.5" />
               Import SVGs
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={createIconSet}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              onClick={createIconSet}
+            >
               <Plus className="size-3.5" />
               New project
             </Button>
@@ -444,15 +466,31 @@ export function ExplorerShell() {
         )}
         {view.level === 'project' && (
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={handleCreateBlankIcon}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              onClick={handleCreateBlankIcon}
+            >
               <Plus className="size-3.5" />
               New Icon
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={openImportIntoCurrentProject}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              onClick={openImportIntoCurrentProject}
+            >
               <Import className="size-3.5" />
               Import
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-lg px-2.5 text-xs"
+              onClick={handleExportIconSet}
+              disabled={!project || icons.length === 0}
+            >
               Export
             </Button>
             <SyncPrPanel
@@ -463,7 +501,12 @@ export function ExplorerShell() {
               className="h-7 rounded-lg px-2.5 text-xs"
             />
             {selection.length > 0 && (
-              <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportSelected}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-lg px-2.5 text-xs"
+                onClick={handleExportSelected}
+              >
                 Export {selection.length}
               </Button>
             )}
@@ -471,7 +514,6 @@ export function ExplorerShell() {
         )}
       </header>
 
-      {/* ── Content ─────────────────────────────── */}
       {view.level === 'workspace' ? (
         <WorkspaceView
           iconSets={filteredIconSets}
@@ -534,7 +576,9 @@ export function ExplorerShell() {
       <Dialog open={renameDialog !== null} onOpenChange={(open) => !open && setRenameDialog(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{renameDialog?.kind === 'project' ? 'Rename project' : 'Rename collection'}</DialogTitle>
+            <DialogTitle>
+              {renameDialog?.kind === 'project' ? 'Rename project' : 'Rename collection'}
+            </DialogTitle>
             <DialogDescription>
               Update the name shown in the workspace and explorer sidebar.
             </DialogDescription>
@@ -567,7 +611,10 @@ export function ExplorerShell() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteProjectTarget !== null} onOpenChange={(open) => !open && setDeleteProjectTarget(null)}>
+      <AlertDialog
+        open={deleteProjectTarget !== null}
+        onOpenChange={(open) => !open && setDeleteProjectTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete project</AlertDialogTitle>
@@ -580,16 +627,27 @@ export function ExplorerShell() {
           {deleteProjectTarget && deleteProjectTarget.iconCount > 0 ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Type <span className="font-medium text-foreground">{deleteProjectTarget.name}</span> to confirm.
+                Type{' '}
+                <span className="font-medium text-foreground">{deleteProjectTarget.name}</span> to
+                confirm.
               </p>
-              <Input value={deleteConfirmValue} onChange={(event) => setDeleteConfirmValue(event.target.value)} />
+              <Input
+                value={deleteConfirmValue}
+                onChange={(event) => setDeleteConfirmValue(event.target.value)}
+              />
             </div>
           ) : null}
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteProjectTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeleteProjectTarget(null)}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteProjectTarget?.iconCount ? deleteConfirmValue.trim() !== deleteProjectTarget.name : false}
+              disabled={
+                deleteProjectTarget?.iconCount
+                  ? deleteConfirmValue.trim() !== deleteProjectTarget.name
+                  : false
+              }
               onClick={handleDeleteProject}
             >
               Delete project
@@ -600,10 +658,6 @@ export function ExplorerShell() {
     </div>
   );
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   Workspace View — grid of project cards with icon thumbnails
-   ═══════════════════════════════════════════════════════════════ */
 
 type WorkspaceIconSet = {
   id: string;
@@ -633,7 +687,6 @@ function WorkspaceView({
   return (
     <ScrollArea className="workspace-scroll flex-1">
       <div className="mx-auto max-w-6xl px-6 py-8">
-        {/* Section heading */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <LayoutGrid className="size-4 text-muted-foreground" />
@@ -644,25 +697,30 @@ function WorkspaceView({
           </div>
         </div>
 
-        {/* Project grid */}
         {iconSets.length === 0 ? (
           <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
             <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Create a project or import existing SVGs to start building your icon set.</p>
+            <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
+              Start a fresh project or import SVGs and we&apos;ll create one for you.
+            </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button size="sm" className="rounded-lg" onClick={onImport}>
+                <Import className="size-3.5" />
+                Import SVGs
+              </Button>
               <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateProject}>
                 <Plus className="size-3.5" />
                 Create a new project
               </Button>
-              <Button size="sm" className="rounded-lg" onClick={onImport}>
-                <Import className="size-3.5" />
-                Import existing SVGs
-              </Button>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="list" aria-label="Projects">
+          <div
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            role="list"
+            aria-label="Projects"
+          >
             {iconSets.map((iconSet) => (
               <ProjectCard
                 key={iconSet.id}
@@ -678,8 +736,6 @@ function WorkspaceView({
     </ScrollArea>
   );
 }
-
-/* ─── Project Card ─────────────────────────────────────────── */
 
 function ProjectCard({
   iconSet,
@@ -750,65 +806,65 @@ function ProjectCard({
         onClick={onOpen}
         className="flex flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       >
-      {/* Thumbnail area */}
-      <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/40">
-        {thumbnailIcons.length > 0 ? (
-          <div className="flex flex-wrap items-center justify-center gap-4 p-5">
-            {thumbnailIcons.map((icon) => {
-              const firstVariantId = Object.keys(icon.variants)[0];
-              const variant = firstVariantId ? icon.variants[firstVariantId] : undefined;
-              const stateId = variant?.defaultState;
-              const svg =
-                firstVariantId && stateId
-                  ? exportSvgString(icon, firstVariantId, stateId, iconSet.tokenColors)
-                  : '';
-              return (
-                <div
-                  key={icon.id}
-                  className="flex size-10 shrink-0 items-center justify-center overflow-hidden text-foreground/80 transition-transform duration-100 group-hover:scale-105"
-                >
-                  {svg ? (
-                    <div className="size-8 [&>svg]:h-full [&>svg]:w-full" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
-                  ) : (
-                    <Grid3X3 className="size-5 text-muted-foreground/40" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <FolderOpen className="size-6 text-muted-foreground/30" />
-            <span className="text-[10px] text-muted-foreground/50">Empty</span>
-          </div>
-        )}
-      </div>
-
-      {/* Info area */}
-      <div className="flex flex-col gap-0.5 px-3.5 py-3">
-        <span className="truncate text-sm font-medium text-foreground">{iconSet.name}</span>
-        <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span>{iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}</span>
-          {iconSet.syncLabel && (
-            <>
-              <span className="text-border">·</span>
-              <span className="truncate">{iconSet.syncLabel}</span>
-            </>
+        <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/40">
+          {thumbnailIcons.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-center gap-4 p-5">
+              {thumbnailIcons.map((icon) => {
+                const firstVariantId = Object.keys(icon.variants)[0];
+                const variant = firstVariantId ? icon.variants[firstVariantId] : undefined;
+                const stateId = variant?.defaultState;
+                const svg =
+                  firstVariantId && stateId
+                    ? exportSvgString(icon, firstVariantId, stateId, iconSet.tokenColors)
+                    : '';
+                return (
+                  <div
+                    key={icon.id}
+                    className="flex size-10 shrink-0 items-center justify-center overflow-hidden text-foreground/80 transition-transform duration-100 group-hover:scale-105"
+                  >
+                    {svg ? (
+                      <div
+                        className="size-8 [&>svg]:h-full [&>svg]:w-full"
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{ __html: svg }}
+                      />
+                    ) : (
+                      <Grid3X3 className="size-5 text-muted-foreground/40" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <FolderOpen className="size-6 text-muted-foreground/30" />
+              <span className="text-[10px] text-muted-foreground/50">Empty</span>
+            </div>
           )}
-        </span>
-        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition group-hover:text-foreground">
-          Open
-          <ArrowUpRight className="size-3.5" />
-        </span>
-      </div>
+        </div>
+
+        <div className="flex flex-col gap-0.5 px-3.5 py-3">
+          <span className="truncate text-sm font-medium text-foreground">{iconSet.name}</span>
+          <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span>
+              {iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}
+            </span>
+            {iconSet.syncLabel && (
+              <>
+                <span className="text-border">·</span>
+                <span className="truncate">{iconSet.syncLabel}</span>
+              </>
+            )}
+          </span>
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition group-hover:text-foreground">
+            Open
+            <ArrowUpRight className="size-3.5" />
+          </span>
+        </div>
       </button>
     </article>
   );
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   Project Detail View — icons within a project, with sidebar
-   ═══════════════════════════════════════════════════════════════ */
 
 function ProjectDetailView({
   project,
@@ -861,10 +917,11 @@ function ProjectDetailView({
 }) {
   return (
     <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)]">
-      {/* ── Sidebar ────────────────── */}
-      <aside className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block" style={{ fontFamily: 'var(--font-system)' }}>
+      <aside
+        className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block"
+        style={{ fontFamily: 'var(--font-system)' }}
+      >
         <div className="space-y-4 px-2.5 py-3">
-          {/* Filters */}
           <section>
             <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
               Filter
@@ -885,7 +942,6 @@ function ProjectDetailView({
             </div>
           </section>
 
-          {/* Categories */}
           {groups.length > 0 && (
             <section>
               <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
@@ -905,7 +961,6 @@ function ProjectDetailView({
             </section>
           )}
 
-          {/* Collections */}
           <section>
             <div className="mb-1 flex items-center justify-between px-1.5">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
@@ -947,7 +1002,10 @@ function ProjectDetailView({
                           <Pencil className="size-4" />
                           Rename
                         </DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onSelect={() => onDeleteCollection(collection.id)}>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => onDeleteCollection(collection.id)}
+                        >
                           <Trash2 className="size-4" />
                           Delete
                         </DropdownMenuItem>
@@ -959,7 +1017,6 @@ function ProjectDetailView({
             </div>
           </section>
 
-          {/* Batch assign */}
           {selection.length > 0 && (
             <section className="space-y-1.5 rounded-lg border border-border/60 bg-background/60 p-2.5">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -967,7 +1024,7 @@ function ProjectDetailView({
               </p>
               <Input
                 value={categoryInput}
-                onChange={(e) => onSetCategoryInput(e.target.value)}
+                onChange={(event) => onSetCategoryInput(event.target.value)}
                 placeholder="e.g. social"
                 className="h-7 text-xs"
               />
@@ -985,9 +1042,7 @@ function ProjectDetailView({
         </div>
       </aside>
 
-      {/* ── Icon grid ───────────────── */}
       <section className="min-h-0 overflow-hidden">
-        {/* Subheader */}
         <div className="flex h-9 items-center justify-between border-b border-border/40 px-4">
           <span className="text-xs text-muted-foreground">
             {visibleIcons.length} icon{visibleIcons.length !== 1 ? 's' : ''}
@@ -1003,26 +1058,35 @@ function ProjectDetailView({
         </div>
 
         <ScrollArea className="workspace-scroll h-full">
-          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8" role="list" aria-label="Icons">
+          <div
+            className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
+            role="list"
+            aria-label="Icons"
+          >
             {visibleIcons.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
                 <Grid3X3 className="mb-2 size-6 text-muted-foreground/30" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">
                   {query ? 'No matching icons' : 'No icons in this project'}
                 </p>
                 {!query ? (
                   <>
-                    <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
-                      Import SVGs into this project or create a blank icon and start drawing on a 24px canvas.
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                      Import existing SVGs or start a blank icon and draw directly in the editor.
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       <Button size="sm" className="rounded-lg" onClick={onImportSvg}>
                         <Import className="size-3.5" />
                         Import SVGs
                       </Button>
-                      <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateBlankIcon}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg"
+                        onClick={onCreateBlankIcon}
+                      >
                         <Plus className="size-3.5" />
-                        Create New Icon
+                        New icon
                       </Button>
                     </div>
                   </>
@@ -1047,6 +1111,7 @@ function ProjectDetailView({
               return (
                 <article
                   key={icon.id}
+                  role="listitem"
                   onContextMenu={(event) => {
                     event.preventDefault();
                     void showNativeContextMenu('explorerIcon', {
@@ -1056,13 +1121,9 @@ function ProjectDetailView({
                   }}
                   className={cn(
                     'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100',
-                    active
-                      ? 'border-primary/30 bg-primary/[0.06]'
-                      : 'hover:bg-accent/60',
+                    active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
                   )}
-                  role="listitem"
                 >
-                  {/* Hover actions */}
                   <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       type="button"
@@ -1106,7 +1167,11 @@ function ProjectDetailView({
                   >
                     <div className="flex aspect-square w-full items-center justify-center rounded-md">
                       {svg ? (
-                        <div className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
+                        <div
+                          aria-hidden="true"
+                          className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]"
+                          dangerouslySetInnerHTML={{ __html: svg }}
+                        />
                       ) : (
                         <Grid3X3 className="size-4 text-muted-foreground/40" />
                       )}
@@ -1124,8 +1189,6 @@ function ProjectDetailView({
     </main>
   );
 }
-
-/* ─── Sidebar Button ───────────────────────────────────────── */
 
 function SidebarButton({
   label,
@@ -1163,8 +1226,6 @@ function SidebarButton({
     </div>
   );
 }
-
-/* ─── Utilities ────────────────────────────────────────────── */
 
 function formatCategoryLabel(value: string) {
   if (value === 'all') return 'All';

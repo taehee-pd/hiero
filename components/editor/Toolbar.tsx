@@ -15,15 +15,21 @@ import {
   Maximize2,
   Import,
   Plus,
+  ChevronDown,
 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
@@ -60,6 +66,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -74,15 +81,24 @@ export function Toolbar() {
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
   const isDirty = useEditorStore((s) => s.isDirty);
   const currentIconName = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId]?.name ?? null : null,
+    s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
   );
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  const handleNewProject = useCallback(() => {
+  const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
     editorStore.getState().newProject();
   }, []);
+
+  const handleNewProject = useCallback(() => {
+    if (isDirty) {
+      setConfirmNewProjectOpen(true);
+      return;
+    }
+    runNewProject();
+  }, [isDirty, runNewProject]);
 
   const handleCreateBlankIcon = useCallback(() => {
     if (!activeIconSetId) return;
@@ -111,8 +127,6 @@ export function Toolbar() {
       window.alert('Failed to parse JSON file.');
     }
   }, []);
-
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const serializeWorkspace = useCallback(() => {
     const { workspace } = editorStore.getState();
@@ -155,7 +169,6 @@ export function Toolbar() {
 
     await exportSvg(svg, `${icon.name.replace(/\s+/g, '-').toLowerCase()}.svg`);
   }, []);
-
 
   const handleExportSvgPackage = useCallback(() => {
     const { project } = editorStore.getState();
@@ -220,157 +233,184 @@ export function Toolbar() {
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
-  const handleRenderingModeChange = useCallback((value: string) => {
-    if (!currentIconId || !currentVariantId) return;
-    editorStore.getState().patchVariant(currentIconId, currentVariantId, {
-      renderingMode: value as RenderingMode,
-    });
-  }, [currentIconId, currentVariantId]);
+  const handleRenderingModeChange = useCallback(
+    (value: string) => {
+      if (!currentIconId || !currentVariantId) return;
+      editorStore.getState().patchVariant(currentIconId, currentVariantId, {
+        renderingMode: value as RenderingMode,
+      });
+    },
+    [currentIconId, currentVariantId],
+  );
 
   return (
     <>
-    <header className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-3 py-1.5" style={{ fontFamily: 'var(--font-system)', minHeight: 'var(--toolbar-height)' }}>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="mr-auto min-w-0">
-          <p className="truncate text-[13px] font-medium tracking-tight text-foreground">{projectName}</p>
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
-            <span className="text-border-subtle">/</span>
-            <span>{selectionCount} selected</span>
+      <header
+        className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-3 py-1.5"
+        style={{ fontFamily: 'var(--font-system)', minHeight: 'var(--toolbar-height)' }}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="mr-auto min-w-0">
+            <p className="truncate text-[13px] font-medium tracking-tight text-foreground">
+              {projectName}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
+              <span className="text-border-subtle">/</span>
+              <span>{selectionCount} selected</span>
+            </div>
           </div>
-        </div>
 
-        <ToolbarGroup>
-          <ToolbarButton
-            icon={FilePlus2}
-            label="New Project"
-            onClick={() => {
-              if (isDirty) {
-                setConfirmNewProjectOpen(true);
-                return;
-              }
-              handleNewProject();
-            }}
-            shortcut="Cmd/Ctrl+N"
-          />
-          <ToolbarButton
-            icon={Plus}
-            label="New Icon"
-            onClick={handleCreateBlankIcon}
-            disabled={!activeIconSetId}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Open"
-                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
-              >
-                <FolderOpen className="size-3.5" />
-                <span>Open</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => void handleOpenProject()}>
-                <FolderOpen className="size-4" />
-                Open Workspace
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
-                <Import className="size-4" />
-                Import Icon
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ToolbarButton icon={Save} label="Save" onClick={handleSave} shortcut="Cmd/Ctrl+S" />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Export"
-                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
-              >
-                <Download className="size-3.5" />
-                <span>Export</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => void handleExportSvg()}>
-                <Download className="size-4" />
-                Export SVG
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportSvgPackage}>
-                <Download className="size-4" />
-                Export SVG Package
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportRuntimeJson}>
-                <Download className="size-4" />
-                Export Runtime JSON
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportReactLibrary}>
-                <Download className="size-4" />
-                Export React Library
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <SyncPrPanel />
-        </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton icon={Plus} label="New Icon" onClick={handleCreateBlankIcon} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="File"
+                  className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
+                >
+                  <FilePlus2 className="size-3.5" />
+                  <span>File</span>
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={handleNewProject}>
+                  <FilePlus2 className="size-4" />
+                  New Project
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void handleOpenProject()}>
+                  <FolderOpen className="size-4" />
+                  Open Project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
+                  <Import className="size-4" />
+                  Import Icon
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </ToolbarGroup>
 
-        <ToolbarGroup>
-          <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact shortcut="Cmd/Ctrl+Z" />
-          <ToolbarButton icon={Redo2} label="Redo" onClick={redo} compact shortcut="Shift+Cmd/Ctrl+Z" />
-        </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton icon={Save} label="Save" onClick={handleSave} shortcut="Cmd/Ctrl+S" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Export"
+                  className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
+                >
+                  <Download className="size-3.5" />
+                  <span>Export</span>
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => void handleExportSvg()}>
+                  <Download className="size-4" />
+                  Export SVG
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportSvgPackage}>
+                  <Download className="size-4" />
+                  Export SVG Package
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportRuntimeJson}>
+                  <Download className="size-4" />
+                  Export Runtime JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportReactLibrary}>
+                  <Download className="size-4" />
+                  Export React Library
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <SyncPrPanel />
+          </ToolbarGroup>
 
-        <ToolbarGroup>
-          <Select
-            value={renderingMode}
-            onValueChange={handleRenderingModeChange}
-            disabled={!currentIconId || !currentVariantId}
-          >
-            <SelectTrigger
-              size="sm"
-              className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground"
-              aria-label="Rendering mode"
+          <ToolbarGroup>
+            <ToolbarButton icon={Undo2} label="Undo" onClick={undo} compact shortcut="Cmd/Ctrl+Z" />
+            <ToolbarButton
+              icon={Redo2}
+              label="Redo"
+              onClick={redo}
+              compact
+              shortcut="Shift+Cmd/Ctrl+Z"
+            />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <Select
+              value={renderingMode}
+              onValueChange={handleRenderingModeChange}
+              disabled={!currentIconId || !currentVariantId}
             >
-              <SelectValue placeholder="Rendering Mode" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {RENDERING_MODE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </ToolbarGroup>
+              <SelectTrigger
+                size="sm"
+                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground"
+                aria-label="Rendering mode"
+              >
+                <SelectValue placeholder="Rendering Mode" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {RENDERING_MODE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </ToolbarGroup>
 
-        <ToolbarGroup>
-          <Badge variant="outline" className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[11px] font-medium">
-            {Math.round(zoom * 100)}%
-          </Badge>
-          <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact shortcut="-" />
-          <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact shortcut="+" />
-          <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact shortcut="0" />
-          <ToolbarButton icon={HelpCircle} label="Shortcuts" onClick={() => setShortcutsOpen(true)} compact shortcut="?" />
-        </ToolbarGroup>
-      </div>
-    </header>
+          <ToolbarGroup>
+            <Badge
+              variant="outline"
+              className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[11px] font-medium"
+            >
+              {Math.round(zoom * 100)}%
+            </Badge>
+            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact shortcut="-" />
+            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact shortcut="+" />
+            <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact shortcut="0" />
+            <ToolbarButton
+              icon={HelpCircle}
+              label="Shortcuts"
+              onClick={() => setShortcutsOpen(true)}
+              compact
+              shortcut="?"
+            />
+          </ToolbarGroup>
+        </div>
+      </header>
+
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
       <AlertDialog open={confirmNewProjectOpen} onOpenChange={setConfirmNewProjectOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Create a new project?</AlertDialogTitle>
+            <AlertDialogTitle>Start a new project?</AlertDialogTitle>
             <AlertDialogDescription>
-              Unsaved changes in the current workspace will be replaced. Save first if you want to keep this version.
+              Your current workspace has unsaved changes. Starting a new project will replace the
+              current editor context.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleNewProject}>Create new project</AlertDialogAction>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmNewProjectOpen(false);
+                runNewProject();
+              }}
+            >
+              Start new project
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

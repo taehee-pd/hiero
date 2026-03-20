@@ -12,7 +12,16 @@ import { Canvas } from './Canvas';
 import { InspectorPanel } from './InspectorPanel';
 import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { ImportIconDialog } from './ImportIconDialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,14 +29,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { editorStore } from '@/lib/editor-store/store';
-import { useEditorActions } from '@/lib/editor-store/hooks';
+import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
-import { clearCurrentProjectPath } from '@/lib/platform/bridge';
+import { clearCurrentProjectPath, isDesktop } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
-import { useEditorStore } from '@/lib/editor-store/hooks';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
-import { isDesktop } from '@/lib/platform/bridge';
 
 function CurrentDocumentPanel({
   onOpenImport,
@@ -36,16 +43,14 @@ function CurrentDocumentPanel({
   onOpenImport: () => void;
   onCreateBlankIcon: () => void;
 }) {
-  const icon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] : null,
-  );
+  const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] : null));
   const workspaceName = useEditorStore((s) => s.workspace?.meta.name ?? 'Coniva Workspace');
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Untitled Project');
   const variantId = useEditorStore((s) => s.currentVariantId);
   const stateId = useEditorStore((s) => s.currentStateId);
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
   const layerCount = useEditorStore((s) => {
@@ -75,10 +80,11 @@ function CurrentDocumentPanel({
           ) : null}
         </div>
         <p className="truncate text-base font-semibold tracking-tight text-foreground">
-          {icon?.name ?? 'No icon selected'}
+          {icon?.name ?? 'No icon selected yet'}
         </p>
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') || 'select an icon'}
+          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') ||
+            'Create or open an icon to start editing'}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
@@ -137,12 +143,12 @@ function scaleViewBox(
 
 function VariantPickerBar() {
   const icon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
   );
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
   const { addVariant, removeVariant, setCurrentVariant } = useEditorActions();
@@ -219,7 +225,10 @@ function VariantPickerBar() {
                   ))}
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="variant-custom-size" className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="variant-custom-size"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Custom size
                   </label>
                   <div className="flex gap-2">
@@ -306,21 +315,19 @@ function VariantPickerBar() {
 
 function StateManagerBar() {
   const icon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
   );
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
-  const { addState, duplicateState, removeState, renameState, setCurrentState } = useEditorActions();
+  const { addState, duplicateState, removeState, renameState, setCurrentState } =
+    useEditorActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [createMode, setCreateMode] = useState<'duplicate' | 'blank'>('duplicate');
 
   const states = useMemo(
-    () =>
-      currentVariantId && icon
-        ? Object.keys(icon.variants[currentVariantId]?.states ?? {})
-        : [],
+    () => (currentVariantId && icon ? Object.keys(icon.variants[currentVariantId]?.states ?? {}) : []),
     [currentVariantId, icon],
   );
   const transitionCount = useMemo(
@@ -511,11 +518,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
-  const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
+  const project = useEditorStore((s) => s.project);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
   const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const { createBlankIcon, openIconTab } = useEditorActions();
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
@@ -524,7 +532,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [desktop, setDesktop] = useState(false);
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
-  const { createBlankIcon, openIconTab } = useEditorActions();
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -548,8 +555,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     if (requestedIconId && state.project?.icons[requestedIconId]) {
       state.setCurrentIcon(requestedIconId);
       const nextIconSetId =
-        (searchIconSetId && state.workspace?.iconSets[searchIconSetId] ? searchIconSetId : state.activeIconSetId) ??
-        null;
+        (searchIconSetId && state.workspace?.iconSets[searchIconSetId]
+          ? searchIconSetId
+          : state.activeIconSetId) ?? null;
       if (nextIconSetId) {
         state.openIconTab(nextIconSetId, requestedIconId);
       }
@@ -571,14 +579,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     ) {
       return;
     }
-    const layers =
-      currentVariantId
-        ? project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
-          {}
-        : {};
+    const layers = currentVariantId
+      ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
+        {})
+      : {};
     const nextLayerId =
-      Object.values(layers).find((layer) => layer.visible !== false)?.id ??
-      Object.keys(layers)[0];
+      Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
     if (!nextLayerId) return;
 
     editorStore.getState().setSelection({ layerIds: [nextLayerId], pointIds: [] });
@@ -601,6 +607,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     previousGuidesVisibleRef.current = guidesVisible;
   }, [guidesVisible, leftPanelMode]);
 
+  const hasActiveDocument = Boolean(currentIconId && currentVariantId && currentStateId);
+
   const handleCreateBlankIcon = () => {
     if (!activeIconSetId) return;
     const iconId = createBlankIcon();
@@ -610,7 +618,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   };
 
   return (
-    <div className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+    <div
+      className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground"
+      style={{ position: 'fixed', inset: 0 }}
+    >
       {desktop && <TitleTabBar />}
       <Toolbar />
       {!currentIconId ? (
@@ -632,7 +643,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                   Back to Library
                 </Link>
               </Button>
-              <Button variant="outline" className="rounded-xl" onClick={() => setImportDialogOpen(true)}>
+              <Button
+                variant="outline"
+                className="rounded-xl"
+                onClick={() => setImportDialogOpen(true)}
+              >
                 Import SVG
               </Button>
               <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
@@ -643,52 +658,95 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
           </section>
         </div>
       ) : (
-      <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
-        <aside className="flex min-h-0 flex-col gap-3">
-          <section className="studio-panel overflow-hidden rounded-xl">
-            <CurrentDocumentPanel onOpenImport={() => setImportDialogOpen(true)} onCreateBlankIcon={handleCreateBlankIcon} />
-          </section>
-          <section className="studio-panel min-h-0 overflow-hidden rounded-xl p-2">
-            <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} />
-          </section>
-          <section className="studio-panel min-h-0 flex-1 overflow-hidden rounded-xl">
-            {leftPanelMode === 'guides' ? (
-              <GuideMasterPanel onClose={() => setLeftPanelMode('layers')} />
+        <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
+          <aside className="flex min-h-0 flex-col gap-3">
+            <section className="studio-panel overflow-hidden rounded-xl">
+              <CurrentDocumentPanel
+                onOpenImport={() => setImportDialogOpen(true)}
+                onCreateBlankIcon={handleCreateBlankIcon}
+              />
+            </section>
+            <section className="studio-panel min-h-0 overflow-hidden rounded-xl p-2">
+              <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} />
+            </section>
+            <section className="studio-panel min-h-0 flex-1 overflow-hidden rounded-xl">
+              {leftPanelMode === 'guides' ? (
+                <GuideMasterPanel onClose={() => setLeftPanelMode('layers')} />
+              ) : (
+                <LayerPanel />
+              )}
+            </section>
+          </aside>
+
+          <main className="studio-panel min-h-0 overflow-hidden rounded-xl p-3">
+            {hasActiveDocument ? (
+              <div className="flex h-full min-h-0 flex-col gap-3">
+                <VariantPickerBar />
+                <StateManagerBar />
+                <div className="min-h-0 flex-1">
+                  <Canvas />
+                </div>
+              </div>
             ) : (
-              <LayerPanel />
+              <div className="flex h-full items-center justify-center px-6 py-10">
+                <div className="max-w-md rounded-3xl border border-border/70 bg-background/80 p-8 text-center shadow-sm">
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                    Editor
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                    Start an icon to begin editing
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    This project doesn&apos;t have an active icon yet. Create a blank icon to sketch
+                    from scratch, import SVGs into this project, or head back to the library.
+                  </p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                    <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
+                      <Plus className="size-4" />
+                      New icon
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => setImportDialogOpen(true)}
+                    >
+                      Import SVG
+                    </Button>
+                    <Button asChild variant="outline" className="rounded-xl">
+                      <Link href="/">
+                        <ChevronLeft className="size-4" />
+                        Back to library
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
-          </section>
-        </aside>
+          </main>
 
-        <main className="studio-panel min-h-0 overflow-hidden rounded-xl p-3">
-          <div className="flex h-full min-h-0 flex-col gap-3">
-            <VariantPickerBar />
-            <StateManagerBar />
-            <div className="min-h-0 flex-1">
-              <Canvas />
-            </div>
-          </div>
-        </main>
-
-        <aside className="studio-panel min-h-0 overflow-hidden rounded-xl">
-          <Tabs value={rightPanelTab} onValueChange={(value) => setRightPanelTab(value as 'inspector' | 'animation')} className="flex h-full min-h-0 flex-col">
-            <TabsList className="mx-3 mt-3 grid grid-cols-2">
-              <TabsTrigger value="inspector">Inspector</TabsTrigger>
-              <TabsTrigger value="animation">Animation</TabsTrigger>
-            </TabsList>
-            <TabsContent value="inspector" className="min-h-0 flex-1 data-[state=active]:flex">
-              <div className="min-h-0 w-full">
-                <InspectorPanel />
-              </div>
-            </TabsContent>
-            <TabsContent value="animation" className="min-h-0 flex-1 data-[state=active]:flex">
-              <div className="min-h-0 w-full">
-                <AnimationStudioPanel onOpenTransitionEditor={() => setRightPanelTab('inspector')} />
-              </div>
-            </TabsContent>
-          </Tabs>
-        </aside>
-      </div>
+          <aside className="studio-panel min-h-0 overflow-hidden rounded-xl">
+            <Tabs
+              value={rightPanelTab}
+              onValueChange={(value) => setRightPanelTab(value as 'inspector' | 'animation')}
+              className="flex h-full min-h-0 flex-col"
+            >
+              <TabsList className="mx-3 mt-3 grid grid-cols-2">
+                <TabsTrigger value="inspector">Inspector</TabsTrigger>
+                <TabsTrigger value="animation">Animation</TabsTrigger>
+              </TabsList>
+              <TabsContent value="inspector" className="min-h-0 flex-1 data-[state=active]:flex">
+                <div className="min-h-0 w-full">
+                  <InspectorPanel />
+                </div>
+              </TabsContent>
+              <TabsContent value="animation" className="min-h-0 flex-1 data-[state=active]:flex">
+                <div className="min-h-0 w-full">
+                  <AnimationStudioPanel onOpenTransitionEditor={() => setRightPanelTab('inspector')} />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </aside>
+        </div>
       )}
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>

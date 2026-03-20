@@ -520,6 +520,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const project = useEditorStore((s) => s.project);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
   const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
@@ -532,6 +533,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [desktop, setDesktop] = useState(false);
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
+  const { createBlankIcon, openIconTab } = useEditorActions();
 
   useEffect(() => {
     setDesktop(isDesktop());

@@ -76,6 +76,7 @@ export function Toolbar() {
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);

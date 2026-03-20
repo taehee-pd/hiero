@@ -750,6 +750,13 @@ function replaceVariantState(
   };
 }
 
+function createEmptyState(stateId: string): State {
+  return {
+    id: stateId,
+    layers: {},
+  };
+}
+
 function getFirstIconId(project: Project | null | undefined) {
   return project ? (Object.keys(project.icons)[0] ?? null) : null;
 }

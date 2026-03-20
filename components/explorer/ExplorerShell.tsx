@@ -297,6 +297,9 @@ export function ExplorerShell() {
       if (targetIconSetId) {
         setActiveIconSet(targetIconSetId);
         setView({ level: 'project', iconSetId: targetIconSetId });
+        setQuery('');
+        setSelection([]);
+        setActiveFilter({ kind: 'all' });
       }
     }
 

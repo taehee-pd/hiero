@@ -271,22 +271,17 @@ export function ExplorerShell() {
     if (files.length === 0) return;
 
     let targetIconSetId = activeIconSetId;
-    if (importMode === 'new-project' || !targetIconSetId) {
-      const suggestedName =
-        files.length === 1
-          ? buildProjectNameFromFile(files[0]?.name ?? 'Imported Icons')
-          : 'Imported Icons';
-      targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
-      if (targetIconSetId) {
-        setActiveIconSet(targetIconSetId);
-        setView({ level: 'project', iconSetId: targetIconSetId });
-      }
-    }
-
-    const state = editorStore.getState();
+    const shouldCreateProject = importMode === 'new-project' || !targetIconSetId;
     const existingIds = new Set(
-      Object.keys(state.workspace?.iconSets[targetIconSetId ?? '']?.icons ?? state.project?.icons ?? {}),
+      shouldCreateProject
+        ? []
+        : Object.keys(
+            editorStore.getState().workspace?.iconSets[targetIconSetId ?? '']?.icons ??
+              editorStore.getState().project?.icons ??
+              {},
+          ),
     );
+
     for (const file of files) {
       if (!isSvgFile(file)) continue;
       try {
@@ -294,6 +289,19 @@ export function ExplorerShell() {
           existingIconIds: existingIds,
           sourceName: file.name,
         });
+
+        if (!targetIconSetId && shouldCreateProject) {
+          const suggestedName =
+            files.length === 1
+              ? buildProjectNameFromFile(file.name)
+              : 'Imported Icons';
+          targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
+          if (targetIconSetId) {
+            setActiveIconSet(targetIconSetId);
+            setView({ level: 'project', iconSetId: targetIconSetId });
+          }
+        }
+
         existingIds.add(icon.id);
         editorStore.getState().insertIcon(icon);
         toast({ title: `Imported ${icon.name}`, description: icon.id });

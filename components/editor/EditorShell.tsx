@@ -614,37 +614,34 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       {desktop && <TitleTabBar />}
       <Toolbar />
       {!currentIconId ? (
-        <>
-          <div className="workspace-shell flex min-h-0 flex-1 items-center justify-center px-3 pb-3">
-            <section className="studio-panel flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl px-8 py-12 text-center">
-              <div className="rounded-full border border-border/80 bg-background/80 p-4">
-                <Layers2 className="size-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-xl font-semibold text-foreground">No icon selected</p>
-                <p className="max-w-xl text-sm text-muted-foreground">
-                  Open an icon from the library, import an SVG into this project, or create a blank icon to start drawing.
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button asChild variant="outline" className="rounded-xl">
-                  <Link href="/">
-                    <ChevronLeft className="size-4" />
-                    Back to Library
-                  </Link>
-                </Button>
-                <Button variant="outline" className="rounded-xl" onClick={() => setImportDialogOpen(true)}>
-                  Import SVG
-                </Button>
-                <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
-                  <Plus className="size-4" />
-                  Create New Icon
-                </Button>
-              </div>
-            </section>
-          </div>
-          <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
-        </>
+        <div className="workspace-shell flex min-h-0 flex-1 items-center justify-center px-3 pb-3">
+          <section className="studio-panel flex w-full max-w-2xl flex-col items-center gap-4 rounded-2xl px-8 py-12 text-center">
+            <div className="rounded-full border border-border/80 bg-background/80 p-4">
+              <Layers2 className="size-8 text-muted-foreground" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xl font-semibold text-foreground">No icon selected</p>
+              <p className="max-w-xl text-sm text-muted-foreground">
+                Open an icon from the library, import an SVG into this project, or create a blank icon to start drawing.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/">
+                  <ChevronLeft className="size-4" />
+                  Back to Library
+                </Link>
+              </Button>
+              <Button variant="outline" className="rounded-xl" onClick={() => setImportDialogOpen(true)}>
+                Import SVG
+              </Button>
+              <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
+                <Plus className="size-4" />
+                Create New Icon
+              </Button>
+            </div>
+          </section>
+        </div>
       ) : (
       <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
         <aside className="flex min-h-0 flex-col gap-3">

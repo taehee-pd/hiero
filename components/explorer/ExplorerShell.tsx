@@ -2,18 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
+  ArrowUpRight,
   Check,
   ChevronRight,
+  Ellipsis,
   FolderOpen,
   Grid3X3,
   Heart,
   Import,
   LayoutGrid,
+  Pencil,
   Plus,
   Search,
+  Trash2,
 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
@@ -88,7 +96,9 @@ export function ExplorerShell() {
     renameIconSet,
     setActiveIconSet,
     openIconTab,
+    createBlankIcon,
   } = useEditorActions();
+  const router = useRouter();
 
   const [view, setView] = useState<ExplorerView>({ level: 'workspace' });
   const [query, setQuery] = useState('');
@@ -96,6 +106,14 @@ export function ExplorerShell() {
   const [categoryInput, setCategoryInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({ kind: 'all' });
   const [desktop, setDesktop] = useState(false);
+  const [importMode, setImportMode] = useState<'current-project' | 'new-project'>('current-project');
+  const [renameDialog, setRenameDialog] = useState<
+    | { kind: 'project'; id: string; value: string }
+    | { kind: 'collection'; id: string; value: string }
+    | null
+  >(null);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<WorkspaceIconSet | null>(null);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -252,7 +270,18 @@ export function ExplorerShell() {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
 
-    const existingIds = new Set(Object.keys(editorStore.getState().project?.icons ?? {}));
+    let targetIconSetId = activeIconSetId;
+    const shouldCreateProject = importMode === 'new-project' || !targetIconSetId;
+    const existingIds = new Set(
+      shouldCreateProject
+        ? []
+        : Object.keys(
+            editorStore.getState().workspace?.iconSets[targetIconSetId ?? '']?.icons ??
+              editorStore.getState().project?.icons ??
+              {},
+          ),
+    );
+
     for (const file of files) {
       if (!isSvgFile(file)) continue;
       try {
@@ -260,6 +289,19 @@ export function ExplorerShell() {
           existingIconIds: existingIds,
           sourceName: file.name,
         });
+
+        if (!targetIconSetId && shouldCreateProject) {
+          const suggestedName =
+            files.length === 1
+              ? buildProjectNameFromFile(file.name)
+              : 'Imported Icons';
+          targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
+          if (targetIconSetId) {
+            setActiveIconSet(targetIconSetId);
+            setView({ level: 'project', iconSetId: targetIconSetId });
+          }
+        }
+
         existingIds.add(icon.id);
         editorStore.getState().insertIcon(icon);
         toast({ title: `Imported ${icon.name}`, description: icon.id });
@@ -272,6 +314,7 @@ export function ExplorerShell() {
       }
     }
 
+    setImportMode('current-project');
     event.target.value = '';
   };
 
@@ -291,28 +334,46 @@ export function ExplorerShell() {
     addIconSet(name.trim());
   };
 
-  const handleIconSetContext = (event: React.MouseEvent, iconSetId: string) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const action = prompt('Type "rename" or "delete"');
-    if (action === 'rename') {
-      const name = prompt('New project name');
-      if (name?.trim()) renameIconSet(iconSetId, name.trim());
-    } else if (action === 'delete') {
-      removeIconSet(iconSetId);
-    }
-  };
+  const openImportIntoCurrentProject = useCallback(() => {
+    setImportMode('current-project');
+    importRef.current?.click();
+  }, []);
 
-  const handleCollectionContext = (event: React.MouseEvent, collectionId: string) => {
-    event.preventDefault();
-    const action = prompt('Type "rename" or "delete"');
-    if (action === 'rename') {
-      const name = prompt('New collection name');
-      if (name?.trim()) renameCollection(collectionId, name.trim());
-    } else if (action === 'delete') {
-      removeCollection(collectionId);
+  const openImportIntoNewProject = useCallback(() => {
+    setImportMode('new-project');
+    importRef.current?.click();
+  }, []);
+
+  const handleCreateBlankIcon = useCallback(() => {
+    if (!activeIconSetId) return;
+    const iconId = createBlankIcon();
+    if (!iconId) return;
+    openIconTab(activeIconSetId, iconId);
+    router.push(buildEditorRoute(iconId, activeIconSetId));
+  }, [activeIconSetId, createBlankIcon, openIconTab, router]);
+
+  const handleRenameSubmit = useCallback(() => {
+    if (!renameDialog) return;
+    const nextValue = renameDialog.value.trim();
+    if (!nextValue) return;
+
+    if (renameDialog.kind === 'project') {
+      renameIconSet(renameDialog.id, nextValue);
+    } else {
+      renameCollection(renameDialog.id, nextValue);
     }
-  };
+    setRenameDialog(null);
+  }, [renameCollection, renameDialog, renameIconSet]);
+
+  const handleDeleteProject = useCallback(() => {
+    if (!deleteProjectTarget) return;
+    removeIconSet(deleteProjectTarget.id);
+    if (activeIconSetId === deleteProjectTarget.id) {
+      setView({ level: 'workspace' });
+    }
+    setDeleteProjectTarget(null);
+    setDeleteConfirmValue('');
+  }, [activeIconSetId, deleteProjectTarget, removeIconSet]);
 
   /* ─── Workspace-level search (filter projects by name) ─── */
 
@@ -370,14 +431,24 @@ export function ExplorerShell() {
 
         {/* Actions */}
         {view.level === 'workspace' && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={createIconSet}>
-            <Plus className="size-3.5" />
-            New project
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={openImportIntoNewProject}>
+              <Import className="size-3.5" />
+              Import SVGs
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={createIconSet}>
+              <Plus className="size-3.5" />
+              New project
+            </Button>
+          </div>
         )}
         {view.level === 'project' && (
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={() => importRef.current?.click()}>
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={handleCreateBlankIcon}>
+              <Plus className="size-3.5" />
+              New Icon
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60" onClick={openImportIntoCurrentProject}>
               <Import className="size-3.5" />
               Import
             </Button>
@@ -405,7 +476,18 @@ export function ExplorerShell() {
         <WorkspaceView
           iconSets={filteredIconSets}
           onEnterProject={enterProject}
-          onContextMenu={handleIconSetContext}
+          onImport={openImportIntoNewProject}
+          onCreateProject={createIconSet}
+          onRenameProject={(iconSetId) => {
+            const iconSet = workspace?.iconSets[iconSetId];
+            if (!iconSet) return;
+            setRenameDialog({ kind: 'project', id: iconSetId, value: iconSet.meta.name });
+          }}
+          onDeleteProject={(iconSetId) => {
+            const target = iconSets.find((iconSet) => iconSet.id === iconSetId) ?? null;
+            setDeleteProjectTarget(target);
+            setDeleteConfirmValue('');
+          }}
         />
       ) : (
         <ProjectDetailView
@@ -427,7 +509,14 @@ export function ExplorerShell() {
           onSetCategoryInput={setCategoryInput}
           onAssignCategory={assignCategory}
           onCreateCollection={createCollection}
-          onCollectionContext={handleCollectionContext}
+          onCreateBlankIcon={handleCreateBlankIcon}
+          onImportSvg={openImportIntoCurrentProject}
+          onRenameCollection={(collectionId) => {
+            const collection = collections.find((item) => item.id === collectionId);
+            if (!collection) return;
+            setRenameDialog({ kind: 'collection', id: collectionId, value: collection.name });
+          }}
+          onDeleteCollection={(collectionId) => removeCollection(collectionId)}
           onOpenIconTab={openIconTab}
         />
       )}
@@ -441,6 +530,73 @@ export function ExplorerShell() {
         onChange={handleImportSvgFiles}
         aria-label="Import SVG files"
       />
+
+      <Dialog open={renameDialog !== null} onOpenChange={(open) => !open && setRenameDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{renameDialog?.kind === 'project' ? 'Rename project' : 'Rename collection'}</DialogTitle>
+            <DialogDescription>
+              Update the name shown in the workspace and explorer sidebar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={renameDialog?.value ?? ''}
+              onChange={(event) =>
+                setRenameDialog((current) =>
+                  current ? { ...current, value: event.target.value } : current,
+                )
+              }
+              placeholder="Enter a name"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  handleRenameSubmit();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameSubmit} disabled={!renameDialog?.value.trim()}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteProjectTarget !== null} onOpenChange={(open) => !open && setDeleteProjectTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteProjectTarget
+                ? `${deleteProjectTarget.name} contains ${deleteProjectTarget.iconCount} icon${deleteProjectTarget.iconCount === 1 ? '' : 's'}${deleteProjectTarget.syncLabel ? ` and is linked to ${deleteProjectTarget.syncLabel}` : ''}.`
+                : 'This action removes the project from the workspace.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteProjectTarget && deleteProjectTarget.iconCount > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Type <span className="font-medium text-foreground">{deleteProjectTarget.name}</span> to confirm.
+              </p>
+              <Input value={deleteConfirmValue} onChange={(event) => setDeleteConfirmValue(event.target.value)} />
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteProjectTarget(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteProjectTarget?.iconCount ? deleteConfirmValue.trim() !== deleteProjectTarget.name : false}
+              onClick={handleDeleteProject}
+            >
+              Delete project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -462,11 +618,17 @@ type WorkspaceIconSet = {
 function WorkspaceView({
   iconSets,
   onEnterProject,
-  onContextMenu,
+  onImport,
+  onCreateProject,
+  onRenameProject,
+  onDeleteProject,
 }: {
   iconSets: WorkspaceIconSet[];
   onEnterProject: (id: string) => void;
-  onContextMenu: (e: React.MouseEvent, id: string) => void;
+  onImport: () => void;
+  onCreateProject: () => void;
+  onRenameProject: (id: string) => void;
+  onDeleteProject: (id: string) => void;
 }) {
   return (
     <ScrollArea className="workspace-scroll flex-1">
@@ -487,16 +649,27 @@ function WorkspaceView({
           <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
             <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Create a new project to get started</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">Create a project or import existing SVGs to start building your icon set.</p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateProject}>
+                <Plus className="size-3.5" />
+                Create a new project
+              </Button>
+              <Button size="sm" className="rounded-lg" onClick={onImport}>
+                <Import className="size-3.5" />
+                Import existing SVGs
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="list" aria-label="Projects">
             {iconSets.map((iconSet) => (
               <ProjectCard
                 key={iconSet.id}
                 iconSet={iconSet}
-                onDoubleClick={() => onEnterProject(iconSet.id)}
-                onContextMenu={(e) => onContextMenu(e, iconSet.id)}
+                onOpen={() => onEnterProject(iconSet.id)}
+                onRename={() => onRenameProject(iconSet.id)}
+                onDelete={() => onDeleteProject(iconSet.id)}
               />
             ))}
           </div>
@@ -510,22 +683,73 @@ function WorkspaceView({
 
 function ProjectCard({
   iconSet,
-  onDoubleClick,
-  onContextMenu,
+  onOpen,
+  onRename,
+  onDelete,
 }: {
   iconSet: WorkspaceIconSet;
-  onDoubleClick: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+  onOpen: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }) {
   const thumbnailIcons = iconSet.icons.slice(0, 6);
 
   return (
-    <button
-      type="button"
-      onDoubleClick={onDoubleClick}
-      onContextMenu={onContextMenu}
-      className="studio-card group flex flex-col rounded-xl text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+    <article
+      className="studio-card group relative flex flex-col rounded-xl text-left transition-all duration-150"
+      role="listitem"
     >
+      <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              className="rounded-lg border-border/80 bg-background/90"
+              onClick={(event) => event.stopPropagation()}
+              aria-label={`Project actions for ${iconSet.name}`}
+            >
+              <Ellipsis className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                onOpen();
+              }}
+            >
+              <ArrowUpRight className="size-4" />
+              Open project
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                onRename();
+              }}
+            >
+              <Pencil className="size-4" />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={(event) => {
+                event.preventDefault();
+                onDelete();
+              }}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
       {/* Thumbnail area */}
       <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/40">
         {thumbnailIcons.length > 0 ? (
@@ -544,7 +768,7 @@ function ProjectCard({
                   className="flex size-10 shrink-0 items-center justify-center overflow-hidden text-foreground/80 transition-transform duration-100 group-hover:scale-105"
                 >
                   {svg ? (
-                    <div className="size-8 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+                    <div className="size-8 [&>svg]:h-full [&>svg]:w-full" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
                   ) : (
                     <Grid3X3 className="size-5 text-muted-foreground/40" />
                   )}
@@ -572,8 +796,13 @@ function ProjectCard({
             </>
           )}
         </span>
+        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition group-hover:text-foreground">
+          Open
+          <ArrowUpRight className="size-3.5" />
+        </span>
       </div>
-    </button>
+      </button>
+    </article>
   );
 }
 
@@ -600,7 +829,10 @@ function ProjectDetailView({
   onSetCategoryInput,
   onAssignCategory,
   onCreateCollection,
-  onCollectionContext,
+  onCreateBlankIcon,
+  onImportSvg,
+  onRenameCollection,
+  onDeleteCollection,
   onOpenIconTab,
 }: {
   project: Project | null;
@@ -621,7 +853,10 @@ function ProjectDetailView({
   onSetCategoryInput: (v: string) => void;
   onAssignCategory: () => void;
   onCreateCollection: () => void;
-  onCollectionContext: (e: React.MouseEvent, id: string) => void;
+  onCreateBlankIcon: () => void;
+  onImportSvg: () => void;
+  onRenameCollection: (id: string) => void;
+  onDeleteCollection: (id: string) => void;
   onOpenIconTab: (iconSetId: string, iconId: string) => void;
 }) {
   return (
@@ -695,7 +930,30 @@ function ProjectDetailView({
                   count={collection.iconIds.length}
                   active={activeFilter.kind === 'collection' && activeFilter.id === collection.id}
                   onClick={() => onSetActiveFilter({ kind: 'collection', id: collection.id })}
-                  onContextMenu={(event) => onCollectionContext(event, collection.id)}
+                  actions={
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="rounded p-1 text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-accent hover:text-foreground focus-visible:opacity-100"
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={`Collection actions for ${collection.name}`}
+                        >
+                          <Ellipsis className="size-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => onRenameCollection(collection.id)}>
+                          <Pencil className="size-4" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onSelect={() => onDeleteCollection(collection.id)}>
+                          <Trash2 className="size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  }
                 />
               ))}
             </div>
@@ -745,13 +1003,30 @@ function ProjectDetailView({
         </div>
 
         <ScrollArea className="workspace-scroll h-full">
-          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8" role="list" aria-label="Icons">
             {visibleIcons.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
                 <Grid3X3 className="mb-2 size-6 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">
                   {query ? 'No matching icons' : 'No icons in this project'}
                 </p>
+                {!query ? (
+                  <>
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
+                      Import SVGs into this project or create a blank icon and start drawing on a 24px canvas.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <Button size="sm" className="rounded-lg" onClick={onImportSvg}>
+                        <Import className="size-3.5" />
+                        Import SVGs
+                      </Button>
+                      <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateBlankIcon}>
+                        <Plus className="size-3.5" />
+                        Create New Icon
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             )}
             {visibleIcons.map((icon) => {
@@ -785,6 +1060,7 @@ function ProjectDetailView({
                       ? 'border-primary/30 bg-primary/[0.06]'
                       : 'hover:bg-accent/60',
                   )}
+                  role="listitem"
                 >
                   {/* Hover actions */}
                   <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -825,11 +1101,12 @@ function ProjectDetailView({
                         onOpenIconTab(activeIconSetId, icon.id);
                       }
                     }}
-                    className="flex w-full flex-col items-center gap-2 focus-visible:outline-none"
+                    className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    aria-label={`Open ${icon.name}`}
                   >
                     <div className="flex aspect-square w-full items-center justify-center rounded-md">
                       {svg ? (
-                        <div className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]" dangerouslySetInnerHTML={{ __html: svg }} />
+                        <div className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />
                       ) : (
                         <Grid3X3 className="size-4 text-muted-foreground/40" />
                       )}
@@ -855,29 +1132,35 @@ function SidebarButton({
   count,
   active,
   onClick,
-  onContextMenu,
+  actions,
 }: {
   label: string;
   count: number;
   active: boolean;
   onClick: () => void;
-  onContextMenu?: (event: React.MouseEvent) => void;
+  actions?: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      onContextMenu={onContextMenu}
+    <div
       className={cn(
-        'flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-[13px] transition-colors',
+        'group flex w-full items-center gap-2 rounded-md px-2 py-1 text-[13px] transition-colors',
         active
           ? 'bg-[var(--system-blue)]/10 text-[var(--system-blue)]'
           : 'text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-foreground',
       )}
     >
-      <span className="truncate">{label}</span>
-      <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
-    </button>
+      <button
+        type="button"
+        onClick={onClick}
+        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        <span className="truncate">{label}</span>
+      </button>
+      <span className="ml-auto flex items-center gap-2">
+        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
+        {actions}
+      </span>
+    </div>
   );
 }
 
@@ -898,4 +1181,10 @@ function toKebab(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function buildProjectNameFromFile(fileName: string) {
+  const baseName = fileName.replace(/\.svg$/i, '').trim();
+  if (!baseName) return 'Imported Icons';
+  return formatCategoryLabel(baseName);
 }

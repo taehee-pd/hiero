@@ -14,7 +14,11 @@ import { EasingPicker } from './EasingPicker';
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
 
-export function AnimationStudioPanel() {
+export function AnimationStudioPanel({
+  onOpenTransitionEditor,
+}: {
+  onOpenTransitionEditor?: () => void;
+}) {
   const iconId = useEditorStore((s) => s.currentIconId);
   const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null));
   const variant = useEditorStore((s) => (s.currentIconId && s.currentVariantId ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null : null));
@@ -126,12 +130,17 @@ export function AnimationStudioPanel() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Transition Timeline</p>
-            {selectedTransition ? (
-              <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={(value) => {
-                if (!iconId || !selectedTransition) return;
-                patchTransition(iconId, selectedTransition.id, { easing: value });
-              }} />
-            ) : null}
+            <div className="flex items-center gap-2">
+              {selectedTransition ? (
+                <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={(value) => {
+                  if (!iconId || !selectedTransition) return;
+                  patchTransition(iconId, selectedTransition.id, { easing: value });
+                }} />
+              ) : null}
+              <Button size="sm" variant="outline" onClick={onOpenTransitionEditor}>
+                New Transition
+              </Button>
+            </div>
           </div>
 
           {transitions.length > 0 ? (
@@ -145,7 +154,15 @@ export function AnimationStudioPanel() {
               ))}
             </select>
           ) : (
-            <p className="text-xs text-muted-foreground">No transitions available for timeline editing.</p>
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+              <p className="text-xs font-medium text-foreground">No transitions available for timeline editing.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Create states for this icon first, then add a transition between them in the inspector.
+              </p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={onOpenTransitionEditor}>
+                Open transition editor
+              </Button>
+            </div>
           )}
 
           {iconId && variant && selectedTransition ? (

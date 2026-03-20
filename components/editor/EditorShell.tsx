@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, Layers2, Plus, Trash2 } from 'lucide-react';
 import { Toolbar } from './Toolbar';
 import { ToolPanel } from './ToolPanel';
@@ -20,21 +21,20 @@ import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { clearCurrentProjectPath } from '@/lib/platform/bridge';
-import { parseEditorSearchParam } from '@/lib/platform/routes';
+import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { isDesktop } from '@/lib/platform/bridge';
 
 function CurrentDocumentPanel() {
-  const icon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] : null,
-  );
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva Workspace');
+  const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] : null));
   const variantId = useEditorStore((s) => s.currentVariantId);
   const stateId = useEditorStore((s) => s.currentStateId);
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
   const layerCount = useEditorStore((s) => {
@@ -48,11 +48,15 @@ function CurrentDocumentPanel() {
   return (
     <div className="flex items-start justify-between gap-3 px-4 py-4">
       <div className="min-w-0">
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          {projectName}
+        </p>
         <p className="truncate text-base font-semibold tracking-tight text-foreground">
-          {icon?.name ?? 'No icon selected'}
+          {icon?.name ?? 'No icon selected yet'}
         </p>
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') || 'select an icon'}
+          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') ||
+            'Create or open an icon to start editing'}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
@@ -69,7 +73,7 @@ function CurrentDocumentPanel() {
       <Button asChild variant="outline" size="sm" className="rounded-xl">
         <Link href="/">
           <ChevronLeft className="size-3.5" />
-          library
+          Library
         </Link>
       </Button>
     </div>
@@ -100,12 +104,12 @@ function scaleViewBox(
 
 function VariantPickerBar() {
   const icon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
   );
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
   const { addVariant, removeVariant, setCurrentVariant } = useEditorActions();
@@ -181,7 +185,10 @@ function VariantPickerBar() {
                   ))}
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="variant-custom-size" className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="variant-custom-size"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Custom size
                   </label>
                   <div className="flex gap-2">
@@ -250,16 +257,19 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const project = useEditorStore((s) => s.project);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
   const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const { createBlankIcon } = useEditorActions();
   const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
   const [desktop, setDesktop] = useState(false);
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
+  const router = useRouter();
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -283,8 +293,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     if (requestedIconId && state.project?.icons[requestedIconId]) {
       state.setCurrentIcon(requestedIconId);
       const nextIconSetId =
-        (searchIconSetId && state.workspace?.iconSets[searchIconSetId] ? searchIconSetId : state.activeIconSetId) ??
-        null;
+        (searchIconSetId && state.workspace?.iconSets[searchIconSetId]
+          ? searchIconSetId
+          : state.activeIconSetId) ?? null;
       if (nextIconSetId) {
         state.openIconTab(nextIconSetId, requestedIconId);
       }
@@ -306,14 +317,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     ) {
       return;
     }
-    const layers =
-      currentVariantId
-        ? project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
-          {}
-        : {};
+    const layers = currentVariantId
+      ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
+        {})
+      : {};
     const nextLayerId =
-      Object.values(layers).find((layer) => layer.visible !== false)?.id ??
-      Object.keys(layers)[0];
+      Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
     if (!nextLayerId) return;
 
     editorStore.getState().setSelection({ layerIds: [nextLayerId], pointIds: [] });
@@ -336,8 +345,20 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     previousGuidesVisibleRef.current = guidesVisible;
   }, [guidesVisible, leftPanelMode]);
 
+  const hasActiveDocument = Boolean(currentIconId && currentVariantId && currentStateId);
+
+  const handleCreateBlankIcon = () => {
+    if (!activeIconSetId) return;
+    const iconId = createBlankIcon();
+    if (!iconId) return;
+    router.push(buildEditorRoute(iconId, activeIconSetId));
+  };
+
   return (
-    <div className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+    <div
+      className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground"
+      style={{ position: 'fixed', inset: 0 }}
+    >
       {desktop && <TitleTabBar />}
       <Toolbar />
       <div className="workspace-shell grid min-h-0 flex-1 grid-cols-1 gap-3 px-3 pb-3 lg:grid-cols-[15rem_minmax(0,1fr)_18rem]">
@@ -358,12 +379,41 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         </aside>
 
         <main className="studio-panel min-h-0 overflow-hidden rounded-xl p-3">
-          <div className="flex h-full min-h-0 flex-col gap-3">
-            <VariantPickerBar />
-            <div className="min-h-0 flex-1">
-              <Canvas />
+          {hasActiveDocument ? (
+            <div className="flex h-full min-h-0 flex-col gap-3">
+              <VariantPickerBar />
+              <div className="min-h-0 flex-1">
+                <Canvas />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex h-full items-center justify-center px-6 py-10">
+              <div className="max-w-md rounded-3xl border border-border/70 bg-background/80 p-8 text-center shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  Editor
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+                  Start an icon to begin editing
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  This project doesn&apos;t have an active icon yet. Create a blank icon to sketch
+                  from scratch or head back to the library to import and browse.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
+                    <Plus className="size-4" />
+                    New icon
+                  </Button>
+                  <Button asChild variant="outline" className="rounded-xl">
+                    <Link href="/">
+                      <ChevronLeft className="size-4" />
+                      Back to library
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
 
         <aside className="studio-panel min-h-0 overflow-hidden rounded-xl">

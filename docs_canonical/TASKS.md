@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-19 (Phase 8 completed)
+**Last updated:** 2026-03-20 (UX flow pass completed)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -28,6 +28,18 @@ in this order:
 6. ~~**Phase D** — React API Enrichment~~ (completed)
 7. ~~**Phase 7** — Cross-Platform Adapters~~ (completed)
 8. ~~**Phase 8** — Cross-Icon Morphing~~ (completed)
+
+---
+
+## Recently Completed
+
+- [x] **2026-03-20 — Explorer/editor UX flow pass.**
+  The workspace surface now exposes import at the top level, project cards
+  open on single click, project empty states surface import/new-icon CTAs,
+  the editor toolbar separates icon creation from project/file actions, and
+  the editor now shows a dedicated empty state when no icon is active.
+  Canonical follow-up items were refreshed in
+  `docs_canonical/UX_AUDIT_TASKS.md`.
 
 ---
 

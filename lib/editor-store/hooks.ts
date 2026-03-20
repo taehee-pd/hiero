@@ -64,6 +64,7 @@ export function useEditorActions() {
       loadWorkspace: state.loadWorkspace,
       loadProject: state.loadProject,
       newProject: state.newProject,
+      createBlankIcon: state.createBlankIcon,
       insertIcon: state.insertIcon,
       addVariant: state.addVariant,
       removeVariant: state.removeVariant,

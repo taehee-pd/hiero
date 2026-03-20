@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Check,
   ChevronRight,
@@ -45,9 +46,7 @@ type ActiveFilter =
   | { kind: 'category'; id: string }
   | { kind: 'collection'; id: string };
 
-type ExplorerView =
-  | { level: 'workspace' }
-  | { level: 'project'; iconSetId: string };
+type ExplorerView = { level: 'workspace' } | { level: 'project'; iconSetId: string };
 
 export function filterIconsByQuery(icons: ExplorerIcon[], query: string) {
   const normalized = query.trim().toLowerCase();
@@ -78,12 +77,14 @@ export function ExplorerShell() {
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const favorites = useEditorStore((s) => s.favorites);
+  const router = useRouter();
   const {
     addCollection,
     removeCollection,
     renameCollection,
     toggleFavorite,
     addIconSet,
+    createBlankIcon,
     removeIconSet,
     renameIconSet,
     setActiveIconSet,
@@ -96,6 +97,9 @@ export function ExplorerShell() {
   const [categoryInput, setCategoryInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({ kind: 'all' });
   const [desktop, setDesktop] = useState(false);
+  const [pendingImportMode, setPendingImportMode] = useState<'current-project' | 'new-project'>(
+    'current-project',
+  );
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -155,7 +159,8 @@ export function ExplorerShell() {
 
   const visibleIcons = useMemo(() => {
     if (activeFilter.kind === 'all') return filtered;
-    if (activeFilter.kind === 'favorites') return filtered.filter((icon) => favoritesSet.has(icon.id));
+    if (activeFilter.kind === 'favorites')
+      return filtered.filter((icon) => favoritesSet.has(icon.id));
     if (activeFilter.kind === 'category') {
       return filtered.filter((icon) => (icon.category || 'uncategorized') === activeFilter.id);
     }
@@ -228,7 +233,8 @@ export function ExplorerShell() {
   const assignCategory = () => {
     const state = editorStore.getState();
     const nextCategory = categoryInput.trim();
-    if (!project || !workspace || !activeIconSetId || !nextCategory || selection.length === 0) return;
+    if (!project || !workspace || !activeIconSetId || !nextCategory || selection.length === 0)
+      return;
 
     const nextProject = structuredClone(project);
     for (const iconId of selection) {
@@ -245,12 +251,22 @@ export function ExplorerShell() {
   };
 
   const toggleSelection = (iconId: string) => {
-    setSelection((prev) => (prev.includes(iconId) ? prev.filter((id) => id !== iconId) : [...prev, iconId]));
+    setSelection((prev) =>
+      prev.includes(iconId) ? prev.filter((id) => id !== iconId) : [...prev, iconId],
+    );
   };
 
   const handleImportSvgFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+
+    if (pendingImportMode === 'new-project') {
+      const nextIconSetId = addIconSet(buildImportedProjectName(files));
+      if (nextIconSetId) {
+        setActiveIconSet(nextIconSetId);
+        setView({ level: 'project', iconSetId: nextIconSetId });
+      }
+    }
 
     const existingIds = new Set(Object.keys(editorStore.getState().project?.icons ?? {}));
     for (const file of files) {
@@ -274,6 +290,19 @@ export function ExplorerShell() {
 
     event.target.value = '';
   };
+
+  const openImportPicker = (mode: 'current-project' | 'new-project') => {
+    setPendingImportMode(mode);
+    importRef.current?.click();
+  };
+
+  const handleCreateBlankIcon = useCallback(() => {
+    if (!activeIconSetId) return;
+    const iconId = createBlankIcon();
+    if (!iconId) return;
+    openIconTab(activeIconSetId, iconId);
+    router.push(buildEditorRoute(iconId, activeIconSetId));
+  }, [activeIconSetId, createBlankIcon, openIconTab, router]);
 
   const handleExportSelected = () => exportIconsToZip(selection, 'selected-icons');
   const handleExportIconSet = () => exportIconsToZip(Object.keys(project?.icons ?? {}), 'icon-set');
@@ -320,19 +349,23 @@ export function ExplorerShell() {
     if (!query.trim()) return iconSets;
     const q = query.trim().toLowerCase();
     return iconSets.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.syncLabel?.toLowerCase().includes(q),
+      (s) => s.name.toLowerCase().includes(q) || s.syncLabel?.toLowerCase().includes(q),
     );
   }, [iconSets, query]);
 
   /* ─── Render ──────────────────────────────── */
 
   return (
-    <div className="swift-surface flex h-full flex-col overflow-hidden text-foreground" style={{ position: 'fixed', inset: 0 }}>
+    <div
+      className="swift-surface flex h-full flex-col overflow-hidden text-foreground"
+      style={{ position: 'fixed', inset: 0 }}
+    >
       {desktop && <TitleTabBar onNavigateExplorer={goBackToWorkspace} />}
       {/* ── Top bar ─────────────────────────────── */}
-      <header className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4" style={{ fontFamily: 'var(--font-system)' }}>
+      <header
+        className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4"
+        style={{ fontFamily: 'var(--font-system)' }}
+      >
         {/* Breadcrumb */}
         <nav className="flex min-w-0 items-center gap-1 text-[13px]">
           <button
@@ -363,25 +396,63 @@ export function ExplorerShell() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={view.level === 'workspace' ? 'Search projects\u2026' : 'Search icons\u2026'}
+            placeholder={
+              view.level === 'workspace' ? 'Search projects\u2026' : 'Search icons\u2026'
+            }
             className="h-7 rounded-lg border-border/60 bg-background/60 pl-8 text-xs shadow-none"
           />
         </div>
 
         {/* Actions */}
         {view.level === 'workspace' && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={createIconSet}>
-            <Plus className="size-3.5" />
-            New project
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+              onClick={() => openImportPicker('new-project')}
+            >
+              <Import className="size-3.5" />
+              Import SVGs
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+              onClick={createIconSet}
+            >
+              <Plus className="size-3.5" />
+              New project
+            </Button>
+          </div>
         )}
         {view.level === 'project' && (
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" className="h-7 gap-1.5 rounded-lg px-2.5 text-xs" onClick={() => importRef.current?.click()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+              onClick={handleCreateBlankIcon}
+            >
+              <Plus className="size-3.5" />
+              New icon
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs"
+              onClick={() => openImportPicker('current-project')}
+            >
               <Import className="size-3.5" />
               Import
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportIconSet} disabled={!project || icons.length === 0}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-lg px-2.5 text-xs"
+              onClick={handleExportIconSet}
+              disabled={!project || icons.length === 0}
+            >
               Export
             </Button>
             <SyncPrPanel
@@ -392,7 +463,12 @@ export function ExplorerShell() {
               className="h-7 rounded-lg px-2.5 text-xs"
             />
             {selection.length > 0 && (
-              <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2.5 text-xs" onClick={handleExportSelected}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-lg px-2.5 text-xs"
+                onClick={handleExportSelected}
+              >
                 Export {selection.length}
               </Button>
             )}
@@ -406,6 +482,8 @@ export function ExplorerShell() {
           iconSets={filteredIconSets}
           onEnterProject={enterProject}
           onContextMenu={handleIconSetContext}
+          onCreateProject={createIconSet}
+          onImportSvg={() => openImportPicker('new-project')}
         />
       ) : (
         <ProjectDetailView
@@ -429,6 +507,8 @@ export function ExplorerShell() {
           onCreateCollection={createCollection}
           onCollectionContext={handleCollectionContext}
           onOpenIconTab={openIconTab}
+          onCreateBlankIcon={handleCreateBlankIcon}
+          onImportSvg={() => openImportPicker('current-project')}
         />
       )}
 
@@ -463,10 +543,14 @@ function WorkspaceView({
   iconSets,
   onEnterProject,
   onContextMenu,
+  onCreateProject,
+  onImportSvg,
 }: {
   iconSets: WorkspaceIconSet[];
   onEnterProject: (id: string) => void;
   onContextMenu: (e: React.MouseEvent, id: string) => void;
+  onCreateProject: () => void;
+  onImportSvg: () => void;
 }) {
   return (
     <ScrollArea className="workspace-scroll flex-1">
@@ -487,7 +571,19 @@ function WorkspaceView({
           <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
             <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Create a new project to get started</p>
+            <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
+              Start a fresh project or import SVGs and we&apos;ll create one for you.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button size="sm" className="rounded-lg" onClick={onImportSvg}>
+                <Import className="size-3.5" />
+                Import SVGs
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateProject}>
+                <Plus className="size-3.5" />
+                New project
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -495,7 +591,7 @@ function WorkspaceView({
               <ProjectCard
                 key={iconSet.id}
                 iconSet={iconSet}
-                onDoubleClick={() => onEnterProject(iconSet.id)}
+                onOpen={() => onEnterProject(iconSet.id)}
                 onContextMenu={(e) => onContextMenu(e, iconSet.id)}
               />
             ))}
@@ -510,11 +606,11 @@ function WorkspaceView({
 
 function ProjectCard({
   iconSet,
-  onDoubleClick,
+  onOpen,
   onContextMenu,
 }: {
   iconSet: WorkspaceIconSet;
-  onDoubleClick: () => void;
+  onOpen: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const thumbnailIcons = iconSet.icons.slice(0, 6);
@@ -522,7 +618,7 @@ function ProjectCard({
   return (
     <button
       type="button"
-      onDoubleClick={onDoubleClick}
+      onClick={onOpen}
       onContextMenu={onContextMenu}
       className="studio-card group flex flex-col rounded-xl text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
     >
@@ -544,7 +640,10 @@ function ProjectCard({
                   className="flex size-10 shrink-0 items-center justify-center overflow-hidden text-foreground/80 transition-transform duration-100 group-hover:scale-105"
                 >
                   {svg ? (
-                    <div className="size-8 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+                    <div
+                      className="size-8 [&>svg]:h-full [&>svg]:w-full"
+                      dangerouslySetInnerHTML={{ __html: svg }}
+                    />
                   ) : (
                     <Grid3X3 className="size-5 text-muted-foreground/40" />
                   )}
@@ -564,7 +663,9 @@ function ProjectCard({
       <div className="flex flex-col gap-0.5 px-3.5 py-3">
         <span className="truncate text-sm font-medium text-foreground">{iconSet.name}</span>
         <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span>{iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}</span>
+          <span>
+            {iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}
+          </span>
           {iconSet.syncLabel && (
             <>
               <span className="text-border">·</span>
@@ -572,6 +673,7 @@ function ProjectCard({
             </>
           )}
         </span>
+        <span className="mt-2 text-[11px] font-medium text-foreground/70">Open project</span>
       </div>
     </button>
   );
@@ -602,6 +704,8 @@ function ProjectDetailView({
   onCreateCollection,
   onCollectionContext,
   onOpenIconTab,
+  onCreateBlankIcon,
+  onImportSvg,
 }: {
   project: Project | null;
   activeIconSetId: string | null;
@@ -623,11 +727,16 @@ function ProjectDetailView({
   onCreateCollection: () => void;
   onCollectionContext: (e: React.MouseEvent, id: string) => void;
   onOpenIconTab: (iconSetId: string, iconId: string) => void;
+  onCreateBlankIcon: () => void;
+  onImportSvg: () => void;
 }) {
   return (
     <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)]">
       {/* ── Sidebar ────────────────── */}
-      <aside className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block" style={{ fontFamily: 'var(--font-system)' }}>
+      <aside
+        className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block"
+        style={{ fontFamily: 'var(--font-system)' }}
+      >
         <div className="space-y-4 px-2.5 py-3">
           {/* Filters */}
           <section>
@@ -745,13 +854,38 @@ function ProjectDetailView({
         </div>
 
         <ScrollArea className="workspace-scroll h-full">
-          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+          <div
+            role="list"
+            className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
+          >
             {visibleIcons.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
                 <Grid3X3 className="mb-2 size-6 text-muted-foreground/30" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm font-medium text-foreground">
                   {query ? 'No matching icons' : 'No icons in this project'}
                 </p>
+                {!query ? (
+                  <>
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                      Import existing SVGs or start a blank icon and draw directly in the editor.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <Button size="sm" className="rounded-lg" onClick={onImportSvg}>
+                        <Import className="size-3.5" />
+                        Import SVGs
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg"
+                        onClick={onCreateBlankIcon}
+                      >
+                        <Plus className="size-3.5" />
+                        New icon
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             )}
             {visibleIcons.map((icon) => {
@@ -771,6 +905,7 @@ function ProjectDetailView({
 
               return (
                 <article
+                  role="listitem"
                   key={icon.id}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -781,9 +916,7 @@ function ProjectDetailView({
                   }}
                   className={cn(
                     'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100',
-                    active
-                      ? 'border-primary/30 bg-primary/[0.06]'
-                      : 'hover:bg-accent/60',
+                    active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
                   )}
                 >
                   {/* Hover actions */}
@@ -829,13 +962,19 @@ function ProjectDetailView({
                   >
                     <div className="flex aspect-square w-full items-center justify-center rounded-md">
                       {svg ? (
-                        <div className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]" dangerouslySetInnerHTML={{ __html: svg }} />
+                        <div
+                          aria-hidden="true"
+                          className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]"
+                          dangerouslySetInnerHTML={{ __html: svg }}
+                        />
                       ) : (
                         <Grid3X3 className="size-4 text-muted-foreground/40" />
                       )}
                     </div>
                     <div className="w-full text-center">
-                      <p className="truncate text-[11px] font-medium text-foreground">{icon.name}</p>
+                      <p className="truncate text-[11px] font-medium text-foreground">
+                        {icon.name}
+                      </p>
                     </div>
                   </Link>
                 </article>
@@ -898,4 +1037,11 @@ function toKebab(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function buildImportedProjectName(files: File[]) {
+  if (files.length === 1) {
+    return `${files[0]!.name.replace(/\.svg$/i, '')} imports`;
+  }
+  return 'Imported Icons';
 }

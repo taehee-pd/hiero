@@ -113,7 +113,6 @@ export function ExplorerShell() {
     renameIconSet,
     setActiveIconSet,
     openIconTab,
-    createBlankIcon,
   } = useEditorActions();
   const router = useRouter();
 
@@ -317,18 +316,6 @@ export function ExplorerShell() {
           existingIconIds: existingIds,
           sourceName: file.name,
         });
-
-        if (!targetIconSetId && shouldCreateProject) {
-          const suggestedName =
-            files.length === 1
-              ? buildProjectNameFromFile(file.name)
-              : 'Imported Icons';
-          targetIconSetId = addIconSet(suggestedName) ?? editorStore.getState().activeIconSetId;
-          if (targetIconSetId) {
-            setActiveIconSet(targetIconSetId);
-            setView({ level: 'project', iconSetId: targetIconSetId });
-          }
-        }
 
         existingIds.add(icon.id);
         editorStore.getState().insertIcon(icon);
@@ -1136,7 +1123,6 @@ function ProjectDetailView({
                     'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100',
                     active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
                   )}
-                  role="listitem"
                 >
                   <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                     <button

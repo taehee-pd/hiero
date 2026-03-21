@@ -77,7 +77,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
     const nextPreview = buildTimelineTransitionPreview(transition, variant, p);
     if (!nextPreview) return;
     setTransitionPreview(nextPreview);
-  }, [setTransitionPreview, transition, variant.states]);
+  }, [setTransitionPreview, transition, variant]);
 
   const togglePlay = useCallback(() => {
     setPlaying((v) => !v);

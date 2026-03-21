@@ -9,7 +9,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import type { Layer, State, Transition } from '@/lib/schema/types';
+import type { State, Transition } from '@/lib/schema/types';
 import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
 import { analyzeTopologyCompatibility } from '@/lib/runtime-core/topology-detection';
 
@@ -51,7 +51,7 @@ function getReadinessLevel(
 export function MorphReadinessIndicator({
   fromState,
   toState,
-  transition,
+  transition: _transition,
   readiness,
 }: MorphReadinessIndicatorProps) {
   const topology = useMemo(

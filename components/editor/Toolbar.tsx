@@ -41,7 +41,13 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   clearCurrentProjectPath,
   exportSvg,
@@ -246,15 +252,23 @@ export function Toolbar() {
   return (
     <>
       <header
-        className="workspace-header mx-3 mb-3 mt-3 rounded-2xl px-3 py-1.5"
+        className="workspace-header mx-3 mb-2 mt-3 rounded-[1.35rem] px-3 py-1.5"
         style={{ fontFamily: 'var(--font-system)', minHeight: 'var(--toolbar-height)' }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="mr-auto min-w-0">
-            <p className="truncate text-[13px] font-medium tracking-tight text-foreground">
-              {projectName}
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="truncate text-[13px] font-semibold tracking-tight text-foreground">
+                {projectName}
+              </p>
+              <Badge
+                variant="outline"
+                className="h-6 rounded-full border-border/70 bg-background/80 px-2 text-[10px] font-medium text-muted-foreground"
+              >
+                {isDirty ? 'Unsaved' : 'Saved'}
+              </Badge>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
               <span className="text-border-subtle">/</span>
               <span>{selectionCount} selected</span>
@@ -262,7 +276,6 @@ export function Toolbar() {
           </div>
 
           <ToolbarGroup>
-            <ToolbarButton icon={Plus} label="New Icon" onClick={handleCreateBlankIcon} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -280,6 +293,10 @@ export function Toolbar() {
                 <DropdownMenuItem onSelect={handleNewProject}>
                   <FilePlus2 className="size-4" />
                   New Project
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleCreateBlankIcon} disabled={!activeIconSetId}>
+                  <Plus className="size-4" />
+                  New Icon
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => void handleOpenProject()}>
                   <FolderOpen className="size-4" />
@@ -372,9 +389,27 @@ export function Toolbar() {
             >
               {Math.round(zoom * 100)}%
             </Badge>
-            <ToolbarButton icon={ZoomOut} label="Zoom Out" onClick={handleZoomOut} compact shortcut="-" />
-            <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={handleZoomIn} compact shortcut="+" />
-            <ToolbarButton icon={Maximize2} label="Fit View" onClick={handleZoomFit} compact shortcut="0" />
+            <ToolbarButton
+              icon={ZoomOut}
+              label="Zoom Out"
+              onClick={handleZoomOut}
+              compact
+              shortcut="-"
+            />
+            <ToolbarButton
+              icon={ZoomIn}
+              label="Zoom In"
+              onClick={handleZoomIn}
+              compact
+              shortcut="+"
+            />
+            <ToolbarButton
+              icon={Maximize2}
+              label="Fit View"
+              onClick={handleZoomFit}
+              compact
+              shortcut="0"
+            />
             <ToolbarButton
               icon={HelpCircle}
               label="Shortcuts"

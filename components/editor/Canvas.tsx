@@ -51,6 +51,7 @@ function hasSvgDragData(dataTransfer: DataTransfer): boolean {
 
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const interactionRootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragDepthRef = useRef(0);
@@ -497,12 +498,13 @@ export function Canvas() {
   // Imperative pointer interaction engine.
   useEffect(() => {
     const svg = svgRef.current;
+    const interactionRoot = interactionRootRef.current;
     if (!svg) return;
 
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !interactionRoot) return;
 
-    const editor = new PathEditor(svg, container);
+    const editor = new PathEditor(svg, container, interactionRoot);
     return () => editor.destroy();
   }, []);
 
@@ -695,7 +697,7 @@ export function Canvas() {
     <div
       ref={containerRef}
       className={cn(
-        'workspace-canvas-shell relative flex h-full w-full items-center justify-center rounded-lg',
+        'workspace-canvas-shell relative flex h-full w-full items-center justify-center',
         isDragPanning ? 'cursor-grabbing' : isSpacePanEnabled ? 'cursor-grab' : undefined,
         isDropActive && 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background',
       )}
@@ -711,10 +713,6 @@ export function Canvas() {
         void showNativeContextMenu('canvas');
       }}
     >
-      <div
-        className="workspace-canvas-grid pointer-events-none absolute inset-0 opacity-[0.55]"
-      />
-
       {icon && variant ? (
         <Rulers
           containerRef={containerRef}
@@ -728,12 +726,40 @@ export function Canvas() {
         />
       ) : null}
 
-      {icon && variant && currentState && (
-        <div
-          className="workspace-stage pointer-events-none absolute rounded-md"
-          style={stageStyle}
+      <div
+        ref={interactionRootRef}
+        className="absolute inset-0 flex items-center justify-center"
+        data-canvas-interaction-root
+      >
+        <div className="absolute inset-0" data-canvas-draft-surface />
+
+        {icon && variant && currentState && (
+          <div className="workspace-stage pointer-events-none absolute" style={stageStyle} />
+        )}
+
+        <svg
+          ref={svgRef}
+          data-editor-canvas="true"
+          className="pointer-events-auto relative z-10 cursor-crosshair"
+          viewBox={vb.join(' ')}
+          style={{
+            width: `${iconWidth * scale}px`,
+            height: `${iconHeight * scale}px`,
+            transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
+            color: 'currentColor',
+            filter: 'drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08))',
+            overflow: 'visible',
+          }}
+          aria-label="Icon canvas"
         />
-      )}
+
+        {/* Canvas overlay for handles/guides */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 pointer-events-none"
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
 
       {icon && variant && currentState ? (
         <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 text-xs text-muted-foreground">
@@ -745,30 +771,8 @@ export function Canvas() {
         </div>
       ) : null}
 
-      <svg
-        ref={svgRef}
-        data-editor-canvas="true"
-        className="pointer-events-auto cursor-crosshair"
-        viewBox={vb.join(' ')}
-        style={{
-          width: `${iconWidth * scale}px`,
-          height: `${iconHeight * scale}px`,
-          transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
-          color: 'currentColor',
-          filter: 'drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08))',
-        }}
-        aria-label="Icon canvas"
-      />
-
-      {/* Canvas overlay for handles/guides */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 pointer-events-none"
-        style={{ width: '100%', height: '100%' }}
-      />
-
       {(!icon || !variant || !currentState) && (
-        <div className="workspace-empty-state absolute rounded-md px-6 py-5 text-sm text-muted-foreground">
+        <div className="workspace-empty-state absolute px-6 py-5 text-sm text-muted-foreground">
           No icon selected
         </div>
       )}

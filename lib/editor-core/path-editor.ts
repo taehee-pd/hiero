@@ -105,6 +105,7 @@ function getActiveVariantState(
 export class PathEditor {
   private svg: SVGSVGElement;
   private container: HTMLElement | SVGSVGElement;
+  private eventTarget: HTMLElement | SVGSVGElement;
   private isDragging = false;
   private dragMode: DragMode = null;
   private dragStartX = 0;
@@ -124,10 +125,15 @@ export class PathEditor {
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
 
-  constructor(svg: SVGSVGElement, container?: HTMLElement | SVGSVGElement) {
+  constructor(
+    svg: SVGSVGElement,
+    container?: HTMLElement | SVGSVGElement,
+    eventTarget?: HTMLElement | SVGSVGElement,
+  ) {
     this.svg = svg;
     const svgRoot = (svg as Element & { closest?: (selector: string) => Element | null }).closest?.('[data-canvas-root]') as HTMLElement | null;
     this.container = container ?? svgRoot ?? svg.parentElement ?? svg;
+    this.eventTarget = eventTarget ?? this.container;
     this.attach();
   }
 
@@ -139,16 +145,16 @@ export class PathEditor {
     const onKeyDown = this.onKeyDown.bind(this);
     const onDblClick = this.onDoubleClick.bind(this);
 
-    this.svg.addEventListener('pointerdown', onDown);
-    this.svg.addEventListener('dblclick', onDblClick);
+    this.eventTarget.addEventListener('pointerdown', onDown as EventListener);
+    this.eventTarget.addEventListener('dblclick', onDblClick as EventListener);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onCancel);
     window.addEventListener('keydown', onKeyDown);
 
     this.cleanup = () => {
-      this.svg.removeEventListener('pointerdown', onDown);
-      this.svg.removeEventListener('dblclick', onDblClick);
+      this.eventTarget.removeEventListener('pointerdown', onDown as EventListener);
+      this.eventTarget.removeEventListener('dblclick', onDblClick as EventListener);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
@@ -159,7 +165,7 @@ export class PathEditor {
   }
 
   private capturePointer(pointerId: number) {
-    this.svg.setPointerCapture?.(pointerId);
+    this.eventTarget.setPointerCapture?.(pointerId);
     this.activePointerId = pointerId;
   }
 
@@ -167,7 +173,7 @@ export class PathEditor {
     const id = pointerId ?? this.activePointerId;
     if (id === null || id === undefined) return;
     try {
-      this.svg.releasePointerCapture?.(id);
+      this.eventTarget.releasePointerCapture?.(id);
     } catch {
       // ignore release failures for already-released pointers.
     }

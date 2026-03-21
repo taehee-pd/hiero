@@ -92,27 +92,6 @@ export function useCanvasOverlay(
       const toScreen = (x: number, y: number) =>
         new scope.Point(left + (x - vx) * scale, top + (y - vy) * scale);
 
-      if (scale >= 4) {
-        const gridStep = scale;
-        for (let x = left; x <= left + renderWidth; x += gridStep) {
-          const line = new scope.Path.Line(
-            new scope.Point(x, top),
-            new scope.Point(x, top + renderHeight),
-          );
-          line.strokeColor = new scope.Color('rgba(255,255,255,0.06)');
-          line.strokeWidth = 0.5;
-        }
-
-        for (let y = top; y <= top + renderHeight; y += gridStep) {
-          const line = new scope.Path.Line(
-            new scope.Point(left, y),
-            new scope.Point(left + renderWidth, y),
-          );
-          line.strokeColor = new scope.Color('rgba(255,255,255,0.06)');
-          line.strokeWidth = 0.5;
-        }
-      }
-
       if (guidesVisible !== false && guideSet?.items?.length) {
         drawGuideItems(
           scope,

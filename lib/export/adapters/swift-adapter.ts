@@ -142,7 +142,7 @@ export function generateSwiftFromRuntime(
 function generateSwiftUIComponent(
   name: string,
   icon: Icon,
-  downgraded: DowngradedPayload[],
+  _downgraded: DowngradedPayload[],
   _minimumTarget: string,
 ): string {
   const stateIds = collectStateIds(icon);

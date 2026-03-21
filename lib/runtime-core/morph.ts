@@ -5,7 +5,6 @@ import {
   crossIconMorph,
   findOptimalShapeIndex,
   rotateSubPathSegments,
-  interpolateHandleRotational,
 } from './cross-icon-morph';
 
 export type MorphInterpolator = (t: number) => string;

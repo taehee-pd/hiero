@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-20 (UX flow pass completed)
+**Last updated:** 2026-03-21 (editor timeline preview fix completed)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -32,6 +32,14 @@ in this order:
 ---
 
 ## Recently Completed
+
+- [x] **2026-03-21 — Editor timeline preview now renders interpolated frames.**
+  `components/editor/TimelineEditor.tsx` now builds the same resolved
+  transition preview payload used by the inspector preview flow, so
+  scrubbing or playing a transition in the editor timeline sends
+  interpolated values to the canvas instead of an empty frame map.
+  Regression coverage was added in
+  `tests/timeline-editor-preview.test.ts`.
 
 - [x] **2026-03-20 — Explorer/editor UX flow pass.**
   The workspace surface now exposes import at the top level, project cards

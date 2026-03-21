@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { resolveTransition } from '@/lib/runtime-core';
+import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
+import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
@@ -24,6 +25,28 @@ type SelectedKeyframe = {
   property: NumericTrackProperty;
   keyframeIndex: number;
 };
+
+export function buildTimelineTransitionPreview(
+  transition: Transition,
+  variant: Variant,
+  progress: number,
+): TransitionPreview | null {
+  const fromState = variant.states[transition.from];
+  const toState = variant.states[transition.to];
+  if (!fromState || !toState) return null;
+
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const resolvedTransition = resolveTransition(transition, fromState, toState);
+
+  return {
+    transitionId: transition.id,
+    baseStateId: transition.from,
+    targetStateId: transition.to,
+    progress: clampedProgress,
+    resolvedTransition,
+    interpolatedValues: interpolateTransitionValues(resolvedTransition, clampedProgress),
+  };
+}
 
 export function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: Transition; variant: Variant }) {
   const { patchTransition, setTransitionPreview } = useEditorActions();
@@ -51,18 +74,9 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
   const scrubTo = useCallback((progress: number) => {
     const p = Math.max(0, Math.min(1, progress));
     setPlayhead(p);
-    const fromState = variant.states[transition.from];
-    const toState = variant.states[transition.to];
-    if (!fromState || !toState) return;
-    const resolved = resolveTransition(transition, fromState, toState);
-    setTransitionPreview({
-      transitionId: transition.id,
-      baseStateId: transition.from,
-      targetStateId: transition.to,
-      progress: p,
-      resolvedTransition: resolved,
-      interpolatedValues: {},
-    });
+    const nextPreview = buildTimelineTransitionPreview(transition, variant, p);
+    if (!nextPreview) return;
+    setTransitionPreview(nextPreview);
   }, [setTransitionPreview, transition, variant.states]);
 
   const togglePlay = useCallback(() => {

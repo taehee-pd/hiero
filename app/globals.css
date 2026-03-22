@@ -1282,7 +1282,7 @@
     align-items: center;
     gap: 4px;
     border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 10px;
+    border-radius: 0;
     background: #ffffff;
     padding: 6px;
   }
@@ -1340,7 +1340,7 @@
     flex-direction: column;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 10px;
+    border-radius: 0;
     background: #ffffff;
   }
 
@@ -1556,7 +1556,7 @@
     min-height: 0;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 12px;
+    border-radius: 0;
     background: #f7fafc;
   }
 
@@ -1574,6 +1574,7 @@
     bottom: 14px;
     display: flex;
     align-items: center;
+    gap: 2px;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, 0.05);
     border-radius: 9px;
@@ -1588,6 +1589,10 @@
     align-items: center;
     gap: 4px;
     padding: 4px;
+  }
+
+  .wire-dock-group + .wire-dock-group {
+    border-left: 1px solid #e6e6e6;
   }
 
   .wire-dock-icon {
@@ -1605,26 +1610,99 @@
     color: #0d99ff;
   }
 
-  .wire-dock-zoom {
-    display: flex;
+  .wire-zoom-trigger {
+    display: inline-flex;
     height: 32px;
     align-items: center;
-    border-left: 1px solid #e6e6e6;
+    gap: 6px;
     border-right: 1px solid #e6e6e6;
-    padding: 0 4px;
-  }
-
-  .wire-zoom-select {
-    height: 20px;
-    width: 54px;
-    border: 1px solid #e6e6e6;
-    border-radius: 4px;
-    background: #ffffff;
-    padding: 0 6px;
+    padding: 0 12px;
+    font-family: var(--font-geist-sans);
     font-size: 11px;
     line-height: 16px;
-    text-align: center;
+    font-weight: 550;
+    color: rgba(0, 0, 0, 0.88);
+  }
+
+  .wire-zoom-trigger:hover {
+    background: rgba(13, 153, 255, 0.06);
+  }
+
+  .wire-zoom-popover {
+    width: 260px;
+    padding: 0;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: rgba(28, 28, 30, 0.96);
+    color: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  }
+
+  .wire-zoom-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wire-zoom-form {
+    padding: 22px 20px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .wire-zoom-input {
+    display: block;
+    width: 100%;
+    height: 64px;
+    border: 2px solid #0d99ff;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0 16px;
+    font-family: var(--font-geist-sans);
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 550;
+    color: #ffffff;
     outline: none;
+  }
+
+  .wire-zoom-input::selection {
+    background: rgba(13, 153, 255, 0.35);
+  }
+
+  .wire-zoom-actions {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+  }
+
+  .wire-zoom-action {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    font-family: var(--font-geist-sans);
+    text-align: left;
+    font-size: 14px;
+    line-height: 20px;
+    color: rgba(255, 255, 255, 0.96);
+  }
+
+  .wire-zoom-action > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .wire-zoom-action:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .wire-zoom-shortcut {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.56);
+    font-family: var(--font-geist-sans);
+    font-size: 13px;
+    line-height: 18px;
   }
 
   .wire-panel-title {

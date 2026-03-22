@@ -325,7 +325,7 @@ export function Rulers({
         metrics.toSvgX(RULER_SIZE),
         metrics.toSvgX(containerSize.width),
         metrics.scale,
-        metrics.toScreenX,
+        (value) => metrics.toScreenX(value) - RULER_SIZE,
       ),
     [containerSize.width, metrics],
   );
@@ -335,7 +335,7 @@ export function Rulers({
         metrics.toSvgY(RULER_SIZE),
         metrics.toSvgY(containerSize.height),
         metrics.scale,
-        metrics.toScreenY,
+        (value) => metrics.toScreenY(value) - RULER_SIZE,
       ),
     [containerSize.height, metrics],
   );
@@ -410,7 +410,7 @@ export function Rulers({
       <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
 
       <svg
-        className="pointer-events-auto absolute left-6 right-0 top-0 h-6 cursor-row-resize overflow-visible border-b border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        className="pointer-events-auto absolute left-6 top-0 h-6 w-[calc(100%-24px)] cursor-row-resize overflow-hidden border-b border-border/70 bg-background/90 backdrop-blur-sm touch-none"
         onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {horizontalTicks.map((tick) => (
@@ -439,7 +439,7 @@ export function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute bottom-0 left-0 top-6 w-6 cursor-col-resize overflow-visible border-r border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        className="pointer-events-auto absolute left-0 top-6 h-[calc(100%-24px)] w-6 cursor-col-resize overflow-hidden border-r border-border/70 bg-background/90 backdrop-blur-sm touch-none"
         onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {verticalTicks.map((tick) => (

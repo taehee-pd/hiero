@@ -39,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
@@ -183,6 +184,23 @@ function describePaint(paint?: PaintRef) {
   return `Radial gradient`;
 }
 
+function clampZoomValue(value: number) {
+  return Math.max(0.1, Math.min(32, value));
+}
+
+function formatZoomPercent(zoom: number) {
+  const rounded = Math.round(zoom * 1000) / 10;
+  return Number.isInteger(rounded) ? `${rounded.toFixed(0)}%` : `${rounded.toFixed(1)}%`;
+}
+
+function parseZoomPercentInput(value: string) {
+  const normalized = value.replace(/%/g, '').trim();
+  if (!normalized) return null;
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return null;
+  return clampZoomValue(parsed / 100);
+}
+
 function TinyLabel({ children }: { children: React.ReactNode }) {
   return <p className="wire-label">{children}</p>;
 }
@@ -207,13 +225,9 @@ function PropertyValue({ children }: { children: React.ReactNode }) {
 }
 
 function ToolRail({
-  activeTool,
-  onToolSelect,
   onOpenCommand,
   onOpenImport,
 }: {
-  activeTool: string;
-  onToolSelect: (tool: (typeof TOOL_ITEMS)[number]['tool']) => void;
   onOpenCommand: () => void;
   onOpenImport: () => void;
 }) {
@@ -223,25 +237,6 @@ function ToolRail({
         <Link href="/" className="wire-rail-home" aria-label="Back to home">
           <span className="wire-rail-home-mark" />
         </Link>
-      </div>
-
-      <div className="wire-rail-section">
-        {TOOL_ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.tool}
-              type="button"
-              data-active={activeTool === item.tool ? 'true' : 'false'}
-              className="wire-rail-button"
-              onClick={() => onToolSelect(item.tool)}
-              title={item.label}
-              aria-label={item.label}
-            >
-              <Icon className="size-4" />
-            </button>
-          );
-        })}
       </div>
 
       <div className="wire-rail-section mt-auto">
@@ -480,43 +475,157 @@ function LeftSidebar({
 }
 
 function CanvasDock({
+  activeTool,
   zoom,
   guidesVisible,
   snapEnabled,
+  onToolSelect,
   onZoomChange,
   onToggleGuides,
   onToggleSnap,
 }: {
+  activeTool: string;
   zoom: number;
   guidesVisible: boolean;
   snapEnabled: boolean;
+  onToolSelect: (tool: (typeof TOOL_ITEMS)[number]['tool']) => void;
   onZoomChange: (zoom: number | 'fit') => void;
   onToggleGuides: () => void;
   onToggleSnap: () => void;
 }) {
+  const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
+  const [zoomInput, setZoomInput] = useState(formatZoomPercent(zoom));
+
+  useEffect(() => {
+    setZoomInput(formatZoomPercent(zoom));
+  }, [zoom]);
+
+  const commitZoomInput = () => {
+    const parsedZoom = parseZoomPercentInput(zoomInput);
+    if (parsedZoom === null) {
+      setZoomInput(formatZoomPercent(zoom));
+      return;
+    }
+    onZoomChange(parsedZoom);
+    setZoomInput(formatZoomPercent(parsedZoom));
+    setZoomMenuOpen(false);
+  };
+
+  const handleZoomAction = (nextZoom: number | 'fit') => {
+    if (nextZoom === 'fit') {
+      onZoomChange('fit');
+      setZoomMenuOpen(false);
+      return;
+    }
+    const clampedZoom = clampZoomValue(nextZoom);
+    onZoomChange(clampedZoom);
+    setZoomInput(formatZoomPercent(clampedZoom));
+    setZoomMenuOpen(false);
+  };
+
   return (
     <div className="wire-dock">
-      <div className="wire-dock-zoom">
-        <select
-          value={String(Math.round(zoom * 100))}
-          onChange={(event) => {
-            if (event.target.value === 'fit') {
-              onZoomChange('fit');
-              return;
-            }
-            onZoomChange(Number.parseInt(event.target.value, 10) / 100);
-          }}
-          className="wire-zoom-select"
-          aria-label="Canvas zoom"
-        >
-          <option value="50">50%</option>
-          <option value="75">75%</option>
-          <option value="100">100%</option>
-          <option value="150">150%</option>
-          <option value="200">200%</option>
-          <option value="fit">Fit</option>
-        </select>
+      <div className="wire-dock-group">
+        {TOOL_ITEMS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.tool}
+              type="button"
+              data-active={activeTool === item.tool ? 'true' : 'false'}
+              className="wire-dock-icon"
+              onClick={() => onToolSelect(item.tool)}
+              title={item.label}
+              aria-label={item.label}
+            >
+              <Icon className="size-4" />
+            </button>
+          );
+        })}
       </div>
+
+      <Popover open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
+        <PopoverTrigger asChild>
+          <button type="button" className="wire-zoom-trigger" aria-label="Canvas zoom controls">
+            <span>{formatZoomPercent(zoom)}</span>
+            <ChevronDown className="size-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="center"
+          className="w-[220px] overflow-hidden rounded-xl border border-border/70 bg-background p-0 text-foreground shadow-[0_20px_44px_rgba(15,23,42,0.14)]"
+        >
+          <div className="flex flex-col">
+            <form
+              className="border-b border-border/70 px-4 pb-3 pt-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitZoomInput();
+              }}
+            >
+              <input
+                autoFocus
+                value={zoomInput}
+                onChange={(event) => setZoomInput(event.target.value)}
+                onBlur={commitZoomInput}
+                className="block h-11 w-full rounded-lg border-2 border-sky-500 bg-background px-3 font-[var(--font-geist-sans)] text-[15px] leading-5 font-[550] text-foreground outline-none"
+                inputMode="decimal"
+                aria-label="Zoom percentage"
+              />
+            </form>
+
+            <div className="flex flex-col py-1.5">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction(zoom * 1.25)}
+              >
+                <span className="min-w-0 flex-1">Zoom in</span>
+                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd +</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction(zoom / 1.25)}
+              >
+                <span className="min-w-0 flex-1">Zoom out</span>
+                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd -</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction('fit')}
+              >
+                <span className="min-w-0 flex-1">Zoom to fit</span>
+                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Shift 1</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction(0.5)}
+              >
+                <span className="min-w-0 flex-1">Zoom to 50%</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction(1)}
+              >
+                <span className="min-w-0 flex-1">Zoom to 100%</span>
+                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd 0</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                onClick={() => handleZoomAction(2)}
+              >
+                <span className="min-w-0 flex-1">Zoom to 200%</span>
+              </button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <div className="wire-dock-group">
         <button
@@ -1458,13 +1567,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   );
 
   return (
-    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white p-2">
+    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
       {desktop ? <TitleTabBar /> : null}
 
-      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[52px_196px_minmax(0,1fr)_288px]">
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_196px_minmax(0,1fr)_288px]">
         <ToolRail
-          activeTool={tool}
-          onToolSelect={(nextTool) => setTool(nextTool)}
           onOpenCommand={() => setCommandOpen(true)}
           onOpenImport={() => setImportDialogOpen(true)}
         />
@@ -1520,9 +1627,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             )}
 
             <CanvasDock
+              activeTool={tool}
               zoom={viewport.zoom}
               guidesVisible={guidesVisible}
               snapEnabled={snapEnabled}
+              onToolSelect={(nextTool) => setTool(nextTool)}
               onZoomChange={(nextZoom) => {
                 if (nextZoom === 'fit') {
                   window.dispatchEvent(new CustomEvent('editor:fit-canvas'));

@@ -59,9 +59,13 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
   const panSessionRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
   const panDeltaRef = useRef({ x: 0, y: 0 });
   const panFrameRef = useRef<number | null>(null);
+  const pinchFrameRef = useRef<number | null>(null);
+  const pinchFactorRef = useRef(1);
+  const pinchCursorRef = useRef<{ x: number; y: number } | null>(null);
   const [isDropActive, setIsDropActive] = useState(false);
   const [isSpacePanEnabled, setIsSpacePanEnabled] = useState(false);
   const [isDragPanning, setIsDragPanning] = useState(false);
+  const lastAutoFitTargetRef = useRef<string | null>(null);
 
   // Subscribe to relevant state for re-render
   const icon = useEditorStore(selectCurrentIcon);
@@ -124,6 +128,42 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     });
   }, [flushPanDelta]);
 
+  const flushPinchZoom = useCallback(() => {
+    pinchFrameRef.current = null;
+    const factor = pinchFactorRef.current;
+    const cursor = pinchCursorRef.current;
+    pinchFactorRef.current = 1;
+    pinchCursorRef.current = null;
+    if (!Number.isFinite(factor) || factor <= 0 || !cursor) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const state = editorStore.getState();
+    const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
+    if (nextZoom === state.viewport.zoom) return;
+
+    const rect = container.getBoundingClientRect();
+    const cursorX = cursor.x - rect.left - rect.width / 2;
+    const cursorY = cursor.y - rect.top - rect.height / 2;
+    const scaleFactor = nextZoom / state.viewport.zoom;
+    state.setViewport({
+      zoom: nextZoom,
+      panX: cursorX - scaleFactor * (cursorX - state.viewport.panX),
+      panY: cursorY - scaleFactor * (cursorY - state.viewport.panY),
+    });
+  }, []);
+
+  const queuePinchZoom = useCallback((factor: number, clientX: number, clientY: number) => {
+    if (!Number.isFinite(factor) || factor <= 0) return;
+    pinchFactorRef.current *= factor;
+    pinchCursorRef.current = { x: clientX, y: clientY };
+    if (pinchFrameRef.current !== null) return;
+    pinchFrameRef.current = requestAnimationFrame(() => {
+      flushPinchZoom();
+    });
+  }, [flushPinchZoom]);
+
   const fitCanvasToView = useCallback(() => {
     const container = containerRef.current;
     if (!container || !variant) return;
@@ -149,6 +189,8 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     const roundedZoom = Math.round(nextZoom * 100) / 100;
     state.setViewport({ zoom: roundedZoom, panX: 0, panY: 0 });
   }, [variant]);
+
+  const autoFitTargetKey = icon && variant ? `${icon.id}:${variant.id}:${variant.viewBox.join(',')}` : null;
 
   const handleSvgDrop = useCallback(async (file: File) => {
     try {
@@ -253,10 +295,17 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     });
   }, [currentState, project?.tokenSet?.colors, renderingMode, transitionPreview, variant]);
 
-  // Draw editable handles on the active layer for direct-select and pen workflows.
   useEffect(() => {
+    if (!autoFitTargetKey) {
+      lastAutoFitTargetRef.current = null;
+      return;
+    }
+    if (lastAutoFitTargetRef.current === autoFitTargetKey) {
+      return;
+    }
+    lastAutoFitTargetRef.current = autoFitTargetKey;
     fitCanvasToView();
-  }, [fitCanvasToView]);
+  }, [autoFitTargetKey, fitCanvasToView]);
 
   useEffect(() => {
     const handleFitRequest = () => fitCanvasToView();
@@ -527,22 +576,6 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     const container = containerRef.current;
     if (!container) return;
 
-    const zoomCanvas = (factor: number) => {
-      if (!Number.isFinite(factor) || factor <= 0) return;
-      const state = editorStore.getState();
-      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
-      if (nextZoom === state.viewport.zoom) return;
-      const rect = container.getBoundingClientRect();
-      const cursorX = eventClientRef.current.x - rect.left - rect.width / 2;
-      const cursorY = eventClientRef.current.y - rect.top - rect.height / 2;
-      const scaleFactor = nextZoom / state.viewport.zoom;
-      state.setViewport({
-        zoom: nextZoom,
-        panX: cursorX - scaleFactor * (cursorX - state.viewport.panX),
-        panY: cursorY - scaleFactor * (cursorY - state.viewport.panY),
-      });
-    };
-
     const panCanvas = (deltaX: number, deltaY: number) => {
       const state = editorStore.getState();
       state.setViewport({
@@ -556,7 +589,7 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
       eventClientRef.current = { x: event.clientX, y: event.clientY };
 
       if (event.ctrlKey || event.metaKey) {
-        zoomCanvas(Math.exp(-event.deltaY * 0.01));
+        queuePinchZoom(Math.exp(-event.deltaY * 0.01), event.clientX, event.clientY);
         return;
       }
 
@@ -573,12 +606,21 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
       const scale = (event as Event & { scale?: number }).scale ?? gestureScaleRef.current;
       const delta = scale / Math.max(gestureScaleRef.current, 0.0001);
       gestureScaleRef.current = scale;
-      zoomCanvas(delta);
+      const gestureEvent = event as Event & { clientX?: number; clientY?: number };
+      queuePinchZoom(
+        delta,
+        gestureEvent.clientX ?? eventClientRef.current.x,
+        gestureEvent.clientY ?? eventClientRef.current.y,
+      );
     };
 
     const handleGestureEnd = (event: Event) => {
       event.preventDefault();
       gestureScaleRef.current = 1;
+      if (pinchFrameRef.current !== null) {
+        cancelAnimationFrame(pinchFrameRef.current);
+        flushPinchZoom();
+      }
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
@@ -587,12 +629,16 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     container.addEventListener('gestureend', handleGestureEnd as EventListener);
 
     return () => {
+      if (pinchFrameRef.current !== null) {
+        cancelAnimationFrame(pinchFrameRef.current);
+        pinchFrameRef.current = null;
+      }
       container.removeEventListener('wheel', handleWheel);
       container.removeEventListener('gesturestart', handleGestureStart as EventListener);
       container.removeEventListener('gesturechange', handleGestureChange as EventListener);
       container.removeEventListener('gestureend', handleGestureEnd as EventListener);
     };
-  }, []);
+  }, [flushPinchZoom, queuePinchZoom]);
 
   const eventClientRef = useRef({ x: 0, y: 0 });
 

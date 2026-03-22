@@ -6,6 +6,10 @@ name = "IconStudio"
 script = ""
 
 [[actions]]
-name = "실행됨"
+name = "실행"
 icon = "run"
-command = "npm run dev"
+command = '''
+corepack pnpm install
+corepack pnpm desktop:dev
+'''
+platform = "darwin"

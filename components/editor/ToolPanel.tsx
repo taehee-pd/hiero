@@ -71,7 +71,7 @@ export function ToolPanel({
       className={cn(
         'flex flex-col gap-2',
         isDock &&
-          'rounded-[1.35rem] border border-border/70 bg-background/88 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur-xl',
+          'flex-row items-center gap-2 rounded-[1.35rem] border border-border/70 bg-background/88 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur-xl',
       )}
     >
       {!isDock ? (
@@ -80,7 +80,7 @@ export function ToolPanel({
         </div>
       ) : null}
 
-      <div className={cn(isDock ? 'flex flex-col gap-2' : 'grid gap-1')}>
+      <div className={cn(isDock ? 'flex items-center gap-2' : 'grid gap-1')}>
         {TOOLS.map((tool) => {
           const isGuideEntry = tool.id === 'guide';
           const isActive = isGuideEntry ? guidesVisible : activeTool === tool.id;
@@ -98,7 +98,6 @@ export function ToolPanel({
               className={cn(
                 'flex items-center',
                 isShapeTool && isActive && 'gap-1',
-                isDock && 'flex-col justify-center',
               )}
             >
               <Tooltip>
@@ -164,7 +163,7 @@ export function ToolPanel({
                           className={cn(
                             'border border-border bg-background px-0 hover:bg-accent/40',
                             isDock
-                              ? 'h-7 w-11 rounded-xl border-border/70'
+                              ? 'h-11 w-8 rounded-2xl border-border/70 bg-background/92'
                               : 'h-10 w-8 rounded-l-sm rounded-r-md',
                           )}
                         >
@@ -210,7 +209,7 @@ export function ToolPanel({
           <p className="text-xs font-medium text-muted-foreground">Snapping</p>
         </div>
       ) : (
-        <div className="my-1 h-px bg-border/70" />
+        <div className="h-8 w-px bg-border/70" />
       )}
 
       <Tooltip>

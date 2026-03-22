@@ -8,10 +8,12 @@ import { Toolbar } from './Toolbar';
 import { ToolPanel } from './ToolPanel';
 import { LayerPanel } from './LayerPanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
+import { IconListPanel } from './IconListPanel';
 import { Canvas } from './Canvas';
 import { InspectorPanel } from './InspectorPanel';
 import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { ImportIconDialog } from './ImportIconDialog';
+import { TimelineEditor } from './TimelineEditor';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,15 +28,24 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
+import type { RenderingMode } from '@/lib/schema/types';
 import { clearCurrentProjectPath, isDesktop } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
+
+const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
+  { value: 'monochrome', label: 'Monochrome' },
+  { value: 'hierarchical', label: 'Hierarchical' },
+  { value: 'palette', label: 'Palette' },
+  { value: 'multicolor', label: 'Multicolor' },
+];
 
 function CurrentDocumentPanel({
   onOpenImport,
@@ -118,7 +129,7 @@ function CurrentDocumentPanel({
       <Button asChild variant="outline" size="sm" className="rounded-xl">
         <Link href="/">
           <ChevronLeft className="size-3.5" />
-          Library
+          Workspace
         </Link>
       </Button>
     </div>
@@ -151,13 +162,15 @@ function VariantPickerBar() {
   const icon = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
   );
+  const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
+  const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
       ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
-  const { addVariant, removeVariant, setCurrentVariant } = useEditorActions();
+  const { addVariant, patchVariant, removeVariant, setCurrentVariant } = useEditorActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [customSize, setCustomSize] = useState('24');
@@ -186,6 +199,13 @@ function VariantPickerBar() {
     });
     setCreateOpen(false);
     setCustomSize(String(size));
+  };
+
+  const handleRenderingModeChange = (value: string) => {
+    if (!currentIconId || !currentVariantId) return;
+    patchVariant(currentIconId, currentVariantId, {
+      renderingMode: value as RenderingMode,
+    });
   };
 
   return (
@@ -290,6 +310,25 @@ function VariantPickerBar() {
             </button>
           );
         })}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="workspace-kicker">Rendering</span>
+        <Select value={renderingMode} onValueChange={handleRenderingModeChange}>
+          <SelectTrigger
+            size="sm"
+            className="h-8 min-w-[10rem] rounded-xl border-border/70 bg-background/70 text-[13px] text-foreground"
+            aria-label="Rendering mode"
+          >
+            <SelectValue placeholder="Rendering Mode" />
+          </SelectTrigger>
+          <SelectContent align="start">
+            {RENDERING_MODE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
@@ -523,65 +562,20 @@ function StateManagerBar() {
   );
 }
 
-function CanvasStatusStrip() {
-  const tool = useEditorStore((s) => s.tool);
-  const variant = useEditorStore((s) =>
-    s.currentIconId && s.currentVariantId
-      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
-      : null,
-  );
-  const stateId = useEditorStore((s) => s.currentStateId);
-  const layerCount = useEditorStore((s) => {
-    if (!s.currentIconId || !s.currentVariantId || !s.currentStateId) return 0;
-    return Object.keys(
-      s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[s.currentStateId]
-        ?.layers ?? {},
-    ).length;
-  });
-
-  const toolLabel =
-    tool === 'direct-select'
-      ? 'direct select'
-      : tool === 'shape'
-        ? 'shape'
-        : tool === 'guide'
-          ? 'guides'
-          : tool;
-
-  return (
-    <div className="pointer-events-none absolute left-4 top-4 z-20 hidden xl:flex">
-      <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/86 px-3 py-2 text-[11px] shadow-[0_14px_34px_rgba(15,23,42,0.1)] backdrop-blur-xl">
-        <span className="font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          {toolLabel}
-        </span>
-        {variant ? (
-          <>
-            <span className="text-border-subtle">·</span>
-            <span className="font-medium text-foreground">
-              {variant.size} × {variant.size}
-            </span>
-          </>
-        ) : null}
-        {stateId ? (
-          <>
-            <span className="text-border-subtle">·</span>
-            <span className="font-medium text-foreground">{stateId}</span>
-          </>
-        ) : null}
-        <span className="text-border-subtle">·</span>
-        <span className="font-medium text-foreground">
-          {layerCount} layer{layerCount === 1 ? '' : 's'}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const router = useRouter();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
+  const currentIcon = useEditorStore((s) =>
+    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
+  );
+  const currentVariant = useEditorStore((s) =>
+    s.currentIconId && s.currentVariantId
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
+      : null,
+  );
+  const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const project = useEditorStore((s) => s.project);
   const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
@@ -594,8 +588,21 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [rightPanelTab, setRightPanelTab] = useState<'inspector' | 'animation'>('inspector');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [desktop, setDesktop] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(true);
   const previousGuidesVisibleRef = useRef(guidesVisible);
   const requestedIconId = initialIconId ?? searchIconId;
+  const currentTransition = useMemo(() => {
+    if (!currentIcon) return null;
+    if (selectedTransitionId && currentIcon.transitions[selectedTransitionId]) {
+      return currentIcon.transitions[selectedTransitionId];
+    }
+    return (
+      Object.values(currentIcon.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id))[0] ??
+      null
+    );
+  }, [currentIcon, selectedTransitionId]);
+  const rightRailTitle = selectedLayerIds[0] ?? currentIcon?.name ?? 'Icon properties';
+  const rightRailModeLabel = rightPanelTab === 'inspector' ? 'Design' : 'Animate';
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -681,6 +688,16 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     router.push(buildEditorRoute(iconId, activeIconSetId));
   };
 
+  const handleSelectIconFromRail = (iconId: string) => {
+    if (!iconId) return;
+    if (activeIconSetId) {
+      openIconTab(activeIconSetId, iconId);
+      router.push(buildEditorRoute(iconId, activeIconSetId));
+      return;
+    }
+    editorStore.getState().setCurrentIcon(iconId);
+  };
+
   return (
     <div
       className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground"
@@ -697,6 +714,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                   onOpenImport={() => setImportDialogOpen(true)}
                   onCreateBlankIcon={handleCreateBlankIcon}
                 />
+              </div>
+
+              <div className="min-h-[15rem] shrink-0 border-b border-border/70">
+                <IconListPanel onSelectIcon={handleSelectIconFromRail} />
               </div>
 
               <div className="border-b border-border/70 px-3 py-3">
@@ -756,23 +777,14 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
               </div>
             </section>
 
-            {currentIconId ? (
-              <section className="studio-panel overflow-hidden rounded-[1.6rem]">
-                <div className="grid gap-0 divide-y divide-border/70 xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-                  <VariantPickerBar />
-                  <StateManagerBar />
-                </div>
-              </section>
-            ) : null}
-
             <section className="studio-panel relative min-h-0 flex-1 overflow-hidden rounded-[1.9rem] p-3 xl:p-4">
-              <CanvasStatusStrip />
-
-              <div className="absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 xl:block">
-                <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} layout="dock" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 hidden justify-center xl:flex">
+                <div className="pointer-events-auto">
+                  <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} layout="dock" />
+                </div>
               </div>
 
-              <div className="relative h-full overflow-hidden rounded-[1.45rem] border border-border/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(243,247,250,0.88))] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:bg-[radial-gradient(circle_at_top,rgba(35,40,46,0.96),rgba(20,24,29,0.94))] xl:pl-[4.75rem]">
+              <div className="relative h-full overflow-hidden rounded-[1.45rem] border border-border/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(243,247,250,0.88))] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:bg-[radial-gradient(circle_at_top,rgba(35,40,46,0.96),rgba(20,24,29,0.94))]">
                 {hasActiveDocument ? (
                   <div className="h-full">
                     <Canvas />
@@ -809,7 +821,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                         <Button asChild variant="outline" className="rounded-xl">
                           <Link href="/">
                             <ChevronLeft className="size-4" />
-                            Back to library
+                            Back to workspace
                           </Link>
                         </Button>
                       </div>
@@ -818,19 +830,30 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                 )}
               </div>
             </section>
+
+            {currentIconId ? (
+              <section className="studio-panel overflow-hidden rounded-[1.6rem]">
+                <div className="grid gap-0 divide-y divide-border/70 xl:grid-cols-2 xl:divide-x xl:divide-y-0">
+                  <VariantPickerBar />
+                  <StateManagerBar />
+                </div>
+              </section>
+            ) : null}
           </main>
 
           <aside className="workspace-column min-h-0">
             <section className="studio-panel min-h-0 flex flex-1 flex-col overflow-hidden rounded-[1.6rem]">
               <div className="border-b border-border/70 px-4 py-3">
-                <p className="workspace-kicker">Properties</p>
+                <p className="workspace-kicker">Context</p>
                 <div className="mt-1 flex items-center justify-between gap-3">
-                  <p className="text-[13px] font-semibold text-foreground">Inspector rail</p>
+                  <p className="truncate text-[13px] font-semibold text-foreground">
+                    {rightRailTitle}
+                  </p>
                   <Badge
                     variant="outline"
                     className="rounded-full border-border/70 bg-background/70 px-2 text-[10px] text-muted-foreground"
                   >
-                    {rightPanelTab === 'inspector' ? 'Inspect' : 'Animate'}
+                    {rightRailModeLabel}
                   </Badge>
                 </div>
               </div>
@@ -840,8 +863,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                 className="flex h-full min-h-0 flex-col"
               >
                 <TabsList className="mx-3 mt-3 grid grid-cols-2 rounded-xl">
-                  <TabsTrigger value="inspector">Inspector</TabsTrigger>
-                  <TabsTrigger value="animation">Animation</TabsTrigger>
+                  <TabsTrigger value="inspector">Design</TabsTrigger>
+                  <TabsTrigger value="animation">Animate</TabsTrigger>
                 </TabsList>
                 <TabsContent value="inspector" className="min-h-0 flex-1 data-[state=active]:flex">
                   <div className="min-h-0 w-full">
@@ -852,6 +875,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                   <div className="min-h-0 w-full">
                     <AnimationStudioPanel
                       onOpenTransitionEditor={() => setRightPanelTab('inspector')}
+                      showTimelineEditor={false}
                     />
                   </div>
                 </TabsContent>
@@ -859,6 +883,49 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             </section>
           </aside>
         </div>
+
+        {hasActiveDocument && currentIconId && currentVariant && rightPanelTab === 'animation' ? (
+          <section className="mt-3 studio-panel overflow-hidden rounded-[1.6rem]">
+            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+              <div>
+                <p className="workspace-kicker">Timeline</p>
+                <p className="mt-1 text-[13px] font-semibold text-foreground">
+                  {currentTransition
+                    ? `${currentTransition.from} → ${currentTransition.to}`
+                    : 'No transition selected'}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => setTimelineOpen((value) => !value)}
+              >
+                {timelineOpen ? 'Collapse' : 'Expand'}
+              </Button>
+            </div>
+            {timelineOpen ? (
+              currentTransition ? (
+                <div className="p-3">
+                  <TimelineEditor
+                    iconId={currentIconId}
+                    transition={currentTransition}
+                    variant={currentVariant}
+                  />
+                </div>
+              ) : (
+                <div className="p-3">
+                  <div className="workspace-empty-state rounded-2xl px-4 py-5 text-left">
+                    <p className="font-medium text-foreground">No timeline to show yet.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Create or select a transition in Animate to scrub keyframes here.
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : null}
+          </section>
+        ) : null}
       </div>
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>

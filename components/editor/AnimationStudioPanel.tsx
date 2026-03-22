@@ -16,8 +16,10 @@ const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
 
 export function AnimationStudioPanel({
   onOpenTransitionEditor,
+  showTimelineEditor = true,
 }: {
   onOpenTransitionEditor?: () => void;
+  showTimelineEditor?: boolean;
 }) {
   const iconId = useEditorStore((s) => s.currentIconId);
   const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null));
@@ -97,8 +99,10 @@ export function AnimationStudioPanel({
     <ScrollArea className="h-full">
       <div className="space-y-3 p-3">
         <div>
-          <p className="text-sm font-semibold">Animation Studio</p>
-          <p className="text-xs text-muted-foreground">Choose a preset and preview it on the canvas.</p>
+          <p className="text-sm font-semibold">Animate</p>
+          <p className="text-xs text-muted-foreground">
+            Preview effects, tune transitions, and manage motion behavior.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -129,7 +133,9 @@ export function AnimationStudioPanel({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Transition Timeline</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Transitions
+            </p>
             <div className="flex items-center gap-2">
               {selectedTransition ? (
                 <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={(value) => {
@@ -138,7 +144,7 @@ export function AnimationStudioPanel({
                 }} />
               ) : null}
               <Button size="sm" variant="outline" onClick={onOpenTransitionEditor}>
-                New Transition
+                Create Transition
               </Button>
             </div>
           </div>
@@ -165,8 +171,17 @@ export function AnimationStudioPanel({
             </div>
           )}
 
-          {iconId && variant && selectedTransition ? (
+          {showTimelineEditor && iconId && variant && selectedTransition ? (
             <TimelineEditor iconId={iconId} transition={selectedTransition} variant={variant} />
+          ) : null}
+          {!showTimelineEditor && selectedTransition ? (
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
+              <p className="text-xs font-medium text-foreground">Timeline is docked below.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Keep working here for transition setup and use the bottom timeline panel for
+                scrubbing and keyframes.
+              </p>
+            </div>
           ) : null}
         </div>
 

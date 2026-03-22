@@ -15,7 +15,6 @@ import {
   Maximize2,
   Import,
   Plus,
-  ChevronDown,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -61,14 +60,6 @@ import {
 } from '@/lib/editor-store/selectors';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import type { RenderingMode } from '@/lib/schema/types';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -80,10 +71,7 @@ export function Toolbar() {
   const router = useRouter();
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
   const zoom = useEditorStore((s) => s.viewport.zoom);
-  const renderingMode = useEditorStore((s) => s.renderingMode);
-  const currentIconId = useEditorStore((s) => s.currentIconId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
-  const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
   const isDirty = useEditorStore((s) => s.isDirty);
   const currentIconName = useEditorStore((s) =>
@@ -239,16 +227,6 @@ export function Toolbar() {
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
-  const handleRenderingModeChange = useCallback(
-    (value: string) => {
-      if (!currentIconId || !currentVariantId) return;
-      editorStore.getState().patchVariant(currentIconId, currentVariantId, {
-        renderingMode: value as RenderingMode,
-      });
-    },
-    [currentIconId, currentVariantId],
-  );
-
   return (
     <>
       <header
@@ -276,75 +254,94 @@ export function Toolbar() {
           </div>
 
           <ToolbarGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="File"
-                  className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
-                >
-                  <FilePlus2 className="size-3.5" />
-                  <span>File</span>
-                  <ChevronDown className="size-3.5 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={handleNewProject}>
-                  <FilePlus2 className="size-4" />
-                  New Project
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleCreateBlankIcon} disabled={!activeIconSetId}>
-                  <Plus className="size-4" />
-                  New Icon
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void handleOpenProject()}>
-                  <FolderOpen className="size-4" />
-                  Open Project
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
-                  <Import className="size-4" />
-                  Import Icon
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Tooltip>
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="File menu"
+                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80"
+                    >
+                      <FilePlus2 className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={handleNewProject}>
+                    <FilePlus2 className="size-4" />
+                    New Project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleCreateBlankIcon} disabled={!activeIconSetId}>
+                    <Plus className="size-4" />
+                    New Icon
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleOpenProject()}>
+                    <FolderOpen className="size-4" />
+                    Open Project
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
+                    <Import className="size-4" />
+                    Import Icon
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <TooltipContent side="bottom">File menu</TooltipContent>
+            </Tooltip>
+            <ToolbarButton
+              icon={Plus}
+              label="New Icon"
+              onClick={handleCreateBlankIcon}
+              compact
+              disabled={!activeIconSetId}
+            />
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <ToolbarButton icon={Save} label="Save" onClick={handleSave} shortcut="Cmd/Ctrl+S" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Export"
-                  className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80"
-                >
-                  <Download className="size-3.5" />
-                  <span>Export</span>
-                  <ChevronDown className="size-3.5 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => void handleExportSvg()}>
-                  <Download className="size-4" />
-                  Export SVG
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleExportSvgPackage}>
-                  <Download className="size-4" />
-                  Export SVG Package
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleExportRuntimeJson}>
-                  <Download className="size-4" />
-                  Export Runtime JSON
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleExportReactLibrary}>
-                  <Download className="size-4" />
-                  Export React Library
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ToolbarButton
+              icon={Save}
+              label="Save"
+              onClick={handleSave}
+              compact
+              shortcut="Cmd/Ctrl+S"
+            />
+            <Tooltip>
+              <DropdownMenu>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Export"
+                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80"
+                    >
+                      <Download className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => void handleExportSvg()}>
+                    <Download className="size-4" />
+                    Export SVG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportSvgPackage}>
+                    <Download className="size-4" />
+                    Export SVG Package
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportRuntimeJson}>
+                    <Download className="size-4" />
+                    Export Runtime JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportReactLibrary}>
+                    <Download className="size-4" />
+                    Export React Library
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <TooltipContent side="bottom">Export</TooltipContent>
+            </Tooltip>
             <SyncPrPanel />
           </ToolbarGroup>
 
@@ -357,29 +354,6 @@ export function Toolbar() {
               compact
               shortcut="Shift+Cmd/Ctrl+Z"
             />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <Select
-              value={renderingMode}
-              onValueChange={handleRenderingModeChange}
-              disabled={!currentIconId || !currentVariantId}
-            >
-              <SelectTrigger
-                size="sm"
-                className="workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground"
-                aria-label="Rendering mode"
-              >
-                <SelectValue placeholder="Rendering Mode" />
-              </SelectTrigger>
-              <SelectContent align="end">
-                {RENDERING_MODE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -469,13 +443,6 @@ export function Toolbar() {
     </>
   );
 }
-
-const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
-  { value: 'monochrome', label: 'Monochrome' },
-  { value: 'hierarchical', label: 'Hierarchical' },
-  { value: 'palette', label: 'Palette' },
-  { value: 'multicolor', label: 'Multicolor' },
-];
 
 function ToolbarGroup({ children }: { children: React.ReactNode }) {
   return <div className="workspace-toolbar-group gap-0.5 p-[3px]">{children}</div>;

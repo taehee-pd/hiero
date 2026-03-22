@@ -1345,15 +1345,46 @@
   }
 
   .wire-sidebar-left {
-    width: 196px;
+    width: 220px;
   }
 
   .wire-sidebar-right {
-    width: 288px;
+    width: 304px;
   }
 
   .wire-sidebar-block {
     background: #ffffff;
+  }
+
+  .wire-sidebar-head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid #ececec;
+    padding: 10px 10px 8px;
+  }
+
+  .wire-sidebar-title-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 2px;
+  }
+
+  .wire-sidebar-title-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .wire-sidebar-subtitle-action {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    line-height: 14px;
+    color: rgba(0, 0, 0, 0.45);
   }
 
   .wire-project-pill {
@@ -1381,8 +1412,8 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    height: 36px;
-    padding: 0 0.4rem;
+    min-height: 30px;
+    padding: 0 2px;
   }
 
   .wire-tabs {
@@ -1425,7 +1456,7 @@
   }
 
   .wire-section {
-    padding: 0 0 8px;
+    padding: 0 0 10px;
   }
 
   .wire-section-header {
@@ -1433,7 +1464,7 @@
     height: 30px;
     align-items: center;
     padding: 0 10px;
-    border-top: 1px solid #e6e6e6;
+    border-top: 1px solid #efefef;
     font-size: 10px;
     line-height: 16px;
     font-weight: 600;
@@ -1706,6 +1737,7 @@
   }
 
   .wire-panel-title {
+    padding: 0 2px;
     font-size: 12px;
     line-height: 18px;
     font-weight: 550;

@@ -27,65 +27,74 @@ export function filterIconsByQuery(
   });
 }
 
-export function IconListPanel() {
+type IconListPanelProps = {
+  onSelectIcon?: (iconId: string) => void;
+};
+
+export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
   const icons = useIconList();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const { setCurrentIcon } = useEditorActions();
   const [query, setQuery] = useState('');
 
-  const filteredIcons = useMemo(
-    () => filterIconsByQuery(icons, query),
-    [icons, query],
-  );
+  const filteredIcons = useMemo(() => filterIconsByQuery(icons, query), [icons, query]);
+
+  const handleSelectIcon = (iconId: string) => {
+    if (onSelectIcon) {
+      onSelectIcon(iconId);
+      return;
+    }
+    setCurrentIcon(iconId);
+  };
 
   return (
-    <div className="flex h-full flex-col border-r border-border bg-card/40">
-      <div className="border-b border-border px-3 py-2">
+    <div className="flex h-full flex-col">
+      <div className="workspace-panel-header px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium uppercase text-muted-foreground">
-            Explorer
-          </span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {icons.length} icons
-          </span>
+          <div>
+            <p className="workspace-kicker text-[11px]">Icon List</p>
+            <p className="mt-1 text-[13px] font-semibold text-foreground">Switch Icons</p>
+          </div>
+          <span className="workspace-badge">{icons.length}</span>
         </div>
 
-        <div className="mt-2 relative">
+        <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search icons, tags, category"
-            className="h-8 pl-7 text-xs"
+            className="h-8 rounded-xl border-border/70 bg-background/70 pl-7 text-xs"
             aria-label="Search icons"
           />
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="workspace-scroll flex-1">
         <div className="flex flex-col gap-0.5 p-1.5">
           {filteredIcons.length === 0 && (
-            <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-              No matching icons
-            </p>
+            <div className="workspace-empty-state mx-1 rounded-xl px-3 py-5 text-center text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">No matching icons</p>
+              <p className="mt-1 text-muted-foreground">Try a name, id, tag, or category.</p>
+            </div>
           )}
 
           {filteredIcons.map((icon) => (
             <button
               key={icon.id}
-              onClick={() => setCurrentIcon(icon.id)}
+              onClick={() => handleSelectIcon(icon.id)}
               className={cn(
-                'flex items-start gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
-                'hover:bg-secondary/70',
+                'flex items-start gap-2 rounded-xl border border-transparent px-2.5 py-2 text-left text-sm transition-colors',
+                'hover:border-border/70 hover:bg-secondary/50',
                 icon.id === currentIconId
-                  ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
+                  ? 'border-primary/25 bg-primary/8 text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]'
                   : 'text-foreground',
               )}
             >
               <Shapes className="mt-0.5 size-3.5 shrink-0 opacity-60" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{icon.name}</span>
-                <span className="block truncate text-sm text-muted-foreground">{icon.id}</span>
+                <span className="block truncate text-[13px] font-medium">{icon.name}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{icon.id}</span>
               </span>
             </button>
           ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,7 +21,7 @@ import { SyncConflictPanel } from './SyncConflictPanel';
 
 type SyncPrPanelProps = {
   iconSetId?: string | null;
-  triggerLabel?: string;
+  triggerLabel?: ReactNode;
   triggerVariant?: 'default' | 'outline' | 'ghost' | 'secondary';
   triggerSize?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm';
   className?: string;

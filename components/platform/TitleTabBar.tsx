@@ -52,8 +52,8 @@ export function TitleTabBar({
   return (
     <div
       className={cn(
-        'title-tab-bar electrobun-webkit-app-region-drag flex shrink-0 items-end border-b border-[var(--border-separator)] bg-[var(--bg-toolbar)] backdrop-blur-xl backdrop-saturate-150',
-        desktop ? 'h-10 pl-[78px]' : 'h-9 pl-3',
+        'title-tab-bar electrobun-webkit-app-region-drag flex shrink-0 items-center border-b border-[var(--border-separator)] bg-[var(--bg-toolbar)] backdrop-blur-xl backdrop-saturate-150',
+        desktop ? 'h-12 pl-[92px]' : 'h-10 pl-3',
       )}
       style={{ WebkitAppRegion: 'drag', fontFamily: 'var(--font-system)' } as React.CSSProperties}
     >
@@ -68,7 +68,7 @@ export function TitleTabBar({
           }
         }}
         className={cn(
-          'title-tab electrobun-webkit-app-region-no-drag flex h-7 items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[13px] font-normal transition-colors',
+          'title-tab electrobun-webkit-app-region-no-drag flex h-8 items-center gap-1.5 rounded-t-lg border border-b-0 px-3.5 text-[13px] font-normal transition-colors',
           !activeTabId || openTabs.length === 0
             ? 'border-[var(--border-subtle)] bg-card text-foreground'
             : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground',
@@ -87,7 +87,7 @@ export function TitleTabBar({
             type="button"
             onClick={() => handleTabClick(tab)}
             className={cn(
-              'title-tab electrobun-webkit-app-region-no-drag group flex h-7 max-w-[10rem] items-center gap-1.5 rounded-t-md border border-b-0 px-3 text-[13px] font-normal transition-colors',
+              'title-tab electrobun-webkit-app-region-no-drag group flex h-8 max-w-[10rem] items-center gap-1.5 rounded-t-lg border border-b-0 px-3.5 text-[13px] font-normal transition-colors',
               isActive
                 ? 'border-[var(--border-subtle)] bg-card text-foreground'
                 : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground',
@@ -101,12 +101,13 @@ export function TitleTabBar({
               onClick={(e) => handleCloseTab(e, tab.id)}
               className={cn(
                 'flex size-4 shrink-0 items-center justify-center rounded transition-colors',
+                desktop && 'size-5',
                 isActive
                   ? 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   : 'opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground',
               )}
             >
-              <X className="size-3" />
+              <X className={cn('size-3', desktop && 'size-3.5')} />
             </span>
           </button>
         );

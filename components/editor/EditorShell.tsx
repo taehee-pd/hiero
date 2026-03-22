@@ -3,17 +3,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Layers2, Plus, Trash2 } from 'lucide-react';
-import { Toolbar } from './Toolbar';
-import { ToolPanel } from './ToolPanel';
-import { LayerPanel } from './LayerPanel';
-import { GuideMasterPanel } from './GuideMasterPanel';
-import { IconListPanel } from './IconListPanel';
-import { Canvas } from './Canvas';
-import { InspectorPanel } from './InspectorPanel';
-import { AnimationStudioPanel } from './AnimationStudioPanel';
-import { ImportIconDialog } from './ImportIconDialog';
-import { TimelineEditor } from './TimelineEditor';
+import {
+  Blend,
+  ChevronDown,
+  Copy,
+  Crosshair,
+  Eye,
+  EyeOff,
+  FolderOpen,
+  MousePointer2,
+  PenTool,
+  Plus,
+  Search,
+  Sparkles,
+  Square,
+} from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from '@/components/ui/command';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,21 +39,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { editorStore } from '@/lib/editor-store/store';
+import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
+import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
-import type { RenderingMode } from '@/lib/schema/types';
-import { clearCurrentProjectPath, isDesktop } from '@/lib/platform/bridge';
+import type { Icon, Layer, LayerBinding, PaintRef, RenderingMode, State, Transition, Variant } from '@/lib/schema/types';
+import { clearCurrentProjectPath, exportSvg, isDesktop, saveProject } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
+import { exportSvgString } from '@/lib/export/export-svg';
+import { exportSvgPackage } from '@/lib/export/export-svg-package';
+import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
+import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
+import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
+import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
+import { Canvas } from './Canvas';
+import { ImportIconDialog } from './ImportIconDialog';
+
+type LeftTab = 'layers' | 'variants';
+type RightTab = 'inspect' | 'animation';
+type DeleteIntent =
+  | { type: 'state'; id: string }
+  | { type: 'variant'; id: string }
+  | { type: 'transition'; id: string };
+type TransitionDraft = {
+  from: string;
+  to: string;
+  durationMs: string;
+  strategy: Transition['strategy'];
+  easing: string;
+};
+type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
+
+const TOOL_ITEMS = [
+  { tool: 'select', label: 'Select', icon: MousePointer2 },
+  { tool: 'shape', label: 'Shape', icon: Square },
+  { tool: 'pen', label: 'Pen', icon: PenTool },
+] as const;
 
 const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'monochrome', label: 'Monochrome' },
@@ -47,101 +85,27 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'multicolor', label: 'Multicolor' },
 ];
 
-function CurrentDocumentPanel({
-  onOpenImport,
-  onCreateBlankIcon,
-}: {
-  onOpenImport: () => void;
-  onCreateBlankIcon: () => void;
-}) {
-  const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] : null));
-  const workspaceName = useEditorStore((s) => s.workspace?.meta.name ?? 'Coniva Workspace');
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Untitled Project');
-  const variantId = useEditorStore((s) => s.currentVariantId);
-  const stateId = useEditorStore((s) => s.currentStateId);
-  const currentVariant = useEditorStore((s) =>
-    s.currentIconId && s.currentVariantId
-      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
-      : null,
-  );
-  const layerCount = useEditorStore((s) => {
-    if (!s.currentIconId || !s.currentVariantId || !s.currentStateId) return 0;
-    return Object.keys(
-      s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[s.currentStateId]
-        ?.layers ?? {},
-    ).length;
-  });
+const TRANSITION_STRATEGIES: Transition['strategy'][] = [
+  'bestGuessMorph',
+  'strictMorph',
+  'track',
+  'replace',
+];
 
-  return (
-    <div className="flex items-start justify-between gap-3 px-4 py-4">
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-          <Link
-            href="/"
-            className="truncate rounded-md px-1 py-0.5 hover:bg-accent hover:text-foreground"
-          >
-            {workspaceName}
-          </Link>
-          <span>/</span>
-          <Link
-            href="/"
-            className="truncate rounded-md px-1 py-0.5 hover:bg-accent hover:text-foreground"
-          >
-            {projectName}
-          </Link>
-          {icon ? (
-            <>
-              <span>/</span>
-              <span className="truncate text-foreground">{icon.name}</span>
-            </>
-          ) : null}
-        </div>
-        <p className="truncate text-base font-semibold tracking-tight text-foreground">
-          {icon?.name ?? 'No icon selected yet'}
-        </p>
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[icon?.id, variantId, stateId].filter(Boolean).join(' / ') ||
-            'Create or open an icon to start editing'}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-            <Layers2 className="size-3.5" />
-            {layerCount} layers
-          </Badge>
-          {currentVariant ? (
-            <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
-              {currentVariant.size}px
-            </Badge>
-          ) : null}
-        </div>
-        {!icon ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="rounded-xl" onClick={onOpenImport}>
-              Import SVG
-            </Button>
-            <Button size="sm" className="rounded-xl" onClick={onCreateBlankIcon}>
-              <Plus className="size-3.5" />
-              New Icon
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <Button asChild variant="outline" size="sm" className="rounded-xl">
-        <Link href="/">
-          <ChevronLeft className="size-3.5" />
-          Workspace
-        </Link>
-      </Button>
-    </div>
-  );
+const EASING_OPTIONS = ['ease-in-out', 'ease-out', 'ease-in', 'linear'] as const;
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'untitled';
 }
 
 function formatVariantLabel(variant: { name?: string; size: number }) {
   const name = variant.name?.trim();
-  if (!name || name === String(variant.size)) {
-    return String(variant.size);
-  }
-  return `${name} ${variant.size}`;
+  if (!name || name === String(variant.size)) return `${variant.size}px`;
+  return `${name} ${variant.size}px`;
 }
 
 function scaleViewBox(
@@ -158,407 +122,897 @@ function scaleViewBox(
   ];
 }
 
-function VariantPickerBar() {
-  const icon = useEditorStore((s) =>
-    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
-  );
-  const currentIconId = useEditorStore((s) => s.currentIconId);
-  const currentVariantId = useEditorStore((s) => s.currentVariantId);
-  const renderingMode = useEditorStore((s) => s.renderingMode);
-  const currentVariant = useEditorStore((s) =>
-    s.currentIconId && s.currentVariantId
-      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
-      : null,
-  );
-  const { addVariant, patchVariant, removeVariant, setCurrentVariant } = useEditorActions();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [customSize, setCustomSize] = useState('24');
+function buildDefaultLayerBindings(
+  fromState: State,
+  toState: State,
+  strategy: Transition['strategy'],
+): LayerBinding[] {
+  const sharedIds = Object.keys(fromState.layers).filter((layerId) => Boolean(toState.layers[layerId]));
 
-  const variants = useMemo(
-    () =>
-      Object.values(icon?.variants ?? {}).sort((a, b) => {
-        if (a.size !== b.size) return a.size - b.size;
-        return formatVariantLabel(a).localeCompare(formatVariantLabel(b));
-      }),
-    [icon],
-  );
-
-  useEffect(() => {
-    if (currentVariant) {
-      setCustomSize(String(currentVariant.size));
+  return sharedIds.map((layerId) => {
+    if (strategy === 'strictMorph') {
+      return { fromLayerId: layerId, toLayerId: layerId, morph: { topology: 'strict' } };
     }
-  }, [currentVariant]);
+    if (strategy === 'bestGuessMorph') {
+      return { fromLayerId: layerId, toLayerId: layerId, morph: { topology: 'bestGuess' } };
+    }
+    if (strategy === 'track') {
+      return { fromLayerId: layerId, toLayerId: layerId, tracks: [] };
+    }
+    return { fromLayerId: layerId, toLayerId: layerId };
+  });
+}
 
-  const handleCreateVariant = (size: number) => {
-    if (!icon || !currentVariant || !Number.isFinite(size) || size <= 0) return;
-    addVariant(icon.id, {
-      size,
-      viewBox: scaleViewBox(currentVariant.viewBox, size),
-      sourceVariantId: currentVariant.id,
-    });
-    setCreateOpen(false);
-    setCustomSize(String(size));
+function buildTransitionPreview(
+  transition: Transition,
+  variant: Variant,
+  progress: number,
+): TransitionPreview | null {
+  const fromState = variant.states[transition.from];
+  const toState = variant.states[transition.to];
+  if (!fromState || !toState) return null;
+
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const resolvedTransition = resolveTransition(transition, fromState, toState);
+
+  return {
+    transitionId: transition.id,
+    baseStateId: transition.from,
+    targetStateId: transition.to,
+    progress: clampedProgress,
+    resolvedTransition,
+    interpolatedValues: interpolateTransitionValues(resolvedTransition, clampedProgress),
   };
+}
 
-  const handleRenderingModeChange = (value: string) => {
-    if (!currentIconId || !currentVariantId) return;
-    patchVariant(currentIconId, currentVariantId, {
-      renderingMode: value as RenderingMode,
-    });
-  };
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
+function describePaint(paint?: PaintRef) {
+  if (!paint) return 'None';
+  if (paint.mode === 'fixed') return paint.value;
+  if (paint.mode === 'currentColor') return 'Current color';
+  if (paint.mode === 'token') return `Token ${paint.token}`;
+  if (paint.mode === 'linearGradient') return `Linear gradient`;
+  return `Radial gradient`;
+}
+
+function TinyLabel({ children }: { children: React.ReactNode }) {
+  return <p className="wire-label">{children}</p>;
+}
+
+function RowField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-3 px-3 pb-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-foreground">
-            {currentVariant ? `${formatVariantLabel(currentVariant)}px` : 'No variant selected'}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {currentVariant ? 'variant' : 'select a variant'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Popover open={createOpen} onOpenChange={setCreateOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl"
-                disabled={!icon || !currentVariant}
-              >
-                <Plus className="size-4" />
-                <span>Variant</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 rounded-2xl p-3">
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">New variant</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Presets or any size.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[12, 16, 20, 24, 32, 48].map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => handleCreateVariant(size)}
-                      className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition hover:border-foreground/20 hover:bg-accent/40"
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="variant-custom-size"
-                    className="text-xs font-medium text-muted-foreground"
-                  >
-                    Custom size
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="variant-custom-size"
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={customSize}
-                      onChange={(event) => setCustomSize(event.target.value)}
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleCreateVariant(Number.parseFloat(customSize))}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-xl text-muted-foreground hover:text-foreground"
-            disabled={!icon || !currentVariantId || variants.length <= 1}
-            onClick={() => setDeleteOpen(true)}
-            aria-label="Remove current variant"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
+    <label className="wire-field">
+      <span className="wire-field-name">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function PropertyValue({ children }: { children: React.ReactNode }) {
+  return <span className="wire-property-value">{children}</span>;
+}
+
+function ToolRail({
+  activeTool,
+  onToolSelect,
+  onOpenCommand,
+  onOpenImport,
+}: {
+  activeTool: string;
+  onToolSelect: (tool: (typeof TOOL_ITEMS)[number]['tool']) => void;
+  onOpenCommand: () => void;
+  onOpenImport: () => void;
+}) {
+  return (
+    <aside className="wire-rail">
+      <div className="wire-rail-section">
+        <Link href="/" className="wire-rail-home" aria-label="Back to home">
+          <span className="wire-rail-home-mark" />
+        </Link>
       </div>
 
-      <Separator className="bg-border/70" />
-
-      <div className="flex flex-wrap gap-2">
-        {variants.map((variant) => {
-          const isActive = variant.id === currentVariantId;
+      <div className="wire-rail-section">
+        {TOOL_ITEMS.map((item) => {
+          const Icon = item.icon;
           return (
             <button
-              key={variant.id}
+              key={item.tool}
               type="button"
-              onClick={() => setCurrentVariant(variant.id)}
-              className={
-                isActive
-                  ? 'rounded-xl border border-primary/35 bg-primary/[0.08] px-3 py-2 text-sm font-medium text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
-                  : 'rounded-xl border border-border/80 bg-background px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground'
-              }
+              data-active={activeTool === item.tool ? 'true' : 'false'}
+              className="wire-rail-button"
+              onClick={() => onToolSelect(item.tool)}
+              title={item.label}
+              aria-label={item.label}
             >
-              {formatVariantLabel(variant)}
+              <Icon className="size-4" />
             </button>
           );
         })}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="workspace-kicker">Rendering</span>
-        <Select value={renderingMode} onValueChange={handleRenderingModeChange}>
-          <SelectTrigger
-            size="sm"
-            className="h-8 min-w-[10rem] rounded-xl border-border/70 bg-background/70 text-[13px] text-foreground"
-            aria-label="Rendering mode"
-          >
-            <SelectValue placeholder="Rendering Mode" />
-          </SelectTrigger>
-          <SelectContent align="start">
-            {RENDERING_MODE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+      <div className="wire-rail-section mt-auto">
+        <button
+          type="button"
+          className="wire-rail-button"
+          onClick={onOpenCommand}
+          aria-label="Open command menu"
+          title="Search"
+        >
+          <Search className="size-4" />
+        </button>
+        <button
+          type="button"
+          className="wire-rail-button"
+          onClick={onOpenImport}
+          aria-label="Import SVG"
+          title="Import"
+        >
+          <FolderOpen className="size-4" />
+        </button>
       </div>
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete variant</AlertDialogTitle>
-            <AlertDialogDescription>
-              {currentVariant
-                ? `Delete the ${formatVariantLabel(currentVariant)}px variant? Undo is available, but this removes the current variant immediately.`
-                : 'Delete the current variant?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (icon && currentVariantId) {
-                  removeVariant(icon.id, currentVariantId);
-                }
-              }}
+    </aside>
+  );
+}
+
+function LeftSidebar({
+  leftTab,
+  onLeftTabChange,
+  workspaceName,
+  currentIcon,
+  currentVariant,
+  currentStateId,
+  layerRows,
+  selectedLayerId,
+  onSelectLayer,
+  onToggleLayerVisibility,
+  variants,
+  currentVariantId,
+  stateIds,
+  transitionCounts,
+  onSelectVariant,
+  onSelectState,
+  newVariantSize,
+  onNewVariantSizeChange,
+  onCreateVariant,
+  newStateName,
+  onNewStateNameChange,
+  onCreateDuplicateState,
+  onCreateBlankState,
+}: {
+  leftTab: LeftTab;
+  onLeftTabChange: (tab: LeftTab) => void;
+  workspaceName: string;
+  currentIcon: Icon | null;
+  currentVariant: Variant | null;
+  currentStateId: string | null;
+  layerRows: ReturnType<typeof buildLayerPanelRows>;
+  selectedLayerId: string | null;
+  onSelectLayer: (layerId: string) => void;
+  onToggleLayerVisibility: (layerId: string, visible: boolean) => void;
+  variants: Variant[];
+  currentVariantId: string | null;
+  stateIds: string[];
+  transitionCounts: Record<string, number>;
+  onSelectVariant: (variantId: string) => void;
+  onSelectState: (stateId: string) => void;
+  newVariantSize: string;
+  onNewVariantSizeChange: (value: string) => void;
+  onCreateVariant: () => void;
+  newStateName: string;
+  onNewStateNameChange: (value: string) => void;
+  onCreateDuplicateState: () => void;
+  onCreateBlankState: () => void;
+}) {
+  return (
+    <aside className="wire-sidebar wire-sidebar-left">
+      <div className="wire-sidebar-block px-2 pt-2">
+        <Link href="/" className="wire-project-pill">
+          <span>{workspaceName}</span>
+        </Link>
+        <div className="px-2 pt-2">
+          <div className="flex items-center gap-1">
+            <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
+            <ChevronDown className="size-3 text-black/45" />
+          </div>
+          <button
+            type="button"
+            className="mt-0.5 flex items-center gap-1 text-[10px] text-black/45"
+            onClick={() => {
+              if (currentIcon) {
+                navigator.clipboard.writeText(slugify(currentIcon.name)).catch(() => {});
+              }
+            }}
+          >
+            <span>{currentIcon ? slugify(currentIcon.name) : 'select-an-icon'}</span>
+            <Copy className="size-3" />
+          </button>
+        </div>
+
+        <div className="wire-tab-row">
+          <div className="wire-tabs">
+            <button
+              type="button"
+              data-active={leftTab === 'layers' ? 'true' : 'false'}
+              className="wire-tab-button"
+              onClick={() => onLeftTabChange('layers')}
             >
-              Delete variant
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Layers
+            </button>
+            <button
+              type="button"
+              data-active={leftTab === 'variants' ? 'true' : 'false'}
+              className="wire-tab-button"
+              onClick={() => onLeftTabChange('variants')}
+            >
+              Variants
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        {leftTab === 'layers' ? (
+          <div className="wire-section">
+            <div className="wire-section-header">
+              <span>{currentVariant ? formatVariantLabel(currentVariant) : 'Variant'}</span>
+            </div>
+            {layerRows.length === 0 ? (
+              <div className="wire-empty-note">No layers</div>
+            ) : (
+              layerRows.map((row) => (
+                <div
+                  key={row.layer.id}
+                  data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
+                  className="wire-layer-row"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => onSelectLayer(row.layer.id)}
+                  >
+                    <div
+                      className="wire-layer-line"
+                      style={{ paddingLeft: `${row.depth * 12}px` }}
+                    >
+                      <span className="wire-layer-name">{row.layer.id}</span>
+                      {row.layer.role ? <span className="wire-layer-kind">{row.layer.role}</span> : null}
+                      {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="wire-row-control"
+                    onClick={() => onToggleLayerVisibility(row.layer.id, row.layer.visible === false)}
+                    aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
+                  >
+                    {row.layer.visible === false ? (
+                      <EyeOff className="size-3.5" />
+                    ) : (
+                      <Eye className="size-3.5" />
+                    )}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="wire-section">
+            <div className="wire-section-header">
+              <span>Sizes</span>
+            </div>
+            <div className="wire-inline-form">
+              <input
+                value={newVariantSize}
+                onChange={(event) => onNewVariantSizeChange(event.target.value)}
+                type="number"
+                min="1"
+                step="1"
+                className="wire-input"
+              />
+              <button type="button" className="wire-mini-button" onClick={onCreateVariant}>
+                Add
+              </button>
+            </div>
+            {variants.map((variant) => (
+              <button
+                key={variant.id}
+                type="button"
+                data-active={variant.id === currentVariantId ? 'true' : 'false'}
+                className="wire-list-row"
+                onClick={() => onSelectVariant(variant.id)}
+              >
+                <span>{formatVariantLabel(variant)}</span>
+              </button>
+            ))}
+
+            <div className="wire-section-header mt-3">
+              <span>States</span>
+            </div>
+            <input
+              value={newStateName}
+              onChange={(event) => onNewStateNameChange(event.target.value)}
+              placeholder="hover"
+              className="wire-input w-full"
+            />
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+              <button type="button" className="wire-mini-button" onClick={onCreateDuplicateState}>
+                Duplicate
+              </button>
+              <button type="button" className="wire-mini-button" onClick={onCreateBlankState}>
+                Blank
+              </button>
+            </div>
+            {stateIds.length === 0 ? (
+              <div className="wire-empty-note mt-2">No states</div>
+            ) : (
+              stateIds.map((stateId) => (
+                <button
+                  key={stateId}
+                  type="button"
+                  data-active={stateId === currentStateId ? 'true' : 'false'}
+                  className="wire-list-row"
+                  onClick={() => onSelectState(stateId)}
+                >
+                  <span>{stateId}</span>
+                  <span className="wire-row-caption">{transitionCounts[stateId] ?? 0}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </ScrollArea>
+    </aside>
+  );
+}
+
+function CanvasDock({
+  zoom,
+  guidesVisible,
+  snapEnabled,
+  onZoomChange,
+  onToggleGuides,
+  onToggleSnap,
+}: {
+  zoom: number;
+  guidesVisible: boolean;
+  snapEnabled: boolean;
+  onZoomChange: (zoom: number | 'fit') => void;
+  onToggleGuides: () => void;
+  onToggleSnap: () => void;
+}) {
+  return (
+    <div className="wire-dock">
+      <div className="wire-dock-zoom">
+        <select
+          value={String(Math.round(zoom * 100))}
+          onChange={(event) => {
+            if (event.target.value === 'fit') {
+              onZoomChange('fit');
+              return;
+            }
+            onZoomChange(Number.parseInt(event.target.value, 10) / 100);
+          }}
+          className="wire-zoom-select"
+          aria-label="Canvas zoom"
+        >
+          <option value="50">50%</option>
+          <option value="75">75%</option>
+          <option value="100">100%</option>
+          <option value="150">150%</option>
+          <option value="200">200%</option>
+          <option value="fit">Fit</option>
+        </select>
+      </div>
+
+      <div className="wire-dock-group">
+        <button
+          type="button"
+          data-active={snapEnabled ? 'true' : 'false'}
+          className="wire-dock-icon"
+          onClick={onToggleSnap}
+          title="Toggle snap"
+        >
+          <Crosshair className="size-4" />
+        </button>
+        <button
+          type="button"
+          data-active={guidesVisible ? 'true' : 'false'}
+          className="wire-dock-icon"
+          onClick={onToggleGuides}
+          title="Toggle guides"
+        >
+          <Sparkles className="size-4" />
+        </button>
+      </div>
     </div>
   );
 }
 
-function StateManagerBar() {
-  const icon = useEditorStore((s) =>
-    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
-  );
-  const currentStateId = useEditorStore((s) => s.currentStateId);
-  const currentVariantId = useEditorStore((s) => s.currentVariantId);
-  const { addState, duplicateState, removeState, renameState, setCurrentState } =
-    useEditorActions();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [createMode, setCreateMode] = useState<'duplicate' | 'blank'>('duplicate');
-
-  const states = useMemo(
-    () =>
-      currentVariantId && icon ? Object.keys(icon.variants[currentVariantId]?.states ?? {}) : [],
-    [currentVariantId, icon],
-  );
-  const transitionCount = useMemo(
-    () =>
-      currentStateId && icon
-        ? Object.values(icon.transitions ?? {}).filter(
-            (transition) => transition.from === currentStateId || transition.to === currentStateId,
-          ).length
-        : 0,
-    [currentStateId, icon],
-  );
-
-  const handleCreateState = () => {
-    if (!icon) return;
-    const created = addState(icon.id, {
-      name: nameInput || undefined,
-      sourceStateId: createMode === 'duplicate' ? currentStateId : null,
-      blank: createMode === 'blank',
-    });
-    if (created) {
-      setCreateOpen(false);
-      setNameInput('');
-      setCreateMode('duplicate');
-    }
-  };
-
-  const handleRenameCurrentState = () => {
-    if (!icon || !currentStateId || !nameInput.trim()) return;
-    const renamed = renameState(icon.id, currentStateId, nameInput.trim());
-    if (renamed) {
-      setNameInput('');
-      setCreateOpen(false);
-    }
-  };
-
-  if (!icon || !currentVariantId) return null;
+function RightSidebar({
+  rightTab,
+  onRightTabChange,
+  selectedLayer,
+  currentIcon,
+  currentVariant,
+  currentState,
+  selectedTransition,
+  transitions,
+  previewProgress,
+  previewPlaying,
+  onPreviewProgressChange,
+  onTogglePreviewPlaying,
+  transitionDraft,
+  onTransitionDraftChange,
+  stateIds,
+  onCreateTransition,
+  onSelectTransition,
+  onRenameIcon,
+  onRenameState,
+  onPatchVariant,
+  onPatchSelectedLayer,
+  onPatchSelectedLayerStyle,
+  onPatchSelectedLayerTransform,
+  onPatchTransition,
+  onDeleteState,
+  onDeleteVariant,
+  onDeleteTransition,
+  guideMasterName,
+  guidesVisible,
+}: {
+  rightTab: RightTab;
+  onRightTabChange: (tab: RightTab) => void;
+  selectedLayer: Layer | null;
+  currentIcon: Icon | null;
+  currentVariant: Variant | null;
+  currentState: State | null;
+  selectedTransition: Transition | null;
+  transitions: Transition[];
+  previewProgress: number;
+  previewPlaying: boolean;
+  onPreviewProgressChange: (value: number) => void;
+  onTogglePreviewPlaying: () => void;
+  transitionDraft: TransitionDraft;
+  onTransitionDraftChange: (patch: Partial<TransitionDraft>) => void;
+  stateIds: string[];
+  onCreateTransition: () => void;
+  onSelectTransition: (transitionId: string) => void;
+  onRenameIcon: (value: string) => void;
+  onRenameState: (value: string) => void;
+  onPatchVariant: (patch: VariantEditorPatch) => void;
+  onPatchSelectedLayer: (patch: Partial<Layer>) => void;
+  onPatchSelectedLayerStyle: (patch: Partial<Layer['style']>) => void;
+  onPatchSelectedLayerTransform: (patch: Partial<NonNullable<Layer['transform']>>) => void;
+  onPatchTransition: (patch: Partial<Transition>) => void;
+  onDeleteState: () => void;
+  onDeleteVariant: () => void;
+  onDeleteTransition: () => void;
+  guideMasterName: string | null;
+  guidesVisible: boolean;
+}) {
+  const fillMode = selectedLayer?.style.fill?.mode ?? 'none';
+  const strokeMode = selectedLayer?.style.stroke?.mode ?? 'none';
 
   return (
-    <div className="flex flex-col gap-3 px-3 pb-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-foreground">
-            {currentStateId ?? 'No state selected'}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {states.length} state{states.length === 1 ? '' : 's'} across this icon
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Popover
-            open={createOpen}
-            onOpenChange={(open) => {
-              setCreateOpen(open);
-              if (!open) {
-                setNameInput('');
-                setCreateMode('duplicate');
-              }
-            }}
-          >
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-xl">
-                <Plus className="size-4" />
-                <span>State</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 rounded-2xl p-3">
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Manage states</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Create a duplicate, start blank, or rename the current state.
-                  </p>
-                </div>
-                <Input
-                  value={nameInput}
-                  onChange={(event) => setNameInput(event.target.value)}
-                  placeholder={currentStateId ? `${currentStateId}-copy` : 'hover'}
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant={createMode === 'duplicate' ? 'default' : 'outline'}
-                    onClick={() => setCreateMode('duplicate')}
-                  >
-                    Duplicate current
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={createMode === 'blank' ? 'default' : 'outline'}
-                    onClick={() => setCreateMode('blank')}
-                  >
-                    Blank state
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!currentStateId || !nameInput.trim()}
-                    onClick={handleRenameCurrentState}
-                  >
-                    Rename current
-                  </Button>
-                </div>
-                <Button
-                  onClick={handleCreateState}
-                  disabled={!currentStateId && createMode === 'duplicate'}
-                >
-                  Create state
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-xl text-muted-foreground hover:text-foreground"
-            disabled={!icon || !currentStateId}
-            onClick={() => {
-              if (icon && currentStateId) {
-                duplicateState(icon.id, currentStateId);
-              }
-            }}
-            aria-label="Duplicate current state"
-          >
-            <Layers2 className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-xl text-muted-foreground hover:text-foreground"
-            disabled={!currentStateId || states.length <= 1}
-            onClick={() => setDeleteOpen(true)}
-            aria-label="Delete current state"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      </div>
-
-      <Separator className="bg-border/70" />
-
-      <div className="flex flex-wrap gap-2">
-        {states.map((stateId) => {
-          const isActive = stateId === currentStateId;
-          return (
+    <aside className="wire-sidebar wire-sidebar-right">
+      <div className="wire-sidebar-block px-2 pt-2">
+        <div className="wire-tab-row">
+          <div className="wire-tabs">
             <button
-              key={stateId}
               type="button"
-              onClick={() => setCurrentState(stateId)}
-              className={
-                isActive
-                  ? 'rounded-xl border border-primary/35 bg-primary/[0.08] px-3 py-2 text-sm font-medium text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
-                  : 'rounded-xl border border-border/80 bg-background px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-border hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
-              }
+              data-active={rightTab === 'inspect' ? 'true' : 'false'}
+              className="wire-tab-button"
+              onClick={() => onRightTabChange('inspect')}
             >
-              {stateId}
+              Inspect
             </button>
-          );
-        })}
+            <button
+              type="button"
+              data-active={rightTab === 'animation' ? 'true' : 'false'}
+              className="wire-tab-button"
+              onClick={() => onRightTabChange('animation')}
+            >
+              Animation
+            </button>
+          </div>
+        </div>
+        <div className="wire-panel-title px-2 pt-1.5">
+          {selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
+        </div>
       </div>
 
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete state</AlertDialogTitle>
-            <AlertDialogDescription>
-              {currentStateId
-                ? `Delete the ${currentStateId} state? ${transitionCount > 0 ? `${transitionCount} transition${transitionCount === 1 ? '' : 's'} linked to it will also be removed.` : 'This affects every variant of the icon.'}`
-                : 'Delete the current state?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (icon && currentStateId) {
-                  removeState(icon.id, currentStateId);
-                }
-              }}
-            >
-              Delete state
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="wire-section">
+          {rightTab === 'inspect' ? (
+            selectedLayer ? (
+              <>
+                <TinyLabel>Layer</TinyLabel>
+                <RowField label="Role">
+                  <input
+                    defaultValue={selectedLayer.role ?? ''}
+                    onBlur={(event) => onPatchSelectedLayer({ role: event.target.value || undefined })}
+                    className="wire-input w-full"
+                  />
+                </RowField>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <RowField label="Fill">
+                    <select
+                      value={fillMode}
+                      className="wire-select"
+                      onChange={(event) => {
+                        const nextMode = event.target.value;
+                        if (nextMode === 'none') {
+                          onPatchSelectedLayerStyle({ fill: undefined });
+                          return;
+                        }
+                        if (nextMode === 'currentColor') {
+                          onPatchSelectedLayerStyle({ fill: { mode: 'currentColor' } });
+                          return;
+                        }
+                        onPatchSelectedLayerStyle({
+                          fill: {
+                            mode: 'fixed',
+                            value:
+                              selectedLayer.style.fill?.mode === 'fixed'
+                                ? selectedLayer.style.fill.value
+                                : '#111111',
+                          },
+                        });
+                      }}
+                    >
+                      <option value="none">None</option>
+                      <option value="fixed">Fixed</option>
+                      <option value="currentColor">Current</option>
+                    </select>
+                  </RowField>
+                  <RowField label="Stroke">
+                    <select
+                      value={strokeMode}
+                      className="wire-select"
+                      onChange={(event) => {
+                        const nextMode = event.target.value;
+                        if (nextMode === 'none') {
+                          onPatchSelectedLayerStyle({ stroke: undefined });
+                          return;
+                        }
+                        if (nextMode === 'currentColor') {
+                          onPatchSelectedLayerStyle({ stroke: { mode: 'currentColor' } });
+                          return;
+                        }
+                        onPatchSelectedLayerStyle({
+                          stroke: {
+                            mode: 'fixed',
+                            value:
+                              selectedLayer.style.stroke?.mode === 'fixed'
+                                ? selectedLayer.style.stroke.value
+                                : '#111111',
+                          },
+                        });
+                      }}
+                    >
+                      <option value="none">None</option>
+                      <option value="fixed">Fixed</option>
+                      <option value="currentColor">Current</option>
+                    </select>
+                  </RowField>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <RowField label="Fill color">
+                    {fillMode === 'fixed' ? (
+                      <input
+                        type="color"
+                        value={
+                          selectedLayer.style.fill?.mode === 'fixed'
+                            ? selectedLayer.style.fill.value
+                            : '#111111'
+                        }
+                        onChange={(event) =>
+                          onPatchSelectedLayerStyle({
+                            fill: { mode: 'fixed', value: event.target.value },
+                          })
+                        }
+                        className="wire-color"
+                      />
+                    ) : (
+                      <PropertyValue>{describePaint(selectedLayer.style.fill)}</PropertyValue>
+                    )}
+                  </RowField>
+                  <RowField label="Stroke color">
+                    {strokeMode === 'fixed' ? (
+                      <input
+                        type="color"
+                        value={
+                          selectedLayer.style.stroke?.mode === 'fixed'
+                            ? selectedLayer.style.stroke.value
+                            : '#111111'
+                        }
+                        onChange={(event) =>
+                          onPatchSelectedLayerStyle({
+                            stroke: { mode: 'fixed', value: event.target.value },
+                          })
+                        }
+                        className="wire-color"
+                      />
+                    ) : (
+                      <PropertyValue>{describePaint(selectedLayer.style.stroke)}</PropertyValue>
+                    )}
+                  </RowField>
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
+                  <RowField label="Stroke width">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={selectedLayer.style.strokeWidth ?? 0}
+                      onChange={(event) =>
+                        onPatchSelectedLayerStyle({
+                          strokeWidth: Number.parseFloat(event.target.value) || 0,
+                        })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                  <RowField label="Guides">
+                    <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
+                  </RowField>
+                </div>
+                <TinyLabel>Position</TinyLabel>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <RowField label="X">
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={selectedLayer.transform?.x ?? 0}
+                      onChange={(event) =>
+                        onPatchSelectedLayerTransform({
+                          x: Number.parseFloat(event.target.value) || 0,
+                        })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                  <RowField label="Y">
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={selectedLayer.transform?.y ?? 0}
+                      onChange={(event) =>
+                        onPatchSelectedLayerTransform({
+                          y: Number.parseFloat(event.target.value) || 0,
+                        })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                  <RowField label="Rot">
+                    <input
+                      type="number"
+                      step="1"
+                      value={selectedLayer.transform?.rotate ?? 0}
+                      onChange={(event) =>
+                        onPatchSelectedLayerTransform({
+                          rotate: Number.parseFloat(event.target.value) || 0,
+                        })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                </div>
+              </>
+            ) : (
+              <>
+                <TinyLabel>Document</TinyLabel>
+                <RowField label="Name">
+                  <input
+                    defaultValue={currentIcon?.name ?? ''}
+                    onBlur={(event) => onRenameIcon(event.target.value)}
+                    className="wire-input w-full"
+                  />
+                </RowField>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <RowField label="State">
+                    <input
+                      defaultValue={currentState?.id ?? ''}
+                      onBlur={(event) => onRenameState(event.target.value)}
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                  <RowField label="Size">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={currentVariant?.size ?? 0}
+                      onChange={(event) =>
+                        onPatchVariant({ size: Number.parseFloat(event.target.value) || 24 })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                </div>
+                <RowField label="Rendering">
+                  <select
+                    value={currentVariant?.renderingMode ?? 'monochrome'}
+                    onChange={(event) =>
+                      onPatchVariant({ renderingMode: event.target.value as RenderingMode })
+                    }
+                    className="wire-select"
+                  >
+                    {RENDERING_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </RowField>
+                <TinyLabel>Guides</TinyLabel>
+                <div className="wire-meta-row">
+                  <span className="wire-field-name">Master</span>
+                  <PropertyValue>{guideMasterName ?? 'None'}</PropertyValue>
+                </div>
+                <div className="wire-meta-row">
+                  <span className="wire-field-name">Visible</span>
+                  <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 pt-2">
+                  <button type="button" className="wire-mini-button" onClick={onDeleteState}>
+                    Delete state
+                  </button>
+                  <button type="button" className="wire-mini-button" onClick={onDeleteVariant}>
+                    Delete size
+                  </button>
+                </div>
+              </>
+            )
+          ) : (
+            <>
+              <TinyLabel>Transitions</TinyLabel>
+              {transitions.length === 0 ? (
+                <div className="wire-empty-note">No transitions yet</div>
+              ) : (
+                transitions.map((transition) => (
+                  <button
+                    key={transition.id}
+                    type="button"
+                    data-active={selectedTransition?.id === transition.id ? 'true' : 'false'}
+                    className="wire-list-row"
+                    onClick={() => onSelectTransition(transition.id)}
+                  >
+                    <span>{transition.from} → {transition.to}</span>
+                    <span className="wire-row-caption">{transition.durationMs}ms</span>
+                  </button>
+                ))
+              )}
+              {selectedTransition ? (
+                <>
+                  <RowField label="Duration">
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={selectedTransition.durationMs}
+                      onChange={(event) =>
+                        onPatchTransition({
+                          durationMs: Number.parseInt(event.target.value, 10) || 0,
+                        })
+                      }
+                      className="wire-input w-full"
+                    />
+                  </RowField>
+                  <RowField label="Strategy">
+                    <select
+                      value={selectedTransition.strategy}
+                      className="wire-select"
+                      onChange={(event) =>
+                        onPatchTransition({
+                          strategy: event.target.value as Transition['strategy'],
+                        })
+                      }
+                    >
+                      {TRANSITION_STRATEGIES.map((strategy) => (
+                        <option key={strategy} value={strategy}>
+                          {strategy}
+                        </option>
+                      ))}
+                    </select>
+                  </RowField>
+                  <RowField label="Easing">
+                    <select
+                      value={
+                        typeof selectedTransition.easing === 'string'
+                          ? selectedTransition.easing
+                          : 'ease-in-out'
+                      }
+                      className="wire-select"
+                      onChange={(event) => onPatchTransition({ easing: event.target.value })}
+                    >
+                      {EASING_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </RowField>
+                  <RowField label="Preview">
+                    <div className="grid gap-1.5">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(previewProgress * 100)}
+                        onChange={(event) =>
+                          onPreviewProgressChange(Number.parseInt(event.target.value, 10) / 100)
+                        }
+                        className="wire-range"
+                      />
+                      <button type="button" className="wire-mini-button" onClick={onTogglePreviewPlaying}>
+                        {previewPlaying ? 'Pause preview' : 'Play preview'}
+                      </button>
+                    </div>
+                  </RowField>
+                  <button type="button" className="wire-mini-button mt-1" onClick={onDeleteTransition}>
+                    Delete transition
+                  </button>
+                </>
+              ) : null}
+              <TinyLabel>New transition</TinyLabel>
+              <RowField label="From">
+                <select
+                  value={transitionDraft.from}
+                  className="wire-select"
+                  onChange={(event) => onTransitionDraftChange({ from: event.target.value })}
+                >
+                  {stateIds.map((stateId) => (
+                    <option key={stateId} value={stateId}>
+                      {stateId}
+                    </option>
+                  ))}
+                </select>
+              </RowField>
+              <RowField label="To">
+                <select
+                  value={transitionDraft.to}
+                  className="wire-select"
+                  onChange={(event) => onTransitionDraftChange({ to: event.target.value })}
+                >
+                  {stateIds.map((stateId) => (
+                    <option key={stateId} value={stateId}>
+                      {stateId}
+                    </option>
+                  ))}
+                </select>
+              </RowField>
+              <RowField label="Duration">
+                <input
+                  value={transitionDraft.durationMs}
+                  onChange={(event) => onTransitionDraftChange({ durationMs: event.target.value })}
+                  type="number"
+                  min="0"
+                  step="10"
+                  className="wire-input w-full"
+                />
+              </RowField>
+              <button type="button" className="wire-mini-button mt-1" onClick={onCreateTransition}>
+                Create transition
+              </button>
+            </>
+          )}
+        </div>
+      </ScrollArea>
+    </aside>
   );
 }
 
@@ -567,42 +1021,120 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
+  const project = useEditorStore((s) => s.project);
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
+  const selection = useEditorStore((s) => s.selection);
+  const tool = useEditorStore((s) => s.tool);
+  const snapEnabled = useEditorStore((s) => s.snapEnabled);
+  const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const viewport = useEditorStore((s) => s.viewport);
+  const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
+  const currentGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const currentIcon = useEditorStore((s) =>
-    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
+    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
   );
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
+      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
       : null,
   );
-  const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
-  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
-  const project = useEditorStore((s) => s.project);
-  const selectedLayerIds = useEditorStore((s) => s.selection.layerIds);
-  const selectedGuideIndexes = useEditorStore((s) => s.selection.guideIndexes ?? []);
-  const guidesVisible = useEditorStore((s) => s.guidesVisible);
-  const { createBlankIcon, openIconTab, toggleGuidesVisible } = useEditorActions();
-  const [leftPanelMode, setLeftPanelMode] = useState<'layers' | 'guides'>('layers');
+  const currentState = useEditorStore((s) =>
+    s.currentIconId && s.currentVariantId && s.currentStateId
+      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[s.currentStateId] ?? null
+      : null,
+  );
+
+  const {
+    addState,
+    addTransition,
+    addVariant,
+    createBlankIcon,
+    openIconTab,
+    patchLayer,
+    patchTransition,
+    patchVariant,
+    removeState,
+    removeTransition,
+    removeVariant,
+    renameIcon,
+    renameState,
+    setCurrentIcon,
+    setCurrentState,
+    setCurrentVariant,
+    setSelection,
+    setSelectedTransitionId,
+    setTool,
+    setTransitionPreview,
+    setViewport,
+    toggleGuidesVisible,
+    toggleSnap,
+  } = useEditorActions();
+
+  const [leftTab, setLeftTab] = useState<LeftTab>('layers');
+  const [rightTab, setRightTab] = useState<RightTab>('inspect');
+  const [desktop, setDesktop] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [newVariantSize, setNewVariantSize] = useState('32');
+  const [newStateName, setNewStateName] = useState('');
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
-  const [rightPanelTab, setRightPanelTab] = useState<'inspector' | 'animation'>('inspector');
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [desktop, setDesktop] = useState(false);
-  const [timelineOpen, setTimelineOpen] = useState(true);
-  const previousGuidesVisibleRef = useRef(guidesVisible);
+  const [transitionDraft, setTransitionDraft] = useState<TransitionDraft>({
+    from: '',
+    to: '',
+    durationMs: '240',
+    strategy: 'bestGuessMorph',
+    easing: 'ease-in-out',
+  });
+  const previewFrameRef = useRef<number | null>(null);
   const requestedIconId = initialIconId ?? searchIconId;
-  const currentTransition = useMemo(() => {
-    if (!currentIcon) return null;
-    if (selectedTransitionId && currentIcon.transitions[selectedTransitionId]) {
-      return currentIcon.transitions[selectedTransitionId];
+
+  const layerRows = useMemo(
+    () => buildLayerPanelRows(Object.values(currentState?.layers ?? {})),
+    [currentState?.layers],
+  );
+
+  const variants = useMemo(
+    () =>
+      Object.values(currentIcon?.variants ?? {}).sort((a, b) => {
+        if (a.size !== b.size) return a.size - b.size;
+        return formatVariantLabel(a).localeCompare(formatVariantLabel(b));
+      }),
+    [currentIcon?.variants],
+  );
+
+  const stateIds = useMemo(() => Object.keys(currentVariant?.states ?? {}), [currentVariant?.states]);
+
+  const transitionCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const stateId of stateIds) {
+      counts[stateId] = Object.values(currentIcon?.transitions ?? {}).filter(
+        (transition) => transition.from === stateId || transition.to === stateId,
+      ).length;
     }
-    return (
-      Object.values(currentIcon.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id))[0] ??
-      null
-    );
-  }, [currentIcon, selectedTransitionId]);
-  const rightRailTitle = selectedLayerIds[0] ?? currentIcon?.name ?? 'Icon properties';
-  const rightRailModeLabel = rightPanelTab === 'inspector' ? 'Design' : 'Animate';
+    return counts;
+  }, [currentIcon?.transitions, stateIds]);
+
+  const transitions = useMemo(
+    () =>
+      Object.values(currentIcon?.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id)),
+    [currentIcon?.transitions],
+  );
+
+  const selectedTransition = useMemo(() => {
+    if (!transitions.length) return null;
+    if (selectedTransitionId) {
+      return transitions.find((transition) => transition.id === selectedTransitionId) ?? transitions[0] ?? null;
+    }
+    return transitions[0] ?? null;
+  }, [selectedTransitionId, transitions]);
+
+  const selectedLayerId = selection.layerIds[0] ?? null;
+  const selectedLayer = selectedLayerId ? currentState?.layers[selectedLayerId] ?? null : null;
+  const projectName = project?.meta.name ?? 'Untitled Set';
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -623,6 +1155,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       state.setActiveIconSet(searchIconSetId);
       state = editorStore.getState();
     }
+
     if (requestedIconId && state.project?.icons[requestedIconId]) {
       state.setCurrentIcon(requestedIconId);
       const nextIconSetId =
@@ -641,44 +1174,140 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, []);
 
   useEffect(() => {
-    if (
-      !project ||
-      !currentIconId ||
-      !currentStateId ||
-      selectedLayerIds.length > 0 ||
-      selectedGuideIndexes.length > 0
-    ) {
-      return;
-    }
+    const handleCommandShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleCommandShortcut);
+    return () => window.removeEventListener('keydown', handleCommandShortcut);
+  }, []);
+
+  useEffect(() => {
+    if (!project || !currentIconId || !currentStateId || selection.layerIds.length > 0) return;
     const layers = currentVariantId
-      ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
-        {})
+      ? project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ?? {}
       : {};
     const nextLayerId =
       Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
     if (!nextLayerId) return;
-
-    editorStore.getState().setSelection({ layerIds: [nextLayerId], pointIds: [] });
-  }, [
-    currentIconId,
-    currentStateId,
-    currentVariantId,
-    project,
-    selectedGuideIndexes.length,
-    selectedLayerIds.length,
-  ]);
+    setSelection({ layerIds: [nextLayerId], pointIds: [] });
+  }, [currentIconId, currentStateId, currentVariantId, project, selection.layerIds.length, setSelection]);
 
   useEffect(() => {
-    const previousGuidesVisible = previousGuidesVisibleRef.current;
-    if (!previousGuidesVisible && guidesVisible) {
-      setLeftPanelMode('guides');
-    } else if (previousGuidesVisible && !guidesVisible && leftPanelMode === 'guides') {
-      setLeftPanelMode('layers');
-    }
-    previousGuidesVisibleRef.current = guidesVisible;
-  }, [guidesVisible, leftPanelMode]);
+    const nextStates = Object.keys(currentVariant?.states ?? {});
+    if (!nextStates.length) return;
+    setTransitionDraft((current) => {
+      const fallbackFrom =
+        currentStateId && nextStates.includes(currentStateId) ? currentStateId : nextStates[0]!;
+      const fallbackTo = nextStates.find((stateId) => stateId !== fallbackFrom) ?? fallbackFrom;
+      return {
+        ...current,
+        from: nextStates.includes(current.from) ? current.from : fallbackFrom,
+        to: nextStates.includes(current.to) && current.to !== current.from ? current.to : fallbackTo,
+      };
+    });
+  }, [currentStateId, currentVariant?.states]);
 
-  const hasActiveDocument = Boolean(currentIconId && currentVariantId && currentStateId);
+  useEffect(() => {
+    if (!selectedTransition || !currentVariant || !previewPlaying) return;
+
+    const duration = Math.max(selectedTransition.durationMs, 1);
+    const startTime = performance.now() - previewProgress * duration;
+
+    const tick = (now: number) => {
+      const progress = ((now - startTime) % duration) / duration;
+      setPreviewProgress(progress);
+      const preview = buildTransitionPreview(selectedTransition, currentVariant, progress);
+      if (preview) {
+        setTransitionPreview(preview);
+      }
+      previewFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    previewFrameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (previewFrameRef.current !== null) {
+        cancelAnimationFrame(previewFrameRef.current);
+      }
+    };
+  }, [currentVariant, previewPlaying, previewProgress, selectedTransition, setTransitionPreview]);
+
+  const serializeWorkspace = () => {
+    const { workspace: currentWorkspace } = editorStore.getState();
+    if (!currentWorkspace) return null;
+
+    const updatedAt = new Date().toISOString();
+    const updated = {
+      ...currentWorkspace,
+      meta: { ...currentWorkspace.meta, updatedAt },
+    };
+
+    return {
+      data: JSON.stringify(updated, null, 2),
+      updatedAt,
+    };
+  };
+
+  const handleSave = async () => {
+    const payload = serializeWorkspace();
+    if (!payload) return;
+    const result = await saveProject(payload.data);
+    if (result) {
+      editorStore.getState().markSaved(payload.updatedAt);
+    }
+  };
+
+  const handleExportCurrentSvg = async () => {
+    const state = editorStore.getState();
+    if (!currentIcon || !currentVariant || !currentState) return;
+
+    const svg = exportSvgString(
+      currentIcon,
+      currentVariant.id,
+      currentState.id,
+      state.project?.tokenSet?.colors,
+      state.renderingMode,
+    );
+
+    await exportSvg(svg, `${slugify(currentIcon.name)}.svg`);
+  };
+
+  const handleExportSvgPackage = () => {
+    if (!project) return;
+    const fileMap = exportSvgPackage(project);
+    const zipBlob = createZipBlob(fileMap);
+    downloadBlob(zipBlob, `${slugify(project.meta.name)}-svg-package.zip`);
+  };
+
+  const handleExportRuntimeJson = () => {
+    if (!currentIcon || !project) return;
+    const runtimeJson = exportRuntimeJson({
+      ...currentIcon,
+      tokenSet: project.tokenSet,
+    });
+    downloadBlob(new Blob([runtimeJson], { type: 'application/json' }), `${slugify(currentIcon.name)}.runtime.json`);
+  };
+
+  const handleExportReactLibrary = () => {
+    if (!project) return;
+    const fileMap = generateIconLibrary(project, {
+      packageName: `${slugify(project.meta.name)}-react-icons`,
+      typescript: true,
+    });
+    downloadBlob(createZipBlob(fileMap), `${slugify(project.meta.name)}-react-library.zip`);
+  };
+
+  const handleSelectIcon = (iconId: string) => {
+    if (!iconId) return;
+    if (activeIconSetId) {
+      openIconTab(activeIconSetId, iconId);
+      router.push(buildEditorRoute(iconId, activeIconSetId));
+      return;
+    }
+    setCurrentIcon(iconId);
+  };
 
   const handleCreateBlankIcon = () => {
     if (!activeIconSetId) return;
@@ -688,245 +1317,386 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     router.push(buildEditorRoute(iconId, activeIconSetId));
   };
 
-  const handleSelectIconFromRail = (iconId: string) => {
-    if (!iconId) return;
-    if (activeIconSetId) {
-      openIconTab(activeIconSetId, iconId);
-      router.push(buildEditorRoute(iconId, activeIconSetId));
-      return;
-    }
-    editorStore.getState().setCurrentIcon(iconId);
+  const handlePatchSelectedLayer = (patch: Partial<Layer>) => {
+    if (!currentIcon || !currentState || !selectedLayer) return;
+    patchLayer(currentIcon.id, currentState.id, selectedLayer.id, patch);
   };
 
+  const handlePatchSelectedLayerStyle = (patch: Partial<Layer['style']>) => {
+    if (!selectedLayer) return;
+    handlePatchSelectedLayer({
+      style: {
+        ...selectedLayer.style,
+        ...patch,
+      },
+    });
+  };
+
+  const handlePatchSelectedLayerTransform = (
+    patch: Partial<NonNullable<Layer['transform']>>,
+  ) => {
+    if (!selectedLayer) return;
+    handlePatchSelectedLayer({
+      transform: {
+        ...(selectedLayer.transform ?? {}),
+        ...patch,
+      },
+    });
+  };
+
+  const handlePatchVariant = (patch: VariantEditorPatch) => {
+    if (!currentIcon || !currentVariant) return;
+    patchVariant(currentIcon.id, currentVariant.id, patch);
+  };
+
+  const handleRenameIcon = (value: string) => {
+    const next = value.trim();
+    if (!currentIcon || !next || next === currentIcon.name) return;
+    renameIcon(currentIcon.id, next);
+  };
+
+  const handleRenameState = (value: string) => {
+    const next = value.trim();
+    if (!currentIcon || !currentState || !next || next === currentState.id) return;
+    renameState(currentIcon.id, currentState.id, next);
+  };
+
+  const handleCreateVariant = () => {
+    if (!currentIcon) return;
+    const size = Number.parseFloat(newVariantSize);
+    if (!Number.isFinite(size) || size <= 0) return;
+    const nextViewBox = currentVariant
+      ? scaleViewBox(currentVariant.viewBox, size)
+      : ([0, 0, size, size] as [number, number, number, number]);
+    addVariant(currentIcon.id, {
+      size,
+      viewBox: nextViewBox,
+      sourceVariantId: currentVariant?.id,
+    });
+  };
+
+  const handleCreateDuplicateState = () => {
+    if (!currentIcon) return;
+    addState(currentIcon.id, {
+      name: newStateName.trim() || undefined,
+      sourceStateId: currentStateId,
+      blank: false,
+    });
+    setNewStateName('');
+  };
+
+  const handleCreateBlankState = () => {
+    if (!currentIcon) return;
+    addState(currentIcon.id, {
+      name: newStateName.trim() || undefined,
+      sourceStateId: null,
+      blank: true,
+    });
+    setNewStateName('');
+  };
+
+  const handleCreateTransition = () => {
+    if (!currentIcon || !currentVariant) return;
+    const durationMs = Number.parseInt(transitionDraft.durationMs, 10);
+    if (
+      !transitionDraft.from ||
+      !transitionDraft.to ||
+      transitionDraft.from === transitionDraft.to ||
+      !Number.isFinite(durationMs) ||
+      durationMs < 0
+    ) {
+      return;
+    }
+
+    const fromState = currentVariant.states[transitionDraft.from];
+    const toState = currentVariant.states[transitionDraft.to];
+    if (!fromState || !toState) return;
+
+    const id = `${transitionDraft.from}-to-${transitionDraft.to}`;
+    addTransition(currentIcon.id, {
+      id,
+      from: transitionDraft.from,
+      to: transitionDraft.to,
+      strategy: transitionDraft.strategy,
+      durationMs,
+      easing: transitionDraft.easing,
+      layerBindings: buildDefaultLayerBindings(fromState, toState, transitionDraft.strategy),
+    });
+    setSelectedTransitionId(id);
+    setRightTab('animation');
+  };
+
+  const handlePatchTransition = (patch: Partial<Transition>) => {
+    if (!currentIcon || !selectedTransition) return;
+    patchTransition(currentIcon.id, selectedTransition.id, patch);
+  };
+
+  const handlePreviewProgressChange = (value: number) => {
+    setPreviewPlaying(false);
+    setPreviewProgress(value);
+    if (!selectedTransition || !currentVariant) {
+      setTransitionPreview(null);
+      return;
+    }
+    setTransitionPreview(buildTransitionPreview(selectedTransition, currentVariant, value));
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!pendingDelete || !currentIcon) return;
+    if (pendingDelete.type === 'state') removeState(currentIcon.id, pendingDelete.id);
+    if (pendingDelete.type === 'variant') removeVariant(currentIcon.id, pendingDelete.id);
+    if (pendingDelete.type === 'transition') removeTransition(currentIcon.id, pendingDelete.id);
+    setPendingDelete(null);
+    setPreviewPlaying(false);
+    setPreviewProgress(0);
+    setTransitionPreview(null);
+  };
+
+  const commandIcons = useMemo(
+    () => Object.values(project?.icons ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
+    [project?.icons],
+  );
+
   return (
-    <div
-      className="swift-surface flex h-full w-full flex-col overflow-hidden text-foreground"
-      style={{ position: 'fixed', inset: 0 }}
-    >
-      {desktop && <TitleTabBar />}
-      <Toolbar />
-      <div className="workspace-shell min-h-0 flex-1 px-3 pb-3">
-        <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[15rem_minmax(0,1fr)_18rem]">
-          <aside className="workspace-column min-h-0">
-            <section className="studio-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.6rem]">
-              <div className="border-b border-border/70">
-                <CurrentDocumentPanel
-                  onOpenImport={() => setImportDialogOpen(true)}
-                  onCreateBlankIcon={handleCreateBlankIcon}
-                />
-              </div>
+    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white p-2">
+      {desktop ? <TitleTabBar /> : null}
 
-              <div className="min-h-[15rem] shrink-0 border-b border-border/70">
-                <IconListPanel onSelectIcon={handleSelectIconFromRail} />
-              </div>
+      <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[52px_196px_minmax(0,1fr)_288px]">
+        <ToolRail
+          activeTool={tool}
+          onToolSelect={(nextTool) => setTool(nextTool)}
+          onOpenCommand={() => setCommandOpen(true)}
+          onOpenImport={() => setImportDialogOpen(true)}
+        />
 
-              <div className="border-b border-border/70 px-3 py-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <div>
-                    <p className="workspace-kicker">Navigator</p>
-                    <p className="mt-1 text-[13px] font-semibold text-foreground">
-                      {leftPanelMode === 'guides' ? 'Guides' : 'Layers'}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-border/70 bg-background/70 px-2 text-[10px] text-muted-foreground"
-                  >
-                    {leftPanelMode === 'guides' ? 'Guide system' : 'Structure'}
-                  </Badge>
-                </div>
-                <div className="workspace-toolbar-group w-full gap-1 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setLeftPanelMode('layers')}
-                    data-active={leftPanelMode === 'layers' ? 'true' : 'false'}
-                    className="workspace-tool-button flex-1 rounded-xl px-3 py-2 text-sm font-medium text-foreground"
-                  >
-                    Layers
+        <LeftSidebar
+          leftTab={leftTab}
+          onLeftTabChange={setLeftTab}
+          workspaceName={projectName}
+          currentIcon={currentIcon}
+          currentVariant={currentVariant}
+          currentStateId={currentStateId}
+          layerRows={layerRows}
+          selectedLayerId={selectedLayerId}
+          onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
+          onToggleLayerVisibility={(layerId, visible) => {
+            if (!currentIcon || !currentState) return;
+            patchLayer(currentIcon.id, currentState.id, layerId, { visible });
+          }}
+          variants={variants}
+          currentVariantId={currentVariantId}
+          stateIds={stateIds}
+          transitionCounts={transitionCounts}
+          onSelectVariant={setCurrentVariant}
+          onSelectState={setCurrentState}
+          newVariantSize={newVariantSize}
+          onNewVariantSizeChange={setNewVariantSize}
+          onCreateVariant={handleCreateVariant}
+          newStateName={newStateName}
+          onNewStateNameChange={setNewStateName}
+          onCreateDuplicateState={handleCreateDuplicateState}
+          onCreateBlankState={handleCreateBlankState}
+        />
+
+        <main className="wire-canvas-shell">
+          <div className="wire-canvas-area">
+            {currentIcon && currentVariant && currentState ? (
+              <Canvas showStatusHud={false} />
+            ) : (
+              <div className="wire-canvas-empty">
+                <p className="wire-title">No active icon</p>
+                <p className="wire-empty-note mt-1">Create a new icon or import an SVG to begin.</p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <button type="button" className="wire-mini-button" onClick={handleCreateBlankIcon}>
+                    <Plus className="size-3.5" />
+                    New icon
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLeftPanelMode('guides');
-                      if (!guidesVisible) {
-                        toggleGuidesVisible();
-                      }
-                    }}
-                    data-active={leftPanelMode === 'guides' ? 'true' : 'false'}
-                    className="workspace-tool-button flex-1 rounded-xl px-3 py-2 text-sm font-medium text-foreground"
-                  >
-                    Guides
+                  <button type="button" className="wire-mini-button" onClick={() => setImportDialogOpen(true)}>
+                    <FolderOpen className="size-3.5" />
+                    Import
                   </button>
                 </div>
               </div>
+            )}
 
-              <div className="min-h-0 flex-1 overflow-hidden">
-                {leftPanelMode === 'guides' ? (
-                  <GuideMasterPanel onClose={() => setLeftPanelMode('layers')} />
-                ) : (
-                  <LayerPanel />
-                )}
-              </div>
-            </section>
-          </aside>
+            <CanvasDock
+              zoom={viewport.zoom}
+              guidesVisible={guidesVisible}
+              snapEnabled={snapEnabled}
+              onZoomChange={(nextZoom) => {
+                if (nextZoom === 'fit') {
+                  window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
+                  return;
+                }
+                setViewport({ zoom: nextZoom });
+              }}
+              onToggleGuides={toggleGuidesVisible}
+              onToggleSnap={toggleSnap}
+            />
+          </div>
+        </main>
 
-          <main className="workspace-column min-h-0">
-            <section className="xl:hidden">
-              <div className="studio-panel overflow-hidden rounded-[1.35rem] p-2">
-                <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} />
-              </div>
-            </section>
-
-            <section className="studio-panel relative min-h-0 flex-1 overflow-hidden rounded-[1.9rem] p-3 xl:p-4">
-              <div className="pointer-events-none absolute inset-x-0 bottom-5 z-20 hidden justify-center xl:flex">
-                <div className="pointer-events-auto">
-                  <ToolPanel guidePanelOpen={leftPanelMode === 'guides'} layout="dock" />
-                </div>
-              </div>
-
-              <div className="relative h-full overflow-hidden rounded-[1.45rem] border border-border/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.98),rgba(243,247,250,0.88))] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:bg-[radial-gradient(circle_at_top,rgba(35,40,46,0.96),rgba(20,24,29,0.94))]">
-                {hasActiveDocument ? (
-                  <div className="h-full">
-                    <Canvas />
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center px-6 py-10">
-                    <div className="max-w-md rounded-[2rem] border border-border/70 bg-background/88 p-8 text-center shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-                      <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-border/80 bg-background/80">
-                        <Layers2 className="size-7 text-muted-foreground" />
-                      </div>
-                      <p className="mt-5 text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                        Editor
-                      </p>
-                      <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-                        Start an icon to begin editing
-                      </h2>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                        This project doesn&apos;t have an active icon yet. Create a blank icon to
-                        sketch from scratch, import SVGs into this project, or head back to the
-                        library.
-                      </p>
-                      <div className="mt-6 flex flex-wrap justify-center gap-2">
-                        <Button className="rounded-xl" onClick={handleCreateBlankIcon}>
-                          <Plus className="size-4" />
-                          New icon
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="rounded-xl"
-                          onClick={() => setImportDialogOpen(true)}
-                        >
-                          Import SVG
-                        </Button>
-                        <Button asChild variant="outline" className="rounded-xl">
-                          <Link href="/">
-                            <ChevronLeft className="size-4" />
-                            Back to workspace
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {currentIconId ? (
-              <section className="studio-panel overflow-hidden rounded-[1.6rem]">
-                <div className="grid gap-0 divide-y divide-border/70 xl:grid-cols-2 xl:divide-x xl:divide-y-0">
-                  <VariantPickerBar />
-                  <StateManagerBar />
-                </div>
-              </section>
-            ) : null}
-          </main>
-
-          <aside className="workspace-column min-h-0">
-            <section className="studio-panel min-h-0 flex flex-1 flex-col overflow-hidden rounded-[1.6rem]">
-              <div className="border-b border-border/70 px-4 py-3">
-                <p className="workspace-kicker">Context</p>
-                <div className="mt-1 flex items-center justify-between gap-3">
-                  <p className="truncate text-[13px] font-semibold text-foreground">
-                    {rightRailTitle}
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-border/70 bg-background/70 px-2 text-[10px] text-muted-foreground"
-                  >
-                    {rightRailModeLabel}
-                  </Badge>
-                </div>
-              </div>
-              <Tabs
-                value={rightPanelTab}
-                onValueChange={(value) => setRightPanelTab(value as 'inspector' | 'animation')}
-                className="flex h-full min-h-0 flex-col"
-              >
-                <TabsList className="mx-3 mt-3 grid grid-cols-2 rounded-xl">
-                  <TabsTrigger value="inspector">Design</TabsTrigger>
-                  <TabsTrigger value="animation">Animate</TabsTrigger>
-                </TabsList>
-                <TabsContent value="inspector" className="min-h-0 flex-1 data-[state=active]:flex">
-                  <div className="min-h-0 w-full">
-                    <InspectorPanel />
-                  </div>
-                </TabsContent>
-                <TabsContent value="animation" className="min-h-0 flex-1 data-[state=active]:flex">
-                  <div className="min-h-0 w-full">
-                    <AnimationStudioPanel
-                      onOpenTransitionEditor={() => setRightPanelTab('inspector')}
-                      showTimelineEditor={false}
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </section>
-          </aside>
-        </div>
-
-        {hasActiveDocument && currentIconId && currentVariant && rightPanelTab === 'animation' ? (
-          <section className="mt-3 studio-panel overflow-hidden rounded-[1.6rem]">
-            <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
-              <div>
-                <p className="workspace-kicker">Timeline</p>
-                <p className="mt-1 text-[13px] font-semibold text-foreground">
-                  {currentTransition
-                    ? `${currentTransition.from} → ${currentTransition.to}`
-                    : 'No transition selected'}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl"
-                onClick={() => setTimelineOpen((value) => !value)}
-              >
-                {timelineOpen ? 'Collapse' : 'Expand'}
-              </Button>
-            </div>
-            {timelineOpen ? (
-              currentTransition ? (
-                <div className="p-3">
-                  <TimelineEditor
-                    iconId={currentIconId}
-                    transition={currentTransition}
-                    variant={currentVariant}
-                  />
-                </div>
-              ) : (
-                <div className="p-3">
-                  <div className="workspace-empty-state rounded-2xl px-4 py-5 text-left">
-                    <p className="font-medium text-foreground">No timeline to show yet.</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Create or select a transition in Animate to scrub keyframes here.
-                    </p>
-                  </div>
-                </div>
-              )
-            ) : null}
-          </section>
-        ) : null}
+        <RightSidebar
+          rightTab={rightTab}
+          onRightTabChange={setRightTab}
+          selectedLayer={selectedLayer}
+          currentIcon={currentIcon}
+          currentVariant={currentVariant}
+          currentState={currentState}
+          selectedTransition={selectedTransition}
+          transitions={transitions}
+          previewProgress={previewProgress}
+          previewPlaying={previewPlaying}
+          onPreviewProgressChange={handlePreviewProgressChange}
+          onTogglePreviewPlaying={() => setPreviewPlaying((value) => !value)}
+          transitionDraft={transitionDraft}
+          onTransitionDraftChange={(patch) =>
+            setTransitionDraft((current) => ({ ...current, ...patch }))
+          }
+          stateIds={stateIds}
+          onCreateTransition={handleCreateTransition}
+          onSelectTransition={setSelectedTransitionId}
+          onRenameIcon={handleRenameIcon}
+          onRenameState={handleRenameState}
+          onPatchVariant={handlePatchVariant}
+          onPatchSelectedLayer={handlePatchSelectedLayer}
+          onPatchSelectedLayerStyle={handlePatchSelectedLayerStyle}
+          onPatchSelectedLayerTransform={handlePatchSelectedLayerTransform}
+          onPatchTransition={handlePatchTransition}
+          onDeleteState={() =>
+            currentState ? setPendingDelete({ type: 'state', id: currentState.id }) : undefined
+          }
+          onDeleteVariant={() =>
+            currentVariant ? setPendingDelete({ type: 'variant', id: currentVariant.id }) : undefined
+          }
+          onDeleteTransition={() =>
+            selectedTransition
+              ? setPendingDelete({ type: 'transition', id: selectedTransition.id })
+              : undefined
+          }
+          guideMasterName={currentGuideMaster?.name ?? null}
+          guidesVisible={guidesVisible}
+        />
       </div>
+
+      <CommandDialog open={commandOpen} onOpenChange={setCommandOpen} className="wire-command">
+        <CommandInput placeholder="Search icons or run editor actions..." />
+        <CommandList>
+          <CommandEmpty>No results.</CommandEmpty>
+
+          <CommandGroup heading="Actions">
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleCreateBlankIcon();
+              }}
+            >
+              <Plus className="size-4" />
+              <span>New icon</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                setImportDialogOpen(true);
+              }}
+            >
+              <FolderOpen className="size-4" />
+              <span>Import SVG</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleSave();
+              }}
+            >
+              <Copy className="size-4" />
+              <span>Save workspace</span>
+              <CommandShortcut>Cmd S</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleExportCurrentSvg();
+              }}
+            >
+              <Square className="size-4" />
+              <span>Export current SVG</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleExportSvgPackage();
+              }}
+            >
+              <Square className="size-4" />
+              <span>Export SVG package</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleExportRuntimeJson();
+              }}
+            >
+              <Blend className="size-4" />
+              <span>Export runtime JSON</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                handleExportReactLibrary();
+              }}
+            >
+              <Blend className="size-4" />
+              <span>Export React library</span>
+            </CommandItem>
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          <CommandGroup heading="Icons">
+            {commandIcons.map((icon) => (
+              <CommandItem
+                key={icon.id}
+                onSelect={() => {
+                  setCommandOpen(false);
+                  handleSelectIcon(icon.id);
+                }}
+              >
+                <Square className="size-4" />
+                <span>{icon.name}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+
+      <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDelete?.type === 'state'
+                ? 'Delete state'
+                : pendingDelete?.type === 'variant'
+                  ? 'Delete size'
+                  : 'Delete transition'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.type === 'state'
+                ? `Delete the ${pendingDelete.id} state?`
+                : pendingDelete?.type === 'variant'
+                  ? `Delete the ${pendingDelete.id} variant?`
+                  : pendingDelete
+                    ? `Delete the ${pendingDelete.id} transition?`
+                    : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </div>
   );

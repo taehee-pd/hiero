@@ -1,0 +1,174 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - link:
+            - /url: /
+            - generic: Coniva Starter
+          - generic:
+            - generic:
+              - heading [level=1]: Chevron Right
+              - img
+            - button:
+              - generic: chevron-right
+              - img
+          - generic:
+            - generic:
+              - button: Layers
+              - button: Variants
+            - generic:
+              - button:
+                - img
+              - button:
+                - img
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: 24px
+                - generic:
+                  - button:
+                    - generic: bg-circle
+                    - generic: secondary
+                  - button:
+                    - img
+                - generic:
+                  - button:
+                    - generic: chevron
+                    - generic: primary
+                  - button:
+                    - img
+                - generic:
+                  - button:
+                    - generic: accent-dot
+                    - generic: tertiary
+                  - button:
+                    - img
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - img [ref=e63]:
+                - generic [ref=e65]: "-2"
+                - generic [ref=e67]: "6"
+                - generic [ref=e69]: "14"
+                - generic [ref=e71]: "22"
+              - img [ref=e72]:
+                - generic [ref=e74]: "-2"
+                - generic [ref=e76]: "6"
+                - generic [ref=e78]: "14"
+                - generic [ref=e80]: "22"
+            - img [ref=e186]
+          - generic:
+            - generic:
+              - button:
+                - img
+                - img
+              - button:
+                - img
+                - img
+              - button:
+                - img
+                - img
+            - generic:
+              - combobox
+            - generic:
+              - button:
+                - img
+              - button:
+                - img
+      - complementary:
+        - generic:
+          - generic:
+            - generic:
+              - button: Inspect
+              - button: Animation
+          - generic: bg-circle
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - paragraph: Appearance
+                - generic:
+                  - generic: Role
+                  - textbox: secondary
+                - generic:
+                  - generic: Fill
+                  - generic: "#1e293b"
+                - generic:
+                  - generic: Fill mode
+                  - combobox
+                - generic:
+                  - generic: Fill color
+                  - textbox: "#1e293b"
+                - generic:
+                  - generic: Stroke
+                  - generic: None
+                - generic:
+                  - generic: Stroke mode
+                  - combobox
+                - generic:
+                  - generic: Stroke width
+                  - spinbutton: "0"
+                - paragraph: Transform
+                - generic:
+                  - generic:
+                    - generic: X
+                    - spinbutton: "0"
+                  - generic:
+                    - generic: "Y"
+                    - spinbutton: "0"
+                - generic:
+                  - generic: Rotate
+                  - spinbutton: "0"
+    - generic:
+      - heading [level=2]: Command Palette
+      - paragraph: Search for a command to run...
+  - button "Open Next.js Dev Tools" [ref=e182] [cursor=pointer]:
+    - img [ref=e183]
+  - alert
+  - dialog "Command Palette" [ref=e188]:
+    - generic [ref=e189]:
+      - generic [ref=e191]:
+        - img [ref=e192]
+        - combobox [expanded] [active] [ref=e195]
+      - listbox "Suggestions" [ref=e196]:
+        - generic [ref=e197]:
+          - generic [ref=e198]: Actions
+          - group "Actions" [ref=e199]:
+            - option "New icon" [selected] [ref=e200]:
+              - img
+              - generic [ref=e201]: New icon
+            - option "Import SVG" [ref=e202]:
+              - img
+              - generic [ref=e203]: Import SVG
+            - option "Save workspace Cmd S" [ref=e204]:
+              - img
+              - generic [ref=e205]: Save workspace
+              - generic [ref=e206]: Cmd S
+            - option "Export current SVG" [ref=e207]:
+              - img
+              - generic [ref=e208]: Export current SVG
+            - option "Export SVG package" [ref=e209]:
+              - img
+              - generic [ref=e210]: Export SVG package
+            - option "Export runtime JSON" [ref=e211]:
+              - img
+              - generic [ref=e212]: Export runtime JSON
+            - option "Export React library" [ref=e213]:
+              - img
+              - generic [ref=e214]: Export React library
+          - separator [ref=e215]
+          - generic [ref=e216]: Icons
+          - group "Icons" [ref=e217]:
+            - option "Chevron Right" [ref=e218]:
+              - img
+              - generic [ref=e219]: Chevron Right
+            - option "Play" [ref=e220]:
+              - img
+              - generic [ref=e221]: Play
+    - button "Close" [ref=e222]:
+      - img
+      - generic [ref=e223]: Close

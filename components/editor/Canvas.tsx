@@ -49,7 +49,7 @@ function hasSvgDragData(dataTransfer: DataTransfer): boolean {
   );
 }
 
-export function Canvas() {
+export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const interactionRootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -761,7 +761,7 @@ export function Canvas() {
         />
       </div>
 
-      {icon && variant && currentState ? (
+      {showStatusHud && icon && variant && currentState ? (
         <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 text-xs text-muted-foreground">
           <span>{tool}</span>
           <span>·</span>

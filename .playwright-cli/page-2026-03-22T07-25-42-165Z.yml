@@ -1,0 +1,132 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e5]:
+          - link "Coniva Starter" [ref=e6] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e7]: Coniva Starter
+          - generic [ref=e8]:
+            - generic [ref=e9]:
+              - heading "Chevron Right" [level=1] [ref=e10]
+              - img [ref=e11]
+            - button "chevron-right" [ref=e13]:
+              - generic [ref=e14]: chevron-right
+              - img [ref=e15]
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - button "Layers" [ref=e20]
+              - button "Variants" [ref=e21]
+            - generic [ref=e22]:
+              - button "Open command menu" [ref=e23]:
+                - img [ref=e24]
+              - button "Import SVG" [ref=e27]:
+                - img [ref=e28]
+        - generic [ref=e33]:
+          - generic [ref=e35]: 24px
+          - generic [ref=e36]:
+            - button "bg-circle secondary" [ref=e37]:
+              - generic [ref=e38]: bg-circle
+              - generic [ref=e39]: secondary
+            - button "Hide layer" [ref=e40]:
+              - img [ref=e41]
+          - generic [ref=e44]:
+            - button "chevron primary" [ref=e45]:
+              - generic [ref=e46]: chevron
+              - generic [ref=e47]: primary
+            - button "Hide layer" [ref=e48]:
+              - img [ref=e49]
+          - generic [ref=e52]:
+            - button "accent-dot tertiary" [ref=e53]:
+              - generic [ref=e54]: accent-dot
+              - generic [ref=e55]: tertiary
+            - button "Hide layer" [ref=e56]:
+              - img [ref=e57]
+      - main [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - generic:
+              - img [ref=e63]:
+                - generic [ref=e65]: "-2"
+                - generic [ref=e67]: "6"
+                - generic [ref=e69]: "14"
+                - generic [ref=e71]: "22"
+              - img [ref=e72]:
+                - generic [ref=e74]: "-2"
+                - generic [ref=e76]: "6"
+                - generic [ref=e78]: "14"
+                - generic [ref=e80]: "22"
+            - img "Icon canvas" [ref=e83]
+          - generic [ref=e99]:
+            - generic [ref=e100]:
+              - button "Select" [ref=e101]:
+                - img [ref=e102]
+                - img [ref=e104]
+              - button "Shape" [ref=e106]:
+                - img [ref=e107]
+                - img [ref=e109]
+              - button "Pen" [ref=e111]:
+                - img [ref=e112]
+                - img [ref=e117]
+            - combobox "Canvas zoom" [ref=e120]:
+              - option "50%" [selected]
+              - option "75%"
+              - option "100%"
+              - option "150%"
+              - option "200%"
+              - option "Fit"
+            - generic [ref=e121]:
+              - button "Toggle snap" [ref=e122]:
+                - img [ref=e123]
+              - button "Toggle guides" [ref=e125]:
+                - img [ref=e126]
+      - complementary [ref=e129]:
+        - generic [ref=e130]:
+          - generic [ref=e132]:
+            - button "Inspect" [ref=e133]
+            - button "Animation" [ref=e134]
+          - generic [ref=e135]: bg-circle
+        - generic [ref=e139]:
+          - paragraph [ref=e140]: Appearance
+          - generic [ref=e141]:
+            - generic [ref=e142]: Role
+            - textbox "Role" [ref=e143]: secondary
+          - generic [ref=e144]:
+            - generic [ref=e145]: Fill
+            - generic [ref=e146]: "#1e293b"
+          - generic [ref=e147]:
+            - generic [ref=e148]: Fill mode
+            - combobox "Fill mode" [ref=e149]:
+              - option "None"
+              - option "Fixed" [selected]
+              - option "Current color"
+          - generic [ref=e150]:
+            - generic [ref=e151]: Fill color
+            - textbox "Fill color" [ref=e152]: "#1e293b"
+          - generic [ref=e153]:
+            - generic [ref=e154]: Stroke
+            - generic [ref=e155]: None
+          - generic [ref=e156]:
+            - generic [ref=e157]: Stroke mode
+            - combobox "Stroke mode" [ref=e158]:
+              - option "None" [selected]
+              - option "Fixed"
+              - option "Current color"
+          - generic [ref=e159]:
+            - generic [ref=e160]: Stroke width
+            - spinbutton "Stroke width" [ref=e161]: "0"
+          - paragraph [ref=e162]: Transform
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - generic [ref=e165]: X
+              - spinbutton "X" [ref=e166]: "0"
+            - generic [ref=e167]:
+              - generic [ref=e168]: "Y"
+              - spinbutton "Y" [ref=e169]: "0"
+          - generic [ref=e170]:
+            - generic [ref=e171]: Rotate
+            - spinbutton "Rotate" [ref=e172]: "0"
+    - generic [ref=e173]:
+      - heading "Command Palette" [level=2] [ref=e174]
+      - paragraph [ref=e175]: Search for a command to run...
+  - alert [ref=e176]

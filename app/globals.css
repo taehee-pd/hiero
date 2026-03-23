@@ -1518,12 +1518,11 @@
     color: rgba(0, 0, 0, 0.9);
   }
 
-  /* Only add top border on section headers that aren't the first child */
-  .wire-section-header + .wire-section-header,
-  .wire-section-header.mt-3 {
+  /* Top border on non-first section headers (e.g., "States" after "Sizes") */
+  .wire-section-header:not(:first-child) {
     border-top: 1px solid #efefef;
-    margin-top: 4px;
-    padding-top: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
   }
 
   .wire-layer-row,

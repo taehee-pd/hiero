@@ -416,7 +416,7 @@ function LeftSidebar({
               </button>
             ))}
 
-            <div className="wire-section-header mt-3">
+            <div className="wire-section-header">
               <span>States</span>
             </div>
             <Input

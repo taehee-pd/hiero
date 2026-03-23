@@ -218,7 +218,7 @@ export type VariantInput = {
 };
 
 export type VariantPatch = Partial<
-  Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale' | 'variableValue'>
+  Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale' | 'variableValue' | 'weightControlPoints'>
 >;
 
 type LegacyVariant = Variant & {
@@ -1335,13 +1335,18 @@ function createActions(): EditorActions {
         const nextRenderingMode = patch.renderingMode ?? variant.renderingMode;
         const nextWeight = patch.weight ?? variant.weight;
         const nextScale = patch.scale ?? variant.scale;
+        const nextWeightControlPoints =
+          'weightControlPoints' in patch
+            ? patch.weightControlPoints
+            : variant.weightControlPoints;
 
         if (
           nextSize === variant.size &&
           nextViewBox === variant.viewBox &&
           nextRenderingMode === variant.renderingMode &&
           nextWeight === variant.weight &&
-          nextScale === variant.scale
+          nextScale === variant.scale &&
+          nextWeightControlPoints === variant.weightControlPoints
         ) {
           return s;
         }
@@ -1363,6 +1368,7 @@ function createActions(): EditorActions {
                     renderingMode: nextRenderingMode,
                     weight: nextWeight,
                     scale: nextScale,
+                    weightControlPoints: nextWeightControlPoints,
                   },
                 },
               },

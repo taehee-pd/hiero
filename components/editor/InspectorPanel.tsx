@@ -17,6 +17,7 @@ import {
   AlignVerticalJustifyStart,
   BetweenHorizontalStart,
   BetweenVerticalStart,
+  Lock,
   Minus,
   Shapes,
   SplitSquareHorizontal,
@@ -24,6 +25,9 @@ import {
   VenetianMask,
   ScissorsLineDashed,
   Plus,
+  Check,
+  X,
+  ClipboardPaste,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
@@ -32,6 +36,7 @@ import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Slider } from '@/components/kibo-ui/slider';
+import { Switch } from '@/components/kibo-ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorPickerPopover } from './ColorPickerPopover';
@@ -55,7 +60,11 @@ import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
 import type { GradientStop, Layer, PaintRef, SymbolScale, SymbolWeight, Variant } from '@/lib/schema/types';
 import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
+import { validateWeightControlPoints } from '@/lib/runtime-core/weight-interpolation';
 import { cn } from '@/lib/utils';
+import { computeVariableValue } from '@/lib/runtime-core/variable-value';
+import { canonicalizeLayerPath } from '@/lib/runtime-core/path-normalization';
+import { generateAutoGradient } from '@/lib/rendering/auto-gradient';
 
 const BOOLEAN_ACTIONS: Array<{
   mode: BooleanMode;
@@ -152,6 +161,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const colorTokens = useEditorStore(
     (s) => s.project?.tokenSet?.colors ?? {},
   );
+  const renderingMode = useEditorStore((s) => s.renderingMode);
+  const transitionPreview = useEditorStore((s) => s.transitionPreview);
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
   const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
   const [matrixSizes, setMatrixSizes] = useState<number[]>([16, 24]);
@@ -178,6 +189,82 @@ export const InspectorPanel = memo(function InspectorPanel() {
     [currentState],
   );
   const isTopologyLocked = currentState?.topology?.locked === true;
+
+  // L1: Variable value opacity indicator
+  const variableValueInfo = useMemo(() => {
+    const vv = currentVariant?.variableValue;
+    if (vv === undefined || !layer || !currentState) return null;
+    const layerMap: Record<string, { role?: string; visible?: boolean }> = {};
+    for (const [id, l] of Object.entries(currentState.layers)) {
+      layerMap[id] = { role: l.role, visible: l.visible };
+    }
+    const result = computeVariableValue(layerMap, vv);
+    const layerResult = result[layer.id];
+    if (!layerResult) return null;
+    const role = layer.role ?? 'primary';
+    const thresholds: Record<string, string> = {
+      primary: '0\u201333%',
+      secondary: '33\u201366%',
+      tertiary: '66\u2013100%',
+    };
+    return {
+      variableValue: vv,
+      opacity: layerResult.opacity,
+      role,
+      thresholdRange: thresholds[role] ?? '0\u2013100%',
+    };
+  }, [currentVariant?.variableValue, layer, currentState]);
+
+  // L2: Topology status (per-layer geometry stats)
+  const layerGeometryStats = useMemo(() => {
+    if (!layer?.path?.d) return null;
+    const canonical = canonicalizeLayerPath(layer);
+    if (!canonical) return null;
+    return canonical.stats;
+  }, [layer]);
+
+  // L3: Animation strategy badge
+  const animationStrategyBadge = useMemo(() => {
+    if (!transitionPreview || !layer) return null;
+    const resolved = transitionPreview.resolvedTransition;
+    if (!resolved) return null;
+    for (const binding of resolved.layerBindings) {
+      const matchesFrom = binding.fromLayer?.id === layer.id;
+      const matchesTo = binding.toLayer?.id === layer.id;
+      if (!matchesFrom && !matchesTo) continue;
+      if (binding.preserved) return 'preserved';
+      if (binding.morph) return 'morph';
+      if (binding.animationType === 'morph') return 'morph';
+      // Determine from tracks
+      const hasTrim = binding.tracks?.some(
+        (t) => 'property' in t && (t.property === 'trimStart' || t.property === 'trimEnd' || t.property === 'trimOffset'),
+      );
+      if (hasTrim) return 'trim';
+      if (binding.fallback) return 'crossfade';
+      return 'crossfade';
+    }
+    return null;
+  }, [transitionPreview, layer]);
+
+  // L5: Auto-gradient preview swatch
+  const autoGradientPreview = useMemo(() => {
+    if (renderingMode === 'multicolor') return null;
+    if (!layer?.style.fill) return null;
+    const fill = layer.style.fill;
+    let solidColor: string | null = null;
+    if (fill.mode === 'fixed' && fill.value && fill.value !== 'none') {
+      solidColor = fill.value;
+    } else if (fill.mode === 'token') {
+      solidColor = colorTokens[fill.token] ?? null;
+    }
+    if (!solidColor || !/^#[0-9a-fA-F]{3,6}$/.test(solidColor)) return null;
+    const stops = generateAutoGradient(solidColor);
+    const cssStops = stops
+      .map((s) => `${s.color} ${Math.round(s.offset * 100)}%`)
+      .join(', ');
+    return `linear-gradient(180deg, ${cssStops})`;
+  }, [renderingMode, layer?.style.fill, colorTokens]);
+
   const multipleLayersSelected = selection.layerIds.length > 1;
   const enoughLayersToDistribute = selection.layerIds.length > 2;
   const showShapeToolSettings = tool === 'shape';
@@ -206,7 +293,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     selection.layerIds.length === 1 &&
     Boolean(layer?.isClipMask || layer?.clipPathLayerId);
   const handlePatchVariant = useCallback(
-    (patch: Partial<Pick<Variant, 'weight' | 'scale' | 'variableValue'>>) => {
+    (patch: Partial<Pick<Variant, 'weight' | 'scale' | 'variableValue' | 'weightControlPoints'>>) => {
       if (currentIcon && currentVariantId) {
         editorStore.getState().patchVariant(currentIcon.id, currentVariantId, patch);
       }
@@ -431,6 +518,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   </div>
                 ) : null}
 
+                {currentVariant ? (
+                  <WeightControlPointsEditor
+                    weightControlPoints={currentVariant.weightControlPoints}
+                    onPatchVariant={handlePatchVariant}
+                  />
+                ) : null}
+
                 <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
                   <Label htmlFor="variant-size-preset" className="text-xs uppercase text-muted-foreground">
                     Preset Size
@@ -600,21 +694,43 @@ export const InspectorPanel = memo(function InspectorPanel() {
             <>
               <Section title="Topology">
                 <div className="flex items-center justify-between gap-2">
-                  <div>
+                  <div className="flex items-center gap-2">
+                    {isTopologyLocked ? <Lock className="size-3.5 text-primary" /> : null}
                     <p className="text-sm font-medium text-foreground">
                       {currentTopology.layerPairs.length} tracked layer
                       {currentTopology.layerPairs.length === 1 ? '' : 's'}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Subpath counts are captured per path layer.
-                    </p>
                   </div>
-                  {isTopologyLocked ? (
-                    <span className="rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-[0.16em] text-primary">
-                      Locked
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="topology-lock-switch"
+                      className="text-[length:var(--text-label)] text-muted-foreground"
+                    >
+                      {isTopologyLocked ? 'Locked' : 'Unlocked'}
+                    </Label>
+                    <Switch
+                      id="topology-lock-switch"
+                      checked={isTopologyLocked}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleLockTopology();
+                        } else {
+                          handleUnlockTopology();
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
+
+                {isTopologyLocked ? (
+                  <p className="text-xs text-muted-foreground">
+                    Path edits that change command structure will trigger a geometry warning.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Lock topology to enforce command structure compatibility across states.
+                  </p>
+                )}
 
                 {currentTopology.layerPairs.length > 0 ? (
                   <div className="grid gap-2">
@@ -635,29 +751,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 ) : (
                   <InlineMessage>No path layers are available in this state.</InlineMessage>
                 )}
-
-                <div className="flex gap-2">
-                  {isTopologyLocked ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleUnlockTopology}
-                      className="rounded-xl"
-                    >
-                      Unlock
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleLockTopology}
-                      className="rounded-xl"
-                    >
-                      Lock Topology
-                    </Button>
-                  )}
-                </div>
               </Section>
               <Separator />
             </>
@@ -676,7 +769,35 @@ export const InspectorPanel = memo(function InspectorPanel() {
             <>
           <Section title="Layer">
             <ReadOnlyField label="ID" value={layer.id} />
-            <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
+            <div className="flex items-center gap-2">
+              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
+              {animationStrategyBadge ? (
+                <span
+                  className={cn(
+                    'mt-auto shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-white',
+                    animationStrategyBadge === 'morph' && 'bg-green-600',
+                    animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
+                    animationStrategyBadge === 'crossfade' && 'bg-red-500',
+                    animationStrategyBadge === 'preserved' && 'bg-blue-500',
+                  )}
+                >
+                  {animationStrategyBadge}
+                </span>
+              ) : null}
+            </div>
+            {variableValueInfo ? (
+              <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs text-foreground/80">
+                <span className="font-medium">Variable Value:</span>{' '}
+                <span className="tabular-nums">{variableValueInfo.variableValue.toFixed(2)}</span>
+                {' \u2192 opacity: '}
+                <span className="tabular-nums">{Math.round(variableValueInfo.opacity * 100)}%</span>
+                {' ('}
+                <span className="font-medium">{variableValueInfo.role}</span>
+                {', threshold '}
+                <span className="tabular-nums">{variableValueInfo.thresholdRange}</span>
+                {')'}
+              </div>
+            ) : null}
           </Section>
 
           <Separator />
@@ -839,6 +960,32 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 {layer.path.fillRule && (
                   <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
                 )}
+                {layerGeometryStats ? (
+                  <details className="rounded-xl border border-border/70 bg-background/50 px-3 py-2">
+                    <summary className="cursor-pointer text-[length:var(--text-label)] font-semibold uppercase text-[var(--system-gray)]">
+                      Topology ({layerGeometryStats.subpathCount} subpath{layerGeometryStats.subpathCount === 1 ? '' : 's'}, {layerGeometryStats.pointCount} pts)
+                    </summary>
+                    <div className="mt-2 grid gap-1.5">
+                      {layerGeometryStats.commandSignature
+                        .join(' ')
+                        .split(/(?=M)/)
+                        .filter(Boolean)
+                        .map((sig, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-mono text-foreground/80">{sig.trim()}</span>
+                            <span className={cn(
+                              'rounded-full px-1.5 py-0.5 text-[length:var(--text-label)] font-medium',
+                              layerGeometryStats.closed[i]
+                                ? 'bg-green-500/15 text-green-600'
+                                : 'bg-yellow-500/15 text-yellow-600',
+                            )}>
+                              {layerGeometryStats.closed[i] ? 'closed' : 'open'}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </details>
+                ) : null}
               </Section>
               <Separator />
             </>
@@ -856,6 +1003,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 })
               }
             />
+            {autoGradientPreview ? (
+              <div className="grid gap-1">
+                <span className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+                  Auto-Gradient Preview
+                </span>
+                <div
+                  className="h-3 w-full rounded-lg border border-border/70"
+                  style={{ background: autoGradientPreview }}
+                />
+              </div>
+            ) : null}
             <PaintField
               label="Stroke"
               paint={layer.style.stroke}
@@ -1513,6 +1671,191 @@ function scaleVariantViewBox(
   ];
 }
 
+
+// ── Weight Control Points Editor ──────────────────────────────────────
+
+const WEIGHT_CONTROL_SLOTS = ['ultralight', 'regular', 'black'] as const;
+const WEIGHT_SLOT_LABELS: Record<(typeof WEIGHT_CONTROL_SLOTS)[number], string> = {
+  ultralight: 'Ultralight',
+  regular: 'Regular',
+  black: 'Black',
+};
+
+function WeightControlPointsEditor({
+  weightControlPoints,
+  onPatchVariant,
+}: {
+  weightControlPoints: Variant['weightControlPoints'];
+  onPatchVariant: (patch: Partial<Pick<Variant, 'weightControlPoints'>>) => void;
+}) {
+  const [pasteTarget, setPasteTarget] = useState<(typeof WEIGHT_CONTROL_SLOTS)[number] | null>(null);
+  const pasteInputRef = useRef<HTMLInputElement>(null);
+
+  const validationResult = useMemo(() => {
+    const ul = weightControlPoints?.ultralight;
+    const reg = weightControlPoints?.regular;
+    const blk = weightControlPoints?.black;
+    if (!ul || !reg || !blk) return null;
+    return validateWeightControlPoints({ ultralight: ul, regular: reg, black: blk });
+  }, [weightControlPoints]);
+
+  const handlePasteControlPoint = useCallback(
+    (slot: (typeof WEIGHT_CONTROL_SLOTS)[number], value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      if (!/^[Mm]/.test(trimmed)) {
+        toast({
+          title: 'Invalid SVG path',
+          description: 'The pasted value does not look like a valid SVG path d string.',
+        });
+        return;
+      }
+      const next = { ...weightControlPoints, [slot]: trimmed };
+      onPatchVariant({ weightControlPoints: next });
+      setPasteTarget(null);
+    },
+    [weightControlPoints, onPatchVariant],
+  );
+
+  const handleClearControlPoint = useCallback(
+    (slot: (typeof WEIGHT_CONTROL_SLOTS)[number]) => {
+      if (!weightControlPoints) return;
+      const next = { ...weightControlPoints };
+      delete next[slot];
+      if (!next.ultralight && !next.regular && !next.black) {
+        onPatchVariant({ weightControlPoints: undefined });
+      } else {
+        onPatchVariant({ weightControlPoints: next });
+      }
+    },
+    [weightControlPoints, onPatchVariant],
+  );
+
+  const handlePasteFromClipboard = useCallback(
+    async (slot: (typeof WEIGHT_CONTROL_SLOTS)[number]) => {
+      try {
+        const text = await navigator.clipboard.readText();
+        handlePasteControlPoint(slot, text);
+      } catch {
+        setPasteTarget(slot);
+        requestAnimationFrame(() => pasteInputRef.current?.focus());
+      }
+    },
+    [handlePasteControlPoint],
+  );
+
+  return (
+    <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+        Weight Control Points
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        Set SVG path data for three weight anchors to enable continuous weight interpolation.
+      </p>
+
+      <div className="grid gap-1.5">
+        {WEIGHT_CONTROL_SLOTS.map((slot) => {
+          const hasValue = Boolean(weightControlPoints?.[slot]);
+          return (
+            <div
+              key={slot}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2"
+            >
+              <div className="flex items-center gap-2">
+                {hasValue ? (
+                  <Check className="size-3.5 text-green-500" />
+                ) : (
+                  <span className="size-3.5 rounded-full border border-border/70" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {WEIGHT_SLOT_LABELS[slot]}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                {hasValue ? (
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => handleClearControlPoint(slot)}
+                    aria-label={`Clear ${WEIGHT_SLOT_LABELS[slot]}`}
+                    title={`Clear ${WEIGHT_SLOT_LABELS[slot]}`}
+                    className="size-7"
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handlePasteFromClipboard(slot)}
+                  className="h-7 rounded-lg px-2 text-xs"
+                >
+                  <ClipboardPaste className="mr-1 size-3" />
+                  {hasValue ? 'Replace' : 'Paste'}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {pasteTarget ? (
+        <div className="flex items-center gap-2">
+          <Input
+            ref={pasteInputRef}
+            placeholder={`Paste SVG d string for ${WEIGHT_SLOT_LABELS[pasteTarget]}...`}
+            className="h-8 flex-1 rounded-lg bg-input text-xs font-mono"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handlePasteControlPoint(pasteTarget, e.currentTarget.value);
+              } else if (e.key === 'Escape') {
+                setPasteTarget(null);
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setPasteTarget(null)}
+            className="h-8 px-2 text-xs"
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : null}
+
+      {validationResult ? (
+        <div
+          className={cn(
+            'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium',
+            validationResult.valid
+              ? 'border border-green-500/30 bg-green-500/[0.08] text-green-700 dark:text-green-400'
+              : 'border border-destructive/30 bg-destructive/[0.08] text-destructive',
+          )}
+        >
+          {validationResult.valid ? (
+            <>
+              <Check className="size-3.5" />
+              Compatible
+            </>
+          ) : (
+            <>
+              <X className="size-3.5" />
+              Incompatible: {validationResult.reason}
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground/70">
+          Set all three control points to check compatibility.
+        </p>
+      )}
+    </div>
+  );
+}
 function Section({
   title,
   children,

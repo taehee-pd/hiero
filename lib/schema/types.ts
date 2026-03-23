@@ -101,6 +101,11 @@ export type Variant = {
   defaultState: string;
   states: Record<string, State>;
   variableValue?: number;  // 0.0-1.0, controls progressive layer fill
+  weightControlPoints?: {
+    ultralight?: string;  // SVG d string
+    regular?: string;
+    black?: string;
+  };
 };
 
 export type State = {

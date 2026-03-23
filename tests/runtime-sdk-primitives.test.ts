@@ -87,6 +87,7 @@ describe('runtime sdk primitives', () => {
       'hierarchical',
       'palette',
       'multicolor',
+      'autoGradient',
     ]);
 
     expect(() => parseCompiledIconJson({})).toThrow('Invalid compiled icon payload: missing $schema.');

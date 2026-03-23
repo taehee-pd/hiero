@@ -30,6 +30,7 @@ describe('compiled icon export adapter', () => {
     const modes = compiled.variants.v24.states.default.modes;
 
     expect(Object.keys(modes).sort()).toEqual([
+      'autoGradient',
       'hierarchical',
       'monochrome',
       'multicolor',

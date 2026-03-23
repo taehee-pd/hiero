@@ -96,6 +96,7 @@ function buildCompiledVariants(project: Project, icon: Icon): CompiledIcon['vari
               hierarchical: { layers: modeLayers.hierarchical },
               palette: { layers: modeLayers.palette },
               multicolor: { layers: modeLayers.multicolor },
+              autoGradient: { layers: modeLayers.autoGradient },
             },
           };
           return stateAcc;
@@ -124,6 +125,7 @@ function buildResolvedLayers(
     hierarchical: ordered.map((layer) => toCompiledLayer(layer, project, 'hierarchical')),
     palette: ordered.map((layer) => toCompiledLayer(layer, project, 'palette')),
     multicolor: ordered.map((layer) => toCompiledLayer(layer, project, 'multicolor')),
+    autoGradient: ordered.map((layer) => toCompiledLayer(layer, project, 'autoGradient')),
   };
 }
 

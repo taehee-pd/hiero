@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Link2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Button } from '@/components/kibo-ui/button';
@@ -12,6 +12,8 @@ import {
 } from '@/lib/editor-store/hooks';
 import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
+import { selectCurrentVariant } from '@/lib/editor-store/selectors';
+import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 import { cn } from '@/lib/utils';
 
 export const LayerPanel = memo(function LayerPanel() {
@@ -31,7 +33,18 @@ export const LayerPanel = memo(function LayerPanel() {
     return map;
   });
   const currentStateId = useEditorStore((s) => s.currentStateId);
+  const currentVariant = useEditorStore(selectCurrentVariant);
   const { setSelection, setLayerVisibility, renameLayer, removeSelectedLayers } = useEditorActions();
+
+  // J7: Compute per-layer visibility based on variableValue
+  const variableValueResults = useMemo(() => {
+    if (currentVariant?.variableValue == null || rows.length === 0) return null;
+    const layerMap: Record<string, { role?: string; visible?: boolean }> = {};
+    for (const { layer } of rows) {
+      layerMap[layer.id] = { role: layer.role, visible: layer.visible };
+    }
+    return computeVariableValue(layerMap, currentVariant.variableValue);
+  }, [currentVariant?.variableValue, rows]);
 
   // UX-F4: Keyboard navigation state
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -146,6 +159,10 @@ export const LayerPanel = memo(function LayerPanel() {
             const componentKind = componentByLayerId.get(layer.id);
             const isFocused = focusedIndex === rowIndex;
             const isRenaming = renamingLayerId === layer.id;
+            // J7: Per-layer variable-value visibility
+            const varResult = variableValueResults?.[layer.id];
+            const isVarActive = varResult ? varResult.visible : true;
+            const hasVariableValue = variableValueResults != null;
 
             return (
               <div
@@ -160,6 +177,8 @@ export const LayerPanel = memo(function LayerPanel() {
                     ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
                     : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
                   isFocused && !isSelected && 'ring-1 ring-primary/30',
+                  // J7: Dim layers that are inactive at the current variableValue
+                  hasVariableValue && !isVarActive && 'opacity-40',
                 )}
                 onClick={() => {
                   setFocusedIndex(rowIndex);
@@ -239,6 +258,16 @@ export const LayerPanel = memo(function LayerPanel() {
                     ) : (
                       <p className="truncate text-[length:var(--text-body)] font-medium text-foreground">{layer.id}</p>
                     )}
+                    {/* J7: Variable-value activity indicator */}
+                    {hasVariableValue ? (
+                      <span
+                        className={cn(
+                          'size-1.5 shrink-0 rounded-full',
+                          isVarActive ? 'bg-primary' : 'bg-muted-foreground/30',
+                        )}
+                        title={isVarActive ? 'Active at current variable value' : 'Inactive at current variable value'}
+                      />
+                    ) : null}
                     {isMask ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
                         Mask

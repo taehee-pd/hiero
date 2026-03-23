@@ -92,6 +92,22 @@
                   }
                 }
               ]
+            },
+            "autoGradient": {
+              "layers": [
+                {
+                  "id": "chevron",
+                  "role": "primary",
+                  "path": { "d": "M8 5l8 7-8 7" },
+                  "style": {
+                    "fill": "#2563eb",
+                    "fillOpacity": 1,
+                    "stroke": "none",
+                    "strokeOpacity": 1,
+                    "strokeWidth": 0
+                  }
+                }
+              ]
             }
           }
         }

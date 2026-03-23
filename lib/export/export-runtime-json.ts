@@ -176,7 +176,8 @@ export type RuntimeTrackProperty =
   | 'strokeOpacity'
   | 'trimStart'
   | 'trimEnd'
-  | 'trimOffset';
+  | 'trimOffset'
+  | 'variableValue';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
@@ -1254,6 +1255,7 @@ const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'translateX',
   'translateY',
   'scale',
+  'variableValue',
   'pathLength',
   'fill',
   'stroke',

@@ -3,8 +3,208 @@
 **Last updated:** 2026-03-23
 **Canonical product name:** Coniva
 
-All phases are **completed**. This document serves as a reference for
-what was built, where it lives, and key decisions made.
+## Open Phases
+
+| # | Phase | Status | Summary |
+|---|-------|--------|---------|
+| I | **Animation Tab Surface** | open | Expose trim/morph/hybrid runtime in timeline UI |
+| J | **Animation Preview & Composition** | open | Live preview, direction, variable value integration |
+| K | **Advanced Animation Authoring** | open | Weight interpolation UI, auto-gradient, Magic Replace |
+
+---
+
+## Phase I — Animation Tab Surface
+
+Status: **open** (bridge gap between runtime capabilities and editor UI)
+
+The runtime implements 13 timeline track types, per-subpath strategy
+classification, trim path computation, and hybrid frame composition.
+The Animation tab currently exposes only 6 track types and no trim/subpath UI.
+This phase surfaces the existing runtime in the editor.
+
+Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md)
+
+### Priority 1 — Track Completeness
+
+- [ ] **I1 — Add trim path tracks to TimelineEditor.**
+  Add `trimStart`, `trimEnd`, `trimOffset` to the `TRACKS` array in
+  `components/editor/TimelineEditor.tsx`. These are numeric 0-1 tracks
+  with rest values defined in `scheduler.ts` (trimStart=0, trimEnd=1,
+  trimOffset=0). Enables authoring stroke-reveal and traveling-segment
+  animations for open paths.
+
+- [ ] **I2 — Add style tracks to TimelineEditor.**
+  Add `strokeWidth`, `fillOpacity`, `strokeOpacity` to the `TRACKS`
+  array. These were added in Phase H3 at the schema/runtime level but
+  never exposed in the editor. All are numeric tracks with standard
+  interpolation.
+
+- [ ] **I3 — Smart track suggestions based on path topology.**
+  When a user adds a track to a layer binding, suggest appropriate
+  tracks based on the layer's subpath classification:
+  - Closed subpaths → suggest morph-related tracks (opacity, scale)
+  - Open subpaths → suggest trim tracks (trimStart, trimEnd, trimOffset)
+  - All layers → suggest transform tracks (translateX/Y, rotate, scale)
+  Show suggestions as a categorized dropdown with section headers.
+
+### Priority 2 — Per-Binding Strategy Display
+
+- [ ] **I4 — Show per-binding animation strategy in layer binding list.**
+  In `TransitionPanel.tsx`, display the classified strategy (morph/trim/
+  crossfade/preserved) next to each layer binding with color-coded
+  badges. Use `classifySubPathStrategies()` from topology-detection.ts
+  to compute. Green=morph, Yellow=trim, Red=crossfade, Blue=preserved.
+
+- [ ] **I5 — Show per-binding morph readiness scores.**
+  Expand the layer binding list to show `MorphReadiness` score per
+  binding (not just global compatibility badge). Display score components:
+  commandCompatibility, subpathCompatibility, closedCompatibility,
+  bboxSimilarity, centroidSimilarity. Show recommended strategy with
+  one-line explanation.
+
+- [ ] **I6 — Per-subpath strategy breakdown for compound paths.**
+  When a layer has multiple subpaths, show a collapsible breakdown:
+  `subpath 0: morph (both closed, score: 0.94)` /
+  `subpath 1: trim (both open, mismatched commands)`.
+  Use `classifySubPathStrategies()` output. Only shown for layers
+  with > 1 subpath.
+
+- [ ] **I7 — Per-binding strategy override.**
+  Allow users to override the auto-classified strategy per binding.
+  Add a strategy selector dropdown to each binding in the list.
+  Override persists in the LayerBinding schema (add optional
+  `strategyOverride?: 'morph' | 'trim' | 'crossfade'`).
+
+### Priority 3 — Trim Path UI
+
+- [ ] **I8 — Compound trim mode selector.**
+  When a binding has trim tracks, show a `CompoundTrimMode` dropdown
+  (`simultaneously` / `individually`) in the binding detail view.
+  Wire to `LayerBinding.compoundTrimMode`. Default to `simultaneously`.
+
+- [ ] **I9 — Trim path visual preview in timeline.**
+  When trim tracks are active, show a miniature path preview next to
+  the track rows indicating the visible stroke range. Update in
+  real-time as the playhead scrubs. Use `computeTrimValues()` to
+  compute the dasharray/dashoffset for the preview.
+
+- [ ] **I10 — Default trim keyframes auto-population.**
+  When the system classifies a binding as `trim` strategy, auto-populate
+  default keyframes: `trimEnd: [0, 1]` (draw on) with the transition's
+  easing. User can edit or remove these defaults.
+
+---
+
+## Phase J — Animation Preview & Composition
+
+Status: **open** (live preview integration for cross-icon, direction, variable value)
+
+### Priority 1 — Cross-Icon Preview
+
+- [ ] **J1 — Cross-icon transition preview in timeline.**
+  When a cross-icon transition is selected, load layers from both
+  source and target icons simultaneously. Render the interpolated
+  frame on the canvas using `resolveTransition()` with
+  `crossIconContext`. The timeline should show source layers fading
+  out and target layers fading in with morph/trim tracks overlaid.
+
+- [ ] **J2 — Cross-icon layer matching visualization.**
+  In the layer binding list, show which source layer matched to which
+  target layer and why (role match, name match, geometry match).
+  Display the 3-pass matching result from the resolver with a brief
+  label per binding: "matched by role", "matched by name",
+  "matched by geometry (score: 0.82)".
+
+### Priority 2 — Direction & Composition Preview
+
+- [ ] **J3 — Direction preview in canvas.**
+  When direction is set on a replace transition, the canvas preview
+  should show the directional slide+fade effect during scrubbing.
+  Apply `buildDirectionalReplaceSnapshot()` transform values
+  (translateY offset, scale) to the rendered SVG layers.
+
+- [ ] **J4 — Hybrid frame preview in canvas.**
+  When a transition has mixed strategies (morph + trim + crossfade),
+  render the hybrid frame using `composeHybridFrame()`. Split the
+  SVG rendering into: morphed paths (interpolated d attribute),
+  trimmed paths (dasharray animation), crossfaded paths (opacity).
+  Show which rendering mode each subpath uses via a toggle overlay.
+
+- [ ] **J5 — Stagger delay visualization in timeline.**
+  Show computed stagger delays as offset indicators in the timeline.
+  Each binding row should show its delay as an indented start position.
+  For `individually` mode, each row starts after the previous completes.
+
+### Priority 3 — Variable Value Integration
+
+- [ ] **J6 — Variable value live canvas preview.**
+  Connect the variable value slider (in InspectorPanel) to the canvas
+  rendering pipeline. When the slider moves, call
+  `computeVariableValue()` and `applyVariableValue()` to update
+  layer opacities in real-time on the canvas.
+
+- [ ] **J7 — Per-layer visibility indicators at current variable value.**
+  In the layer panel, show dim/bright indicators per layer based on
+  the current variable value. Primary layers (visible at value > 0),
+  secondary (visible at value > 0.33), tertiary (visible at > 0.66).
+  Use role badges already in the layer panel.
+
+- [ ] **J8 — Variable value keyframe track.**
+  Add `variableValue` as an animatable track in the timeline editor.
+  This allows authoring transitions where the variable value changes
+  over time (e.g., wifi signal bars filling up during a transition).
+  Schema: add `{ property: 'variableValue'; keyframes: number[] }` to
+  TimelineTrack union.
+
+---
+
+## Phase K — Advanced Animation Authoring
+
+Status: **open** (advanced features building on Phase I and J)
+
+### Priority 1 — Magic Replace & Topology
+
+- [ ] **K1 — Magic Replace UI (preserveLayerIds).**
+  Add a "Preserve" toggle per layer binding in the binding list.
+  When toggled, the binding is marked `preserved: true` and excluded
+  from morph/trim/crossfade — the layer persists unchanged during the
+  transition. Wire to the `preserveLayerIds` field on the transition.
+
+- [ ] **K2 — Topology contract locking UI.**
+  Add a "Lock Topology" toggle in the state inspector. When locked,
+  geometry edits that would change the command signature are blocked
+  with a warning. Shows the current topology contract (subpath count,
+  command signature, closed status per subpath). Wire to
+  `State.topology.locked`.
+
+### Priority 2 — Weight & Gradient
+
+- [ ] **K3 — Weight interpolation preview.**
+  In the variant inspector, when 3 weight control points are available
+  (ultralight, regular, black), show a weight slider (100-900) that
+  previews interpolated paths on the canvas. Use `interpolateWeight()`
+  and `validateWeightControlPoints()`.
+
+- [ ] **K4 — Auto-gradient rendering mode preview.**
+  Add an "Auto Gradient" option to the rendering mode dropdown.
+  When selected, apply `generateAutoGradient()` to each layer's fill
+  color and render with linear gradient stops. Preview on canvas.
+
+### Priority 3 — Animation Intelligence
+
+- [ ] **K5 — Auto-strategy recommendation engine.**
+  When creating a transition, analyze all layer bindings and recommend
+  the optimal transition strategy (track vs morph vs replace) based on
+  aggregate morph readiness scores. Show a one-click "Apply recommended
+  strategy" button with explanation.
+
+- [ ] **K6 — Animation preset library.**
+  Create a library of reusable animation presets (e.g., "SF Symbols
+  Replace Down-Up", "Lottie Draw-On", "Morph with Stagger") that
+  pre-configure strategy, direction, stagger, and default keyframes.
+  Store as JSON templates in the project or workspace.
+
+---
 
 ---
 

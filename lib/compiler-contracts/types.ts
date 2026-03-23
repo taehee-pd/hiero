@@ -11,7 +11,8 @@ export type CompiledRenderingMode =
   | 'monochrome'
   | 'hierarchical'
   | 'palette'
-  | 'multicolor';
+  | 'multicolor'
+  | 'autoGradient';
 
 export type CompiledTransitionStrategy =
   | 'track'
@@ -33,7 +34,8 @@ export type CompiledTrackProperty =
   | 'strokeOpacity'
   | 'trimStart'
   | 'trimEnd'
-  | 'trimOffset';
+  | 'trimOffset'
+  | 'variableValue';
 
 export type CompiledEffectKind =
   | 'bounce'

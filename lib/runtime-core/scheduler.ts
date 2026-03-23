@@ -409,6 +409,7 @@ function getRestValue(property: string): number {
     case 'opacity':
     case 'pathLength':
     case 'trimEnd':
+    case 'variableValue':
       return 1;
     case 'trimStart':
     case 'trimOffset':

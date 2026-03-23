@@ -263,7 +263,8 @@ export type TimelineTrack =
   | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimStart'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimEnd'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig };
+  | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'variableValue'; keyframes: number[]; easing?: string | SpringConfig };
 
 export type SpringConfig = {
   type: 'spring';
@@ -386,4 +387,5 @@ export type RenderingMode =
   | 'monochrome'
   | 'hierarchical'
   | 'palette'
-  | 'multicolor';
+  | 'multicolor'
+  | 'autoGradient';

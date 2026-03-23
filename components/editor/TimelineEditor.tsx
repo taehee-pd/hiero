@@ -28,6 +28,7 @@ const TRACKS: NumericTrackProperty[] = [
   'strokeWidth',
   'fillOpacity',
   'strokeOpacity',
+  'variableValue',
 ];
 
 const COLOR_TRACKS = ['fill', 'stroke'] as const;

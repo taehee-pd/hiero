@@ -58,6 +58,7 @@ const RENDERING_MODES: CompiledRenderingMode[] = [
   'hierarchical',
   'palette',
   'multicolor',
+  'autoGradient',
 ];
 
 const TRACK_PROPERTIES: CompiledTrackProperty[] = [
@@ -75,6 +76,7 @@ const TRACK_PROPERTIES: CompiledTrackProperty[] = [
   'trimStart',
   'trimEnd',
   'trimOffset',
+  'variableValue',
 ];
 
 const EFFECT_KINDS: CompiledEffectKind[] = [

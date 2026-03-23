@@ -18,6 +18,8 @@ export type ResolvedLayerStyle = {
   strokeWidth: number | undefined;
   lineCap: Layer['style']['lineCap'];
   lineJoin: Layer['style']['lineJoin'];
+  /** When true, the renderer should apply an auto-generated gradient. */
+  autoGradient?: boolean;
 };
 
 export function resolveVariantRenderingMode(
@@ -39,6 +41,8 @@ export function resolveLayerStyleForRendering(
   let fillOpacity = style.fillOpacity;
   let strokeOpacity = style.strokeOpacity;
 
+  let autoGradientFlag = false;
+
   if (renderingMode === 'monochrome') {
     fill = coercePaint(fill, 'currentColor');
     stroke = coercePaint(stroke, 'currentColor');
@@ -50,6 +54,13 @@ export function resolveLayerStyleForRendering(
     const paletteColor = tokens?.[role];
     fill = coercePaint(fill, paletteColor);
     stroke = coercePaint(stroke, paletteColor);
+  } else if (renderingMode === 'autoGradient') {
+    // Auto-gradient mode: resolve as monochrome (currentColor) and flag for
+    // gradient rendering.  Full <linearGradient> SVG generation is a TODO;
+    // for now the flag lets the renderer know this mode is active.
+    fill = coercePaint(fill, 'currentColor');
+    stroke = coercePaint(stroke, 'currentColor');
+    autoGradientFlag = true;
   }
 
   return {
@@ -60,6 +71,7 @@ export function resolveLayerStyleForRendering(
     strokeWidth: style.strokeWidth,
     lineCap: style.lineCap,
     lineJoin: style.lineJoin,
+    autoGradient: autoGradientFlag || undefined,
   };
 }
 

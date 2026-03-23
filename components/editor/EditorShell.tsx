@@ -100,6 +100,7 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'hierarchical', label: 'Hierarchical' },
   { value: 'palette', label: 'Palette' },
   { value: 'multicolor', label: 'Multicolor' },
+  { value: 'autoGradient', label: 'Auto Gradient' },
 ];
 
 const TRANSITION_STRATEGIES: Transition['strategy'][] = [

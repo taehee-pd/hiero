@@ -1106,7 +1106,7 @@ function useBindingStrategies(
     const readiness = computeReadiness(fromLayer, toLayer);
 
     // Determine overall strategy from subpath results
-    let overallStrategy: BindingStrategyOverall = 'morph';
+    let overallStrategy: BindingStrategyOverall;
     if (strategies.length === 0) {
       overallStrategy = 'crossfade';
     } else {

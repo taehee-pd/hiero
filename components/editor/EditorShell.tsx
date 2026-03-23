@@ -52,7 +52,6 @@ import type {
   Icon,
   Layer,
   LayerBinding,
-  PaintRef,
   RenderingMode,
   State,
   Transition,
@@ -194,15 +193,6 @@ function downloadBlob(blob: Blob, fileName: string) {
   anchor.download = fileName;
   anchor.click();
   URL.revokeObjectURL(url);
-}
-
-function describePaint(paint?: PaintRef) {
-  if (!paint) return 'None';
-  if (paint.mode === 'fixed') return paint.value;
-  if (paint.mode === 'currentColor') return 'Current color';
-  if (paint.mode === 'token') return `Token ${paint.token}`;
-  if (paint.mode === 'linearGradient') return `Linear gradient`;
-  return `Radial gradient`;
 }
 
 function clampZoomValue(value: number) {

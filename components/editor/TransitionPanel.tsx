@@ -9,7 +9,7 @@ import { Label } from '@/components/kibo-ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler } from '@/lib/runtime-core';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { Transition, LayerBinding, State, TransitionStagger, StateTrigger } from '@/lib/schema/types';
+import type { Transition, TransitionEndpoint, LayerBinding, State, TransitionStagger, StateTrigger } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,15 @@ const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
 const TRIGGER_EVENTS: StateTrigger['event'][] = ['hover', 'tap', 'longPress', 'focus', 'auto'];
 
 const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random'];
+
+const DIRECTION_OPTIONS: Array<{ value: Transition['direction']; label: string }> = [
+  { value: 'automatic', label: 'Automatic' },
+  { value: 'downUp', label: 'Down → Up' },
+  { value: 'upUp', label: 'Up → Up' },
+  { value: 'offUp', label: 'Off → Up' },
+];
+
+type TransitionMode = 'intra-variant' | 'cross-icon';
 
 type CompatibilityStatus =
   | { tone: 'green'; label: 'Compatible' }
@@ -52,12 +61,24 @@ export const TransitionPanel = memo(function TransitionPanel() {
     setTransitionPreview,
     setSelectedTransitionId,
   } = useEditorActions();
+  const projectIcons = useEditorStore((s) => s.project?.icons ?? null);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [formMode, setFormMode] = useState<TransitionMode>('intra-variant');
   const [formFrom, setFormFrom] = useState('');
   const [formTo, setFormTo] = useState('');
   const [formStrategy, setFormStrategy] = useState<Transition['strategy']>('bestGuessMorph');
   const [formDuration, setFormDuration] = useState('240');
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
+  const [formDirection, setFormDirection] = useState<Transition['direction']>('automatic');
+
+  // Cross-icon endpoint state
+  const [srcIconId, setSrcIconId] = useState('');
+  const [srcVariantId, setSrcVariantId] = useState('');
+  const [srcStateId, setSrcStateId] = useState('');
+  const [tgtIconId, setTgtIconId] = useState('');
+  const [tgtVariantId, setTgtVariantId] = useState('');
+  const [tgtStateId, setTgtStateId] = useState('');
+
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
   const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const [deleteTransitionId, setDeleteTransitionId] = useState<string | null>(null);
@@ -65,6 +86,32 @@ export const TransitionPanel = memo(function TransitionPanel() {
   // UX-F10: Collapsible section state per transition
   const [collapsedSections, setCollapsedSections] = useState<Record<string, Set<string>>>({});
   const schedulerRef = useRef<TransitionScheduler | null>(null);
+
+  // Cross-icon: derived lists for source and target endpoint pickers
+  const iconEntries = useMemo(
+    () => Object.values(projectIcons ?? {}).map((icon) => ({ id: icon.id, name: icon.name })),
+    [projectIcons],
+  );
+  const srcVariants = useMemo(
+    () => (srcIconId && projectIcons?.[srcIconId] ? Object.values(projectIcons[srcIconId].variants) : []),
+    [projectIcons, srcIconId],
+  );
+  const srcStates = useMemo(
+    () => (srcIconId && srcVariantId && projectIcons?.[srcIconId]?.variants[srcVariantId]
+      ? Object.keys(projectIcons[srcIconId].variants[srcVariantId].states)
+      : []),
+    [projectIcons, srcIconId, srcVariantId],
+  );
+  const tgtVariants = useMemo(
+    () => (tgtIconId && projectIcons?.[tgtIconId] ? Object.values(projectIcons[tgtIconId].variants) : []),
+    [projectIcons, tgtIconId],
+  );
+  const tgtStates = useMemo(
+    () => (tgtIconId && tgtVariantId && projectIcons?.[tgtIconId]?.variants[tgtVariantId]
+      ? Object.keys(projectIcons[tgtIconId].variants[tgtVariantId].states)
+      : []),
+    [projectIcons, tgtIconId, tgtVariantId],
+  );
 
   const stateIds = useMemo(
     () => Object.keys(currentVariant?.states ?? {}),
@@ -310,36 +357,78 @@ export const TransitionPanel = memo(function TransitionPanel() {
   );
 
   const handleAddTransition = useCallback(() => {
-    if (!currentIcon || !currentVariant) return;
+    if (!currentIcon) return;
     const durationMs = Number.parseInt(formDuration, 10);
-    if (!formFrom || !formTo || formFrom === formTo || !Number.isFinite(durationMs) || durationMs < 0) {
-      return;
+    if (!Number.isFinite(durationMs) || durationMs < 0) return;
+
+    if (formMode === 'cross-icon') {
+      // Cross-icon transition
+      if (!srcIconId || !srcVariantId || !srcStateId || !tgtIconId || !tgtVariantId || !tgtStateId) return;
+      if (srcIconId === tgtIconId && srcVariantId === tgtVariantId && srcStateId === tgtStateId) return;
+
+      const fromEndpoint: TransitionEndpoint = { iconId: srcIconId, variantId: srcVariantId, stateId: srcStateId };
+      const toEndpoint: TransitionEndpoint = { iconId: tgtIconId, variantId: tgtVariantId, stateId: tgtStateId };
+
+      // Resolve states for layer bindings
+      const fromState = projectIcons?.[srcIconId]?.variants[srcVariantId]?.states[srcStateId];
+      const toState = projectIcons?.[tgtIconId]?.variants[tgtVariantId]?.states[tgtStateId];
+
+      const newTransition: Transition = {
+        id: `${srcIconId}:${srcStateId}-to-${tgtIconId}:${tgtStateId}`,
+        from: srcStateId,
+        to: tgtStateId,
+        fromEndpoint,
+        toEndpoint,
+        strategy: formStrategy,
+        durationMs,
+        easing: formEasing,
+        layerBindings: fromState && toState ? buildDefaultLayerBindings(fromState, toState, formStrategy) : [],
+        ...(formStrategy === 'replace' && formDirection ? { direction: formDirection } : {}),
+      };
+
+      addTransition(currentIcon.id, newTransition);
+    } else {
+      // Intra-variant transition (original behavior)
+      if (!currentVariant) return;
+      if (!formFrom || !formTo || formFrom === formTo) return;
+
+      const fromState = currentVariant.states[formFrom];
+      const toState = currentVariant.states[formTo];
+      if (!fromState || !toState) return;
+
+      addTransition(currentIcon.id, {
+        id: `${formFrom}-to-${formTo}`,
+        from: formFrom,
+        to: formTo,
+        strategy: formStrategy,
+        durationMs,
+        easing: formEasing,
+        layerBindings: buildDefaultLayerBindings(fromState, toState, formStrategy),
+        ...(formStrategy === 'replace' && formDirection ? { direction: formDirection } : {}),
+      });
     }
 
-    const fromState = currentVariant.states[formFrom];
-    const toState = currentVariant.states[formTo];
-    if (!fromState || !toState) return;
-
-    addTransition(currentIcon.id, {
-      id: `${formFrom}-to-${formTo}`,
-      from: formFrom,
-      to: formTo,
-      strategy: formStrategy,
-      durationMs,
-      easing: formEasing,
-      layerBindings: buildDefaultLayerBindings(fromState, toState, formStrategy),
-    });
     setIsAddOpen(false);
     setFormDuration('240');
+    setFormDirection('automatic');
   }, [
     addTransition,
     currentIcon,
     currentVariant,
+    formDirection,
     formDuration,
     formEasing,
     formFrom,
+    formMode,
     formStrategy,
     formTo,
+    projectIcons,
+    srcIconId,
+    srcStateId,
+    srcVariantId,
+    tgtIconId,
+    tgtStateId,
+    tgtVariantId,
   ]);
 
   const toggleBindingExpand = useCallback((transitionId: string) => {
@@ -404,20 +493,71 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
       {isAddOpen ? (
         <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-          <div className="grid grid-cols-2 gap-2">
-            <FieldSelect
-              label="From"
-              value={formFrom}
-              onChange={setFormFrom}
-              options={stateIds}
-            />
-            <FieldSelect
-              label="To"
-              value={formTo}
-              onChange={setFormTo}
-              options={stateIds}
-            />
+          {/* Mode toggle: Intra-Variant / Cross-Icon */}
+          <div className="flex items-center rounded-lg border border-border/50 bg-muted/30 p-0.5">
+            {(['intra-variant', 'cross-icon'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={cn(
+                  'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                  formMode === mode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => setFormMode(mode)}
+              >
+                {mode === 'intra-variant' ? 'Intra-Variant' : 'Cross-Icon'}
+              </button>
+            ))}
           </div>
+
+          {formMode === 'intra-variant' ? (
+            /* Intra-variant: original From/To state pickers */
+            <div className="grid grid-cols-2 gap-2">
+              <FieldSelect
+                label="From"
+                value={formFrom}
+                onChange={setFormFrom}
+                options={stateIds}
+              />
+              <FieldSelect
+                label="To"
+                value={formTo}
+                onChange={setFormTo}
+                options={stateIds}
+              />
+            </div>
+          ) : (
+            /* Cross-icon: Source and Target endpoint pickers */
+            <div className="grid gap-3">
+              <CrossIconEndpointPicker
+                label="Source"
+                iconEntries={iconEntries}
+                selectedIconId={srcIconId}
+                onIconChange={(id) => { setSrcIconId(id); setSrcVariantId(''); setSrcStateId(''); }}
+                variants={srcVariants}
+                selectedVariantId={srcVariantId}
+                onVariantChange={(id) => { setSrcVariantId(id); setSrcStateId(''); }}
+                stateIds={srcStates}
+                selectedStateId={srcStateId}
+                onStateChange={setSrcStateId}
+              />
+              <CrossIconEndpointPicker
+                label="Target"
+                iconEntries={iconEntries}
+                selectedIconId={tgtIconId}
+                onIconChange={(id) => { setTgtIconId(id); setTgtVariantId(''); setTgtStateId(''); }}
+                variants={tgtVariants}
+                selectedVariantId={tgtVariantId}
+                onVariantChange={(id) => { setTgtVariantId(id); setTgtStateId(''); }}
+                stateIds={tgtStates}
+                selectedStateId={tgtStateId}
+                onStateChange={setTgtStateId}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <FieldSelect
               label="Strategy"
@@ -430,6 +570,17 @@ export const TransitionPanel = memo(function TransitionPanel() {
               <EasingPicker value={formEasing} onSelect={setFormEasing} />
             </div>
           </div>
+
+          {/* Direction selector — only for replace strategy */}
+          {formStrategy === 'replace' && (
+            <FieldSelect
+              label="Direction"
+              value={formDirection ?? 'automatic'}
+              onChange={(value) => setFormDirection(value as Transition['direction'])}
+              options={DIRECTION_OPTIONS.map((d) => d.value!)}
+            />
+          )}
+
           <div className="grid gap-1.5">
             <Label className="text-xs uppercase text-muted-foreground">Duration (ms)</Label>
             <Input
@@ -445,7 +596,11 @@ export const TransitionPanel = memo(function TransitionPanel() {
               type="button"
               size="sm"
               onClick={handleAddTransition}
-              disabled={!formFrom || !formTo || formFrom === formTo}
+              disabled={
+                formMode === 'intra-variant'
+                  ? !formFrom || !formTo || formFrom === formTo
+                  : !srcIconId || !srcVariantId || !srcStateId || !tgtIconId || !tgtVariantId || !tgtStateId
+              }
               className="rounded-xl"
             >
               Save
@@ -493,8 +648,14 @@ export const TransitionPanel = memo(function TransitionPanel() {
                     <p className="text-sm font-semibold text-foreground">
                       {transition.from} -&gt; {transition.to}
                     </p>
+                    {transition.fromEndpoint || transition.toEndpoint ? (
+                      <p className="mt-0.5 text-[10px] font-medium text-primary/70">Cross-Icon</p>
+                    ) : null}
                     <p className="mt-1 text-xs text-muted-foreground">
                       {transition.strategy} • {transition.durationMs}ms
+                      {transition.direction && transition.strategy === 'replace'
+                        ? ` • ${transition.direction}`
+                        : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -559,6 +720,22 @@ export const TransitionPanel = memo(function TransitionPanel() {
                       />
                     </div>
                   </div>
+
+                  {/* Direction selector — only for replace strategy */}
+                  {transition.strategy === 'replace' && (
+                    <div className="mt-2">
+                      <InlineSelect
+                        label="Direction"
+                        value={transition.direction ?? 'automatic'}
+                        onChange={(value) =>
+                          patchTransition(currentIcon.id, transition.id, {
+                            direction: value as Transition['direction'],
+                          })
+                        }
+                        options={DIRECTION_OPTIONS.map((d) => d.value!)}
+                      />
+                    </div>
+                  )}
 
                   <div className="mt-2 grid gap-1.5">
                     <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">
@@ -1159,5 +1336,88 @@ function InlineSelect({
         ))}
       </select>
     </div>
+  );
+}
+
+// --- Cross-Icon Endpoint Picker ---
+
+function CrossIconEndpointPicker({
+  label,
+  iconEntries,
+  selectedIconId,
+  onIconChange,
+  variants,
+  selectedVariantId,
+  onVariantChange,
+  stateIds,
+  selectedStateId,
+  onStateChange,
+}: {
+  label: string;
+  iconEntries: Array<{ id: string; name: string }>;
+  selectedIconId: string;
+  onIconChange: (id: string) => void;
+  variants: Array<{ id: string; name?: string }>;
+  selectedVariantId: string;
+  onVariantChange: (id: string) => void;
+  stateIds: string[];
+  selectedStateId: string;
+  onStateChange: (id: string) => void;
+}) {
+  return (
+    <fieldset className="grid gap-2 rounded-lg border border-border/40 p-2.5">
+      <legend className="px-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </legend>
+      <div className="grid gap-1.5">
+        <Label className="text-xs uppercase text-muted-foreground">Icon</Label>
+        <select
+          value={selectedIconId}
+          onChange={(e) => onIconChange(e.target.value)}
+          className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
+        >
+          <option value="">Select icon...</option>
+          {iconEntries.map((icon) => (
+            <option key={icon.id} value={icon.id}>
+              {icon.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-1.5">
+          <Label className="text-xs uppercase text-muted-foreground">Variant</Label>
+          <select
+            value={selectedVariantId}
+            onChange={(e) => onVariantChange(e.target.value)}
+            disabled={!selectedIconId}
+            className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground disabled:opacity-50"
+          >
+            <option value="">Select variant...</option>
+            {variants.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name || v.id}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label className="text-xs uppercase text-muted-foreground">State</Label>
+          <select
+            value={selectedStateId}
+            onChange={(e) => onStateChange(e.target.value)}
+            disabled={!selectedVariantId}
+            className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground disabled:opacity-50"
+          >
+            <option value="">Select state...</option>
+            {stateIds.map((stateId) => (
+              <option key={stateId} value={stateId}>
+                {stateId}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </fieldset>
   );
 }

@@ -10,6 +10,13 @@ import { attemptCrossIconMorph, bestGuessMorph, strictMorph, type MorphInterpola
 import { canonicalizeLayerPath, type CanonicalPath } from './path-normalization';
 import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-detection';
 
+export type CrossIconContext = {
+  sourceIconId: string;
+  sourceVariantId: string;
+  targetIconId: string;
+  targetVariantId: string;
+};
+
 export type FallbackMode = 'fade-through' | 'scale-through' | 'slide-through' | 'replace-with-delay';
 export type AnimationType = 'morph' | 'fade-out' | 'fade-in' | 'scale' | 'translate' | 'rotate' | 'replace';
 
@@ -49,11 +56,17 @@ export type ResolvedTransition = {
   layerBindings: ResolvedLayerBinding[];
   diagnostics: string[];
   topologyAnalysis?: TopologyAnalysis;
+  /** Directional slide+fade for replace transitions. */
+  direction?: Transition['direction'];
 };
 
 export type ResolveTransitionOptions = {
   /** Layer IDs that should be preserved across the transition (Magic Replace). */
   preserveLayerIds?: string[];
+  /** When provided, the transition spans two different icons rather than two
+   *  states within the same icon/variant. Layer matching switches from ID-based
+   *  equality to semantic matching (role, name, path similarity). */
+  crossIconContext?: CrossIconContext;
 };
 
 export function resolveTransition(
@@ -64,6 +77,16 @@ export function resolveTransition(
 ): ResolvedTransition {
   const diagnostics: string[] = [];
   const preserveSet = new Set(options.preserveLayerIds ?? []);
+  const crossIconContext = options.crossIconContext;
+
+  // Determine whether the source and target are from different icons.
+  const isCrossIcon = crossIconContext
+    ? crossIconContext.sourceIconId !== crossIconContext.targetIconId
+    : false;
+
+  if (isCrossIcon) {
+    diagnostics.push('crossIcon:true');
+  }
 
   // 8.3 — Run topology detection BEFORE resolving individual layer bindings.
   // When topology is incompatible the analysis recommends 'crossfade' or
@@ -75,7 +98,7 @@ export function resolveTransition(
     diagnostics.push(`topologyRecommended:${topologyAnalysis.recommendedStrategy}`);
   }
 
-  const plannedBindings = resolveBindings(transition, fromState, toState);
+  const plannedBindings = resolveBindings(transition, fromState, toState, isCrossIcon);
   const staggerOrder = computeStaggerOrder(plannedBindings, transition.stagger?.mode);
   const layerBindings = plannedBindings.map((binding, index) => {
     const resolved = resolveLayerBinding(
@@ -124,6 +147,7 @@ export function resolveTransition(
     layerBindings,
     diagnostics,
     topologyAnalysis,
+    direction: transition.direction,
   };
 }
 
@@ -131,6 +155,7 @@ function resolveBindings(
   transition: Transition,
   fromState: State,
   toState: State,
+  isCrossIcon = false,
 ): Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }> {
   const byFrom = new Map<string, Layer>();
   const byTo = new Map<string, Layer>();
@@ -141,6 +166,7 @@ function resolveBindings(
   const usedFrom = new Set<string>();
   const usedTo = new Set<string>();
 
+  // Honour explicit author-defined bindings regardless of mode.
   for (const binding of transition.layerBindings) {
     const fromLayer = binding.fromLayerId ? byFrom.get(binding.fromLayerId) : undefined;
     const toLayer = binding.toLayerId ? byTo.get(binding.toLayerId) : undefined;
@@ -152,28 +178,33 @@ function resolveBindings(
   const unmatchedFrom = Object.values(fromState.layers).filter((layer) => !usedFrom.has(layer.id));
   const unmatchedTo = Object.values(toState.layers).filter((layer) => !usedTo.has(layer.id));
 
-  while (unmatchedFrom.length > 0 && unmatchedTo.length > 0) {
-    const fromLayer = unmatchedFrom.shift()!;
-    let bestIndex = -1;
-    let bestScore = -1;
+  if (isCrossIcon) {
+    // Cross-icon matching: layers come from different icons so IDs will never
+    // coincide.  Use a multi-pass semantic strategy:
+    //   1. Match by role (primary/secondary/tertiary)
+    //   2. Match by name equality (layer id serves as name)
+    //   3. Match remaining layers by best geometry/readiness score
 
-    unmatchedTo.forEach((toLayer, index) => {
-      const readiness = computeReadiness(fromLayer, toLayer);
-      if (readiness.score > bestScore) {
-        bestIndex = index;
-        bestScore = readiness.score;
-      }
-    });
+    // Pass 1 — role-based matching
+    matchLayersByPredicate(unmatchedFrom, unmatchedTo, resolved, (from, to) => {
+      if (from.role && from.role === to.role) return 1;
+      return -1;
+    }, 'semantic-role');
 
-    if (bestIndex < 0) {
-      resolved.push({ fromLayerId: fromLayer.id, fromLayer, toLayer: undefined, source: 'fallback' });
-      continue;
-    }
+    // Pass 2 — name-based matching (layer id is the semantic name)
+    matchLayersByPredicate(unmatchedFrom, unmatchedTo, resolved, (from, to) => {
+      if (from.id === to.id) return 1;
+      return -1;
+    }, 'semantic-name');
 
-    const matchedTo = unmatchedTo.splice(bestIndex, 1)[0]!;
-    resolved.push({ fromLayerId: fromLayer.id, toLayerId: matchedTo.id, fromLayer, toLayer: matchedTo, source: 'semantic-geometry' });
+    // Pass 3 — geometry/readiness scoring for remaining unmatched layers
+    matchLayersByReadiness(unmatchedFrom, unmatchedTo, resolved, 'semantic-geometry-cross');
+  } else {
+    // Same-icon matching: rely on readiness score (existing behaviour).
+    matchLayersByReadiness(unmatchedFrom, unmatchedTo, resolved, 'semantic-geometry');
   }
 
+  // Any layers still unmatched become standalone fade-in / fade-out entries.
   unmatchedFrom.forEach((layer) => {
     resolved.push({ fromLayerId: layer.id, fromLayer: layer, toLayer: undefined, source: 'fallback' });
   });
@@ -192,6 +223,89 @@ function resolveBindings(
     return aid.localeCompare(bid);
   });
   return [...explicit, ...auto];
+}
+
+/**
+ * Match layers using a caller-supplied scoring predicate.
+ * A predicate returning a score >= 0 indicates a valid match; -1 means no match.
+ * Matched layers are removed from the `from` and `to` arrays in-place.
+ */
+function matchLayersByPredicate(
+  from: Layer[],
+  to: Layer[],
+  out: Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }>,
+  predicate: (from: Layer, to: Layer) => number,
+  source: string,
+): void {
+  // Iterate backwards so splice indices remain stable.
+  for (let fi = from.length - 1; fi >= 0; fi--) {
+    const fromLayer = from[fi]!;
+    let bestIndex = -1;
+    let bestScore = -1;
+    for (let ti = 0; ti < to.length; ti++) {
+      const score = predicate(fromLayer, to[ti]!);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = ti;
+      }
+    }
+    if (bestIndex >= 0) {
+      const matchedTo = to.splice(bestIndex, 1)[0]!;
+      from.splice(fi, 1);
+      out.push({
+        fromLayerId: fromLayer.id,
+        toLayerId: matchedTo.id,
+        fromLayer,
+        toLayer: matchedTo,
+        source,
+      });
+    }
+  }
+}
+
+/**
+ * Match remaining layers using the full morph-readiness score.
+ * Greedy assignment: repeatedly pick the highest-scoring (from, to) pair.
+ * Matched layers are removed from the `from` and `to` arrays in-place.
+ */
+function matchLayersByReadiness(
+  from: Layer[],
+  to: Layer[],
+  out: Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }>,
+  source: string,
+): void {
+  while (from.length > 0 && to.length > 0) {
+    let bestFi = -1;
+    let bestTi = -1;
+    let bestScore = -1;
+
+    for (let fi = 0; fi < from.length; fi++) {
+      for (let ti = 0; ti < to.length; ti++) {
+        const readiness = computeReadiness(from[fi]!, to[ti]!);
+        if (readiness.score > bestScore) {
+          bestScore = readiness.score;
+          bestFi = fi;
+          bestTi = ti;
+        }
+      }
+    }
+
+    if (bestFi < 0 || bestTi < 0) {
+      // No viable pair found — remaining layers become fallbacks.
+      break;
+    }
+
+    const fromLayer = from.splice(bestFi, 1)[0]!;
+    // After splicing `from`, adjust `bestTi` is not needed because `to` is independent.
+    const matchedTo = to.splice(bestTi, 1)[0]!;
+    out.push({
+      fromLayerId: fromLayer.id,
+      toLayerId: matchedTo.id,
+      fromLayer,
+      toLayer: matchedTo,
+      source,
+    });
+  }
 }
 
 function resolveLayerBinding(

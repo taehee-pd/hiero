@@ -191,16 +191,25 @@ export type StateTrigger = {
   event: 'hover' | 'tap' | 'longPress' | 'focus' | 'auto';
 };
 
+export type TransitionEndpoint = {
+  iconId: string;
+  variantId: string;
+  stateId: string;
+};
+
 export type Transition = {
   id: string;
   from: string;
   to: string;
+  fromEndpoint?: TransitionEndpoint;  // Cross-icon source (when absent, use from/to within current variant)
+  toEndpoint?: TransitionEndpoint;    // Cross-icon target
   strategy: 'track' | 'strictMorph' | 'bestGuessMorph' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
   stagger?: TransitionStagger;
   layerBindings: LayerBinding[];
   triggers?: StateTrigger[];
+  direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';  // F5: replace transition direction
 };
 
 export type LayerBinding = {

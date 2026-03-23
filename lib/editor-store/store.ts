@@ -38,7 +38,8 @@ import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
-import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
+import type { InterpolatedValues, ResolvedTransition, CrossIconContext } from '@/lib/runtime-core';
+import { resolveTransition, interpolateTransitionValues } from '@/lib/runtime-core';
 
 export type EditorState = {
   workspace: Workspace | null;
@@ -84,6 +85,10 @@ export type TransitionPreview = {
   transitionId: string;
   baseStateId: string;
   targetStateId: string;
+  baseIconId?: string;       // Cross-icon source
+  baseVariantId?: string;    // Cross-icon source variant
+  targetIconId?: string;     // Cross-icon target
+  targetVariantId?: string;  // Cross-icon target variant
   progress: number;
   resolvedTransition: ResolvedTransition;
   interpolatedValues: InterpolatedValues;
@@ -124,6 +129,7 @@ export type EditorActions = {
   setStateTopology(iconId: string, stateId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, stateId: string, layerId: string, patch: Partial<Layer>): void;
+  renameLayer(iconId: string, stateId: string, oldLayerId: string, newLayerId: string): void;
   setLayerVisibility(iconId: string, stateId: string, layerId: string, visible: boolean): void;
   setClipMask(clipLayerId: string, targetLayerIds: string[]): void;
   releaseClipMask(layerId: string): void;
@@ -142,6 +148,15 @@ export type EditorActions = {
   setPointTransformLabel(label: PointTransformLabelState | null): void;
   setPendingPenHandle(handle: PendingPenHandleState | null): void;
   setTransitionPreview(preview: TransitionPreview | null): void;
+  startTransitionPreview(
+    iconId: string,
+    transition: Transition,
+    variantId: string,
+    progress?: number,
+    crossIconContext?: CrossIconContext,
+  ): void;
+  updateTransitionPreview(progress: number): void;
+  stopTransitionPreview(): void;
   setSelectedTransitionId(transitionId: string | null): void;
   updateProjectMeta(patch: Partial<Project['meta']>): void;
   addGuideMaster(master: GuideMaster): void;
@@ -1925,6 +1940,127 @@ function createActions(): EditorActions {
       });
     },
 
+    renameLayer(iconId, stateId, oldLayerId, newLayerId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const state = variant?.states[stateId];
+        const layer = state?.layers[oldLayerId];
+        if (!icon || !variant || !state || !layer) return s;
+        if (oldLayerId === newLayerId) return s;
+        if (state.layers[newLayerId]) return s;
+
+        // Rebuild layers Record preserving insertion order
+        const nextLayers: Record<string, Layer> = {};
+        for (const [key, l] of Object.entries(state.layers)) {
+          if (key === oldLayerId) {
+            // Replace old key with new key, update layer.id
+            nextLayers[newLayerId] = { ...l, id: newLayerId };
+          } else {
+            // Update clipPathLayerId references in other layers
+            const updatedLayer =
+              l.clipPathLayerId === oldLayerId
+                ? { ...l, clipPathLayerId: newLayerId }
+                : l;
+            nextLayers[key] = updatedLayer;
+          }
+        }
+
+        // Update selection if the renamed layer is selected
+        const nextSelection = s.selection.layerIds.includes(oldLayerId)
+          ? {
+              ...s.selection,
+              layerIds: s.selection.layerIds.map((id) =>
+                id === oldLayerId ? newLayerId : id,
+              ),
+            }
+          : s.selection;
+
+        // Update components that reference the old layer ID
+        let nextComponents = icon.components;
+        if (nextComponents) {
+          const updatedComponents: Record<string, typeof nextComponents[string]> = {};
+          let changed = false;
+          for (const [compId, comp] of Object.entries(nextComponents)) {
+            if (comp.layerIds.includes(oldLayerId)) {
+              changed = true;
+              updatedComponents[compId] = {
+                ...comp,
+                layerIds: comp.layerIds.map((id) =>
+                  id === oldLayerId ? newLayerId : id,
+                ),
+              };
+            } else {
+              updatedComponents[compId] = comp;
+            }
+          }
+          if (changed) nextComponents = updatedComponents;
+        }
+
+        // Update transitions that reference the old layer ID in layerBindings
+        let nextTransitions = icon.transitions;
+        {
+          const updatedTransitions: Record<string, typeof nextTransitions[string]> = {};
+          let changed = false;
+          for (const [tId, transition] of Object.entries(nextTransitions)) {
+            const updatedBindings = transition.layerBindings.map((binding) => {
+              const fromChanged = binding.fromLayerId === oldLayerId;
+              const toChanged = binding.toLayerId === oldLayerId;
+              if (fromChanged || toChanged) {
+                return {
+                  ...binding,
+                  ...(fromChanged ? { fromLayerId: newLayerId } : {}),
+                  ...(toChanged ? { toLayerId: newLayerId } : {}),
+                };
+              }
+              return binding;
+            });
+            if (updatedBindings !== transition.layerBindings) {
+              changed = true;
+              updatedTransitions[tId] = { ...transition, layerBindings: updatedBindings };
+            } else {
+              updatedTransitions[tId] = transition;
+            }
+          }
+          if (changed) nextTransitions = updatedTransitions;
+        }
+
+        // Update topology layerPairs if present
+        const nextTopology = state.topology
+          ? {
+              ...state.topology,
+              layerPairs: state.topology.layerPairs.map((pair) =>
+                pair.layerId === oldLayerId
+                  ? { ...pair, layerId: newLayerId }
+                  : pair,
+              ),
+            }
+          : state.topology;
+
+        const nextState: State = {
+          ...state,
+          layers: nextLayers,
+          topology: nextTopology,
+        };
+
+        return {
+          selection: nextSelection,
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...replaceVariantState(icon, s.currentVariantId, stateId, nextState),
+                components: nextComponents,
+                transitions: nextTransitions,
+              },
+            },
+          },
+        };
+      });
+    },
+
     setLayerVisibility(iconId, stateId, layerId, visible) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
@@ -2161,6 +2297,77 @@ function createActions(): EditorActions {
 
     setTransitionPreview(preview) {
       editorStoreApi.setState({ transitionPreview: preview });
+    },
+
+    startTransitionPreview(iconId, transition, variantId, progress = 0, crossIconContext) {
+      const s = editorStoreApi.getState();
+      if (!s.project) return;
+
+      const clampedProgress = Math.max(0, Math.min(1, progress));
+      let fromState: State | undefined;
+      let toState: State | undefined;
+
+      if (crossIconContext) {
+        // Cross-icon preview: load from source icon/variant and target icon/variant
+        const sourceIcon = s.project.icons[crossIconContext.sourceIconId];
+        const targetIcon = s.project.icons[crossIconContext.targetIconId];
+        const sourceVariant = sourceIcon?.variants[crossIconContext.sourceVariantId];
+        const targetVariant = targetIcon?.variants[crossIconContext.targetVariantId];
+        fromState = sourceVariant?.states[transition.from];
+        toState = targetVariant?.states[transition.to];
+      } else {
+        // Intra-variant preview: both states come from the same variant
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[variantId];
+        fromState = variant?.states[transition.from];
+        toState = variant?.states[transition.to];
+      }
+
+      if (!fromState || !toState) return;
+
+      const resolved = resolveTransition(transition, fromState, toState, {
+        crossIconContext,
+      });
+
+      editorStoreApi.setState({
+        transitionPreview: {
+          transitionId: transition.id,
+          baseStateId: transition.from,
+          targetStateId: transition.to,
+          baseIconId: crossIconContext?.sourceIconId,
+          baseVariantId: crossIconContext?.sourceVariantId,
+          targetIconId: crossIconContext?.targetIconId,
+          targetVariantId: crossIconContext?.targetVariantId,
+          progress: clampedProgress,
+          resolvedTransition: resolved,
+          interpolatedValues: interpolateTransitionValues(resolved, clampedProgress),
+        },
+      });
+    },
+
+    updateTransitionPreview(progress) {
+      const s = editorStoreApi.getState();
+      const preview = s.transitionPreview;
+      if (!preview || !s.project) return;
+
+      const clampedProgress = Math.max(0, Math.min(1, progress));
+
+      // If the resolved transition hasn't changed, we can skip re-resolving
+      // and just recompute interpolated values.
+      editorStoreApi.setState({
+        transitionPreview: {
+          ...preview,
+          progress: clampedProgress,
+          interpolatedValues: interpolateTransitionValues(
+            preview.resolvedTransition,
+            clampedProgress,
+          ),
+        },
+      });
+    },
+
+    stopTransitionPreview() {
+      editorStoreApi.setState({ transitionPreview: null });
     },
 
     setSelectedTransitionId(transitionId) {

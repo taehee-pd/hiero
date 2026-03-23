@@ -1,6 +1,7 @@
 import type {
   RuntimeEffect,
   RuntimeLayer,
+  RuntimeState,
   RuntimeTrack,
   RuntimeTransition,
   RuntimeVariantPayload,
@@ -313,6 +314,23 @@ function buildTransitionSnapshot(
   }
 
   if (playback.transition.strategy === 'replace' || playback.transition.strategy === 'morph') {
+    const direction = resolveReplaceDirection(
+      playback.transition.direction,
+      playback.fromStateId,
+      playback.toStateId,
+    );
+
+    if (direction) {
+      return buildDirectionalReplaceSnapshot(
+        playback.toStateId,
+        payload.variant.viewBox,
+        fromState,
+        toState,
+        progress,
+        direction,
+      );
+    }
+
     return {
       stateId: playback.toStateId,
       viewBox: [...payload.variant.viewBox],
@@ -693,6 +711,126 @@ function joinTransforms(base: string | undefined, extra: string): string {
     return extra;
   }
   return `${base} ${extra}`.trim();
+}
+
+// --- Directional replace transition helpers ---
+
+/** Maximum slide offset in SVG units (matches SF Symbols' subtle slide). */
+const DIRECTION_SLIDE_PX = 8;
+
+type EffectiveDirection = 'downUp' | 'upUp' | 'offUp';
+
+/**
+ * Resolve the effective slide direction for a replace transition.
+ * Returns undefined when no directional slide should be applied (plain crossfade).
+ */
+function resolveReplaceDirection(
+  direction: RuntimeTransition['direction'],
+  fromStateId: string,
+  toStateId: string,
+): EffectiveDirection | undefined {
+  if (!direction) return undefined;
+
+  if (direction === 'automatic') {
+    // Infer from state ordering: ascending = downUp, descending = upUp
+    return fromStateId.localeCompare(toStateId) < 0 ? 'downUp' : 'upUp';
+  }
+
+  return direction;
+}
+
+/**
+ * Build a snapshot for a directional replace transition.
+ *
+ * Each direction mode determines the translateY offsets for outgoing and
+ * incoming layers:
+ * - downUp:  outgoing slides down, incoming slides up from below
+ * - upUp:    both outgoing and incoming slide upward
+ * - offUp:   outgoing scales/fades in place, incoming slides up from below
+ */
+function buildDirectionalReplaceSnapshot(
+  toStateId: string,
+  viewBox: [number, number, number, number],
+  fromState: RuntimeState,
+  toState: RuntimeState,
+  progress: number,
+  direction: EffectiveDirection,
+): RuntimeSnapshot {
+  const outOpacity = 1 - progress;
+  const inOpacity = progress;
+
+  // Compute per-direction Y offsets
+  let outY: number;
+  let inY: number;
+  let outScale: number | undefined;
+
+  switch (direction) {
+    case 'downUp':
+      // Outgoing slides down (0 → +SLIDE), incoming slides up (+SLIDE → 0)
+      outY = progress * DIRECTION_SLIDE_PX;
+      inY = (1 - progress) * DIRECTION_SLIDE_PX;
+      break;
+    case 'upUp':
+      // Both slide upward: outgoing (0 → -SLIDE), incoming (+SLIDE → 0)
+      outY = -progress * DIRECTION_SLIDE_PX;
+      inY = (1 - progress) * DIRECTION_SLIDE_PX;
+      break;
+    case 'offUp':
+      // Outgoing fades/scales in place, incoming slides up from below
+      outY = 0;
+      outScale = 1 - progress * 0.15; // slight scale-down (1 → 0.85)
+      inY = (1 - progress) * DIRECTION_SLIDE_PX;
+      break;
+  }
+
+  return {
+    stateId: toStateId,
+    viewBox: [...viewBox],
+    layers: [
+      ...fromState.layers.map((layer) => {
+        const extraTransform = buildDirectionalTransform(outY, outScale);
+        return {
+          ...layer,
+          key: `from:${layer.id}`,
+          opacity: outOpacity,
+          transform: extraTransform
+            ? joinTransforms(layer.transform, extraTransform)
+            : layer.transform,
+        };
+      }),
+      ...toState.layers.map((layer) => {
+        const extraTransform = buildDirectionalTransform(inY, undefined);
+        return {
+          ...layer,
+          key: `to:${layer.id}`,
+          opacity: inOpacity,
+          transform: extraTransform
+            ? joinTransforms(layer.transform, extraTransform)
+            : layer.transform,
+        };
+      }),
+    ],
+  };
+}
+
+/**
+ * Build a transform string fragment for directional offsets.
+ * Returns undefined when no transform is needed (no offset, no scale).
+ */
+function buildDirectionalTransform(
+  translateY: number,
+  scale: number | undefined,
+): string | undefined {
+  const parts: string[] = [];
+
+  if (Math.abs(translateY) > 0.001) {
+    parts.push(`translate(0, ${translateY})`);
+  }
+  if (scale !== undefined && Math.abs(scale - 1) > 0.001) {
+    parts.push(`scale(${scale}, ${scale})`);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : undefined;
 }
 
 function clamp01(value: number): number {

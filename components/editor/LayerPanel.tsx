@@ -12,7 +12,6 @@ import {
 import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
-import type { Layer } from '@/lib/schema/types';
 
 export const LayerPanel = memo(function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
@@ -31,7 +30,7 @@ export const LayerPanel = memo(function LayerPanel() {
     return map;
   });
   const currentStateId = useEditorStore((s) => s.currentStateId);
-  const { setSelection, setLayerVisibility, patchLayer, removeSelectedLayers } = useEditorActions();
+  const { setSelection, setLayerVisibility, renameLayer, removeSelectedLayers } = useEditorActions();
 
   // UX-F4: Keyboard navigation state
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -75,11 +74,11 @@ export const LayerPanel = memo(function LayerPanel() {
     (layerId: string) => {
       const trimmed = renameValue.trim();
       if (trimmed && trimmed !== layerId && currentIconId && currentStateId) {
-        patchLayer(currentIconId, currentStateId, layerId, { id: trimmed } as Partial<Layer>);
+        renameLayer(currentIconId, currentStateId, layerId, trimmed);
       }
       setRenamingLayerId(null);
     },
-    [currentIconId, currentStateId, patchLayer, renameValue],
+    [currentIconId, currentStateId, renameLayer, renameValue],
   );
 
   return (

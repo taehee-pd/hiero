@@ -202,6 +202,8 @@ export type RuntimeTransition = {
   easing: string | SpringConfig;
   layerBindings: RuntimeLayerBinding[];
   magicReplace?: RuntimeMagicReplace;
+  /** Directional slide+fade for replace transitions. */
+  direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
 };
 
 export type RuntimeEffect = {
@@ -938,6 +940,10 @@ function toRuntimeTransition(
     easing: transition.easing ?? 'linear',
     layerBindings: runtimeBindings,
   };
+
+  if (transition.direction) {
+    runtimeTransition.direction = transition.direction;
+  }
 
   const preserveLayerIds = getPreservedLayerIds(
     states[transition.from]!,

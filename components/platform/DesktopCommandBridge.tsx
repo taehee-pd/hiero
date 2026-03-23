@@ -560,16 +560,12 @@ function addIconToCollection(payload?: Record<string, unknown>) {
   const iconId = getStringPayload(payload, 'iconId');
   if (!iconId) return;
 
-  // Dispatch event so the explorer UI can show an inline input for collection name.
-  // The UI handler should call applyCollectionName() with the user-provided name.
-  document.dispatchEvent(
-    new CustomEvent('coniva:collection-prompt', {
-      detail: { iconId },
-    }),
-  );
+  const name = window.prompt('Collection name:');
+  if (!name) return;
+  applyCollectionName(iconId, name);
 }
 
-/** Apply a collection tag to an icon. Called by the UI after the user provides a name. */
+/** Apply a collection tag to an icon. */
 function applyCollectionName(iconId: string, collectionName: string) {
   if (!collectionName) return;
 
@@ -582,13 +578,6 @@ function applyCollectionName(iconId: string, collectionName: string) {
     tags.add(tag);
     icon.tags = [...tags].sort((left, right) => left.localeCompare(right));
   });
-}
-
-// Listen for collection name responses from the UI
-if (typeof window !== 'undefined') {
-  window.addEventListener('coniva:collection-response', ((event: CustomEvent<{ iconId: string; name: string }>) => {
-    applyCollectionName(event.detail.iconId, event.detail.name);
-  }) as EventListener);
 }
 
 function toggleFavoriteIcon(payload?: Record<string, unknown>) {
@@ -616,27 +605,15 @@ function deleteExplorerIcon(
   const iconId = getStringPayload(payload, 'iconId');
   if (!iconId) return;
 
-  // Dispatch confirmation event; the UI should show an inline confirm and dispatch
-  // coniva:explorer-delete-confirmed when the user confirms.
-  document.dispatchEvent(
-    new CustomEvent('coniva:confirm', {
-      detail: { message: `Delete ${iconId}?`, action: 'explorer-delete', iconId },
-    }),
-  );
+  const confirmed = window.confirm(`Delete "${iconId}"?`);
+  if (!confirmed) return;
 
-  // Listen once for confirmation response
-  const handler = ((event: CustomEvent<{ iconId: string }>) => {
-    if (event.detail.iconId !== iconId) return;
-    window.removeEventListener('coniva:explorer-delete-confirmed', handler as EventListener);
+  mutateProject((project) => {
+    delete project.icons[iconId];
+  });
 
-    mutateProject((project) => {
-      delete project.icons[iconId];
-    });
-
-    const nextIconId = editorStore.getState().currentIconId;
-    router.push(nextIconId ? buildEditorRoute(nextIconId, editorStore.getState().activeIconSetId) : '/');
-  }) as EventListener;
-  window.addEventListener('coniva:explorer-delete-confirmed', handler as EventListener);
+  const nextIconId = editorStore.getState().currentIconId;
+  router.push(nextIconId ? buildEditorRoute(nextIconId, editorStore.getState().activeIconSetId) : '/');
 }
 
 function mutateProject(mutator: (project: Project) => void, nextIconId?: string | null) {

@@ -28,8 +28,21 @@ This directory contains structured specifications for the icon authoring tool's 
 | [animation-tab.md](./editor/animation-tab.md) | Animation tab redesign: trim path UI, per-subpath strategy display, variable value preview |
 | [inspect-tab.md](./editor/inspect-tab.md) | Inspect tab redesign: variable value, topology, strategy badges, weight, gradient |
 
+## Editor (Phase N)
+
+| Spec | Description |
+|------|-------------|
+| [derived-variants.md](./editor/derived-variants.md) | Derived variant generation via path booleans: fill, slash, circle, square, badge |
+
+## Runtime (Phase O)
+
+| Spec | Description |
+|------|-------------|
+| [weight-interpolation-cubic.md](./runtime/weight-interpolation-cubic.md) | Fritsch-Carlson cubic monotone spline for smooth multi-control-point weight interpolation |
+
 ## Export
 
 | Spec | Description |
 |------|-------------|
 | [runtime-json-format.md](./export/runtime-json-format.md) | Runtime JSON export structure, paint resolution, strategy simplification, and deterministic output |
+| [lottie-export.md](./export/lottie-export.md) | Lottie 5.x JSON export: layer mapping, timeline tracks, morph approximation, downgrade rules |

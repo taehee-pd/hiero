@@ -3,8 +3,405 @@
 **Last updated:** 2026-03-23
 **Canonical product name:** Coniva
 
-All phases are **completed**. This document serves as a reference for
-what was built, where it lives, and key decisions made.
+Phases I–L and all earlier phases are **completed**. Phases M–Q are
+the active engineering backlog, planned 2026-03-23.
+
+---
+
+## Phase M — Lottie Export
+
+Status: **planned** (enable export to the Lottie JSON format for
+cross-platform animated icon delivery)
+
+The schema reserves `ExportProfile.format: 'lottie'` but no exporter
+exists. Lottie is the de-facto standard for animated icons on Android,
+iOS web, and React Native — adding it dramatically expands Coniva's
+distribution surface.
+
+### Priority 1 — Core Exporter
+
+- [ ] **M1 — Build `export-lottie.ts` exporter.**
+  Create `lib/export/export-lottie.ts`. Convert a compiled Coniva icon
+  to a Lottie 5.x JSON object. Map `Variant.viewBox` to `w`/`h`/`fr`.
+  Set `fr: 60`, `ip: 0`, `op: durationMs / 1000 * 60` derived from the
+  longest transition. Entry point: `exportLottie(icon: Icon, variantId:
+  string): LottieJson`.
+
+- [ ] **M2 — Map layer geometry to Lottie shape layers.**
+  For each `Layer`, emit a Lottie shape layer with a `sh` (path) shape.
+  Convert the SVG `d` string to Lottie's `ks` bezier format (vertices,
+  in-tangents, out-tangents, closed). Use the normalized cubic commands
+  already produced by `path-normalization.ts` — no new parsing needed.
+  Map `style.fill` → `fl` shape, `style.stroke` → `st` shape. Map
+  `PaintRef.mode === 'linearGradient'` → `gf` Lottie gradient fill.
+
+- [ ] **M3 — Map TimelineTrack keyframes to Lottie animated properties.**
+  For each `TimelineTrack` on a `LayerBinding`, emit Lottie animated
+  properties (`ks.o` for opacity, `ks.r` for rotation, `ks.p` for
+  position, `ks.s` for scale). Convert `keyframes: number[]` with
+  `durationMs` to Lottie time-based keyframe arrays. Map easing strings
+  to Lottie cubic-bezier `o`/`i` handle pairs.
+
+- [ ] **M4 — Map morph keyframes to Lottie shape-path animation.**
+  When a binding uses `strictMorph` or `bestGuessMorph`, emit the
+  interpolated path at multiple sampled t-values (e.g. 10 steps) as
+  Lottie shape-path keyframes on `ks.sh`. This approximates smooth
+  morph within Lottie's keyframe model. Use `interpolatePaths()` from
+  `morph.ts`.
+
+- [ ] **M5 — Map trim path tracks to Lottie trim shape.**
+  When `trimStart`/`trimEnd`/`trimOffset` tracks are present, emit a
+  Lottie `tm` (trim) modifier on the containing shape group. Map
+  `compoundTrimMode === 'simultaneously'` → `m: 1`, `'individually'`
+  → `m: 2` (matches After Effects behaviour).
+
+### Priority 2 — Effect & Preview Integration
+
+- [ ] **M6 — Map Effect kinds to Lottie shape layer animations.**
+  Convert Coniva Effect kinds to Lottie equivalents:
+  `bounce` → scale oscillation keyframes, `pulse` → opacity keyframes,
+  `breathe` → scale breathe keyframes, `rotate` → rotation keyframes,
+  `lineDrawOn` / `lineDrawOff` → trim-path animation.
+  `custom` effects emit their `customTracks` as Lottie animated
+  properties.
+
+- [ ] **M7 — Add Lottie export to ExportPanel UI.**
+  In `components/export/`, add a "Lottie" option to the export format
+  dropdown. On export, call `exportLottie()`, serialise to JSON, and
+  trigger a `.json` download. Show a warning badge when the icon uses
+  features with no Lottie equivalent (e.g. `variableValue`, weight
+  interpolation, `crossfade` strategy without morph fallback). Use the
+  existing downgrade-rules pattern from `lib/export/adapters/
+  downgrade-rules.ts`.
+
+- [ ] **M8 — Lottie preview in ExportPanel.**
+  Embed `lottie-web` (already in many icon toolchains; add as optional
+  peer dep) in a preview pane inside the export panel. Render the
+  exported JSON in a 128×128 `<canvas>` preview so authors can verify
+  the animation before downloading. Gate behind a feature flag
+  `LOTTIE_PREVIEW_ENABLED`.
+
+### Priority 3 — Roundtrip & Tests
+
+- [ ] **M9 — Export determinism test.**
+  Add `tests/lottie-export.test.ts`. Assert that
+  `exportLottie(icon, variantId)` produces identical JSON across
+  multiple calls (snapshot test). Cover: static icon (no transitions),
+  track animation, morph transition, trim animation, cross-icon
+  transition fallback.
+
+- [ ] **M10 — Downgrade diagnostics for Lottie.**
+  Extend `lib/export/adapters/downgrade-rules.ts` with Lottie-specific
+  rules. Flag: `variableValue` (not representable), `bestGuessMorph`
+  with mismatched command counts (falls back to crossfade), `spring`
+  easing (approximated as cubic-bezier), `radialGradient` fills
+  (approximated as solid). Surface diagnostics in ExportPanel.
+
+---
+
+## Phase N — Derived Variant Generation
+
+Status: **planned** (complete the SF Symbols variant system by
+generating fill/circle/square/slash/badge variants via path booleans)
+
+`lib/schema/variant-derivation.ts` has metadata scaffolding
+(`canDeriveVariant`, `availableModifiers`, `createDerivedVariantSpec`)
+but explicitly defers "actual generation" to a future phase (the
+comment reads: "path boolean operations which are deferred to a future
+phase"). `lib/editor-core/boolean-ops.ts` provides the Paper.js boolean
+primitive (`booleanOp`). This phase wires them together.
+
+### Priority 1 — Variant Generation Engine
+
+- [ ] **N1 — Implement `applyDerivedVariant()` for fill variants.**
+  In `lib/schema/variant-derivation.ts`, add:
+  `applyDerivedVariant(icon: Icon, spec: DerivedVariantSpec): Icon`.
+  For `modifier === 'fill'`: iterate each layer in the base variant's
+  default state; if the layer has a stroke paint and no fill, produce
+  a filled copy by duplicating the path and switching `style.fill` to
+  `style.stroke`'s value and clearing `style.stroke`. No boolean ops
+  needed — this is a style transformation only.
+
+- [ ] **N2 — Implement `applyDerivedVariant()` for slash variants.**
+  For `modifier === 'slash'`: find the `SymbolComponent` of kind
+  `'slash'` in `icon.components`. Retrieve its layer paths. Use
+  `booleanOp('subtract', ...)` from `boolean-ops.ts` to subtract the
+  slash shape from each primary layer path in the derived state.
+  Return the modified icon with a new variant whose states contain the
+  slashed geometry.
+
+- [ ] **N3 — Implement `applyDerivedVariant()` for circle/square variants.**
+  For `modifier === 'circle'` / `'square'`: find the `SymbolComponent`
+  of kind `'enclosure'`. Union all primary layer paths with the
+  enclosure shape using `booleanOp('unite', ...)`. The result becomes
+  the derived variant's layer geometry. The enclosure component layers
+  are hidden (set `visible: false`) in the derived state since they are
+  now merged.
+
+- [ ] **N4 — Implement `applyDerivedVariant()` for badge variants.**
+  For `modifier === 'badge'`: find the `SymbolComponent` of kind
+  `'badge'`. Subtract the badge component shape from the base layers
+  using `booleanOp('subtract', ...)` where the badge overlaps, then
+  add the badge layers as additional visible layers in the derived
+  variant's state at their prescribed position.
+
+### Priority 2 — Editor UI
+
+- [ ] **N5 — Derive Variant panel in Inspector.**
+  In `components/editor/InspectorPanel.tsx`, add a "Derive Variant"
+  section (collapsed by default) below the existing symbol component
+  tags. Show available modifiers from `availableModifiers()` as
+  action buttons. On click, call `applyDerivedVariant()` and dispatch
+  `addVariant` to the editor store. Disable buttons that return false
+  from `canDeriveVariant()`. Show a spinner during generation (boolean
+  ops are synchronous but can take ~50ms for complex paths).
+
+- [ ] **N6 — Derived variant badge in ExplorerShell.**
+  In the icon list / explorer view, show a small "variants" pill on
+  icons that have derived variants (e.g. "fill", "circle"). Allow
+  switching between base and derived in the variant selector. Derived
+  variants are read-only by default (no geometry editing — edits must
+  be made on the base and re-derived).
+
+- [ ] **N7 — Re-derive on base change.**
+  When a layer's geometry changes in the base variant and derived
+  variants exist, show a "Re-derive variants" warning banner above the
+  canvas. On confirmation, re-run `applyDerivedVariant()` for all
+  derived specs stored on the icon. Store derivation specs in
+  `Icon.meta.derivedSpecs?: DerivedVariantSpec[]`.
+
+### Priority 3 — Tests
+
+- [ ] **N8 — Boolean variant tests.**
+  Add `tests/derived-variants.test.ts`. Test: fill derivation produces
+  correct style flip, slash derivation removes area overlapping slash
+  shape, circle derivation unions enclosure correctly, badge derivation
+  preserves badge layers. Use simple rectangle paths for
+  deterministic boolean results.
+
+---
+
+## Phase O — Cubic Weight Interpolation
+
+Status: **planned** (upgrade piecewise-linear weight interpolation to
+cubic monotone spline for smooth cross-weight rendering)
+
+`interpolateWeight()` in `lib/runtime-core/weight-interpolation.ts`
+uses piecewise linear interpolation between three control points
+(ultralight=100, regular=400, black=900). This produces a kink at
+weight 400 and poor accuracy for intermediate weights (thin, light,
+medium, semibold). H9 explicitly deferred "cubic interp" to a future
+phase.
+
+### Priority 1 — Cubic Monotone Spline
+
+- [ ] **O1 — Implement Fritsch-Carlson monotone cubic interpolation.**
+  In `weight-interpolation.ts`, add `cubicMonotoneInterpolate(points:
+  Array<{x: number; y: number}>, t: number): number`. Implements the
+  Fritsch-Carlson algorithm: compute slopes at each control point,
+  apply monotone constraints (no overshooting), compute Hermite spline
+  coefficients per segment. Returns smoothly interpolated scalar.
+
+- [ ] **O2 — Apply per-coordinate cubic interpolation to path commands.**
+  Upgrade `interpolateWeight()` to use `cubicMonotoneInterpolate` per
+  coordinate value across all supplied control points instead of
+  piecewise linear. The function signature stays backward-compatible:
+  `interpolateWeight(controlPoints, targetWeight)` still returns
+  `string | null`. Internally, build per-coordinate cubic splines from
+  all available control points (2 or 3).
+
+- [ ] **O3 — Support up to 9 weight control points.**
+  Extend `WeightControlPoints` type to make `ultralight` and `black`
+  optional and add optional intermediate weights: `thin`, `light`,
+  `medium`, `semibold`, `bold`, `heavy`. The cubic interpolation uses
+  whichever subset is populated. `validateWeightControlPoints` passes
+  with ≥ 2 control points (previously required exactly 3).
+  Update `Variant.weightControlPoints` in `lib/schema/types.ts` to
+  match.
+
+### Priority 2 — Editor Integration
+
+- [ ] **O4 — Multi-control-point editor in InspectorPanel.**
+  Extend the weight control point editor (L4) to show all 9 weight
+  slots (ultralight → black) as a vertical list. Each slot shows a
+  small path preview thumbnail and an "Assign" / "Clear" button.
+  Use a drag-and-drop SVG upload or "Copy from current state" shortcut.
+  The weight preview slider (K3) automatically benefits from cubic
+  interpolation with no additional wiring.
+
+- [ ] **O5 — Visual weight curve editor.**
+  Add a `WeightCurveEditor` component. Renders the interpolated weight
+  curve as a polyline (x = weight 100→900, y = first control-point
+  coordinate value). Highlights the cubic spline vs. the old piecewise
+  linear line to show improvement. Clicking a point on the curve opens
+  an inline field to tweak that weight's path. Useful for quality
+  checking before export.
+
+### Priority 3 — Tests
+
+- [ ] **O6 — Cubic interpolation correctness tests.**
+  Add `tests/weight-interpolation-cubic.test.ts`. Assert:
+  interpolated value equals control-point value exactly at each
+  control-point weight; no overshoot when values are monotone; smooth
+  (C1 continuous) at segment boundaries (check derivative
+  discontinuity < 1e-10); matches expected output for a known
+  three-point test fixture.
+
+---
+
+## Phase P — Import Adapter Ecosystem
+
+Status: **planned** (expand the icon library import system beyond the
+current Lucide + Raw SVG adapters)
+
+The adapter SDK (`lib/import/adapter-sdk/`) is complete with a registry,
+types, and a template. The existing `lucide-adapter.ts` demonstrates
+the full pattern. This phase adds four high-demand adapters.
+
+### Priority 1 — Heroicons & Phosphor
+
+- [ ] **P1 — Heroicons adapter.**
+  Create `lib/import/adapters/heroicons-adapter.ts`. Source:
+  `@heroicons/react` npm package (already broadly installed in Next.js
+  projects). Capabilities: `searchable: true`, variants: `outline` and
+  `solid` (map to Coniva size 24, 20). The manifest is the package's
+  exported icon list. Implement `importById(id)` by loading the
+  corresponding SVG from the package's `24/outline/` directory.
+  Register in `registerBuiltinAdapters()`.
+
+- [ ] **P2 — Phosphor Icons adapter.**
+  Create `lib/import/adapters/phosphor-adapter.ts`. Source:
+  `@phosphor-icons/core` npm package. Capabilities: `searchable: true`,
+  6 weights (`thin`, `light`, `regular`, `bold`, `fill`, `duotone`).
+  Map Phosphor weights to Coniva `Variant.weight`. On import, create
+  one icon with a variant per weight, pre-filling `Variant.
+  weightControlPoints` with the `thin`, `regular`, and `bold` SVG
+  paths to enable immediate weight interpolation.
+
+- [ ] **P3 — Material Symbols adapter.**
+  Create `lib/import/adapters/material-symbols-adapter.ts`. Source:
+  `@material-symbols/svg-400` (Google's official npm package). Variants:
+  outlined/rounded/sharp. Map to Coniva size 24. The package ships
+  individual SVG files — build a manifest at import time by reading
+  the package directory listing. `searchable: true`.
+
+### Priority 2 — SF Symbols SVG Import
+
+- [ ] **P4 — SF Symbols SVG adapter.**
+  Create `lib/import/adapters/sf-symbols-adapter.ts`. SF Symbols SVGs
+  are exported from the SF Symbols macOS app as `.svg` files with
+  multi-weight layer groups (each group named `ultralight-S`,
+  `regular-S`, `black-S`, etc.). The adapter:
+  1. Reads the layered SVG.
+  2. Groups layers by weight tag.
+  3. Creates one Coniva icon with one variant containing one state per
+     detected weight group.
+  4. Populates `Variant.weightControlPoints` from the ultralight,
+     regular, and black layers.
+  5. Detects SF Symbols-style variable-value layers (`primary`,
+     `secondary`, `tertiary` role attributes in the SVG) and maps them
+     to `Layer.role`.
+  Input mode: `file` (drag-and-drop `.svg` export from SF Symbols app).
+  No network search — file-only.
+
+### Priority 3 — Import UX Polish
+
+- [ ] **P5 — Adapter capability display in ImportIconDialog.**
+  In `components/editor/ImportIconDialog.tsx`, show per-adapter
+  capability badges: "Searchable", "6 weights", "Variable value". When
+  a Phosphor or SF Symbols icon is imported, show a toast: "Weight
+  control points pre-filled — open Weight Interpolation in Inspector
+  to preview."
+
+- [ ] **P6 — Batch import from adapter.**
+  Allow selecting multiple icons from a searchable adapter's results
+  and importing them all at once. Add checkboxes to the search results
+  list. "Import Selected (N)" button triggers sequential
+  `importById()` calls with a progress indicator. Limit to 50 icons
+  per batch to avoid UI freeze.
+
+- [ ] **P7 — Adapter tests.**
+  Add `tests/adapter-heroicons.test.ts`, `tests/adapter-phosphor.test.ts`,
+  `tests/adapter-material-symbols.test.ts`, `tests/adapter-sf-symbols.test.ts`.
+  Each test: load a fixture SVG, call `importById`, assert the resulting
+  `Icon` has expected layer count, correct `Layer.role` assignments,
+  correct variant count, and no unsupported feature warnings for
+  standard icons.
+
+---
+
+## Phase Q — NPM Registry Distribution
+
+Status: **planned** (allow teams to publish icon packages directly to
+npm or a private registry from Coniva's sync targets)
+
+Currently `SyncTarget.deliveryMode` supports `local-directory` and
+`git-pr`. Teams who want to `npm install @acme/icons` need to publish
+to a registry manually. This phase adds a `npm-registry` delivery mode
+and an automated publish pipeline.
+
+### Priority 1 — Registry Sync Target
+
+- [ ] **Q1 — `npm-registry` delivery mode schema.**
+  Add `'npm-registry'` to `SyncTarget.deliveryMode` union in
+  `lib/schema/types.ts`. Add `SyncTarget.npmRegistry?: { registry:
+  string; scope?: string; packageName: string; token?: string }`.
+  The `token` field is write-only (masked in UI, stored in platform
+  keychain via `lib/platform/`).
+
+- [ ] **Q2 — NPM publish connector.**
+  Create `lib/sync-service/connectors/npm-connector.ts`. Implements
+  the `SyncConnector` interface. `push()` method:
+  1. Runs the compile pipeline for the target's platform adapter.
+  2. Builds a `package.json` with `name`, `version` (auto-incremented
+     semver from the last published version), `exports` map.
+  3. Calls `npm pack` → `npm publish` via the Node `child_process`
+     exec API (desktop only) or a publish-proxy API endpoint (web).
+  4. Returns a `SyncResult` with the published version and registry URL.
+
+- [ ] **Q3 — Version management UI.**
+  In `components/export/SyncTargetPanel.tsx`, for npm-registry targets,
+  show: last published version badge, "Bump patch / minor / major"
+  dropdown before publish, changelog auto-generated from icon diff
+  (`diff-compiled-icons.ts`). The changelog surfaces added, modified,
+  removed icon names as human-readable release notes.
+
+- [ ] **Q4 — Automated publish trigger.**
+  In `SyncTarget`, add `autoPublish?: { on: 'save' | 'manual'; semver:
+  'patch' | 'minor' }`. When `on: 'save'` and icons change, queue a
+  debounced publish (300 s) after the save. Show a "Pending publish"
+  spinner in the tab bar.
+
+### Priority 2 — Web Proxy & Auth
+
+- [ ] **Q5 — Publish proxy API route (web app).**
+  The web app cannot shell out to `npm` CLI directly. Add an API route
+  `app/api/publish-npm/route.ts`. Accepts a multipart POST with the
+  tarball and registry config. Calls the npm registry REST API
+  (`PUT /<package>`) with the auth token. Returns the published
+  version. The token is passed as a request header (never stored
+  server-side).
+
+- [ ] **Q6 — Private registry support (Verdaccio / GitHub Packages / JFrog).**
+  Ensure the connector works with non-public registries by honoring the
+  `registry` field (default `https://registry.npmjs.org`). Test against
+  GitHub Packages (`https://npm.pkg.github.com`) by adding a fixture
+  test that mocks the registry PUT endpoint.
+
+### Priority 3 — Tests & Safety
+
+- [ ] **Q7 — Dry-run mode.**
+  Add `SyncTarget.dryRun?: boolean`. When true, the connector runs the
+  full build pipeline and validates the package.json but skips the
+  actual `npm publish` call. Returns a `SyncResult` with
+  `status: 'dry-run'` and the would-be package tarball path.
+  Surface as a "Preview publish" button in the UI.
+
+- [ ] **Q8 — NPM connector tests.**
+  Add `tests/npm-connector.test.ts`. Mock `npm publish` (or the
+  registry PUT). Assert: correct `package.json` fields for React
+  adapter, version bump logic (patch/minor/major), changelog includes
+  correct icon diff, dry-run does not invoke network calls.
 
 ---
 

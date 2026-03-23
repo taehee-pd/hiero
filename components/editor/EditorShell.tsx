@@ -885,44 +885,46 @@ function RightSidebar({
                     </Select>
                   </RowField>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
+                {fillMode === 'fixed' && (
                   <RowField label="Fill color">
-                    {fillMode === 'fixed' ? (
-                      <ColorPickerPopover
-                        value={
-                          selectedLayer.style.fill?.mode === 'fixed'
-                            ? selectedLayer.style.fill.value
-                            : '#111111'
-                        }
-                        onChange={(hex) =>
-                          debouncedPatchStyle({
-                            fill: { mode: 'fixed', value: hex },
-                          })
-                        }
-                      />
-                    ) : (
-                      <PropertyValue>{describePaint(selectedLayer.style.fill)}</PropertyValue>
-                    )}
+                    <ColorPickerPopover
+                      value={
+                        selectedLayer.style.fill?.mode === 'fixed'
+                          ? selectedLayer.style.fill.value
+                          : '#111111'
+                      }
+                      onChange={(hex) =>
+                        debouncedPatchStyle({
+                          fill: { mode: 'fixed', value: hex },
+                        })
+                      }
+                      opacity={selectedLayer.style.fillOpacity ?? 1}
+                      onOpacityChange={(o) =>
+                        debouncedPatchStyle({ fillOpacity: o })
+                      }
+                    />
                   </RowField>
+                )}
+                {strokeMode === 'fixed' && (
                   <RowField label="Stroke color">
-                    {strokeMode === 'fixed' ? (
-                      <ColorPickerPopover
-                        value={
-                          selectedLayer.style.stroke?.mode === 'fixed'
-                            ? selectedLayer.style.stroke.value
-                            : '#111111'
-                        }
-                        onChange={(hex) =>
-                          debouncedPatchStyle({
-                            stroke: { mode: 'fixed', value: hex },
-                          })
-                        }
-                      />
-                    ) : (
-                      <PropertyValue>{describePaint(selectedLayer.style.stroke)}</PropertyValue>
-                    )}
+                    <ColorPickerPopover
+                      value={
+                        selectedLayer.style.stroke?.mode === 'fixed'
+                          ? selectedLayer.style.stroke.value
+                          : '#111111'
+                      }
+                      onChange={(hex) =>
+                        debouncedPatchStyle({
+                          stroke: { mode: 'fixed', value: hex },
+                        })
+                      }
+                      opacity={selectedLayer.style.strokeOpacity ?? 1}
+                      onOpacityChange={(o) =>
+                        debouncedPatchStyle({ strokeOpacity: o })
+                      }
+                    />
                   </RowField>
-                </div>
+                )}
                 <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
                   <RowField label="Stroke width">
                     <Input

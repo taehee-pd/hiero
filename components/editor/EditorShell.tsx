@@ -50,7 +50,6 @@ import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import type {
   Icon,
   Layer,
-  LayerBinding,
   RenderingMode,
   State,
   Transition,
@@ -67,11 +66,11 @@ import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
-import { Slider } from '@/components/kibo-ui/slider';
 import { Input } from '@/components/kibo-ui/input';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorPickerPopover } from './ColorPickerPopover';
+import { TransitionPanel } from './TransitionPanel';
 
 type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
@@ -79,13 +78,6 @@ type DeleteIntent =
   | { type: 'state'; id: string }
   | { type: 'variant'; id: string }
   | { type: 'transition'; id: string };
-type TransitionDraft = {
-  from: string;
-  to: string;
-  durationMs: string;
-  strategy: Transition['strategy'];
-  easing: string;
-};
 type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
@@ -101,15 +93,6 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'multicolor', label: 'Multicolor' },
   { value: 'autoGradient', label: 'Auto Gradient' },
 ];
-
-const TRANSITION_STRATEGIES: Transition['strategy'][] = [
-  'bestGuessMorph',
-  'strictMorph',
-  'track',
-  'replace',
-];
-
-const EASING_OPTIONS = ['ease-in-out', 'ease-out', 'ease-in', 'linear'] as const;
 
 function slugify(value: string) {
   return (
@@ -139,29 +122,6 @@ function scaleViewBox(
     Number((viewBox[2] * scale).toFixed(3)),
     Number((viewBox[3] * scale).toFixed(3)),
   ];
-}
-
-function buildDefaultLayerBindings(
-  fromState: State,
-  toState: State,
-  strategy: Transition['strategy'],
-): LayerBinding[] {
-  const sharedIds = Object.keys(fromState.layers).filter((layerId) =>
-    Boolean(toState.layers[layerId]),
-  );
-
-  return sharedIds.map((layerId) => {
-    if (strategy === 'strictMorph') {
-      return { fromLayerId: layerId, toLayerId: layerId, morph: { topology: 'strict' } };
-    }
-    if (strategy === 'bestGuessMorph') {
-      return { fromLayerId: layerId, toLayerId: layerId, morph: { topology: 'bestGuess' } };
-    }
-    if (strategy === 'track') {
-      return { fromLayerId: layerId, toLayerId: layerId, tracks: [] };
-    }
-    return { fromLayerId: layerId, toLayerId: layerId };
-  });
 }
 
 function buildTransitionPreview(
@@ -648,27 +608,14 @@ function RightSidebar({
   currentIcon,
   currentVariant,
   currentState,
-  selectedTransition,
-  transitions,
-  previewProgress,
-  previewPlaying,
-  onPreviewProgressChange,
-  onTogglePreviewPlaying,
-  transitionDraft,
-  onTransitionDraftChange,
-  stateIds,
-  onCreateTransition,
-  onSelectTransition,
   onRenameIcon,
   onRenameState,
   onPatchVariant,
   onPatchSelectedLayer,
   onPatchSelectedLayerStyle,
   onPatchSelectedLayerTransform,
-  onPatchTransition,
   onDeleteState,
   onDeleteVariant,
-  onDeleteTransition,
   guideMasterName,
   guidesVisible,
 }: {
@@ -678,27 +625,14 @@ function RightSidebar({
   currentIcon: Icon | null;
   currentVariant: Variant | null;
   currentState: State | null;
-  selectedTransition: Transition | null;
-  transitions: Transition[];
-  previewProgress: number;
-  previewPlaying: boolean;
-  onPreviewProgressChange: (value: number) => void;
-  onTogglePreviewPlaying: () => void;
-  transitionDraft: TransitionDraft;
-  onTransitionDraftChange: (patch: Partial<TransitionDraft>) => void;
-  stateIds: string[];
-  onCreateTransition: () => void;
-  onSelectTransition: (transitionId: string) => void;
   onRenameIcon: (value: string) => void;
   onRenameState: (value: string) => void;
   onPatchVariant: (patch: VariantEditorPatch) => void;
   onPatchSelectedLayer: (patch: Partial<Layer>) => void;
   onPatchSelectedLayerStyle: (patch: Partial<Layer['style']>) => void;
   onPatchSelectedLayerTransform: (patch: Partial<NonNullable<Layer['transform']>>) => void;
-  onPatchTransition: (patch: Partial<Transition>) => void;
   onDeleteState: () => void;
   onDeleteVariant: () => void;
-  onDeleteTransition: () => void;
   guideMasterName: string | null;
   guidesVisible: boolean;
 }) {
@@ -1011,168 +945,7 @@ function RightSidebar({
               </>
             )
           ) : (
-            <>
-              <TinyLabel>Transitions</TinyLabel>
-              {transitions.length === 0 ? (
-                <div className="wire-empty-note">No transitions yet</div>
-              ) : (
-                transitions.map((transition) => (
-                  <button
-                    key={transition.id}
-                    type="button"
-                    data-active={selectedTransition?.id === transition.id ? 'true' : 'false'}
-                    className="wire-list-row"
-                    onClick={() => onSelectTransition(transition.id)}
-                  >
-                    <span>
-                      {transition.from} → {transition.to}
-                    </span>
-                    <span className="wire-row-caption">{transition.durationMs}ms</span>
-                  </button>
-                ))
-              )}
-              {selectedTransition ? (
-                <>
-                  <RowField label="Duration">
-                    <Input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={selectedTransition.durationMs}
-                      onChange={(event) =>
-                        onPatchTransition({
-                          durationMs: Number.parseInt(event.target.value, 10) || 0,
-                        })
-                      }
-                      className="wire-input w-full"
-                    />
-                  </RowField>
-                  <RowField label="Strategy">
-                    <Select
-                      value={selectedTransition.strategy}
-                      onValueChange={(value) =>
-                        onPatchTransition({
-                          strategy: value as Transition['strategy'],
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TRANSITION_STRATEGIES.map((strategy) => (
-                          <SelectItem key={strategy} value={strategy}>
-                            {strategy}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </RowField>
-                  <RowField label="Easing">
-                    <Select
-                      value={
-                        typeof selectedTransition.easing === 'string'
-                          ? selectedTransition.easing
-                          : 'ease-in-out'
-                      }
-                      onValueChange={(value) => onPatchTransition({ easing: value })}
-                    >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {EASING_OPTIONS.map((option) => (
-                          <SelectItem key={option} value={option}>
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </RowField>
-                  <RowField label="Preview">
-                    <div className="grid gap-1.5">
-                      <div className="flex items-center gap-2">
-                        <Slider
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={[Math.round(previewProgress * 100)]}
-                          onValueChange={([v]) =>
-                            onPreviewProgressChange(v / 100)
-                          }
-                          className="wire-range flex-1"
-                        />
-                        <span className="min-w-[3ch] text-right text-[length:var(--text-label)] tabular-nums text-muted-foreground">
-                          {Math.round(previewProgress * 100)}%
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="wire-mini-button"
-                        onClick={onTogglePreviewPlaying}
-                      >
-                        {previewPlaying ? 'Pause preview' : 'Play preview'}
-                      </button>
-                    </div>
-                  </RowField>
-                  <button
-                    type="button"
-                    className="wire-mini-button mt-1"
-                    onClick={onDeleteTransition}
-                  >
-                    Delete transition
-                  </button>
-                </>
-              ) : null}
-              <TinyLabel>New transition</TinyLabel>
-              <RowField label="From">
-                <Select
-                  value={transitionDraft.from}
-                  onValueChange={(value) => onTransitionDraftChange({ from: value })}
-                >
-                  <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stateIds.map((stateId) => (
-                      <SelectItem key={stateId} value={stateId}>
-                        {stateId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </RowField>
-              <RowField label="To">
-                <Select
-                  value={transitionDraft.to}
-                  onValueChange={(value) => onTransitionDraftChange({ to: value })}
-                >
-                  <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stateIds.map((stateId) => (
-                      <SelectItem key={stateId} value={stateId}>
-                        {stateId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </RowField>
-              <RowField label="Duration">
-                <Input
-                  value={transitionDraft.durationMs}
-                  onChange={(event) => onTransitionDraftChange({ durationMs: event.target.value })}
-                  type="number"
-                  min="0"
-                  step="10"
-                  className="wire-input w-full"
-                />
-              </RowField>
-              <button type="button" className="wire-mini-button mt-1" onClick={onCreateTransition}>
-                Create transition
-              </button>
-            </>
+            <TransitionPanel />
           )}
         </div>
       </ScrollArea>
@@ -1212,12 +985,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
 
   const {
     addState,
-    addTransition,
     addVariant,
     createBlankIcon,
     openIconTab,
     patchLayer,
-    patchTransition,
     patchVariant,
     removeState,
     removeTransition,
@@ -1228,7 +999,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     setCurrentState,
     setCurrentVariant,
     setSelection,
-    setSelectedTransitionId,
     setTool,
     setTransitionPreview,
     setViewport,
@@ -1252,13 +1022,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
-  const [transitionDraft, setTransitionDraft] = useState<TransitionDraft>({
-    from: '',
-    to: '',
-    durationMs: '240',
-    strategy: 'bestGuessMorph',
-    easing: 'ease-in-out',
-  });
   const previewFrameRef = useRef<number | null>(null);
   const requestedIconId = initialIconId ?? searchIconId;
 
@@ -1376,22 +1139,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     selection.layerIds.length,
     setSelection,
   ]);
-
-  useEffect(() => {
-    const nextStates = Object.keys(currentVariant?.states ?? {});
-    if (!nextStates.length) return;
-    setTransitionDraft((current) => {
-      const fallbackFrom =
-        currentStateId && nextStates.includes(currentStateId) ? currentStateId : nextStates[0]!;
-      const fallbackTo = nextStates.find((stateId) => stateId !== fallbackFrom) ?? fallbackFrom;
-      return {
-        ...current,
-        from: nextStates.includes(current.from) ? current.from : fallbackFrom,
-        to:
-          nextStates.includes(current.to) && current.to !== current.from ? current.to : fallbackTo,
-      };
-    });
-  }, [currentStateId, currentVariant?.states]);
 
   useEffect(() => {
     if (!selectedTransition || !currentVariant || !previewPlaying) return;
@@ -1601,52 +1348,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     setNewStateName('');
   };
 
-  const handleCreateTransition = () => {
-    if (!currentIcon || !currentVariant) return;
-    const durationMs = Number.parseInt(transitionDraft.durationMs, 10);
-    if (
-      !transitionDraft.from ||
-      !transitionDraft.to ||
-      transitionDraft.from === transitionDraft.to ||
-      !Number.isFinite(durationMs) ||
-      durationMs < 0
-    ) {
-      return;
-    }
-
-    const fromState = currentVariant.states[transitionDraft.from];
-    const toState = currentVariant.states[transitionDraft.to];
-    if (!fromState || !toState) return;
-
-    const id = `${transitionDraft.from}-to-${transitionDraft.to}`;
-    addTransition(currentIcon.id, {
-      id,
-      from: transitionDraft.from,
-      to: transitionDraft.to,
-      strategy: transitionDraft.strategy,
-      durationMs,
-      easing: transitionDraft.easing,
-      layerBindings: buildDefaultLayerBindings(fromState, toState, transitionDraft.strategy),
-    });
-    setSelectedTransitionId(id);
-    setRightTab('animation');
-  };
-
-  const handlePatchTransition = (patch: Partial<Transition>) => {
-    if (!currentIcon || !selectedTransition) return;
-    patchTransition(currentIcon.id, selectedTransition.id, patch);
-  };
-
-  const handlePreviewProgressChange = (value: number) => {
-    setPreviewPlaying(false);
-    setPreviewProgress(value);
-    if (!selectedTransition || !currentVariant) {
-      setTransitionPreview(null);
-      return;
-    }
-    setTransitionPreview(buildTransitionPreview(selectedTransition, currentVariant, value));
-  };
-
   const handleDeleteConfirm = () => {
     if (!pendingDelete || !currentIcon) return;
     if (pendingDelete.type === 'state') removeState(currentIcon.id, pendingDelete.id);
@@ -1777,37 +1478,18 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
           currentIcon={currentIcon}
           currentVariant={currentVariant}
           currentState={currentState}
-          selectedTransition={selectedTransition}
-          transitions={transitions}
-          previewProgress={previewProgress}
-          previewPlaying={previewPlaying}
-          onPreviewProgressChange={handlePreviewProgressChange}
-          onTogglePreviewPlaying={() => setPreviewPlaying((value) => !value)}
-          transitionDraft={transitionDraft}
-          onTransitionDraftChange={(patch) =>
-            setTransitionDraft((current) => ({ ...current, ...patch }))
-          }
-          stateIds={stateIds}
-          onCreateTransition={handleCreateTransition}
-          onSelectTransition={setSelectedTransitionId}
           onRenameIcon={handleRenameIcon}
           onRenameState={handleRenameState}
           onPatchVariant={handlePatchVariant}
           onPatchSelectedLayer={handlePatchSelectedLayer}
           onPatchSelectedLayerStyle={handlePatchSelectedLayerStyle}
           onPatchSelectedLayerTransform={handlePatchSelectedLayerTransform}
-          onPatchTransition={handlePatchTransition}
           onDeleteState={() =>
             currentState ? setPendingDelete({ type: 'state', id: currentState.id }) : undefined
           }
           onDeleteVariant={() =>
             currentVariant
               ? setPendingDelete({ type: 'variant', id: currentVariant.id })
-              : undefined
-          }
-          onDeleteTransition={() =>
-            selectedTransition
-              ? setPendingDelete({ type: 'transition', id: selectedTransition.id })
               : undefined
           }
           guideMasterName={currentGuideMaster?.name ?? null}

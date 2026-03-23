@@ -93,6 +93,7 @@ type RuntimeLayerBinding = {
   delayMs?: number;
   durationMs?: number;
   morph?: { topology: 'strict' | 'bestGuess' };
+  compoundTrimMode?: 'simultaneously' | 'individually';
 };
 ```
 

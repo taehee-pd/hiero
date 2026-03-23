@@ -100,6 +100,7 @@ export type Variant = {
   scale?: SymbolScale;
   defaultState: string;
   states: Record<string, State>;
+  variableValue?: number;  // 0.0-1.0, controls progressive layer fill
 };
 
 export type State = {
@@ -263,7 +264,7 @@ export type SpringConfig = {
 };
 
 export type TransitionStagger = {
-  mode: 'linear' | 'from-center' | 'from-edges' | 'random';
+  mode: 'linear' | 'from-center' | 'from-edges' | 'random' | 'individually';
   perLayerMs: number;
   easing?: string;
 };
@@ -366,6 +367,8 @@ export type Effect = {
   delay?: number;
   repeat?: number | 'infinite';
   direction?: 'normal' | 'reverse' | 'alternate';
+  /** Palette of hex colors for the variableColor effect. */
+  palette?: string[];
   customTracks?: TimelineTrack[];
 };
 

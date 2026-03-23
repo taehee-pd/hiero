@@ -203,7 +203,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     selection.layerIds.length === 1 &&
     Boolean(layer?.isClipMask || layer?.clipPathLayerId);
   const handlePatchVariant = useCallback(
-    (patch: Partial<Pick<Variant, 'weight' | 'scale'>>) => {
+    (patch: Partial<Pick<Variant, 'weight' | 'scale' | 'variableValue'>>) => {
       if (currentIcon && currentVariantId) {
         editorStore.getState().patchVariant(currentIcon.id, currentVariantId, patch);
       }
@@ -410,6 +410,21 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           {scale}
                         </button>
                       ))}
+                    </div>
+                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Variable Value</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={currentVariant.variableValue ?? 1}
+                        onChange={(e) => handlePatchVariant({ variableValue: Number(e.target.value) })}
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border/70 accent-primary"
+                      />
+                      <span className="min-w-[2.5rem] text-right text-[length:var(--text-label)] tabular-nums text-muted-foreground">
+                        {(currentVariant.variableValue ?? 1).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ) : null}

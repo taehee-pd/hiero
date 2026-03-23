@@ -75,6 +75,38 @@ function coercePaint(
   return { mode: 'fixed', value: nextColor };
 }
 
+/**
+ * Apply variable-value opacity/visibility to a resolved layer style.
+ *
+ * Multiplies existing fillOpacity and strokeOpacity by the variable
+ * result's opacity so that the effect composes with rendering-mode
+ * opacity (e.g. hierarchical) and per-layer author opacity.
+ */
+export function applyVariableValue(
+  style: ResolvedLayerStyle,
+  variableResult: { opacity: number; visible: boolean },
+): ResolvedLayerStyle {
+  if (!variableResult.visible) {
+    return {
+      ...style,
+      fillOpacity: 0,
+      strokeOpacity: 0,
+    };
+  }
+
+  return {
+    ...style,
+    fillOpacity:
+      style.fillOpacity != null
+        ? style.fillOpacity * variableResult.opacity
+        : variableResult.opacity,
+    strokeOpacity:
+      style.strokeOpacity != null
+        ? style.strokeOpacity * variableResult.opacity
+        : variableResult.opacity,
+  };
+}
+
 function hasVisiblePaint(paint: PaintRef | undefined): boolean {
   if (!paint) return false;
   return !(paint.mode === 'fixed' && paint.value === 'none');

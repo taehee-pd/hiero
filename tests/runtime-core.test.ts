@@ -647,6 +647,44 @@ describe('effect scheduler', () => {
     expect(resolved.layerBindings[1]?.delayMs).toBe(10);
     expect(resolved.layerBindings[1]?.durationMs).toBe(90);
   });
+
+  test('resolveTransition expands transition duration for individually staggered bindings', () => {
+    const fromState: State = {
+      id: 'from',
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H4V4H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M5 0H9V4H5Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M10 0H14V4H10Z' }, style: {} },
+      },
+    };
+    const toState: State = {
+      id: 'to',
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H4V4H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M5 0H9V4H5Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M10 0H14V4H10Z' }, style: {} },
+      },
+    };
+    const transition: Transition = {
+      id: 'individually-staggered',
+      from: 'from',
+      to: 'to',
+      strategy: 'replace',
+      durationMs: 100,
+      easing: 'linear',
+      stagger: { mode: 'individually', perLayerMs: 0 },
+      layerBindings: [
+        { fromLayerId: 'a', toLayerId: 'a' },
+        { fromLayerId: 'b', toLayerId: 'b' },
+        { fromLayerId: 'c', toLayerId: 'c' },
+      ],
+    };
+
+    const resolved = resolveTransition(transition, fromState, toState);
+    expect(resolved.layerBindings.map((binding) => binding.delayMs)).toEqual([0, 100, 200]);
+    expect(resolved.layerBindings.map((binding) => binding.durationMs)).toEqual([100, 100, 100]);
+    expect(resolved.durationMs).toBe(300);
+  });
 });
 
 // --- B2: composeValues ---

@@ -1,8 +1,10 @@
 import type { Icon, Layer, PaintRef, RenderingMode } from '@/lib/schema/types';
 import {
+  applyVariableValue,
   resolveLayerStyleForRendering,
   resolveVariantRenderingMode,
 } from '@/lib/rendering/resolve-layer-style';
+import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 
 export type RenderSvgInput = {
   icon: Icon;
@@ -52,6 +54,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
 
   const layers = Object.values(state.layers);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
+  const variableValues = computeVariableValue(state.layers, variant.variableValue ?? 1);
   const rendered = new Set<string>();
 
   for (const layer of layers) {
@@ -80,7 +83,7 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     }
 
     // Styles
-    applyLayerStyle(pathEl, layer, defs, renderingMode, tokens);
+    applyLayerStyle(pathEl, layer, defs, renderingMode, tokens, variableValues[layer.id]);
 
     // Transform
     applyTransform(pathEl, layer);
@@ -178,8 +181,10 @@ function applyLayerStyle(
   defs: SVGDefsElement,
   renderingMode: RenderingMode,
   tokens?: Record<string, string>,
+  variableValue?: { opacity: number; visible: boolean },
 ): void {
-  const s = resolveLayerStyleForRendering(layer, renderingMode, tokens);
+  const baseStyle = resolveLayerStyleForRendering(layer, renderingMode, tokens);
+  const s = variableValue ? applyVariableValue(baseStyle, variableValue) : baseStyle;
   el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
   el.setAttribute(
     'stroke',

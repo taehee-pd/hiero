@@ -81,6 +81,8 @@ export type ConivaIconProps = {
   onTransitionStart?: (fromState: string, toState: string) => void;
   /** Called when a state transition completes. */
   onTransitionComplete?: (fromState: string, toState: string) => void;
+  /** Called when an effect starts playing. */
+  onEffectStart?: (effectId: string) => void;
   /** Called when an effect completes. */
   onEffectComplete?: (effectId: string) => void;
 
@@ -115,6 +117,7 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
       onTapEnd,
       onTransitionStart,
       onTransitionComplete,
+      onEffectStart,
       onEffectComplete,
       onFrame,
     },
@@ -135,12 +138,14 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     const callbacksRef = useRef({
       onTransitionStart,
       onTransitionComplete,
+      onEffectStart,
       onEffectComplete,
       onFrame,
     });
     callbacksRef.current = {
       onTransitionStart,
       onTransitionComplete,
+      onEffectStart,
       onEffectComplete,
       onFrame,
     };
@@ -206,6 +211,9 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
               break;
             case 'transitionComplete':
               cbs.onTransitionComplete?.(event.fromState!, event.toState!);
+              break;
+            case 'effectStart':
+              cbs.onEffectStart?.(event.effectId!);
               break;
             case 'effectComplete':
               cbs.onEffectComplete?.(event.effectId!);

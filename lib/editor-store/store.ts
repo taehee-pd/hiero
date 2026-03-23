@@ -1949,6 +1949,7 @@ function createActions(): EditorActions {
         const layer = state?.layers[oldLayerId];
         if (!icon || !variant || !state || !layer) return s;
         if (oldLayerId === newLayerId) return s;
+        if (state.layers[newLayerId]) return s;
 
         // Rebuild layers Record preserving insertion order
         const nextLayers: Record<string, Layer> = {};

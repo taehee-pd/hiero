@@ -9,7 +9,7 @@ import { Label } from '@/components/kibo-ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler } from '@/lib/runtime-core';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { Transition, TransitionEndpoint, LayerBinding, State, TransitionStagger, StateTrigger } from '@/lib/schema/types';
+import type { Icon, Transition, TransitionEndpoint, LayerBinding, State, TransitionStagger, StateTrigger, Variant } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
@@ -633,6 +633,11 @@ export const TransitionPanel = memo(function TransitionPanel() {
             const compatibility = compatibilityById.get(transition.id);
             const isActive = activePreview?.transitionId === transition.id;
             const isBindingsExpanded = expandedBindings.has(transition.id);
+            const [transitionFromState, transitionToState] = resolveTransitionStates(
+              transition,
+              currentVariant,
+              projectIcons,
+            );
 
             return (
               <div
@@ -698,16 +703,21 @@ export const TransitionPanel = memo(function TransitionPanel() {
                     <InlineSelect
                       label="Strategy"
                       value={transition.strategy}
-                      onChange={(value) =>
+                      onChange={(value) => {
+                        const nextStrategy = value as Transition['strategy'];
                         patchTransition(currentIcon.id, transition.id, {
-                          strategy: value as Transition['strategy'],
-                          layerBindings: buildDefaultLayerBindings(
-                            currentVariant.states[transition.from]!,
-                            currentVariant.states[transition.to]!,
-                            value as Transition['strategy'],
-                          ),
-                        })
-                      }
+                          strategy: nextStrategy,
+                          ...(transitionFromState && transitionToState
+                            ? {
+                                layerBindings: buildDefaultLayerBindings(
+                                  transitionFromState,
+                                  transitionToState,
+                                  nextStrategy,
+                                ),
+                              }
+                            : {}),
+                        });
+                      }}
                       options={['track', 'strictMorph', 'bestGuessMorph', 'replace']}
                     />
                     <div className="grid gap-1.5">
@@ -791,8 +801,8 @@ export const TransitionPanel = memo(function TransitionPanel() {
                 >
                   <LayerBindingList
                     transition={transition}
-                    fromState={currentVariant.states[transition.from]}
-                    toState={currentVariant.states[transition.to]}
+                    fromState={transitionFromState}
+                    toState={transitionToState}
                     onPatchTransition={(patch) =>
                       patchTransition(currentIcon.id, transition.id, patch)
                     }
@@ -1185,6 +1195,25 @@ function LayerBindingList({
 }
 
 // --- Helpers ---
+
+function resolveTransitionStates(
+  transition: Transition,
+  currentVariant: Variant | null,
+  projectIcons: Record<string, Icon> | null,
+): [State | undefined, State | undefined] {
+  const fromState = transition.fromEndpoint
+    ? projectIcons?.[transition.fromEndpoint.iconId]?.variants[transition.fromEndpoint.variantId]?.states[
+        transition.fromEndpoint.stateId
+      ]
+    : currentVariant?.states[transition.from];
+  const toState = transition.toEndpoint
+    ? projectIcons?.[transition.toEndpoint.iconId]?.variants[transition.toEndpoint.variantId]?.states[
+        transition.toEndpoint.stateId
+      ]
+    : currentVariant?.states[transition.to];
+
+  return [fromState, toState];
+}
 
 function getCompatibilityStatus(
   transition: Transition,

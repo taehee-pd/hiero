@@ -44,7 +44,16 @@ import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
-import type { Icon, Layer, LayerBinding, PaintRef, RenderingMode, State, Transition, Variant } from '@/lib/schema/types';
+import type {
+  Icon,
+  Layer,
+  LayerBinding,
+  PaintRef,
+  RenderingMode,
+  State,
+  Transition,
+  Variant,
+} from '@/lib/schema/types';
 import { clearCurrentProjectPath, exportSvg, isDesktop, saveProject } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { exportSvgString } from '@/lib/export/export-svg';
@@ -96,11 +105,13 @@ const TRANSITION_STRATEGIES: Transition['strategy'][] = [
 const EASING_OPTIONS = ['ease-in-out', 'ease-out', 'ease-in', 'linear'] as const;
 
 function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'untitled';
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'untitled'
+  );
 }
 
 function formatVariantLabel(variant: { name?: string; size: number }) {
@@ -128,7 +139,9 @@ function buildDefaultLayerBindings(
   toState: State,
   strategy: Transition['strategy'],
 ): LayerBinding[] {
-  const sharedIds = Object.keys(fromState.layers).filter((layerId) => Boolean(toState.layers[layerId]));
+  const sharedIds = Object.keys(fromState.layers).filter((layerId) =>
+    Boolean(toState.layers[layerId]),
+  );
 
   return sharedIds.map((layerId) => {
     if (strategy === 'strictMorph') {
@@ -205,13 +218,7 @@ function TinyLabel({ children }: { children: React.ReactNode }) {
   return <p className="wire-label">{children}</p>;
 }
 
-function RowField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function RowField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="wire-field">
       <span className="wire-field-name">{label}</span>
@@ -314,18 +321,18 @@ function LeftSidebar({
 }) {
   return (
     <aside className="wire-sidebar wire-sidebar-left">
-      <div className="wire-sidebar-block px-2 pt-2">
+      <div className="wire-sidebar-block wire-sidebar-head">
         <Link href="/" className="wire-project-pill">
           <span>{workspaceName}</span>
         </Link>
-        <div className="px-2 pt-2">
-          <div className="flex items-center gap-1">
+        <div className="wire-sidebar-title-stack">
+          <div className="wire-sidebar-title-row">
             <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
             <ChevronDown className="size-3 text-black/45" />
           </div>
           <button
             type="button"
-            className="mt-0.5 flex items-center gap-1 text-[10px] text-black/45"
+            className="wire-sidebar-subtitle-action"
             onClick={() => {
               if (currentIcon) {
                 navigator.clipboard.writeText(slugify(currentIcon.name)).catch(() => {});
@@ -379,19 +386,20 @@ function LeftSidebar({
                     className="min-w-0 flex-1 text-left"
                     onClick={() => onSelectLayer(row.layer.id)}
                   >
-                    <div
-                      className="wire-layer-line"
-                      style={{ paddingLeft: `${row.depth * 12}px` }}
-                    >
+                    <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
                       <span className="wire-layer-name">{row.layer.id}</span>
-                      {row.layer.role ? <span className="wire-layer-kind">{row.layer.role}</span> : null}
+                      {row.layer.role ? (
+                        <span className="wire-layer-kind">{row.layer.role}</span>
+                      ) : null}
                       {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
                     </div>
                   </button>
                   <button
                     type="button"
                     className="wire-row-control"
-                    onClick={() => onToggleLayerVisibility(row.layer.id, row.layer.visible === false)}
+                    onClick={() =>
+                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false)
+                    }
                     aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
                   >
                     {row.layer.visible === false ? (
@@ -500,7 +508,7 @@ function CanvasDock({
     setZoomInput(formatZoomPercent(zoom));
   }, [zoom]);
 
-  const commitZoomInput = () => {
+  const commitZoomInput = ({ closeMenu = true }: { closeMenu?: boolean } = {}) => {
     const parsedZoom = parseZoomPercentInput(zoomInput);
     if (parsedZoom === null) {
       setZoomInput(formatZoomPercent(zoom));
@@ -508,7 +516,9 @@ function CanvasDock({
     }
     onZoomChange(parsedZoom);
     setZoomInput(formatZoomPercent(parsedZoom));
-    setZoomMenuOpen(false);
+    if (closeMenu) {
+      setZoomMenuOpen(false);
+    }
   };
 
   const handleZoomAction = (nextZoom: number | 'fit') => {
@@ -568,7 +578,7 @@ function CanvasDock({
                 autoFocus
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
-                onBlur={commitZoomInput}
+                onBlur={() => commitZoomInput({ closeMenu: false })}
                 className="block h-11 w-full rounded-lg border-2 border-sky-500 bg-background px-3 font-[var(--font-geist-sans)] text-[15px] leading-5 font-[550] text-foreground outline-none"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
@@ -598,7 +608,9 @@ function CanvasDock({
                 onClick={() => handleZoomAction('fit')}
               >
                 <span className="min-w-0 flex-1">Zoom to fit</span>
-                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Shift 1</span>
+                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">
+                  Shift 1
+                </span>
               </button>
               <button
                 type="button"
@@ -717,7 +729,7 @@ function RightSidebar({
 
   return (
     <aside className="wire-sidebar wire-sidebar-right">
-      <div className="wire-sidebar-block px-2 pt-2">
+      <div className="wire-sidebar-block wire-sidebar-head">
         <div className="wire-tab-row">
           <div className="wire-tabs">
             <button
@@ -738,7 +750,7 @@ function RightSidebar({
             </button>
           </div>
         </div>
-        <div className="wire-panel-title px-2 pt-1.5">
+        <div className="wire-panel-title">
           {selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
         </div>
       </div>
@@ -752,7 +764,9 @@ function RightSidebar({
                 <RowField label="Role">
                   <input
                     defaultValue={selectedLayer.role ?? ''}
-                    onBlur={(event) => onPatchSelectedLayer({ role: event.target.value || undefined })}
+                    onBlur={(event) =>
+                      onPatchSelectedLayer({ role: event.target.value || undefined })
+                    }
                     className="wire-input w-full"
                   />
                 </RowField>
@@ -1000,7 +1014,9 @@ function RightSidebar({
                     className="wire-list-row"
                     onClick={() => onSelectTransition(transition.id)}
                   >
-                    <span>{transition.from} → {transition.to}</span>
+                    <span>
+                      {transition.from} → {transition.to}
+                    </span>
                     <span className="wire-row-caption">{transition.durationMs}ms</span>
                   </button>
                 ))
@@ -1067,12 +1083,20 @@ function RightSidebar({
                         }
                         className="wire-range"
                       />
-                      <button type="button" className="wire-mini-button" onClick={onTogglePreviewPlaying}>
+                      <button
+                        type="button"
+                        className="wire-mini-button"
+                        onClick={onTogglePreviewPlaying}
+                      >
                         {previewPlaying ? 'Pause preview' : 'Play preview'}
                       </button>
                     </div>
                   </RowField>
-                  <button type="button" className="wire-mini-button mt-1" onClick={onDeleteTransition}>
+                  <button
+                    type="button"
+                    className="wire-mini-button mt-1"
+                    onClick={onDeleteTransition}
+                  >
                     Delete transition
                   </button>
                 </>
@@ -1140,16 +1164,18 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
   const currentGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const currentIcon = useEditorStore((s) =>
-    s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
+    s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
   );
   const currentVariant = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
   const currentState = useEditorStore((s) =>
     s.currentIconId && s.currentVariantId && s.currentStateId
-      ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[s.currentStateId] ?? null
+      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[
+          s.currentStateId
+        ] ?? null)
       : null,
   );
 
@@ -1215,7 +1241,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     [currentIcon?.variants],
   );
 
-  const stateIds = useMemo(() => Object.keys(currentVariant?.states ?? {}), [currentVariant?.states]);
+  const stateIds = useMemo(
+    () => Object.keys(currentVariant?.states ?? {}),
+    [currentVariant?.states],
+  );
 
   const transitionCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1228,21 +1257,24 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, [currentIcon?.transitions, stateIds]);
 
   const transitions = useMemo(
-    () =>
-      Object.values(currentIcon?.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id)),
+    () => Object.values(currentIcon?.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id)),
     [currentIcon?.transitions],
   );
 
   const selectedTransition = useMemo(() => {
     if (!transitions.length) return null;
     if (selectedTransitionId) {
-      return transitions.find((transition) => transition.id === selectedTransitionId) ?? transitions[0] ?? null;
+      return (
+        transitions.find((transition) => transition.id === selectedTransitionId) ??
+        transitions[0] ??
+        null
+      );
     }
     return transitions[0] ?? null;
   }, [selectedTransitionId, transitions]);
 
   const selectedLayerId = selection.layerIds[0] ?? null;
-  const selectedLayer = selectedLayerId ? currentState?.layers[selectedLayerId] ?? null : null;
+  const selectedLayer = selectedLayerId ? (currentState?.layers[selectedLayerId] ?? null) : null;
   const projectName = project?.meta.name ?? 'Untitled Set';
 
   useEffect(() => {
@@ -1296,13 +1328,21 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   useEffect(() => {
     if (!project || !currentIconId || !currentStateId || selection.layerIds.length > 0) return;
     const layers = currentVariantId
-      ? project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ?? {}
+      ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
+        {})
       : {};
     const nextLayerId =
       Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
     if (!nextLayerId) return;
     setSelection({ layerIds: [nextLayerId], pointIds: [] });
-  }, [currentIconId, currentStateId, currentVariantId, project, selection.layerIds.length, setSelection]);
+  }, [
+    currentIconId,
+    currentStateId,
+    currentVariantId,
+    project,
+    selection.layerIds.length,
+    setSelection,
+  ]);
 
   useEffect(() => {
     const nextStates = Object.keys(currentVariant?.states ?? {});
@@ -1314,7 +1354,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       return {
         ...current,
         from: nextStates.includes(current.from) ? current.from : fallbackFrom,
-        to: nextStates.includes(current.to) && current.to !== current.from ? current.to : fallbackTo,
+        to:
+          nextStates.includes(current.to) && current.to !== current.from ? current.to : fallbackTo,
       };
     });
   }, [currentStateId, currentVariant?.states]);
@@ -1396,7 +1437,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       ...currentIcon,
       tokenSet: project.tokenSet,
     });
-    downloadBlob(new Blob([runtimeJson], { type: 'application/json' }), `${slugify(currentIcon.name)}.runtime.json`);
+    downloadBlob(
+      new Blob([runtimeJson], { type: 'application/json' }),
+      `${slugify(currentIcon.name)}.runtime.json`,
+    );
   };
 
   const handleExportReactLibrary = () => {
@@ -1441,9 +1485,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     });
   };
 
-  const handlePatchSelectedLayerTransform = (
-    patch: Partial<NonNullable<Layer['transform']>>,
-  ) => {
+  const handlePatchSelectedLayerTransform = (patch: Partial<NonNullable<Layer['transform']>>) => {
     if (!selectedLayer) return;
     handlePatchSelectedLayer({
       transform: {
@@ -1570,7 +1612,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
       {desktop ? <TitleTabBar /> : null}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_196px_minmax(0,1fr)_288px]">
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_220px_minmax(0,1fr)_304px]">
         <ToolRail
           onOpenCommand={() => setCommandOpen(true)}
           onOpenImport={() => setImportDialogOpen(true)}
@@ -1614,11 +1656,19 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                 <p className="wire-title">No active icon</p>
                 <p className="wire-empty-note mt-1">Create a new icon or import an SVG to begin.</p>
                 <div className="mt-3 flex items-center justify-center gap-2">
-                  <button type="button" className="wire-mini-button" onClick={handleCreateBlankIcon}>
+                  <button
+                    type="button"
+                    className="wire-mini-button"
+                    onClick={handleCreateBlankIcon}
+                  >
                     <Plus className="size-3.5" />
                     New icon
                   </button>
-                  <button type="button" className="wire-mini-button" onClick={() => setImportDialogOpen(true)}>
+                  <button
+                    type="button"
+                    className="wire-mini-button"
+                    onClick={() => setImportDialogOpen(true)}
+                  >
                     <FolderOpen className="size-3.5" />
                     Import
                   </button>
@@ -1676,7 +1726,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             currentState ? setPendingDelete({ type: 'state', id: currentState.id }) : undefined
           }
           onDeleteVariant={() =>
-            currentVariant ? setPendingDelete({ type: 'variant', id: currentVariant.id }) : undefined
+            currentVariant
+              ? setPendingDelete({ type: 'variant', id: currentVariant.id })
+              : undefined
           }
           onDeleteTransition={() =>
             selectedTransition
@@ -1779,7 +1831,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         </CommandList>
       </CommandDialog>
 
-      <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

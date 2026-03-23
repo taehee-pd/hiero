@@ -302,4 +302,45 @@ describe('runtime-json export', () => {
       durationMs: 200,
     });
   });
+
+  test('preserves compoundTrimMode in exported runtime layer bindings', () => {
+    const project = structuredClone(SAMPLE_PROJECT);
+    const icon = project.icons['icon-chevron']!;
+    const variant = icon.variants.v24;
+    const defaultState = variant.states.default;
+
+    variant.states.active = {
+      ...structuredClone(defaultState),
+      id: 'active',
+      layers: structuredClone(defaultState.layers),
+    };
+
+    icon.transitions = {
+      trimMode: {
+        id: 'trimMode',
+        from: 'default',
+        to: 'active',
+        strategy: 'track',
+        durationMs: 200,
+        easing: 'linear',
+        layerBindings: [
+          {
+            fromLayerId: 'chevron',
+            toLayerId: 'chevron',
+            tracks: [{ property: 'trimEnd', keyframes: [0, 1] }],
+            compoundTrimMode: 'individually',
+          },
+        ],
+      },
+    };
+
+    const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
+    const runtimeTransition = exported.variant.transitions.trimMode;
+
+    expect(runtimeTransition?.layerBindings[0]).toMatchObject({
+      fromLayerId: 'chevron',
+      toLayerId: 'chevron',
+      compoundTrimMode: 'individually',
+    });
+  });
 });

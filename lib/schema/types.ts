@@ -212,6 +212,19 @@ export type Transition = {
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';  // F5: replace transition direction
 };
 
+/**
+ * Controls how trim path operations are applied to compound paths
+ * with multiple open subpaths.
+ *
+ * - `'simultaneously'`: All subpaths are treated as one continuous path;
+ *   the trim range maps across the combined total length.
+ * - `'individually'`:  Each subpath is trimmed independently using the
+ *   same normalised start/end/offset values.
+ *
+ * Mirrors After Effects' "Trim Multiple Shapes" behaviour.
+ */
+export type CompoundTrimMode = 'simultaneously' | 'individually';
+
 export type LayerBinding = {
   fromLayerId?: string;
   toLayerId?: string;
@@ -222,6 +235,7 @@ export type LayerBinding = {
     topology: 'strict' | 'bestGuess';
     mixer?: 'native' | 'flubber';
   };
+  compoundTrimMode?: CompoundTrimMode;
 };
 
 export type TimelineTrack =
@@ -235,7 +249,10 @@ export type TimelineTrack =
   | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig }
   | { property: 'strokeWidth'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'fillOpacity'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig };
+  | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'trimStart'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'trimEnd'; keyframes: number[]; easing?: string | SpringConfig }
+  | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig };
 
 export type SpringConfig = {
   type: 'spring';

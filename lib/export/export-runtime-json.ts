@@ -173,7 +173,10 @@ export type RuntimeTrackProperty =
   | 'stroke'
   | 'strokeWidth'
   | 'fillOpacity'
-  | 'strokeOpacity';
+  | 'strokeOpacity'
+  | 'trimStart'
+  | 'trimEnd'
+  | 'trimOffset';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
@@ -187,6 +190,7 @@ export type RuntimeLayerBinding = {
   delayMs?: number;
   durationMs?: number;
   morph?: { topology: 'strict' | 'bestGuess' };
+  compoundTrimMode?: 'simultaneously' | 'individually';
 };
 
 export type RuntimeMagicReplace = {
@@ -478,26 +482,27 @@ function buildRuntimeJsonTransitions(
         return acc;
       }
 
-	      acc[transitionId] = {
-	        from: transition.from,
-	        to: transition.to,
-	        strategy: transition.strategy,
-	        durationMs: transition.durationMs,
-	        easing: transition.easing,
-	        layerBindings: transition.layerBindings.map((binding) => ({
-	          fromLayerId: binding.fromLayerId,
-	          toLayerId: binding.toLayerId,
-	          delayMs: binding.delayMs,
-	          durationMs: binding.durationMs,
-	          tracks: binding.tracks
-	            ? binding.tracks.map(cloneRuntimeTrack)
-	            : undefined,
-	          morph: binding.morph
-	            ? {
+      acc[transitionId] = {
+        from: transition.from,
+        to: transition.to,
+        strategy: transition.strategy,
+        durationMs: transition.durationMs,
+        easing: transition.easing,
+        layerBindings: transition.layerBindings.map((binding) => ({
+          fromLayerId: binding.fromLayerId,
+          toLayerId: binding.toLayerId,
+          delayMs: binding.delayMs,
+          durationMs: binding.durationMs,
+          tracks: binding.tracks
+            ? binding.tracks.map(cloneRuntimeTrack)
+            : undefined,
+          morph: binding.morph
+            ? {
                 topology: binding.morph.topology,
                 mixer: binding.morph.mixer,
               }
             : undefined,
+          compoundTrimMode: binding.compoundTrimMode,
         })),
       };
       return acc;
@@ -1036,6 +1041,9 @@ function toRuntimeLayerBinding(
   if (binding.durationMs !== undefined) {
     runtimeBinding.durationMs = binding.durationMs;
   }
+  if (binding.compoundTrimMode !== undefined) {
+    runtimeBinding.compoundTrimMode = binding.compoundTrimMode;
+  }
 
   if (transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph') {
     if (!binding.fromLayerId || !binding.toLayerId) {
@@ -1249,6 +1257,9 @@ const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'strokeWidth',
   'fillOpacity',
   'strokeOpacity',
+  'trimStart',
+  'trimEnd',
+  'trimOffset',
 ]);
 
 function cloneRuntimeTrack(

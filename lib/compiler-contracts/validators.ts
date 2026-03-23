@@ -69,6 +69,12 @@ const TRACK_PROPERTIES: CompiledTrackProperty[] = [
   'pathLength',
   'fill',
   'stroke',
+  'strokeWidth',
+  'fillOpacity',
+  'strokeOpacity',
+  'trimStart',
+  'trimEnd',
+  'trimOffset',
 ];
 
 const EFFECT_KINDS: CompiledEffectKind[] = [

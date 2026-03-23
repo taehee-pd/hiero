@@ -408,7 +408,11 @@ function getRestValue(property: string): number {
     case 'scale':
     case 'opacity':
     case 'pathLength':
+    case 'trimEnd':
       return 1;
+    case 'trimStart':
+    case 'trimOffset':
+      return 0;
     default:
       return 0;
   }

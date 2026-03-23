@@ -34,11 +34,27 @@ export type IconDriver = {
   /** Subscribe to state changes. Returns an unsubscribe function.
    *  Compatible with React's useSyncExternalStore. */
   subscribe: (listener: IconDriverStateListener) => () => void;
-  /** Trigger a named effect. Requires effect definitions and optionally draw annotations. */
+  /**
+   * Trigger a named effect. Multiple effects can run in parallel.
+   *
+   * **Effect composition (stacking) semantics:**
+   * - `translateX`, `translateY`, `rotate`: **additive** (effects add to transition values)
+   * - `scale`, `opacity`: **multiplicative** (identity = 1; effects multiply with transition values)
+   * - `fill`, `stroke`, and other properties: **override** (last effect wins)
+   *
+   * Composition is handled by {@link composeValues} and applied every frame
+   * via {@link renderComposed}.
+   */
   triggerEffect: (effectId: string) => void;
-  /** Cancel a specific running effect by ID. */
+  /**
+   * Cancel a specific running effect by ID.
+   * Removes its interpolated values and color overrides from the composition pipeline.
+   */
   cancelEffect: (effectId: string) => void;
-  /** Cancel all running effects. */
+  /**
+   * Cancel all running effects and clear their interpolated values.
+   * The transition animation (if active) continues unaffected.
+   */
   cancelAllEffects: () => void;
   /** Set Variable Draw progress (0-1). Requires variableDraw config. */
   setVariableDrawProgress: (progress: number) => void;
@@ -112,6 +128,11 @@ export function createIconDriver(
 
   let activeScheduler: TransitionScheduler | null = null;
   let activeBlendScheduler: BlendScheduler | null = null;
+  /**
+   * Running effect schedulers keyed by effect ID.
+   * Multiple effects compose in parallel via {@link composeValues}:
+   * additive transforms, multiplicative opacity/scale, override for colors.
+   */
   const activeEffectSchedulers = new Map<string, EffectScheduler>();
   let activeCssFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   let activeCssFallbackPlan: CssTrackTransitionPlan | null = null;
@@ -153,6 +174,13 @@ export function createIconDriver(
     );
   }
 
+  /**
+   * Re-render the current frame by composing transition values with all active
+   * effect values. Called on every animation frame when effects are running.
+   *
+   * Composition order: transition base values -> effect deltas (in Map insertion order).
+   * See {@link composeValues} for per-property stacking rules.
+   */
   function renderComposed() {
     const stateId = latestTransitionStateId ?? stateMachine.currentState.id;
     const composed = composeValues(latestTransitionValues, ...Array.from(effectLatestValues.values()));

@@ -214,6 +214,8 @@ export type RuntimeEffect = {
   kind: string;
   durationMs: number;
   easing?: string | SpringConfig;
+  /** Palette of hex colors for the variableColor effect. */
+  palette?: string[];
 };
 
 export type RuntimeDrawGuidePoint = {
@@ -1165,6 +1167,7 @@ function toRuntimeEffect(
     kind: effect.kind,
     durationMs: effect.durationMs,
     easing: effect.easing,
+    palette: effect.palette,
   };
 }
 

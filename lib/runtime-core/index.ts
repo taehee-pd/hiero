@@ -15,3 +15,5 @@ export * from './hybrid-compositor';
 export * from './inspection';
 export * from './path-normalization';
 export * from './topology-detection';
+export * from './variable-value';
+export * from './weight-interpolation';

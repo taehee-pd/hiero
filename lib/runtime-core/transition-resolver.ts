@@ -329,11 +329,13 @@ function resolveLayerBinding(
     delayMs: computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
     durationMs:
       binding.durationMs ??
-      Math.max(
-        0,
-        transition.durationMs -
-          computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
-      ),
+      (transition.stagger?.mode === 'individually'
+        ? transition.durationMs
+        : Math.max(
+            0,
+            transition.durationMs -
+              computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
+          )),
     easing: transition.stagger?.easing ?? transition.easing ?? 'linear',
     diagnostics,
   };
@@ -586,6 +588,12 @@ function computeDelay(
   }
 
   if (transition.stagger) {
+    if (transition.stagger.mode === 'individually') {
+      // Each layer completes its full animation before the next begins.
+      // Use the binding's own duration (or the transition's duration) as the interval.
+      const layerDuration = binding.durationMs ?? transition.durationMs;
+      return Math.max(0, staggerIndex * layerDuration);
+    }
     return Math.max(0, staggerIndex * transition.stagger.perLayerMs);
   }
 
@@ -632,6 +640,7 @@ function computeStaggerOrder(
         const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
         return hashString(leftId) - hashString(rightId);
       });
+    case 'individually':
     case 'linear':
     default:
       return baseOrder;

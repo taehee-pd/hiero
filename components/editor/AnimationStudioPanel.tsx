@@ -125,6 +125,14 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
     [iconId],
   );
 
+  const handlePaletteChange = useCallback(
+    (effectId: string, palette: string[]) => {
+      if (!iconId) return;
+      editorStore.getState().patchEffect(iconId, effectId, { palette });
+    },
+    [iconId],
+  );
+
   return (
     <ScrollArea className="h-full">
       <div className="space-y-3 p-[var(--panel-padding)]">
@@ -242,6 +250,51 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                       onSelect={(val) => handleEasingChange(effect.id, val)}
                     />
                     <Button size="sm" variant="ghost" onClick={() => setEditingEffectId(null)}>Cancel</Button>
+                  </div>
+                )}
+                {/* H7: Palette editor for variableColor effects */}
+                {effect.kind === 'variableColor' && (
+                  <div className="mt-2 space-y-1.5 border-t border-border/50 pt-2">
+                    <p className="text-xs font-medium text-muted-foreground">Color Palette</p>
+                    <div className="space-y-1">
+                      {(effect.palette ?? []).map((color, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={color}
+                            onChange={(e) => {
+                              const next = [...(effect.palette ?? [])];
+                              next[index] = e.target.value;
+                              handlePaletteChange(effect.id, next);
+                            }}
+                            className="h-7 w-7 cursor-pointer rounded border border-border/70 p-0"
+                          />
+                          <span className="text-xs text-muted-foreground font-mono">{color}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="ml-auto h-6 px-1.5 text-xs"
+                            onClick={() => {
+                              const next = (effect.palette ?? []).filter((_, i) => i !== index);
+                              handlePaletteChange(effect.id, next);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        const next = [...(effect.palette ?? []), '#3b82f6'];
+                        handlePaletteChange(effect.id, next);
+                      }}
+                    >
+                      + Add Color
+                    </Button>
                   </div>
                 )}
               </div>

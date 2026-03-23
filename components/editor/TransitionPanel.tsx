@@ -17,7 +17,7 @@ const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
 
 const TRIGGER_EVENTS: StateTrigger['event'][] = ['hover', 'tap', 'longPress', 'focus', 'auto'];
 
-const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random'];
+const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random', 'individually'];
 
 const DIRECTION_OPTIONS: Array<{ value: Transition['direction']; label: string }> = [
   { value: 'automatic', label: 'Automatic' },

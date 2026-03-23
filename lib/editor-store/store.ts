@@ -218,7 +218,7 @@ export type VariantInput = {
 };
 
 export type VariantPatch = Partial<
-  Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale'>
+  Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale' | 'variableValue'>
 >;
 
 type LegacyVariant = Variant & {

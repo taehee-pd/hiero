@@ -1,8 +1,10 @@
 import type { Icon, Layer, PaintRef, RenderingMode } from '@/lib/schema/types';
 import {
+  applyVariableValue,
   resolveLayerStyleForRendering,
   resolveVariantRenderingMode,
 } from '@/lib/rendering/resolve-layer-style';
+import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 
 /**
  * Generate a clean SVG string for export.
@@ -36,6 +38,7 @@ export function exportSvgString(
     .sort((a, b) => a.localeCompare(b))
     .map((id) => state.layers[id]!);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
+  const variableValues = computeVariableValue(state.layers, variant.variableValue ?? 1);
   for (const layer of layers) {
     if (layer.visible === false || !layer.path?.d || layer.isClipMask) continue;
 
@@ -47,10 +50,14 @@ export function exportSvgString(
       attrs.push(`fill-rule="${layer.path.fillRule}"`);
     }
 
-    const resolvedStyle = resolveLayerStyleForRendering(
+    const baseStyle = resolveLayerStyleForRendering(
       layer,
       effectiveRenderingMode,
       tokens,
+    );
+    const resolvedStyle = applyVariableValue(
+      baseStyle,
+      variableValues[layer.id] ?? { opacity: 1, visible: true },
     );
 
     // Fill

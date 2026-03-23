@@ -91,4 +91,15 @@ describe('rendering modes', () => {
     expect(getPath(svg, 'secondary')?.getAttribute('fill')).toBe('#777777');
     expect(getPath(svg, 'tertiary')?.getAttribute('fill')).toBe('#cccccc');
   });
+
+  test('variableValue modulates exported layer opacity by role thresholds', () => {
+    const icon = makeIcon();
+    icon.variants.v24!.variableValue = 0.5;
+
+    const svg = exportSvgString(icon, 'v24', 'default', undefined, 'multicolor');
+
+    expect(getPath(svg, 'primary')?.getAttribute('fill-opacity')).toBe('1');
+    expect(getPath(svg, 'secondary')?.getAttribute('fill-opacity')).toBe('0.515151515151515');
+    expect(getPath(svg, 'tertiary')?.getAttribute('fill-opacity')).toBe('0');
+  });
 });

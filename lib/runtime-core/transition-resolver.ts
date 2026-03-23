@@ -142,13 +142,26 @@ export function resolveTransition(
 
   return {
     strategy: transition.strategy,
-    durationMs: transition.durationMs,
+    durationMs: computeResolvedTransitionDuration(transition, layerBindings),
     easing: transition.easing ?? 'linear',
     layerBindings,
     diagnostics,
     topologyAnalysis,
     direction: transition.direction,
   };
+}
+
+function computeResolvedTransitionDuration(
+  transition: Transition,
+  layerBindings: ResolvedLayerBinding[],
+): number {
+  const configuredDuration = Math.max(0, transition.durationMs);
+  const lastBindingEnd = layerBindings.reduce((maxEnd, binding) => {
+    const delay = Math.max(0, binding.delayMs ?? 0);
+    const duration = Math.max(0, binding.durationMs ?? 0);
+    return Math.max(maxEnd, delay + duration);
+  }, 0);
+  return Math.max(configuredDuration, lastBindingEnd);
 }
 
 function resolveBindings(

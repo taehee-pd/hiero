@@ -17,7 +17,6 @@ import {
   MousePointer2,
   PenTool,
   Plus,
-  Search,
   Sparkles,
   Square,
   X,

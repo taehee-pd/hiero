@@ -14,7 +14,7 @@
 
 import type { Layer, State } from '../schema/types';
 import type { RuntimeDrawAnnotation } from '../export/export-runtime-json';
-import { canonicalizeLayerPath } from './path-normalization';
+import { canonicalizeLayerPath, type GeometryStats } from './path-normalization';
 
 // ---------------------------------------------------------------------------
 // 8.3a — Topology incompatibility detection
@@ -32,12 +32,143 @@ export type TopologyAnalysis = {
   incompatibilities: TopologyIncompatibility[];
   recommendedStrategy: 'morph' | 'crossfade' | 'draw-crossfade';
   details: string[];
+  /** Per-subpath strategy breakdown (populated when both layers have path data). */
+  subPathStrategies?: SubPathStrategyResult[];
 };
+
+// ---------------------------------------------------------------------------
+// Phase G1 — Per-subpath animation strategy classifier
+// ---------------------------------------------------------------------------
+
+export type SubPathStrategy = 'morph' | 'trim' | 'crossfade';
+
+export type SubPathStrategyResult = {
+  fromIndex: number;
+  toIndex: number | null; // null = unmatched (added/removed subpath)
+  strategy: SubPathStrategy;
+  reason: string;
+};
+
+/**
+ * Classify animation strategy for each subpath pair between two GeometryStats.
+ *
+ * Classification rules:
+ * 1. Match subpaths by index (when counts match) or best geometric match
+ *    (when counts differ).
+ * 2. For each matched pair:
+ *    - Both closed → 'morph'
+ *    - Both open with matching command signature → 'morph' (G3: open-path morphing)
+ *    - Both open with mismatched command signature → 'trim'
+ *    - One closed, one open → 'crossfade'
+ * 3. Unmatched subpaths (when counts differ): 'trim' for open, 'crossfade' for closed
+ */
+export function classifySubPathStrategies(
+  fromStats: GeometryStats,
+  toStats: GeometryStats,
+): SubPathStrategyResult[] {
+  const results: SubPathStrategyResult[] = [];
+  const fromSigs = splitSubPathSignatures(fromStats.commandSignature);
+  const toSigs = splitSubPathSignatures(toStats.commandSignature);
+
+  const fromCount = fromStats.subpathCount;
+  const toCount = toStats.subpathCount;
+  const matchedCount = Math.min(fromCount, toCount);
+
+  // --- Matched subpath pairs (by index for equal counts, or sequential for unequal) ---
+  for (let i = 0; i < matchedCount; i++) {
+    const fromClosed = fromStats.closed[i] ?? false;
+    const toClosed = toStats.closed[i] ?? false;
+
+    if (fromClosed && toClosed) {
+      // Both closed → morph
+      results.push({
+        fromIndex: i,
+        toIndex: i,
+        strategy: 'morph',
+        reason: 'Both subpaths are closed — geometric morph',
+      });
+    } else if (!fromClosed && !toClosed) {
+      // Both open — check command signature match (G3)
+      const fromSig = fromSigs[i] ?? '';
+      const toSig = toSigs[i] ?? '';
+      if (fromSig === toSig) {
+        results.push({
+          fromIndex: i,
+          toIndex: i,
+          strategy: 'morph',
+          reason: 'Both subpaths are open with matching command signature — geometric morph',
+        });
+      } else {
+        results.push({
+          fromIndex: i,
+          toIndex: i,
+          strategy: 'trim',
+          reason: `Both subpaths are open but command signatures differ (${fromSig} vs ${toSig}) — trim`,
+        });
+      }
+    } else {
+      // One closed, one open → crossfade
+      results.push({
+        fromIndex: i,
+        toIndex: i,
+        strategy: 'crossfade',
+        reason: `Closed/open mismatch (${fromClosed ? 'closed' : 'open'} → ${toClosed ? 'closed' : 'open'}) — crossfade`,
+      });
+    }
+  }
+
+  // --- Unmatched from-subpaths (removed in target) ---
+  for (let i = matchedCount; i < fromCount; i++) {
+    const isClosed = fromStats.closed[i] ?? false;
+    results.push({
+      fromIndex: i,
+      toIndex: null,
+      strategy: isClosed ? 'crossfade' : 'trim',
+      reason: `Unmatched source subpath ${i} (${isClosed ? 'closed → crossfade' : 'open → trim'})`,
+    });
+  }
+
+  // --- Unmatched to-subpaths (added in target) ---
+  for (let i = matchedCount; i < toCount; i++) {
+    const isClosed = toStats.closed[i] ?? false;
+    results.push({
+      fromIndex: -1,
+      toIndex: i,
+      strategy: isClosed ? 'crossfade' : 'trim',
+      reason: `Unmatched target subpath ${i} (${isClosed ? 'closed → crossfade' : 'open → trim'})`,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Split a flat command signature array into per-subpath signature strings.
+ *
+ * Each subpath starts with an 'M' command. The signature string for a subpath
+ * is the concatenation of its command letters (e.g. "MLCZ").
+ */
+function splitSubPathSignatures(commandSignature: string[]): string[] {
+  const signatures: string[] = [];
+  let current = '';
+  for (const cmd of commandSignature) {
+    if (cmd === 'M' && current.length > 0) {
+      signatures.push(current);
+      current = '';
+    }
+    current += cmd;
+  }
+  if (current.length > 0) {
+    signatures.push(current);
+  }
+  return signatures;
+}
 
 /**
  * Analyze topology compatibility between two states.
  *
  * Returns whether the states can be morphed or need crossfade fallback.
+ * Includes per-subpath strategy classification via classifySubPathStrategies.
  */
 export function analyzeTopologyCompatibility(
   fromState: State,
@@ -49,17 +180,24 @@ export function analyzeTopologyCompatibility(
   const fromLayers = Object.values(fromState.layers);
   const toLayers = Object.values(toState.layers);
 
+  let subPathStrategies: SubPathStrategyResult[] | undefined;
+
   // Check each paired layer for topology compatibility
   for (const fromLayer of fromLayers) {
     const toLayer = toLayers.find((l) => l.id === fromLayer.id);
     if (!toLayer) continue;
 
-    const layerIncompat = analyzeLayerTopology(fromLayer, toLayer);
-    for (const issue of layerIncompat) {
+    const layerResult = analyzeLayerTopology(fromLayer, toLayer);
+    for (const issue of layerResult.issues) {
       if (!incompatibilities.includes(issue.type)) {
         incompatibilities.push(issue.type);
       }
       details.push(`Layer "${fromLayer.id}": ${issue.detail}`);
+    }
+
+    // Attach per-subpath strategies from the first layer pair that has them
+    if (layerResult.subPathStrategies && !subPathStrategies) {
+      subPathStrategies = layerResult.subPathStrategies;
     }
   }
 
@@ -84,12 +222,17 @@ export function analyzeTopologyCompatibility(
       ? 'draw-crossfade'
       : 'crossfade';
 
-  return { compatible, incompatibilities, recommendedStrategy, details };
+  return { compatible, incompatibilities, recommendedStrategy, details, subPathStrategies };
 }
 
 type LayerIssue = { type: TopologyIncompatibility; detail: string };
 
-function analyzeLayerTopology(from: Layer, to: Layer): LayerIssue[] {
+type LayerTopologyResult = {
+  issues: LayerIssue[];
+  subPathStrategies?: SubPathStrategyResult[];
+};
+
+function analyzeLayerTopology(from: Layer, to: Layer): LayerTopologyResult {
   const issues: LayerIssue[] = [];
   const fromPath = canonicalizeLayerPath(from);
   const toPath = canonicalizeLayerPath(to);
@@ -101,8 +244,11 @@ function analyzeLayerTopology(from: Layer, to: Layer): LayerIssue[] {
         detail: 'One state has path data and the other does not',
       });
     }
-    return issues;
+    return { issues };
   }
+
+  // Compute per-subpath strategies using the G1 classifier
+  const strategies = classifySubPathStrategies(fromPath.stats, toPath.stats);
 
   // Sub-path count mismatch
   if (fromPath.stats.subpathCount !== toPath.stats.subpathCount) {
@@ -112,15 +258,21 @@ function analyzeLayerTopology(from: Layer, to: Layer): LayerIssue[] {
     });
   }
 
-  // Closed/open mismatch
+  // G3: Only flag 'closed-open-mismatch' when one subpath is truly closed
+  // and the other is open. Two open subpaths with matching command signatures
+  // can morph geometrically and should NOT be flagged.
   const fromClosed = fromPath.stats.closed;
   const toClosed = toPath.stats.closed;
   const closedLen = Math.min(fromClosed.length, toClosed.length);
   for (let i = 0; i < closedLen; i++) {
-    if (fromClosed[i] !== toClosed[i]) {
+    const fc = fromClosed[i] ?? false;
+    const tc = toClosed[i] ?? false;
+    if (fc !== tc) {
+      // Only flag when one is closed and the other is open
+      // (both-open cases are handled by the subpath strategy classifier)
       issues.push({
         type: 'closed-open-mismatch',
-        detail: `Sub-path ${i}: ${fromClosed[i] ? 'closed' : 'open'} → ${toClosed[i] ? 'closed' : 'open'}`,
+        detail: `Sub-path ${i}: ${fc ? 'closed' : 'open'} → ${tc ? 'closed' : 'open'}`,
       });
       break;
     }
@@ -140,7 +292,7 @@ function analyzeLayerTopology(from: Layer, to: Layer): LayerIssue[] {
     });
   }
 
-  return issues;
+  return { issues, subPathStrategies: strategies };
 }
 
 function isStrokedLayer(layer: Layer): boolean {

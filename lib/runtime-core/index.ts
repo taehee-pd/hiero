@@ -11,6 +11,7 @@ export * from './spring';
 export * from './state-machine';
 export * from './transition-resolver';
 
+export * from './hybrid-compositor';
 export * from './inspection';
 export * from './path-normalization';
 export * from './topology-detection';

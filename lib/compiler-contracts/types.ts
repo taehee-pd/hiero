@@ -30,7 +30,10 @@ export type CompiledTrackProperty =
   | 'stroke'
   | 'strokeWidth'
   | 'fillOpacity'
-  | 'strokeOpacity';
+  | 'strokeOpacity'
+  | 'trimStart'
+  | 'trimEnd'
+  | 'trimOffset';
 
 export type CompiledEffectKind =
   | 'bounce'

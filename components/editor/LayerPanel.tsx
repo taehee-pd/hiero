@@ -12,6 +12,7 @@ import {
 import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
+import type { Layer } from '@/lib/schema/types';
 
 export const LayerPanel = memo(function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
@@ -74,7 +75,7 @@ export const LayerPanel = memo(function LayerPanel() {
     (layerId: string) => {
       const trimmed = renameValue.trim();
       if (trimmed && trimmed !== layerId && currentIconId && currentStateId) {
-        patchLayer(currentIconId, currentStateId, layerId, { id: trimmed } as any);
+        patchLayer(currentIconId, currentStateId, layerId, { id: trimmed } as Partial<Layer>);
       }
       setRenamingLayerId(null);
     },

@@ -699,7 +699,7 @@ function mutateCurrentStateLayers(
   }
 }
 
-function patchLayerReferences(layer: Layer, previousId: string, nextId: string): Layer {
+function _patchLayerReferences(layer: Layer, previousId: string, nextId: string): Layer {
   return {
     ...layer,
     clipPathLayerId: layer.clipPathLayerId === previousId ? nextId : layer.clipPathLayerId,

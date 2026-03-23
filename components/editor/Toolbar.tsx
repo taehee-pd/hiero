@@ -156,7 +156,7 @@ export function Toolbar() {
       clearCurrentProjectPath();
       showToolbarError('Failed to parse JSON file.');
     }
-  }, []);
+  }, [showToolbarError]);
 
   const serializeWorkspace = useCallback(() => {
     const { workspace } = editorStore.getState();

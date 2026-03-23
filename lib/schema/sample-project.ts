@@ -2,8 +2,8 @@ import type { Project } from './types';
 import { createWorkspaceFromProject } from './workspace';
 
 /**
- * Sample project with a simple chevron-right icon for dev/testing.
- * Three layers: outer circle background, chevron stroke, and a small dot accent.
+ * Sample project with popular Lucide icons for dev/testing.
+ * Each icon uses official Lucide SVG paths (24x24 viewBox, stroke-based).
  */
 export const SAMPLE_PROJECT: Project = {
   version: '1.0',
@@ -13,11 +13,11 @@ export const SAMPLE_PROJECT: Project = {
     updatedAt: '2026-03-03T00:00:00Z',
   },
   icons: {
-    'icon-chevron': {
-      id: 'icon-chevron',
-      name: 'Chevron Right',
-      category: 'navigation',
-      tags: ['arrow', 'chevron', 'right'],
+    'icon-home': {
+      id: 'icon-home',
+      name: 'Home',
+      category: 'general',
+      tags: ['home', 'house', 'main'],
       variants: {
         v24: {
           id: 'v24',
@@ -30,24 +30,25 @@ export const SAMPLE_PROJECT: Project = {
             default: {
               id: 'default',
               layers: {
-                'bg-circle': {
-                  id: 'bg-circle',
-                  role: 'secondary',
+                roof: {
+                  id: 'roof',
+                  role: 'primary',
                   visible: true,
-                  path: {
-                    d: 'M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2Z',
-                  },
+                  path: { d: 'M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8' },
                   style: {
-                    fill: { mode: 'fixed', value: '#1e293b' },
-                    fillOpacity: 1,
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
                   },
                 },
-                chevron: {
-                  id: 'chevron',
+                house: {
+                  id: 'house',
                   role: 'primary',
                   visible: true,
                   path: {
-                    d: 'M9.5 7l5 5-5 5',
+                    d: 'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
                   },
                   style: {
                     fill: { mode: 'fixed', value: 'none' },
@@ -57,18 +58,6 @@ export const SAMPLE_PROJECT: Project = {
                     lineJoin: 'round',
                   },
                 },
-                'accent-dot': {
-                  id: 'accent-dot',
-                  role: 'tertiary',
-                  visible: true,
-                  path: {
-                    d: 'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0',
-                  },
-                  style: {
-                    fill: { mode: 'fixed', value: '#38bdf8' },
-                    fillOpacity: 0.8,
-                  },
-                },
               },
             },
           },
@@ -76,11 +65,11 @@ export const SAMPLE_PROJECT: Project = {
       },
       transitions: {},
     },
-    'icon-play': {
-      id: 'icon-play',
-      name: 'Play',
-      category: 'media',
-      tags: ['play', 'media', 'start'],
+    'icon-search': {
+      id: 'icon-search',
+      name: 'Search',
+      category: 'general',
+      tags: ['search', 'find', 'magnify'],
       variants: {
         v24: {
           id: 'v24',
@@ -93,15 +82,214 @@ export const SAMPLE_PROJECT: Project = {
             default: {
               id: 'default',
               layers: {
-                triangle: {
-                  id: 'triangle',
+                circle: {
+                  id: 'circle',
+                  role: 'primary',
+                  visible: true,
+                  path: { d: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z' },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+                handle: {
+                  id: 'handle',
+                  role: 'primary',
+                  visible: true,
+                  path: { d: 'm21 21-4.3-4.3' },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+    'icon-heart': {
+      id: 'icon-heart',
+      name: 'Heart',
+      category: 'general',
+      tags: ['heart', 'love', 'favorite'],
+      variants: {
+        v24: {
+          id: 'v24',
+          name: '24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
+          defaultState: 'default',
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                heart: {
+                  id: 'heart',
                   role: 'primary',
                   visible: true,
                   path: {
-                    d: 'M6.5 4.268a1 1 0 0 1 1.5-.866l11 6.732a1 1 0 0 1 0 1.732l-11 6.732a1 1 0 0 1-1.5-.866V4.268Z',
+                    d: 'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z',
                   },
                   style: {
-                    fill: { mode: 'currentColor' },
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+    'icon-bell': {
+      id: 'icon-bell',
+      name: 'Bell',
+      category: 'communication',
+      tags: ['bell', 'notification', 'alert'],
+      variants: {
+        v24: {
+          id: 'v24',
+          name: '24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
+          defaultState: 'default',
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                bell: {
+                  id: 'bell',
+                  role: 'primary',
+                  visible: true,
+                  path: {
+                    d: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+                clapper: {
+                  id: 'clapper',
+                  role: 'secondary',
+                  visible: true,
+                  path: { d: 'M13.73 21a2 2 0 0 1-3.46 0' },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+    'icon-settings': {
+      id: 'icon-settings',
+      name: 'Settings',
+      category: 'general',
+      tags: ['settings', 'gear', 'cog', 'preferences'],
+      variants: {
+        v24: {
+          id: 'v24',
+          name: '24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
+          defaultState: 'default',
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                gear: {
+                  id: 'gear',
+                  role: 'primary',
+                  visible: true,
+                  path: {
+                    d: 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+                center: {
+                  id: 'center',
+                  role: 'secondary',
+                  visible: true,
+                  path: {
+                    d: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      transitions: {},
+    },
+    'icon-star': {
+      id: 'icon-star',
+      name: 'Star',
+      category: 'general',
+      tags: ['star', 'favorite', 'rating'],
+      variants: {
+        v24: {
+          id: 'v24',
+          name: '24',
+          size: 24,
+          viewBox: [0, 0, 24, 24],
+          guideMasterId: 'preset-24',
+          defaultState: 'default',
+          states: {
+            default: {
+              id: 'default',
+              layers: {
+                star: {
+                  id: 'star',
+                  role: 'primary',
+                  visible: true,
+                  path: {
+                    d: 'M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a.53.53 0 0 0 .4.29l5.16.756a.53.53 0 0 1 .294.904l-3.733 3.638a.53.53 0 0 0-.152.469l.882 5.14a.53.53 0 0 1-.77.56l-4.613-2.426a.53.53 0 0 0-.494 0L7.148 18.73a.53.53 0 0 1-.77-.56l.882-5.14a.53.53 0 0 0-.152-.47L3.376 8.924a.53.53 0 0 1 .294-.904l5.16-.756a.53.53 0 0 0 .4-.29z',
+                  },
+                  style: {
+                    fill: { mode: 'fixed', value: 'none' },
+                    stroke: { mode: 'currentColor' },
+                    strokeWidth: 2,
+                    lineCap: 'round',
+                    lineJoin: 'round',
                   },
                 },
               },

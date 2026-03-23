@@ -11,8 +11,8 @@ import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 function buildCompiledOutputs() {
   const project = structuredClone(SAMPLE_PROJECT);
   return [
-    exportCompiledIconFile(project, 'icon-chevron'),
-    exportCompiledIconFile(project, 'icon-play'),
+    exportCompiledIconFile(project, 'icon-home'),
+    exportCompiledIconFile(project, 'icon-search'),
   ];
 }
 
@@ -28,8 +28,8 @@ describe('package manifest generation', () => {
     });
 
     expect(result.path).toBe('icons.manifest.json');
-    expect(Object.keys(result.manifest.icons)).toEqual(['icon-chevron', 'icon-play']);
-    expect(result.manifest.icons['icon-chevron']?.compiledPath).toBe('icon-chevron.compiled.json');
+    expect(Object.keys(result.manifest.icons)).toEqual(['icon-home', 'icon-search']);
+    expect(result.manifest.icons['icon-home']?.compiledPath).toBe('icon-home.compiled.json');
     expect(isPackageManifest(result.manifest)).toBeTrue();
   });
 
@@ -54,7 +54,7 @@ describe('package manifest generation', () => {
       },
     );
 
-    expect(manifest.icons['icon-chevron']?.supportedSizes).toEqual([16, 24]);
+    expect(manifest.icons['icon-home']?.supportedSizes).toEqual([16, 24]);
   });
 
   test('aggregates supportedModes across all states', () => {
@@ -76,7 +76,7 @@ describe('package manifest generation', () => {
       },
     );
 
-    expect(manifest.icons['icon-chevron']?.supportedModes).toEqual([
+    expect(manifest.icons['icon-home']?.supportedModes).toEqual([
       'monochrome',
       'multicolor',
     ]);
@@ -107,8 +107,8 @@ describe('package manifest generation', () => {
       },
     });
 
-    expect(manifest.icons['icon-chevron']?.hasAnimation).toBeTrue();
-    expect(manifest.icons['icon-play']?.hasAnimation).toBeFalse();
+    expect(manifest.icons['icon-home']?.hasAnimation).toBeTrue();
+    expect(manifest.icons['icon-search']?.hasAnimation).toBeFalse();
   });
 
   test('sets hasMorphTransition based on strategy or binding morph', () => {
@@ -161,8 +161,8 @@ describe('package manifest generation', () => {
       },
     });
 
-    expect(manifestFromStrategy.icons['icon-chevron']?.hasMorphTransition).toBeTrue();
-    expect(manifestFromBinding.icons['icon-chevron']?.hasMorphTransition).toBeTrue();
+    expect(manifestFromStrategy.icons['icon-home']?.hasMorphTransition).toBeTrue();
+    expect(manifestFromBinding.icons['icon-home']?.hasMorphTransition).toBeTrue();
   });
 
   test('throws when package contains mixed compiled schema versions', () => {

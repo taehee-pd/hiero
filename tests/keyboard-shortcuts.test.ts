@@ -99,7 +99,7 @@ describe('keyboard shortcuts', () => {
     bootstrap();
     const state = editorStore.getState();
     state.setTool('direct-select');
-    state.setSelection({ layerIds: ['chevron'], pointIds: ['0:1'] });
+    state.setSelection({ layerIds: ['roof'], pointIds: ['0:1'] });
 
     let prevented = false;
     handleEditorKeyDown({
@@ -128,13 +128,13 @@ describe('keyboard shortcuts', () => {
     const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
 
-    state.setLayerVisibility(iconId, stateId, 'chevron', false);
+    state.setLayerVisibility(iconId, stateId, 'roof', false);
     undo();
     expect(canRedo()).toBeTrue();
 
     triggerKey('y', { ctrlKey: true });
 
-    const visible = getCurrentLayer(iconId, variantId, stateId, 'chevron').visible;
+    const visible = getCurrentLayer(iconId, variantId, stateId, 'roof').visible;
     expect(visible).toBeFalse();
   });
 

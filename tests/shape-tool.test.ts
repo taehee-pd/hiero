@@ -35,6 +35,10 @@ afterAll(() => {
 function bootstrap() {
   const state = editorStore.getState();
   state.loadProject(structuredClone(SAMPLE_PROJECT));
+  // Replace the complex Lucide path with a simple 3-point polyline for point-editing tests
+  state.patchLayer('icon-home', 'default', 'roof', {
+    path: { d: 'M9.5 7 L14.5 12 L9.5 17' },
+  });
   clearHistory();
 }
 
@@ -61,7 +65,7 @@ function createMockSvg(): SVGSVGElement {
 }
 
 function getCurrentLayer(layerId: string) {
-  return editorStore.getState().project!.icons['icon-chevron'].variants.v24.states.default.layers[layerId];
+  return editorStore.getState().project!.icons['icon-home'].variants.v24.states.default.layers[layerId];
 }
 
 function pointerEvent(init: {
@@ -176,7 +180,7 @@ describe('shape tool drag interactions', () => {
     const state = editorStore.getState();
     state.setTool('shape');
     state.setShapeSubTool('star');
-    state.setSelection({ layerIds: ['chevron'], pointIds: [] });
+    state.setSelection({ layerIds: ['roof'], pointIds: [] });
 
     const editor = new PathEditor(createMockSvg());
 
@@ -187,7 +191,7 @@ describe('shape tool drag interactions', () => {
     (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
 
     expect(getCurrentLayer('shape-1')).toBeUndefined();
-    expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
+    expect(editorStore.getState().selection.layerIds).toEqual(['roof']);
     expect(canUndo()).toBeFalse();
 
     editor.destroy();
@@ -199,18 +203,18 @@ describe('direct-select marquee interactions', () => {
     bootstrap();
     const state = editorStore.getState();
     state.setTool('direct-select');
-    state.setSelection({ layerIds: ['chevron'], pointIds: [] });
+    state.setSelection({ layerIds: ['roof'], pointIds: [] });
 
     const editor = new PathEditor(createMockSvg());
 
     (editor as any).onPointerDown(
-      pointerEvent({ clientX: 112, clientY: 70, layerId: 'chevron' }),
+      pointerEvent({ clientX: 112, clientY: 70, layerId: 'roof' }),
     );
     (editor as any).onPointerUp(
-      pointerEvent({ clientX: 112, clientY: 70, layerId: 'chevron' }),
+      pointerEvent({ clientX: 112, clientY: 70, layerId: 'roof' }),
     );
 
-    expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
+    expect(editorStore.getState().selection.layerIds).toEqual(['roof']);
     expect(editorStore.getState().selection.pointIds).toEqual(['0:0']);
 
     editor.destroy();
@@ -220,15 +224,15 @@ describe('direct-select marquee interactions', () => {
     bootstrap();
     const state = editorStore.getState();
     state.setTool('direct-select');
-    state.setSelection({ layerIds: ['chevron'], pointIds: ['0:2'] });
+    state.setSelection({ layerIds: ['roof'], pointIds: ['0:2'] });
 
     const editor = new PathEditor(createMockSvg());
 
     (editor as any).onPointerDown(
-      pointerEvent({ clientX: 80, clientY: 55, layerId: 'chevron' }),
+      pointerEvent({ clientX: 80, clientY: 55, layerId: 'roof' }),
     );
     (editor as any).onPointerMove(
-      pointerEvent({ clientX: 155, clientY: 135, layerId: 'chevron' }),
+      pointerEvent({ clientX: 155, clientY: 135, layerId: 'roof' }),
     );
 
     expect(editorStore.getState().pointMarquee).toEqual({
@@ -240,7 +244,7 @@ describe('direct-select marquee interactions', () => {
     expect(editorStore.getState().selection.pointIds).toEqual(['0:0', '0:1']);
 
     (editor as any).onPointerUp(
-      pointerEvent({ clientX: 155, clientY: 135, layerId: 'chevron' }),
+      pointerEvent({ clientX: 155, clientY: 135, layerId: 'roof' }),
     );
 
     expect(editorStore.getState().pointMarquee).toBeNull();
@@ -253,21 +257,21 @@ describe('direct-select marquee interactions', () => {
     bootstrap();
     const state = editorStore.getState();
     state.setTool('direct-select');
-    state.setSelection({ layerIds: ['chevron'], pointIds: ['0:0', '0:2'] });
+    state.setSelection({ layerIds: ['roof'], pointIds: ['0:0', '0:2'] });
 
     const editor = new PathEditor(createMockSvg());
 
     (editor as any).onPointerDown(
-      pointerEvent({ clientX: 80, clientY: 105, layerId: 'chevron', shiftKey: true }),
+      pointerEvent({ clientX: 80, clientY: 105, layerId: 'roof', shiftKey: true }),
     );
     (editor as any).onPointerMove(
-      pointerEvent({ clientX: 155, clientY: 185, layerId: 'chevron', shiftKey: true }),
+      pointerEvent({ clientX: 155, clientY: 185, layerId: 'roof', shiftKey: true }),
     );
     (editor as any).onPointerUp(
-      pointerEvent({ clientX: 155, clientY: 185, layerId: 'chevron', shiftKey: true }),
+      pointerEvent({ clientX: 155, clientY: 185, layerId: 'roof', shiftKey: true }),
     );
 
-    expect(editorStore.getState().selection.layerIds).toEqual(['chevron']);
+    expect(editorStore.getState().selection.layerIds).toEqual(['roof']);
     expect(editorStore.getState().selection.pointIds).toEqual(['0:0', '0:1']);
 
     editor.destroy();

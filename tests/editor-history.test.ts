@@ -29,7 +29,7 @@ describe('editor history', () => {
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
-    const layerId = 'chevron';
+    const layerId = 'roof';
 
     const before = getLayer(iconId, variantId, stateId, layerId).visible;
 
@@ -52,7 +52,7 @@ describe('editor history', () => {
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
-    const layerId = 'chevron';
+    const layerId = 'roof';
 
     const startPath = getLayer(iconId, variantId, stateId, layerId).path!.d;
 

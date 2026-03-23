@@ -1377,64 +1377,7 @@
     font-family: var(--font-geist-sans);
   }
 
-  .wire-rail {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 0;
-    background: #ffffff;
-    padding: 6px;
-  }
-
-  .wire-rail-section {
-    display: flex;
-    width: 100%;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .wire-rail-home,
-  .wire-rail-button {
-    display: inline-flex;
-    height: 32px;
-    width: 32px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    color: rgba(0, 0, 0, 0.55);
-    transition:
-      background-color 120ms ease,
-      color 120ms ease,
-      border-color 120ms ease;
-  }
-
-  .wire-rail-home {
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    background: rgba(248, 250, 252, 0.82);
-  }
-
-  .wire-rail-home-mark {
-    display: block;
-    height: 8px;
-    width: 8px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.84);
-  }
-
-  .wire-rail-button:hover,
-  .wire-rail-home:hover {
-    background: #f5f5f5;
-    color: rgba(0, 0, 0, 0.84);
-  }
-
-  .wire-rail-button[data-active='true'] {
-    background: #0d99ff;
-    color: #ffffff;
-  }
+  /* wire-rail removed — ToolRail component deleted */
 
   .wire-sidebar {
     display: flex;

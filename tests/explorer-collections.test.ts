@@ -20,16 +20,16 @@ describe('explorer collections and favorites', () => {
       iconIds: [],
     });
 
-    state.addIconToCollection('actions', 'icon-play');
-    state.addIconToCollection('actions', 'icon-chevron');
+    state.addIconToCollection('actions', 'icon-search');
+    state.addIconToCollection('actions', 'icon-home');
     expect(editorStore.getState().project?.collections?.actions?.iconIds).toEqual([
-      'icon-play',
-      'icon-chevron',
+      'icon-search',
+      'icon-home',
     ]);
 
-    state.removeIconFromCollection('actions', 'icon-play');
+    state.removeIconFromCollection('actions', 'icon-search');
     expect(editorStore.getState().project?.collections?.actions?.iconIds).toEqual([
-      'icon-chevron',
+      'icon-home',
     ]);
   });
 
@@ -37,11 +37,11 @@ describe('explorer collections and favorites', () => {
     bootstrap();
 
     const state = editorStore.getState();
-    state.toggleFavorite('icon-play');
-    expect(editorStore.getState().favorites).toContain('icon-play');
+    state.toggleFavorite('icon-search');
+    expect(editorStore.getState().favorites).toContain('icon-search');
 
-    state.toggleFavorite('icon-play');
-    expect(editorStore.getState().favorites).not.toContain('icon-play');
+    state.toggleFavorite('icon-search');
+    expect(editorStore.getState().favorites).not.toContain('icon-search');
   });
 
   test('parses sample svg into an icon', () => {

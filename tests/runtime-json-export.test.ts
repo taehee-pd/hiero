@@ -13,10 +13,18 @@ describe('runtime-json export', () => {
 
     expect(first.files.map((file) => file.path)).toEqual([
       'icons/index.json',
-      'icons/icon-chevron/meta.json',
-      'icons/icon-chevron/v24.json',
-      'icons/icon-play/meta.json',
-      'icons/icon-play/v24.json',
+      'icons/icon-bell/meta.json',
+      'icons/icon-bell/v24.json',
+      'icons/icon-heart/meta.json',
+      'icons/icon-heart/v24.json',
+      'icons/icon-home/meta.json',
+      'icons/icon-home/v24.json',
+      'icons/icon-search/meta.json',
+      'icons/icon-search/v24.json',
+      'icons/icon-settings/meta.json',
+      'icons/icon-settings/v24.json',
+      'icons/icon-star/meta.json',
+      'icons/icon-star/v24.json',
     ]);
     expect(first.files).toEqual(second.files);
     expect(serializeRuntimeJson(first.manifest)).toBe(
@@ -26,10 +34,10 @@ describe('runtime-json export', () => {
 
   test('preserves gradients, token resolution, transforms, and clip paths in runtime layers', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const icon = project.icons['icon-chevron']!;
+    const icon = project.icons['icon-home']!;
     const state = icon.variants.v24.states.default;
 
-    state.layers.chevron.style.fill = {
+    state.layers.roof.style.fill = {
       mode: 'linearGradient',
       angle: 90,
       stops: [
@@ -37,8 +45,8 @@ describe('runtime-json export', () => {
         { offset: 1, color: '#eeeeee', opacity: 0.4 },
       ],
     };
-    state.layers.chevron.style.stroke = { mode: 'token', token: 'accent' };
-    state.layers.chevron.transform = { x: 3, y: 4, rotate: 15, scaleX: 2, scaleY: 1.5 };
+    state.layers.roof.style.stroke = { mode: 'token', token: 'accent' };
+    state.layers.roof.transform = { x: 3, y: 4, rotate: 15, scaleX: 2, scaleY: 1.5 };
     state.layers.mask = {
       id: 'mask',
       isClipMask: true,
@@ -46,14 +54,14 @@ describe('runtime-json export', () => {
       style: {},
       transform: { x: 1, y: 2 },
     };
-    state.layers.chevron.clipPathLayerId = 'mask';
+    state.layers.roof.clipPathLayerId = 'mask';
 
     const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
     const runtimeState = exported.variant.states.default!;
-    const chevron = runtimeState.layers.find((layer) => layer.id === 'chevron');
+    const roofLayer = runtimeState.layers.find((layer) => layer.id === 'roof');
 
-    expect(chevron).toMatchObject({
-      id: 'chevron',
+    expect(roofLayer).toMatchObject({
+      id: 'roof',
       transform: 'translate(3, 4) rotate(15) scale(2, 1.5)',
       clipPath: {
         d: 'M2 2 H22 V22 H2 Z',
@@ -65,7 +73,7 @@ describe('runtime-json export', () => {
         color: '#38bdf8',
       },
     });
-    expect(chevron?.fill).toEqual({
+    expect(roofLayer?.fill).toEqual({
       kind: 'linearGradient',
       angle: 90,
       stops: [
@@ -78,7 +86,7 @@ describe('runtime-json export', () => {
 
   test('exports draw metadata, continuity metadata, and filters invalid transitions', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const icon = project.icons['icon-chevron']!;
+    const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
     const defaultState = variant.states.default;
 
@@ -87,19 +95,19 @@ describe('runtime-json export', () => {
       id: 'active',
       layers: {
         ...structuredClone(defaultState.layers),
-        chevron: {
-          ...structuredClone(defaultState.layers.chevron),
+        roof: {
+          ...structuredClone(defaultState.layers.roof),
           path: { d: 'M7 5l7 7-7 7' },
         },
       },
     };
 
     icon.customGuides = [
-      { kind: 'drawPoint', layerId: 'chevron', t: 0, direction: 'forward' },
-      { kind: 'drawPoint', layerId: 'chevron', t: 1, direction: 'forward' },
-      { kind: 'drawPoint', layerId: 'bg-circle', t: 0, direction: 'forward' },
-      { kind: 'drawPoint', layerId: 'bg-circle', t: 1, direction: 'forward' },
-      { kind: 'drawPoint', layerId: 'accent-dot', t: 0.5, direction: 'forward' },
+      { kind: 'drawPoint', layerId: 'roof', t: 0, direction: 'forward' },
+      { kind: 'drawPoint', layerId: 'roof', t: 1, direction: 'forward' },
+      { kind: 'drawPoint', layerId: 'house', t: 0, direction: 'forward' },
+      { kind: 'drawPoint', layerId: 'house', t: 1, direction: 'forward' },
+      { kind: 'drawPoint', layerId: 'nonexistent', t: 0.5, direction: 'forward' },
     ];
 
     icon.transitions = {
@@ -112,8 +120,8 @@ describe('runtime-json export', () => {
         easing: 'ease-in-out',
         layerBindings: [
           {
-            fromLayerId: 'chevron',
-            toLayerId: 'chevron',
+            fromLayerId: 'roof',
+            toLayerId: 'roof',
             tracks: [
               { property: 'opacity', keyframes: [0, 1] },
               { property: 'translateX', keyframes: [0, 2] },
@@ -139,8 +147,8 @@ describe('runtime-json export', () => {
         easing: 'linear',
         layerBindings: [
           {
-            fromLayerId: 'chevron',
-            toLayerId: 'chevron',
+            fromLayerId: 'roof',
+            toLayerId: 'roof',
             morph: { topology: 'strict' },
           },
         ],
@@ -161,13 +169,13 @@ describe('runtime-json export', () => {
     expect(exported.variant.draw).toEqual({
       mode: 'byLayer',
       layers: {
-        'bg-circle': {
+        'house': {
           guidePoints: [
             { t: 0, direction: 'forward' },
             { t: 1, direction: 'forward' },
           ],
         },
-        chevron: {
+        roof: {
           guidePoints: [
             { t: 0, direction: 'forward' },
             { t: 1, direction: 'forward' },
@@ -176,14 +184,14 @@ describe('runtime-json export', () => {
       },
     });
     expect(exported.variant.variableDraw).toEqual({
-      participatingLayerIds: ['bg-circle', 'chevron'],
+      participatingLayerIds: ['house', 'roof'],
     });
     expect(Object.keys(exported.variant.transitions)).toEqual(['validTrack']);
     expect(exported.variant.transitions.validTrack).toMatchObject({
       strategy: 'track',
       easing: 'ease-in-out',
       magicReplace: {
-        preserveLayerIds: ['accent-dot', 'bg-circle'],
+        preserveLayerIds: ['house'],
         drawIntegrated: true,
       },
     });
@@ -212,14 +220,14 @@ describe('runtime-json export', () => {
       exported.diagnostics.some(
         (diagnostic) =>
           diagnostic.code === 'invalid-draw-layer' &&
-          diagnostic.message.includes('accent-dot'),
+          diagnostic.message.includes('nonexistent'),
       ),
     ).toBeTrue();
   });
 
   test('omits line-draw effects when no draw metadata can be exported', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const icon = project.icons['icon-chevron']!;
+    const icon = project.icons['icon-home']!;
 
     icon.effects = {
       drawOff: {
@@ -245,7 +253,7 @@ describe('runtime-json export', () => {
 
   test('bakes resolved stagger timing into exported runtime transitions', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const icon = project.icons['icon-chevron']!;
+    const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
     const defaultState = variant.states.default;
 
@@ -254,12 +262,12 @@ describe('runtime-json export', () => {
       id: 'active',
       layers: {
         ...structuredClone(defaultState.layers),
-        chevron: {
-          ...structuredClone(defaultState.layers.chevron),
+        roof: {
+          ...structuredClone(defaultState.layers.roof),
           transform: { x: 2 },
         },
-        'bg-circle': {
-          ...structuredClone(defaultState.layers['bg-circle']),
+        house: {
+          ...structuredClone(defaultState.layers.house),
           transform: { y: -2 },
         },
       },
@@ -276,13 +284,13 @@ describe('runtime-json export', () => {
         stagger: { mode: 'linear', perLayerMs: 40 },
         layerBindings: [
           {
-            fromLayerId: 'bg-circle',
-            toLayerId: 'bg-circle',
+            fromLayerId: 'house',
+            toLayerId: 'house',
             tracks: [{ property: 'translateY', keyframes: [0, -2] }],
           },
           {
-            fromLayerId: 'chevron',
-            toLayerId: 'chevron',
+            fromLayerId: 'roof',
+            toLayerId: 'roof',
             tracks: [{ property: 'translateX', keyframes: [0, 2] }],
           },
         ],
@@ -305,7 +313,7 @@ describe('runtime-json export', () => {
 
   test('preserves compoundTrimMode in exported runtime layer bindings', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const icon = project.icons['icon-chevron']!;
+    const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
     const defaultState = variant.states.default;
 
@@ -325,8 +333,8 @@ describe('runtime-json export', () => {
         easing: 'linear',
         layerBindings: [
           {
-            fromLayerId: 'chevron',
-            toLayerId: 'chevron',
+            fromLayerId: 'roof',
+            toLayerId: 'roof',
             tracks: [{ property: 'trimEnd', keyframes: [0, 1] }],
             compoundTrimMode: 'individually',
           },
@@ -338,8 +346,8 @@ describe('runtime-json export', () => {
     const runtimeTransition = exported.variant.transitions.trimMode;
 
     expect(runtimeTransition?.layerBindings[0]).toMatchObject({
-      fromLayerId: 'chevron',
-      toLayerId: 'chevron',
+      fromLayerId: 'roof',
+      toLayerId: 'roof',
       compoundTrimMode: 'individually',
     });
   });

@@ -9,18 +9,18 @@ import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 
 function bootstrap(pathD: string) {
   editorStore.getState().loadProject(structuredClone(SAMPLE_PROJECT));
-  editorStore.getState().patchLayer('icon-chevron', 'default', 'chevron', {
+  editorStore.getState().patchLayer('icon-home', 'default', 'roof', {
     path: { d: pathD },
   });
   editorStore.getState().setSelection({
-    layerIds: ['chevron'],
+    layerIds: ['roof'],
     pointIds: ['0:0', '0:1', '0:2'],
   });
 }
 
 function getPointPositions() {
   return parseSvgPath(
-    editorStore.getState().project!.icons['icon-chevron'].variants.v24.states.default.layers.chevron
+    editorStore.getState().project!.icons['icon-home'].variants.v24.states.default.layers.roof
       .path!.d,
   ).subPaths[0]!.points.map((point) => point.position);
 }
@@ -36,7 +36,7 @@ describe('point alignment within a path', () => {
   test('distributes selected points evenly on the y-axis regardless of selection order', () => {
     bootstrap('M0 0 L4 2 L8 20');
     editorStore.getState().setSelection({
-      layerIds: ['chevron'],
+      layerIds: ['roof'],
       pointIds: ['0:2', '0:0', '0:1'],
     });
 

@@ -10,7 +10,7 @@ import {
 
 describe('phase 1 deterministic checks', () => {
   test('static icon export is byte-stable for same input', () => {
-    const icon = SAMPLE_PROJECT.icons['icon-chevron'];
+    const icon = SAMPLE_PROJECT.icons['icon-home'];
     const first = exportSvgString(
       icon,
       'v24',
@@ -27,7 +27,7 @@ describe('phase 1 deterministic checks', () => {
   });
 
   test('layer serialization is deterministic regardless of insertion order', () => {
-    const icon = SAMPLE_PROJECT.icons['icon-chevron'];
+    const icon = SAMPLE_PROJECT.icons['icon-home'];
     const state = icon.variants.v24.states.default;
     const reordered = {
       ...icon,
@@ -39,9 +39,8 @@ describe('phase 1 deterministic checks', () => {
             default: {
               ...state,
               layers: {
-                chevron: state.layers.chevron,
-                'accent-dot': state.layers['accent-dot'],
-                'bg-circle': state.layers['bg-circle'],
+                roof: state.layers.roof,
+                house: state.layers.house,
               },
             },
           },
@@ -50,16 +49,13 @@ describe('phase 1 deterministic checks', () => {
     };
 
     const svg = exportSvgString(reordered, 'v24', 'default');
-    const idxAccent = svg.indexOf('id="accent-dot"');
-    const idxBg = svg.indexOf('id="bg-circle"');
-    const idxChevron = svg.indexOf('id="chevron"');
+    const idxHouse = svg.indexOf('id="house"');
+    const idxRoof = svg.indexOf('id="roof"');
 
     // output should be lexicographically stable by layer id
-    expect(idxAccent).toBeGreaterThan(-1);
-    expect(idxBg).toBeGreaterThan(-1);
-    expect(idxChevron).toBeGreaterThan(-1);
-    expect(idxAccent).toBeLessThan(idxBg);
-    expect(idxBg).toBeLessThan(idxChevron);
+    expect(idxHouse).toBeGreaterThan(-1);
+    expect(idxRoof).toBeGreaterThan(-1);
+    expect(idxHouse).toBeLessThan(idxRoof);
   });
 
   test('project save/load round-trip keeps schema-valid shape and stable export', () => {
@@ -67,10 +63,10 @@ describe('phase 1 deterministic checks', () => {
     const parsed = JSON.parse(raw);
     expect(isProject(parsed)).toBeTrue();
 
-    const icon = parsed.icons['icon-chevron'];
+    const icon = parsed.icons['icon-home'];
     const first = exportSvgString(icon, 'v24', 'default', parsed.tokenSet?.colors);
     const second = exportSvgString(
-      SAMPLE_PROJECT.icons['icon-chevron'],
+      SAMPLE_PROJECT.icons['icon-home'],
       'v24',
       'default',
       SAMPLE_PROJECT.tokenSet?.colors,
@@ -84,7 +80,7 @@ describe('phase 1 deterministic checks', () => {
     expect(isPathDirectlyEditable('M2 2 L10 2 L10 10 L2 10 Z')).toBeTrue();
     expect(
       isPathDirectlyEditable(
-        SAMPLE_PROJECT.icons['icon-play']!.variants.v24.states.default.layers.triangle.path!.d,
+        SAMPLE_PROJECT.icons['icon-search']!.variants.v24.states.default.layers.circle.path!.d,
       ),
     ).toBeTrue();
   });

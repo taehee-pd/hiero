@@ -13,7 +13,7 @@ describe('variant matrix and symbol components', () => {
     bootstrap();
 
     const state = editorStore.getState();
-    const created = state.generateVariantMatrix('icon-chevron', {
+    const created = state.generateVariantMatrix('icon-home', {
       sizes: [16, 24],
       weights: ['regular', 'bold'],
       scales: ['small', 'medium', 'large'],
@@ -22,7 +22,7 @@ describe('variant matrix and symbol components', () => {
 
     expect(created.length).toBe(12);
 
-    const icon = editorStore.getState().project!.icons['icon-chevron']!;
+    const icon = editorStore.getState().project!.icons['icon-home']!;
     const combos = Object.values(icon.variants).map((variant) => `${variant.size}-${variant.weight ?? 'regular'}-${variant.scale ?? 'medium'}`);
 
     expect(combos).toContain('16-regular-small');
@@ -35,30 +35,30 @@ describe('variant matrix and symbol components', () => {
     bootstrap();
     const state = editorStore.getState();
 
-    state.upsertSymbolComponent('icon-chevron', {
+    state.upsertSymbolComponent('icon-home', {
       kind: 'badge',
-      layerIds: ['chevron', 'accent-dot'],
+      layerIds: ['roof', 'house'],
       position: 'topTrailing',
     });
 
-    let icon = editorStore.getState().project!.icons['icon-chevron']!;
+    let icon = editorStore.getState().project!.icons['icon-home']!;
     expect(icon.components?.badge).toEqual({
       kind: 'badge',
-      layerIds: ['chevron', 'accent-dot'],
+      layerIds: ['roof', 'house'],
       position: 'topTrailing',
     });
 
-    state.upsertSymbolComponent('icon-chevron', {
+    state.upsertSymbolComponent('icon-home', {
       kind: 'badge',
-      layerIds: ['chevron', 'chevron', 'bg-circle'],
+      layerIds: ['roof', 'roof', 'house'],
       position: 'center',
     });
 
-    icon = editorStore.getState().project!.icons['icon-chevron']!;
-    expect(icon.components?.badge?.layerIds).toEqual(['chevron', 'bg-circle']);
+    icon = editorStore.getState().project!.icons['icon-home']!;
+    expect(icon.components?.badge?.layerIds).toEqual(['roof', 'house']);
 
-    state.removeSymbolComponent('icon-chevron', 'badge');
-    icon = editorStore.getState().project!.icons['icon-chevron']!;
+    state.removeSymbolComponent('icon-home', 'badge');
+    icon = editorStore.getState().project!.icons['icon-home']!;
     expect(icon.components?.badge).toBeUndefined();
   });
 });

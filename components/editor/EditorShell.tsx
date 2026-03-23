@@ -230,44 +230,7 @@ function PropertyValue({ children }: { children: React.ReactNode }) {
   return <span className="wire-property-value">{children}</span>;
 }
 
-function ToolRail({
-  onOpenCommand,
-  onOpenImport,
-}: {
-  onOpenCommand: () => void;
-  onOpenImport: () => void;
-}) {
-  return (
-    <aside className="wire-rail">
-      <div className="wire-rail-section">
-        <Link href="/" className="wire-rail-home" aria-label="Back to home">
-          <span className="wire-rail-home-mark" />
-        </Link>
-      </div>
-
-      <div className="wire-rail-section mt-auto">
-        <button
-          type="button"
-          className="wire-rail-button"
-          onClick={onOpenCommand}
-          aria-label="Open command menu"
-          title="Search"
-        >
-          <Search className="size-4" />
-        </button>
-        <button
-          type="button"
-          className="wire-rail-button"
-          onClick={onOpenImport}
-          aria-label="Import SVG"
-          title="Import"
-        >
-          <FolderOpen className="size-4" />
-        </button>
-      </div>
-    </aside>
-  );
-}
+/* ToolRail removed — search/import actions moved to sidebar head */
 
 function LeftSidebar({
   leftTab,
@@ -1705,7 +1668,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
       {desktop ? <TitleTabBar /> : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[52px_220px_minmax(0,1fr)_304px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/* Mobile/tablet sidebar toggle */}
         <button
           type="button"
@@ -1730,11 +1693,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <ToolRail
-            onOpenCommand={() => setCommandOpen(true)}
-            onOpenImport={() => setImportDialogOpen(true)}
-          />
-
           <LeftSidebar
             leftTab={leftTab}
             onLeftTabChange={setLeftTab}

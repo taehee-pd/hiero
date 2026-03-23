@@ -197,7 +197,7 @@ describe('snap engine', () => {
   test('can be constructed with sample project store shape', () => {
     const loaded = structuredClone(SAMPLE_PROJECT);
     editorStore.getState().loadProject(loaded);
-    editorStore.getState().setCurrentIcon('icon-chevron');
+    editorStore.getState().setCurrentIcon('icon-home');
     editorStore.getState().setCurrentVariant('v24');
     editorStore.getState().setCurrentState('default');
     editorStore.setState({ snapEnabled: true, activeSnapGuides: [] });

@@ -4,10 +4,11 @@ import { useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
+import { Slider } from '@/components/kibo-ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SPRING_PRESETS } from '@/lib/runtime-core/spring';
 import type { SpringConfig } from '@/lib/schema/types';
-import { cn } from '@/lib/utils';
+
 
 type EasingValue = string | SpringConfig;
 
@@ -230,30 +231,24 @@ export function BezierCurveEditor({
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-3" align="start">
         <div className="mb-2 flex gap-1">
-          <button
+          <Button
             type="button"
-            className={cn(
-              'rounded-md px-2.5 py-1 text-xs font-medium',
-              mode === 'bezier'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:text-foreground',
-            )}
+            size="sm"
+            variant={mode === 'bezier' ? 'default' : 'ghost'}
+            className="text-xs"
             onClick={() => setMode('bezier')}
           >
             Bezier
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={cn(
-              'rounded-md px-2.5 py-1 text-xs font-medium',
-              mode === 'spring'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:text-foreground',
-            )}
+            size="sm"
+            variant={mode === 'spring' ? 'default' : 'ghost'}
+            className="text-xs"
             onClick={() => setMode('spring')}
           >
             Spring
-          </button>
+          </Button>
         </div>
 
         {mode === 'bezier' ? (
@@ -373,10 +368,12 @@ export function BezierCurveEditor({
               <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {CURVE_PRESETS.map((preset) => (
-                  <button
+                  <Button
                     key={preset.name}
                     type="button"
-                    className="rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    size="sm"
+                    variant="ghost"
+                    className="justify-start text-xs text-muted-foreground"
                     onClick={() => {
                       const vals = parseCubicBezierValues(preset.value);
                       if (vals) {
@@ -387,7 +384,7 @@ export function BezierCurveEditor({
                     }}
                   >
                     {preset.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -425,13 +422,14 @@ export function BezierCurveEditor({
                   <Label className="text-[length:var(--text-caption)] text-muted-foreground">Stiffness</Label>
                   <span className="text-[length:var(--text-caption)] text-muted-foreground">{stiffness}</span>
                 </div>
-                <input
-                  type="range" min="50" max="500" step="1" value={stiffness}
-                  className="w-full accent-primary"
-                  onChange={(e) => {
-                    const v = Number.parseInt(e.target.value, 10);
-                    setStiffness(v);
-                    emitSpring(v, dampingVal, mass);
+                <Slider
+                  min={50} max={500} step={1} value={[stiffness]}
+                  className="w-full"
+                  onValueChange={([v]) => {
+                    if (v !== undefined) {
+                      setStiffness(v);
+                      emitSpring(v, dampingVal, mass);
+                    }
                   }}
                 />
               </div>
@@ -440,13 +438,14 @@ export function BezierCurveEditor({
                   <Label className="text-[length:var(--text-caption)] text-muted-foreground">Damping</Label>
                   <span className="text-[length:var(--text-caption)] text-muted-foreground">{dampingVal}</span>
                 </div>
-                <input
-                  type="range" min="1" max="40" step="0.5" value={dampingVal}
-                  className="w-full accent-primary"
-                  onChange={(e) => {
-                    const v = Number.parseFloat(e.target.value);
-                    setDampingVal(v);
-                    emitSpring(stiffness, v, mass);
+                <Slider
+                  min={1} max={40} step={0.5} value={[dampingVal]}
+                  className="w-full"
+                  onValueChange={([v]) => {
+                    if (v !== undefined) {
+                      setDampingVal(v);
+                      emitSpring(stiffness, v, mass);
+                    }
                   }}
                 />
               </div>
@@ -455,13 +454,14 @@ export function BezierCurveEditor({
                   <Label className="text-[length:var(--text-caption)] text-muted-foreground">Mass</Label>
                   <span className="text-[length:var(--text-caption)] text-muted-foreground">{mass.toFixed(1)}</span>
                 </div>
-                <input
-                  type="range" min="0.1" max="3" step="0.1" value={mass}
-                  className="w-full accent-primary"
-                  onChange={(e) => {
-                    const v = Number.parseFloat(e.target.value);
-                    setMass(v);
-                    emitSpring(stiffness, dampingVal, v);
+                <Slider
+                  min={0.1} max={3} step={0.1} value={[mass]}
+                  className="w-full"
+                  onValueChange={([v]) => {
+                    if (v !== undefined) {
+                      setMass(v);
+                      emitSpring(stiffness, dampingVal, v);
+                    }
                   }}
                 />
               </div>
@@ -471,10 +471,12 @@ export function BezierCurveEditor({
               <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {SPRING_PRESET_ENTRIES.map(([name, preset]) => (
-                  <button
+                  <Button
                     key={name}
                     type="button"
-                    className="rounded-md px-2 py-1 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    size="sm"
+                    variant="ghost"
+                    className="justify-start text-xs text-muted-foreground"
                     onClick={() => {
                       setStiffness(preset.stiffness);
                       setDampingVal(preset.damping);
@@ -483,7 +485,7 @@ export function BezierCurveEditor({
                     }}
                   >
                     {name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>

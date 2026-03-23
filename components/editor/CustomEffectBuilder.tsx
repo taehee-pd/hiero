@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import type { Effect, TimelineTrack, SpringConfig } from '@/lib/schema/types';
 import { EasingPicker } from './EasingPicker';
 
@@ -80,15 +81,16 @@ export function CustomEffectBuilder({
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Kind</Label>
-              <select
-                value={effect.kind}
-                onChange={(e) => onUpdate({ kind: e.target.value as Effect['kind'] })}
-                className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-              >
-                {EFFECT_KINDS.map((kind) => (
-                  <option key={kind} value={kind}>{kind}</option>
-                ))}
-              </select>
+              <Select value={effect.kind} onValueChange={(v) => onUpdate({ kind: v as Effect['kind'] })}>
+                <SelectTrigger className="h-7 rounded-lg text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EFFECT_KINDS.map((kind) => (
+                    <SelectItem key={kind} value={kind}>{kind}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Duration (ms)</Label>
@@ -137,17 +139,16 @@ export function CustomEffectBuilder({
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Direction</Label>
-              <select
-                value={effect.direction ?? 'normal'}
-                onChange={(e) =>
-                  onUpdate({ direction: e.target.value as Effect['direction'] })
-                }
-                className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-              >
-                <option value="normal">normal</option>
-                <option value="reverse">reverse</option>
-                <option value="alternate">alternate</option>
-              </select>
+              <Select value={effect.direction ?? 'normal'} onValueChange={(v) => onUpdate({ direction: v as Effect['direction'] })}>
+                <SelectTrigger className="h-7 rounded-lg text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">normal</SelectItem>
+                  <SelectItem value="reverse">reverse</SelectItem>
+                  <SelectItem value="alternate">alternate</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Easing</Label>
@@ -225,17 +226,16 @@ function CustomTracksEditor({
           className="grid gap-1.5 rounded-lg border border-border/50 bg-muted/10 p-2"
         >
           <div className="flex items-center justify-between gap-2">
-            <select
-              value={track.property}
-              onChange={(e) =>
-                updateTrack(index, { property: e.target.value })
-              }
-              className="h-6 rounded border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
-            >
-              {TRACK_PROPERTIES.map((prop) => (
-                <option key={prop} value={prop}>{prop}</option>
-              ))}
-            </select>
+            <Select value={track.property} onValueChange={(v) => updateTrack(index, { property: v })}>
+              <SelectTrigger className="h-6 rounded text-[length:var(--text-label)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRACK_PROPERTIES.map((prop) => (
+                  <SelectItem key={prop} value={prop}>{prop}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="flex items-center gap-1">
               <EasingPicker

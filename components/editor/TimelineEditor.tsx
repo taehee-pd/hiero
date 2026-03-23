@@ -6,6 +6,8 @@ import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Button } from '@/components/kibo-ui/button';
+import { Input } from '@/components/kibo-ui/input';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
@@ -300,15 +302,15 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground" role="toolbar" aria-label="Timeline playback controls">
-        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background transition-colors hover:bg-accent" onClick={() => scrubTo(0)} aria-label="Skip to start">
+        <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(0)} aria-label="Skip to start">
           <SkipBack className="size-3.5" />
-        </button>
-        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary transition-colors hover:bg-primary/20" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing}>
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-7 w-7 border border-primary/40 bg-primary/10 p-0 text-primary hover:bg-primary/20" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing}>
           {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-        </button>
-        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background transition-colors hover:bg-accent" onClick={() => scrubTo(1)} aria-label="Skip to end">
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(1)} aria-label="Skip to end">
           <SkipForward className="size-3.5" />
-        </button>
+        </Button>
         <span className="ml-1.5 tabular-nums" aria-label={`Playhead at ${Math.round(playhead * 100)} percent`}>{Math.round(playhead * 100)}%</span>
       </div>
       <div ref={containerRef} className="overflow-auto">
@@ -396,16 +398,20 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
           className="fixed z-50 rounded-md border border-border bg-popover p-1 shadow-lg"
           style={{ left: clampMenuPosition(menu.x, menu.y).x, top: clampMenuPosition(menu.x, menu.y).y }}
         >
-          <button
+          <Button
             type="button"
-            className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent"
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start text-sm"
             onClick={() => { deleteSelected(menu.key); setMenu(null); }}
           >
             Delete
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent"
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start text-sm"
             onClick={() => {
               // UX-F1: Open inline editor instead of window.prompt()
               const binding = transition.layerBindings[menu.key.bindingIndex];
@@ -416,7 +422,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
             }}
           >
             Set Value
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -431,11 +437,11 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Set keyframe value
             </label>
-            <input
+            <Input
               ref={inlineInputRef}
               type="number"
               step="any"
-              className="h-8 w-32 rounded-md border border-border bg-background px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="h-8 w-32 text-sm"
               value={inlineEdit.value}
               onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
               onKeyDown={(e) => {

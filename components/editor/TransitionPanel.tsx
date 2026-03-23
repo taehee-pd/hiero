@@ -6,6 +6,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
+import { Slider } from '@/components/kibo-ui/slider';
+import { Switch } from '@/components/kibo-ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler } from '@/lib/runtime-core';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
@@ -837,26 +840,27 @@ export const TransitionPanel = memo(function TransitionPanel() {
                         <RotateCcw className="size-4" />
                       </Button>
                       <div className="min-w-0 flex-1">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={Math.round((activePreview?.progress ?? 0) * 100)}
-                          onChange={(event) => handleScrub(Number.parseFloat(event.target.value) / 100)}
-                          className="w-full accent-primary"
+                        <Slider
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={[Math.round((activePreview?.progress ?? 0) * 100)]}
+                          onValueChange={([v]) => handleScrub(v / 100)}
+                          className="w-full"
                         />
                       </div>
-                      <select
-                        value={String(activePreview?.speed ?? 1)}
-                        onChange={(event) => handleSpeedChange(Number.parseFloat(event.target.value))}
-                        className="h-9 rounded-xl border border-border bg-background px-2 text-sm text-foreground"
-                      >
-                        {SPEED_OPTIONS.map((speed) => (
-                          <option key={speed} value={speed}>
-                            {speed}x
-                          </option>
-                        ))}
-                      </select>
+                      <Select value={String(activePreview?.speed ?? 1)} onValueChange={(v) => handleSpeedChange(Number.parseFloat(v))}>
+                        <SelectTrigger className="h-9 w-20 rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SPEED_OPTIONS.map((speed) => (
+                            <SelectItem key={speed} value={String(speed)}>
+                              {speed}x
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <p className="text-[length:var(--text-label)] text-muted-foreground">
                       {Math.round((activePreview?.progress ?? 0) * 100)}%
@@ -952,12 +956,11 @@ function StaggerControls({
     <div className="mt-2 grid gap-1.5">
       <div className="flex items-center gap-2">
         <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">Stagger</Label>
-        <input
-          type="checkbox"
+        <Switch
           checked={enabled}
-          onChange={(e) => {
-            setEnabled(e.target.checked);
-            if (!e.target.checked) {
+          onCheckedChange={(checked) => {
+            setEnabled(checked);
+            if (!checked) {
               onPatch({ stagger: undefined });
             } else {
               onPatch({
@@ -965,26 +968,22 @@ function StaggerControls({
               });
             }
           }}
-          className="accent-primary"
         />
       </div>
       {enabled && stagger ? (
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-1">
             <Label className="text-[length:var(--text-caption)] text-muted-foreground">Mode</Label>
-            <select
-              value={stagger.mode}
-              onChange={(e) =>
-                onPatch({
-                  stagger: { ...stagger, mode: e.target.value as TransitionStagger['mode'] },
-                })
-              }
-              className="h-7 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-            >
-              {STAGGER_MODES.map((mode) => (
-                <option key={mode} value={mode}>{mode}</option>
-              ))}
-            </select>
+            <Select value={stagger.mode} onValueChange={(v) => onPatch({ stagger: { ...stagger, mode: v as TransitionStagger['mode'] } })}>
+              <SelectTrigger className="h-7 rounded-lg text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STAGGER_MODES.map((mode) => (
+                  <SelectItem key={mode} value={mode}>{mode}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1">
             <Label className="text-[length:var(--text-caption)] text-muted-foreground">Per Layer (ms)</Label>
@@ -1112,27 +1111,29 @@ function LayerBindingList({
           className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2"
         >
           <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
-            <select
-              value={binding.fromLayerId ?? ''}
-              onChange={(e) => updateBinding(index, { fromLayerId: e.target.value || undefined })}
-              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
-            >
-              <option value="">(none)</option>
-              {fromLayerIds.map((id) => (
-                <option key={id} value={id}>{id}</option>
-              ))}
-            </select>
+            <Select value={binding.fromLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { fromLayerId: v === '__none__' ? undefined : v })}>
+              <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">(none)</SelectItem>
+                {fromLayerIds.map((id) => (
+                  <SelectItem key={id} value={id}>{id}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <span className="text-[length:var(--text-caption)] text-muted-foreground">-&gt;</span>
-            <select
-              value={binding.toLayerId ?? ''}
-              onChange={(e) => updateBinding(index, { toLayerId: e.target.value || undefined })}
-              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
-            >
-              <option value="">(none)</option>
-              {toLayerIds.map((id) => (
-                <option key={id} value={id}>{id}</option>
-              ))}
-            </select>
+            <Select value={binding.toLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { toLayerId: v === '__none__' ? undefined : v })}>
+              <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">(none)</SelectItem>
+                {toLayerIds.map((id) => (
+                  <SelectItem key={id} value={id}>{id}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <button
               type="button"
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"
@@ -1324,17 +1325,18 @@ function FieldSelect({
   return (
     <div className="grid gap-1.5">
       <Label className="text-xs uppercase text-muted-foreground">{label}</Label>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 rounded-xl">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -1353,17 +1355,18 @@ function InlineSelect({
   return (
     <div className="grid gap-1.5">
       <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">{label}</Label>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 rounded-xl">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -1400,51 +1403,52 @@ function CrossIconEndpointPicker({
       </legend>
       <div className="grid gap-1.5">
         <Label className="text-xs uppercase text-muted-foreground">Icon</Label>
-        <select
-          value={selectedIconId}
-          onChange={(e) => onIconChange(e.target.value)}
-          className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground"
-        >
-          <option value="">Select icon...</option>
-          {iconEntries.map((icon) => (
-            <option key={icon.id} value={icon.id}>
-              {icon.name}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
+          <SelectTrigger className="h-9 rounded-xl">
+            <SelectValue placeholder="Select icon..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Select icon...</SelectItem>
+            {iconEntries.map((icon) => (
+              <SelectItem key={icon.id} value={icon.id}>
+                {icon.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
           <Label className="text-xs uppercase text-muted-foreground">Variant</Label>
-          <select
-            value={selectedVariantId}
-            onChange={(e) => onVariantChange(e.target.value)}
-            disabled={!selectedIconId}
-            className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground disabled:opacity-50"
-          >
-            <option value="">Select variant...</option>
-            {variants.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name || v.id}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
+            <SelectTrigger className="h-9 rounded-xl">
+              <SelectValue placeholder="Select variant..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select variant...</SelectItem>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name || v.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-1.5">
           <Label className="text-xs uppercase text-muted-foreground">State</Label>
-          <select
-            value={selectedStateId}
-            onChange={(e) => onStateChange(e.target.value)}
-            disabled={!selectedVariantId}
-            className="h-9 rounded-xl border border-border bg-background px-3 text-sm text-foreground disabled:opacity-50"
-          >
-            <option value="">Select state...</option>
-            {stateIds.map((stateId) => (
-              <option key={stateId} value={stateId}>
-                {stateId}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedStateId || '__none__'} onValueChange={(v) => onStateChange(v === '__none__' ? '' : v)} disabled={!selectedVariantId}>
+            <SelectTrigger className="h-9 rounded-xl">
+              <SelectValue placeholder="Select state..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select state...</SelectItem>
+              {stateIds.map((stateId) => (
+                <SelectItem key={stateId} value={stateId}>
+                  {stateId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </fieldset>

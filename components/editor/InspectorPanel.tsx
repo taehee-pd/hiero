@@ -30,8 +30,11 @@ import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Button } from '@/components/kibo-ui/button';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
+import { Slider } from '@/components/kibo-ui/slider';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
+import { ColorPickerPopover } from './ColorPickerPopover';
 import {
   alignLayers,
   computeTopology,
@@ -413,14 +416,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     </div>
                     <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Variable Value</Label>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="range"
+                      <Slider
                         min={0}
                         max={1}
                         step={0.01}
-                        value={currentVariant.variableValue ?? 1}
-                        onChange={(e) => handlePatchVariant({ variableValue: Number(e.target.value) })}
-                        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border/70 accent-primary"
+                        value={[currentVariant.variableValue ?? 1]}
+                        onValueChange={([v]) => handlePatchVariant({ variableValue: v })}
+                        className="h-1.5 w-full"
                       />
                       <span className="min-w-[2.5rem] text-right text-[length:var(--text-label)] tabular-nums text-muted-foreground">
                         {(currentVariant.variableValue ?? 1).toFixed(2)}
@@ -434,18 +436,21 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     Preset Size
                   </Label>
                   <div className="flex items-center gap-2">
-                    <select
-                      id="variant-size-preset"
+                    <Select
                       value={newVariantSize}
-                      onChange={(event) => setNewVariantSize(event.target.value)}
-                      className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-primary/40"
+                      onValueChange={(value) => setNewVariantSize(value)}
                     >
-                      {VARIANT_SIZE_PRESETS.map((size) => (
-                        <option key={size} value={size}>
-                          {size}px
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger id="variant-size-preset" className="h-9 min-w-0 flex-1 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VARIANT_SIZE_PRESETS.map((size) => (
+                          <SelectItem key={size} value={String(size)}>
+                            {size}px
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button
                       type="button"
                       size="sm"
@@ -1757,18 +1762,18 @@ function SelectField({
       <Label className="w-20 shrink-0 text-[length:var(--text-label)] text-[var(--system-gray)]">
         {label}
       </Label>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-full rounded-xl border border-input bg-input/80 px-2 text-xs"
-      >
-        {options.map(([v, labelText]) => (
-          <option key={v} value={v}>
-            {labelText}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger className="h-8 w-full rounded-xl border border-input bg-input/80 px-2 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(([v, labelText]) => (
+            <SelectItem key={v} value={v}>
+              {labelText}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -1977,8 +1982,8 @@ function PaintField({
   );
 
   const handleModeChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const nextMode = e.target.value as
+    (value: string) => {
+      const nextMode = value as
         | 'currentFill'
         | 'currentColor'
         | 'none'
@@ -2082,22 +2087,28 @@ function PaintField({
           {label}
         </Label>
         <div className="flex items-center gap-1.5">
-          <select
+          <Select
             value={paintMode}
-            onChange={handleModeChange}
-            className="h-8 min-w-[9rem] rounded-xl border border-input bg-input/80 px-2 text-xs"
-            aria-label={`${label} mode`}
+            onValueChange={handleModeChange}
           >
-            {fillModeOptions ? (
-              <option value="currentFill">currentFill</option>
-            ) : (
-              <option value="currentColor">currentColor</option>
-            )}
-            <option value="none">None</option>
-            <option value="solid">Solid / token</option>
-            <option value="linearGradient">Linear gradient</option>
-            <option value="radialGradient">Radial gradient</option>
-          </select>
+            <SelectTrigger
+              className="h-8 min-w-[9rem] rounded-xl border border-input bg-input/80 px-2 text-xs"
+              aria-label={`${label} mode`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {fillModeOptions ? (
+                <SelectItem value="currentFill">currentFill</SelectItem>
+              ) : (
+                <SelectItem value="currentColor">currentColor</SelectItem>
+              )}
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="solid">Solid / token</SelectItem>
+              <SelectItem value="linearGradient">Linear gradient</SelectItem>
+              <SelectItem value="radialGradient">Radial gradient</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -2107,15 +2118,14 @@ function PaintField({
         <>
           <div className="flex items-center gap-1.5">
             {isColor && (
-              <input
-                type="color"
+              <ColorPickerPopover
                 value={normalizeHexColor(
                   paint?.mode === 'fixed' ? paint.value : undefined,
                 )}
-                onChange={(e) =>
-                  onChange({ mode: 'fixed', value: e.target.value })
+                onChange={(hex) =>
+                  onChange({ mode: 'fixed', value: hex })
                 }
-                className="size-7 cursor-pointer rounded-lg border border-border bg-transparent p-0.5"
+                className="size-7 rounded-lg border-border p-0.5"
                 aria-label={`${label} color picker`}
               />
             )}
@@ -2183,16 +2193,15 @@ function PaintField({
                 );
               })}
               {selectedStop && (
-                <input
-                  type="color"
+                <ColorPickerPopover
                   value={normalizeHexColor(selectedStop.color, '#000000')}
-                  onChange={(e) =>
+                  onChange={(hex) =>
                     updateGradientStop(boundedSelectedStopIndex, (stop) => ({
                       ...stop,
-                      color: e.target.value,
+                      color: hex,
                     }))
                   }
-                  className="absolute top-0 h-7 w-7 -translate-x-1/2 cursor-pointer rounded-md border border-border bg-background p-0.5 shadow-sm"
+                  className="absolute top-0 h-7 w-7 -translate-x-1/2 rounded-md border-border bg-background p-0.5 shadow-sm"
                   style={{ left: `${selectedStop.offset * 100}%` }}
                   aria-label={`${label} selected stop color`}
                 />

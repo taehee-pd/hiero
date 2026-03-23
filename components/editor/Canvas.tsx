@@ -339,11 +339,23 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         const bounds = selectedPath.getBBox();
         if (!Number.isFinite(bounds.x + bounds.y + bounds.width + bounds.height)) return;
 
+        // Account for the layer's transform (translate + scale) when
+        // positioning the selection bounding box and corner handles.
+        const lt = layer.transform;
+        const ltx = lt?.x ?? 0;
+        const lty = lt?.y ?? 0;
+        const lsx = lt?.scaleX ?? 1;
+        const lsy = lt?.scaleY ?? 1;
+        const tbx = bounds.x * lsx + ltx;
+        const tby = bounds.y * lsy + lty;
+        const tbw = bounds.width * lsx;
+        const tbh = bounds.height * lsy;
+
         const outline = document.createElementNS(SVG_NS, 'rect');
-        outline.setAttribute('x', `${bounds.x}`);
-        outline.setAttribute('y', `${bounds.y}`);
-        outline.setAttribute('width', `${Math.max(bounds.width, 0.001)}`);
-        outline.setAttribute('height', `${Math.max(bounds.height, 0.001)}`);
+        outline.setAttribute('x', `${tbx}`);
+        outline.setAttribute('y', `${tby}`);
+        outline.setAttribute('width', `${Math.max(tbw, 0.001)}`);
+        outline.setAttribute('height', `${Math.max(tbh, 0.001)}`);
         outline.setAttribute('fill', 'rgba(14,165,233,0.08)');
         outline.setAttribute('stroke', 'rgba(14,165,233,0.95)');
         outline.setAttribute('stroke-width', `${1 / Math.max(viewport.zoom, 0.01)}`);
@@ -355,17 +367,17 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         outline.style.cursor = 'move';
         svg.appendChild(outline);
 
-        const midX = bounds.x + bounds.width / 2;
-        const midY = bounds.y + bounds.height / 2;
+        const midX = tbx + tbw / 2;
+        const midY = tby + tbh / 2;
         const handles: Array<[string, number, number]> = [
-          ['nw', bounds.x, bounds.y],
-          ['n', midX, bounds.y],
-          ['ne', bounds.x + bounds.width, bounds.y],
-          ['e', bounds.x + bounds.width, midY],
-          ['se', bounds.x + bounds.width, bounds.y + bounds.height],
-          ['s', midX, bounds.y + bounds.height],
-          ['sw', bounds.x, bounds.y + bounds.height],
-          ['w', bounds.x, midY],
+          ['nw', tbx, tby],
+          ['n', midX, tby],
+          ['ne', tbx + tbw, tby],
+          ['e', tbx + tbw, midY],
+          ['se', tbx + tbw, tby + tbh],
+          ['s', midX, tby + tbh],
+          ['sw', tbx, tby + tbh],
+          ['w', tbx, midY],
         ];
 
         const handleRadius = SELECTION_HANDLE_RADIUS_PX / Math.max(viewport.zoom, 0.01);

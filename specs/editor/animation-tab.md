@@ -69,17 +69,20 @@ The redesigned Animation tab follows SF Symbols animation semantics:
 
 ```typescript
 type NumericTrackProperty =
-  // Transform (existing)
+  // Transform (6 — exposed in UI)
   | 'opacity' | 'rotate' | 'translateX' | 'translateY' | 'scale'
-  // Draw (existing)
+  // Draw (1 — exposed in UI)
   | 'pathLength'
-  // Trim (Phase G2 — missing from UI)
+  // Trim (3 — Phase G2, missing from UI)
   | 'trimStart' | 'trimEnd' | 'trimOffset'
-  // Style (Phase H3 — missing from UI)
+  // Style (3 — Phase H3, missing from UI)
   | 'strokeWidth' | 'fillOpacity' | 'strokeOpacity';
 
-// Color tracks (deferred — complex UI)
+// Color tracks (2 — schema+runtime exist, missing from UI)
+// Require color keyframe editor (hex/swatch per keyframe, not numeric input)
 type ColorTrackProperty = 'fill' | 'stroke';
+
+// Total: 14 track types (6 exposed, 8 missing from UI)
 ```
 
 ### Per-Binding Animation Strategy
@@ -176,6 +179,79 @@ Color coding:
 - 🟡 Yellow — trim (compatible but different topology)
 - 🔴 Red — crossfade (incompatible)
 
+## Strategy Lifecycle
+
+Classification triggers and override behavior:
+
+1. **Auto-classification** runs at: transition creation, binding addition, source/target layer edit
+2. **Re-classification** triggers when: layer path geometry changes, subpath count changes
+3. **Override persistence**: user overrides stored in `LayerBinding.strategyOverride`
+4. **Override validation**: warn if override conflicts with current topology (e.g., override to
+   "morph" for closed↔open pair). Clear stale overrides when source/target layers are deleted.
+
+## Rendering Pipeline
+
+### HybridFrame → SVG Bridge
+
+The `composeHybridFrame()` output must be consumed by a rendering bridge:
+
+```
+classifySubPathStrategies() → per-subpath strategies
+         │
+composeHybridFrame(fromPath, toPath, strategies, progress)
+         │
+         ▼
+┌─ HybridFrame ──────────────────────────────────┐
+│  morphedPaths[] → update <path d="...">        │
+│  trimmedPaths[] → update stroke-dasharray/offset│
+│  crossfadePaths[] → update opacity              │
+└─────────────────────────────────────────────────┘
+         │
+  applyHybridFrameToSVG(frame, svgElement)
+```
+
+Implementation: `lib/editor-renderer-svg/hybrid-frame-bridge.ts`
+
+### Cross-Icon Preview
+
+Cross-icon preview requires loading layers from two icons simultaneously.
+`TransitionPreview` already carries `baseIconId`/`targetIconId` (Phase F3).
+The canvas renderer must:
+
+1. Resolve layers from source icon's state
+2. Resolve layers from target icon's state
+3. Scope layer IDs to prevent collisions: `{iconId}:{layerId}`
+4. Render both sets with morph/trim/crossfade applied per binding strategy
+
+### Stagger + Trim Interaction
+
+When using `individually` stagger mode with trim tracks:
+- Each binding's trim animation starts after the previous completes
+- Timeline shows offset start positions per binding
+- Trim preview accounts for stagger delay when computing dasharray values
+
+## Inspect Tab (Companion)
+
+The Inspect tab displays the selected layer's properties. It must surface:
+
+### Current Implementation
+- Layer role (primary/secondary/tertiary) with rendering-mode context
+- Fill/stroke mode and color (with ColorPickerPopover)
+- Transform (x, y, rotation)
+- Stroke width, guides toggle
+
+### Gaps to Address
+- **Variable value indicator**: Show computed opacity at current `variableValue`
+  alongside the layer's authored opacity
+- **Topology status**: Display subpath count, command signature, closed status
+  from `GeometryStats` for the selected layer
+- **Animation strategy badge**: When a transition is active, show which
+  strategy (morph/trim/crossfade/preserved) applies to the selected layer
+- **Weight control points**: If variant uses weight interpolation, show
+  current weight and which control points are available
+- **Auto-gradient preview**: Show gradient stops applied to current fill
+  when auto-gradient mode is active
+
 ## Edge Cases
 
 - **Empty state transitions**: Show warning if source or target state has no layers
@@ -183,8 +259,20 @@ Color coding:
 - **All-morph transitions**: Simplify UI — hide trim controls, show morph-only view
 - **All-trim transitions**: Simplify UI — show trim controls prominently
 - **Cross-icon with no matching layers**: All bindings become crossfade; show warning
+  with suggestion to switch to replace strategy with direction
 - **Direction on non-replace strategy**: Direction selector hidden when strategy ≠ replace
 - **Variable value at boundaries (0.0 or 1.0)**: All layers fully visible or hidden
+- **Stale strategy override**: Warn when override conflicts with current topology
+- **Cross-icon layer ID collision**: Scope IDs with icon prefix
+
+## Engineering Review Notes
+
+Based on gstack /plan-eng-review (2026-03-23):
+- **Critical**: HybridFrame rendering bridge must be built before J3/J4
+- **Consolidation**: I4-I7 (binding display) should share `useBindingStrategies()` hook
+- **Consolidation**: J6-J7 (variable value) share same computation pipeline
+- **Missing prerequisite**: K3 (weight preview) needs control point authoring task
+- **DRY**: Extract binding strategy visualization from MorphReadinessIndicator
 
 ## Related Specs
 

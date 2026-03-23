@@ -5,11 +5,12 @@
 
 ## Open Phases
 
-| # | Phase | Status | Summary |
-|---|-------|--------|---------|
-| I | **Animation Tab Surface** | open | Expose trim/morph/hybrid runtime in timeline UI |
-| J | **Animation Preview & Composition** | open | Live preview, direction, variable value integration |
-| K | **Advanced Animation Authoring** | open | Weight interpolation UI, auto-gradient, Magic Replace |
+| # | Phase | Status | Tasks | Summary |
+|---|-------|--------|-------|---------|
+| I | **Animation Tab Surface** | open | 11 | Expose all 14 track types, per-binding strategy display, trim path UI |
+| J | **Animation Preview & Composition** | open | 9 | HybridFrame bridge, cross-icon preview, direction, variable value |
+| K | **Advanced Animation Authoring** | open | 6 | Magic Replace UI, weight/gradient preview, auto-strategy, presets |
+| L | **Inspect Tab Redesign** | open | 6 | Variable value indicator, topology display, strategy badges, weight editor |
 
 ---
 
@@ -17,10 +18,11 @@
 
 Status: **open** (bridge gap between runtime capabilities and editor UI)
 
-The runtime implements 13 timeline track types, per-subpath strategy
-classification, trim path computation, and hybrid frame composition.
-The Animation tab currently exposes only 6 track types and no trim/subpath UI.
-This phase surfaces the existing runtime in the editor.
+The runtime implements 14 timeline track types (6 transform, 3 trim, 3 style,
+2 color), per-subpath strategy classification, trim path computation, and
+hybrid frame composition. The Animation tab currently exposes only 6 track
+types (transform + pathLength) and no trim, style, color, or subpath UI.
+This phase surfaces all existing runtime capabilities in the editor.
 
 Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md)
 
@@ -38,6 +40,16 @@ Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md)
   array. These were added in Phase H3 at the schema/runtime level but
   never exposed in the editor. All are numeric tracks with standard
   interpolation.
+
+- [ ] **I2b — Add color tracks to TimelineEditor.**
+  Add `fill` and `stroke` to the timeline as color-type tracks. These
+  are already defined in the `TimelineTrack` union in `lib/schema/types.ts`
+  and handled by the runtime interpolation path in `scheduler.ts` and
+  `store.ts`. Unlike numeric tracks, color tracks need a color keyframe
+  editor (hex input or color picker per keyframe) instead of a numeric
+  input. Implementation: add a `ColorTrackRow` component alongside the
+  existing numeric `TrackRow`, with color swatch keyframes that open
+  `ColorPickerPopover` on click.
 
 - [ ] **I3 — Smart track suggestions based on path topology.**
   When a user adds a track to a layer binding, suggest appropriate
@@ -98,6 +110,16 @@ Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md)
 ## Phase J — Animation Preview & Composition
 
 Status: **open** (live preview integration for cross-icon, direction, variable value)
+
+### Priority 0 — Rendering Infrastructure (from eng review)
+
+- [ ] **J0 — Build HybridFrame → SVG rendering bridge.**
+  Create `lib/editor-renderer-svg/hybrid-frame-bridge.ts` with
+  `applyHybridFrameToSVG(frame: HybridFrame, svgElement: SVGElement)`.
+  Routes morph paths to d-attribute updates, trim paths to
+  stroke-dasharray/dashoffset CSS, crossfade paths to opacity.
+  **Blocks J3 and J4.** Wire into the canvas preview pipeline alongside
+  existing `applyTransitionPreview()`.
 
 ### Priority 1 — Cross-Icon Preview
 
@@ -205,6 +227,57 @@ Status: **open** (advanced features building on Phase I and J)
   Store as JSON templates in the project or workspace.
 
 ---
+
+## Phase L — Inspect Tab Redesign
+
+Status: **open** (surface runtime state and topology in layer inspector)
+
+The Inspect tab currently shows basic layer properties (role, fill, stroke,
+transform). It must surface computed runtime state (variable value opacity,
+animation strategy, topology contract) and enable advanced authoring controls
+(topology locking, weight control points, auto-gradient preview).
+
+Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md) §Inspect Tab
+
+- [ ] **L1 — Variable value opacity indicator.**
+  Show the computed opacity at the current `variableValue` next to the
+  layer's authored opacity. Display the role threshold range
+  (e.g., "secondary: visible at 33-66%") and current computed value.
+  Use `computeVariableValue()` output for the selected layer.
+
+- [ ] **L2 — Topology status display.**
+  Show the selected layer's `GeometryStats`: subpath count, command
+  signature per subpath, closed/open status per subpath. Read from
+  `computeGeometryStats()` in `path-normalization.ts`. Collapsible
+  section below the Position fields. Helps users understand why
+  certain morph strategies are recommended.
+
+- [ ] **L3 — Animation strategy badge.**
+  When a transition is selected in the Animation tab and the currently
+  inspected layer participates in a binding, show a badge indicating
+  the classified strategy (morph/trim/crossfade/preserved) with
+  color coding (green/yellow/red/blue). Read from `classifySubPathStrategies()`
+  output cached in TransitionPreview.
+
+- [ ] **L4 — Weight control point editor.**
+  When the variant uses weight interpolation, show the current weight
+  value and a list of available control points (ultralight/regular/black).
+  Allow uploading or assigning SVG paths as control point data for each
+  weight. Store in `Variant.weightControlPoints` (new schema field).
+  **Prerequisite for K3** (weight preview slider).
+
+- [ ] **L5 — Auto-gradient preview swatch.**
+  When auto-gradient rendering mode is active, show gradient stop
+  previews next to each layer's fill color in the inspector. Display
+  the 3-stop gradient (lighten/original/darken) generated by
+  `generateAutoGradient()`. Helps users understand how their solid
+  colors will appear in gradient mode.
+
+- [ ] **L6 — Topology lock toggle.**
+  Move topology locking from K2 to the Inspect tab (its natural home).
+  Add a "Lock Topology" toggle in the layer topology section (L2).
+  When locked, show a lock icon and block geometry edits that would
+  change the command signature. Wire to `State.topology.locked`.
 
 ---
 

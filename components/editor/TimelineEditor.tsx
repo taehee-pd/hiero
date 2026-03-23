@@ -2,13 +2,15 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
-import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
+import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
+import type { TimelineTrack, Transition, Variant, Layer } from '@/lib/schema/types';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { EasingPicker, type EasingValue } from './EasingPicker';
+import { ColorPickerPopover } from '@/components/editor/ColorPickerPopover';
 import { cn } from '@/lib/utils';
 
 type NumericTrackProperty = Exclude<TimelineTrack['property'], 'fill' | 'stroke'>;
@@ -20,8 +22,163 @@ const TRACKS: NumericTrackProperty[] = [
   'translateY',
   'scale',
   'pathLength',
+  'trimStart',
+  'trimEnd',
+  'trimOffset',
+  'strokeWidth',
+  'fillOpacity',
+  'strokeOpacity',
 ];
+
+const COLOR_TRACKS = ['fill', 'stroke'] as const;
+type ColorTrackProperty = (typeof COLOR_TRACKS)[number];
 const PX_PER_MS = 0.35;
+
+// ---------------------------------------------------------------------------
+// I3: Smart track suggestion categories
+// ---------------------------------------------------------------------------
+
+type TrackCategory = 'Transform' | 'Morph' | 'Trim' | 'Style' | 'Color';
+
+type TrackSuggestion = {
+  property: NumericTrackProperty | ColorTrackProperty;
+  category: TrackCategory;
+  dimmed: boolean;
+};
+
+/** Check if a single SVG subpath (segment between M commands) is closed. */
+function isSubPathClosed(segment: string): boolean {
+  return /[Zz]\s*$/.test(segment.trim());
+}
+
+/** Analyse a layer's path data to determine closed/open subpath status. */
+function analysePathTopology(layer: Layer | undefined): { hasClosed: boolean; hasOpen: boolean } {
+  const d = layer?.path?.d;
+  if (!d) return { hasClosed: false, hasOpen: false };
+
+  // Split at M/m commands (each starts a new subpath)
+  const subPaths = d.split(/(?=[Mm])/).filter((s) => s.trim().length > 0);
+  let hasClosed = false;
+  let hasOpen = false;
+  for (const sp of subPaths) {
+    if (isSubPathClosed(sp)) {
+      hasClosed = true;
+    } else {
+      hasOpen = true;
+    }
+  }
+  return { hasClosed, hasOpen };
+}
+
+/** Build categorised track suggestions for a layer binding. */
+function buildTrackSuggestions(layer: Layer | undefined): TrackSuggestion[] {
+  const { hasClosed, hasOpen } = analysePathTopology(layer);
+  const onlyClosed = hasClosed && !hasOpen;
+  const onlyOpen = hasOpen && !hasClosed;
+
+  const suggestions: TrackSuggestion[] = [
+    // Transform (always)
+    { property: 'opacity', category: 'Transform', dimmed: false },
+    { property: 'rotate', category: 'Transform', dimmed: false },
+    { property: 'translateX', category: 'Transform', dimmed: false },
+    { property: 'translateY', category: 'Transform', dimmed: false },
+    { property: 'scale', category: 'Transform', dimmed: false },
+    // Morph (closed subpaths — dim if only open)
+    { property: 'pathLength', category: 'Morph', dimmed: onlyOpen },
+    // Trim (open subpaths — dim if only closed)
+    { property: 'trimStart', category: 'Trim', dimmed: onlyClosed },
+    { property: 'trimEnd', category: 'Trim', dimmed: onlyClosed },
+    { property: 'trimOffset', category: 'Trim', dimmed: onlyClosed },
+    // Style (always)
+    { property: 'strokeWidth', category: 'Style', dimmed: false },
+    { property: 'fillOpacity', category: 'Style', dimmed: false },
+    { property: 'strokeOpacity', category: 'Style', dimmed: false },
+    // Color (always)
+    { property: 'fill', category: 'Color', dimmed: false },
+    { property: 'stroke', category: 'Color', dimmed: false },
+  ];
+  return suggestions;
+}
+
+/** Group suggestions by category, preserving order. */
+function groupSuggestionsByCategory(
+  suggestions: TrackSuggestion[],
+): Array<{ category: TrackCategory; items: TrackSuggestion[] }> {
+  const groups: Array<{ category: TrackCategory; items: TrackSuggestion[] }> = [];
+  for (const suggestion of suggestions) {
+    const existing = groups.find((g) => g.category === suggestion.category);
+    if (existing) {
+      existing.items.push(suggestion);
+    } else {
+      groups.push({ category: suggestion.category, items: [suggestion] });
+    }
+  }
+  return groups;
+}
+
+// ---------------------------------------------------------------------------
+// I9: Trim path visual preview
+// ---------------------------------------------------------------------------
+
+function TrimPreview({
+  trimStart,
+  trimEnd,
+  trimOffset,
+  pathD,
+}: {
+  trimStart: number;
+  trimEnd: number;
+  trimOffset: number;
+  pathD: string;
+}) {
+  const pathRef = useRef<SVGPathElement>(null);
+  const [pathLength, setPathLength] = useState(100);
+
+  useEffect(() => {
+    if (pathRef.current) {
+      setPathLength(pathRef.current.getTotalLength() || 100);
+    }
+  }, [pathD]);
+
+  const { dashArray, dashOffset } = computeTrimValues(trimStart, trimEnd, trimOffset, pathLength);
+
+  return (
+    <svg
+      width={40}
+      height={20}
+      viewBox="0 0 40 20"
+      className="shrink-0 rounded border border-border/40 bg-muted/30"
+      aria-label="Trim preview"
+    >
+      {/* Ghost path (full stroke, faded) */}
+      <path
+        d={pathD}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        opacity={0.15}
+        style={{
+          transform: 'scale(0.7)',
+          transformOrigin: 'center',
+        }}
+      />
+      {/* Visible trim portion */}
+      <path
+        ref={pathRef}
+        d={pathD}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeDasharray={dashArray}
+        strokeDashoffset={dashOffset}
+        style={{
+          transform: 'scale(0.7)',
+          transformOrigin: 'center',
+        }}
+      />
+    </svg>
+  );
+}
 
 /** Clamp a menu position so it stays within the viewport. */
 function clampMenuPosition(x: number, y: number, menuWidth = 160, menuHeight = 80): { x: number; y: number } {
@@ -36,6 +193,12 @@ function clampMenuPosition(x: number, y: number, menuWidth = 160, menuHeight = 8
 type SelectedKeyframe = {
   bindingIndex: number;
   property: NumericTrackProperty;
+  keyframeIndex: number;
+};
+
+type SelectedColorKeyframe = {
+  bindingIndex: number;
+  property: ColorTrackProperty;
   keyframeIndex: number;
 };
 
@@ -243,6 +406,85 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
     }));
   }, [updateTransition]);
 
+  // --- I2b: Color track state & handlers ---
+  const [selectedColor, setSelectedColor] = useState<SelectedColorKeyframe | null>(null);
+  const [colorMenu, setColorMenu] = useState<{ x: number; y: number; key: SelectedColorKeyframe } | null>(null);
+  const colorMenuRef = useRef<HTMLDivElement>(null);
+
+  const handleAddColorKeyframe = useCallback((bindingIndex: number, property: ColorTrackProperty, progress: number) => {
+    const defaultColor = '#000000';
+    updateTransition((draft) => {
+      const nextBindings = draft.layerBindings.map((binding, idx) => {
+        if (idx !== bindingIndex) return binding;
+        const tracks = [...(binding.tracks ?? [])];
+        const existingIdx = tracks.findIndex((track) => track.property === property);
+        if (existingIdx >= 0) {
+          const track = tracks[existingIdx]!;
+          if (isNumericTrack(track)) return binding;
+          const nextKeyframes = [...track.keyframes, defaultColor];
+          tracks[existingIdx] = { ...track, keyframes: nextKeyframes };
+        } else {
+          tracks.push({ property, keyframes: [defaultColor, defaultColor] } as TimelineTrack);
+        }
+        return { ...binding, tracks };
+      });
+      return { ...draft, layerBindings: nextBindings };
+    });
+    scrubTo(progress);
+  }, [scrubTo, updateTransition]);
+
+  const handleColorKeyframeChange = useCallback((key: SelectedColorKeyframe, hex: string) => {
+    updateTransition((draft) => ({
+      ...draft,
+      layerBindings: draft.layerBindings.map((binding, idx) => {
+        if (idx !== key.bindingIndex) return binding;
+        const tracks = (binding.tracks ?? []).map((track) => {
+          if (track.property !== key.property) return track;
+          if (isNumericTrack(track)) return track;
+          const nextKeyframes = [...track.keyframes];
+          nextKeyframes[key.keyframeIndex] = hex;
+          return { ...track, keyframes: nextKeyframes };
+        });
+        return { ...binding, tracks };
+      }),
+    }));
+  }, [updateTransition]);
+
+  const deleteColorKeyframe = useCallback((key: SelectedColorKeyframe) => {
+    updateTransition((draft) => ({
+      ...draft,
+      layerBindings: draft.layerBindings.map((binding, idx) => {
+        if (idx !== key.bindingIndex) return binding;
+        const tracks = (binding.tracks ?? []).map((track) => {
+          if (track.property !== key.property) return track;
+          if (isNumericTrack(track)) return track;
+          const nextKeyframes = track.keyframes.filter((_, i) => i !== key.keyframeIndex);
+          return { ...track, keyframes: nextKeyframes };
+        });
+        return { ...binding, tracks };
+      }),
+    }));
+  }, [updateTransition]);
+
+  // Dismiss color context menu on click outside or Escape
+  useEffect(() => {
+    if (!colorMenu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (colorMenuRef.current && !colorMenuRef.current.contains(event.target as Node)) {
+        setColorMenu(null);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setColorMenu(null);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [colorMenu]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
@@ -289,6 +531,10 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
     };
   }, [menu]);
 
+  // I3: Resolve layer objects for topology analysis
+  const fromState = variant.states[transition.from];
+  const toState = variant.states[transition.to];
+
   const rows = useMemo(() => {
     return transition.layerBindings.flatMap((binding, bindingIndex) => {
       const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
@@ -298,6 +544,111 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
       });
     });
   }, [transition.layerBindings]);
+
+  const colorRows = useMemo(() => {
+    return transition.layerBindings.flatMap((binding, bindingIndex) => {
+      const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
+      return COLOR_TRACKS.map((property) => {
+        const track = (binding.tracks ?? []).find((entry) => entry.property === property);
+        return { bindingIndex, layerId, property, track };
+      });
+    });
+  }, [transition.layerBindings]);
+
+  // I3: Build per-binding track suggestions keyed by binding index
+  const trackSuggestionsByBinding = useMemo(() => {
+    return transition.layerBindings.map((binding) => {
+      const layerId = binding.toLayerId ?? binding.fromLayerId;
+      const layer = layerId
+        ? toState?.layers[layerId] ?? fromState?.layers[layerId]
+        : undefined;
+      return buildTrackSuggestions(layer);
+    });
+  }, [transition.layerBindings, fromState, toState]);
+
+  // I3: State for the add-track dropdown per binding
+  const [addTrackOpen, setAddTrackOpen] = useState<number | null>(null);
+  const addTrackMenuRef = useRef<HTMLDivElement>(null);
+
+  // I3: Dismiss add-track dropdown on click outside
+  useEffect(() => {
+    if (addTrackOpen === null) return;
+    const handleClick = (e: MouseEvent) => {
+      // Don't dismiss if the click is inside the menu itself
+      if (addTrackMenuRef.current && addTrackMenuRef.current.contains(e.target as Node)) return;
+      setAddTrackOpen(null);
+    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAddTrackOpen(null); };
+    // Delay listener attachment so the opening click doesn't immediately close
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClick);
+      document.addEventListener('keydown', handleEsc);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [addTrackOpen]);
+
+  // I3: Add a track to a binding from the suggestion dropdown
+  const handleAddSuggestedTrack = useCallback(
+    (bindingIndex: number, property: NumericTrackProperty | ColorTrackProperty) => {
+      updateTransition((draft) => {
+        const nextBindings = draft.layerBindings.map((binding, idx) => {
+          if (idx !== bindingIndex) return binding;
+          const tracks = [...(binding.tracks ?? [])];
+          // Don't add duplicate tracks
+          if (tracks.some((t) => t.property === property)) return binding;
+          if (property === 'fill' || property === 'stroke') {
+            tracks.push({ property, keyframes: ['#000000', '#000000'] });
+          } else {
+            tracks.push({ property, keyframes: [0, 0] });
+          }
+          return { ...binding, tracks };
+        });
+        return { ...draft, layerBindings: nextBindings };
+      });
+      setAddTrackOpen(null);
+    },
+    [updateTransition],
+  );
+
+  // I9: Compute current trim values per binding for preview
+  const trimPreviewData = useMemo(() => {
+    return transition.layerBindings.map((binding) => {
+      const trimStartTrack = (binding.tracks ?? []).find((t) => t.property === 'trimStart');
+      const trimEndTrack = (binding.tracks ?? []).find((t) => t.property === 'trimEnd');
+      const trimOffsetTrack = (binding.tracks ?? []).find((t) => t.property === 'trimOffset');
+      const hasTrim = trimStartTrack || trimEndTrack || trimOffsetTrack;
+      if (!hasTrim) return null;
+
+      const layerId = binding.toLayerId ?? binding.fromLayerId;
+      const layer = layerId
+        ? toState?.layers[layerId] ?? fromState?.layers[layerId]
+        : undefined;
+      const pathD = layer?.path?.d;
+      if (!pathD) return null;
+
+      // Interpolate trim values based on playhead progress
+      const getTrackValue = (track: TimelineTrack | undefined, fallback: number): number => {
+        if (!track || !isNumericTrack(track) || track.keyframes.length === 0) return fallback;
+        if (track.keyframes.length === 1) return track.keyframes[0] ?? fallback;
+        const idx = playhead * (track.keyframes.length - 1);
+        const lo = Math.floor(idx);
+        const hi = Math.min(lo + 1, track.keyframes.length - 1);
+        const t = idx - lo;
+        return (track.keyframes[lo] ?? fallback) * (1 - t) + (track.keyframes[hi] ?? fallback) * t;
+      };
+
+      return {
+        trimStart: getTrackValue(trimStartTrack, 0),
+        trimEnd: getTrackValue(trimEndTrack, 1),
+        trimOffset: getTrackValue(trimOffsetTrack, 0),
+        pathD,
+      };
+    });
+  }, [transition.layerBindings, fromState, toState, playhead]);
 
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-3">
@@ -388,7 +739,158 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
               </div>
             );
           })}
+
+          {/* I9: Per-binding trim preview */}
+          {transition.layerBindings.map((binding, bindingIndex) => {
+            const preview = trimPreviewData[bindingIndex];
+            if (!preview) return null;
+            const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
+            return (
+              <div
+                key={`trim-preview-${bindingIndex}`}
+                className="flex items-center gap-2 border-b border-border/40 px-3 py-1 text-[length:var(--text-label)] text-muted-foreground"
+              >
+                <span className="truncate text-[10px]">{layerId} trim</span>
+                <TrimPreview
+                  trimStart={preview.trimStart}
+                  trimEnd={preview.trimEnd}
+                  trimOffset={preview.trimOffset}
+                  pathD={preview.pathD}
+                />
+              </div>
+            );
+          })}
+
+          {/* I2b: Color track rows */}
+          {colorRows.length > 0 && (
+            <div className="border-t-2 border-border/50 mt-px">
+              {colorRows.map((row, rowIndex) => {
+                const track = row.track;
+                const colorKeyframes: string[] = track && !isNumericTrack(track) ? track.keyframes : [];
+                const trackEasing = track?.easing;
+
+                return (
+                  <div
+                    key={`color-${row.layerId}-${row.property}-${rowIndex}`}
+                    className={cn('relative grid grid-cols-[180px_auto_1fr] border-b border-border/70 text-[length:var(--text-label)]', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
+                  >
+                    <div className="truncate px-3 py-2 font-medium text-foreground">
+                      {row.layerId} · <span className="text-primary/80">{row.property}</span>
+                    </div>
+
+                    <div className="flex items-center px-1">
+                      {track ? (
+                        <EasingPicker
+                          value={trackEasing ?? 'linear'}
+                          onSelect={(val) => handleTrackEasingChange(row.bindingIndex, row.property, val)}
+                        />
+                      ) : (
+                        <span className="text-[length:var(--text-caption)] text-muted-foreground/40">—</span>
+                      )}
+                    </div>
+
+                    <div
+                      className="relative h-8 cursor-crosshair"
+                      onClick={(event) => {
+                        const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        const progress = (event.clientX - rect.left) / rect.width;
+                        handleAddColorKeyframe(row.bindingIndex, row.property, progress);
+                      }}
+                    >
+                      {colorKeyframes.map((color, index) => {
+                        const progress = colorKeyframes.length <= 1 ? index : index / (colorKeyframes.length - 1);
+                        const isSelected = selectedColor?.bindingIndex === row.bindingIndex && selectedColor?.property === row.property && selectedColor?.keyframeIndex === index;
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            aria-label={`Color keyframe ${index + 1} for ${row.property} (${color}) at ${Math.round(progress * 100)}%`}
+                            className={cn(
+                              'absolute top-1/2 z-30 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow-sm cursor-grab',
+                              isSelected ? 'ring-2 ring-primary ring-offset-1' : '',
+                            )}
+                            style={{ left: `${progress * 100}%`, backgroundColor: color || '#000000' }}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setSelectedColor({ bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index });
+                            }}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              const key: SelectedColorKeyframe = { bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index };
+                              setSelectedColor(key);
+                              setColorMenu({ x: event.clientX, y: event.clientY, key });
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* I3: Per-binding "Add Track" dropdown with smart suggestions */}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {transition.layerBindings.map((binding, bindingIndex) => {
+          const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
+          const suggestions = trackSuggestionsByBinding[bindingIndex] ?? [];
+          const grouped = groupSuggestionsByCategory(suggestions);
+          const existingProps = new Set((binding.tracks ?? []).map((t) => t.property));
+          const isOpen = addTrackOpen === bindingIndex;
+
+          return (
+            <div key={`add-track-${bindingIndex}`} className="relative">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 rounded-lg text-[length:var(--text-label)]"
+                onClick={() => setAddTrackOpen(isOpen ? null : bindingIndex)}
+              >
+                <ChevronDown className="mr-1 size-3" />
+                Add Track ({layerId})
+              </Button>
+              {isOpen && (
+                <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
+                  {grouped.map((group) => (
+                    <div key={group.category}>
+                      <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                        {group.category}
+                      </p>
+                      {group.items.map((item) => {
+                        const alreadyAdded = existingProps.has(item.property);
+                        return (
+                          <button
+                            key={item.property}
+                            type="button"
+                            disabled={alreadyAdded}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded px-2 py-1 text-left text-xs',
+                              alreadyAdded
+                                ? 'cursor-default text-muted-foreground/40'
+                                : item.dimmed
+                                  ? 'text-muted-foreground/50 hover:bg-muted/60 hover:text-foreground'
+                                  : 'text-foreground hover:bg-muted/80',
+                            )}
+                            onClick={() => handleAddSuggestedTrack(bindingIndex, item.property)}
+                          >
+                            <span>{item.property}</span>
+                            {alreadyAdded && (
+                              <span className="text-[9px] text-muted-foreground/40">added</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* UX-F5: Collision-aware context menu positioning */}
@@ -456,6 +958,41 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
               onBlur={commitInlineEdit}
             />
           </div>
+        </div>
+      ) : null}
+
+      {/* I2b: Color keyframe context menu with color picker */}
+      {colorMenu ? (
+        <div
+          ref={colorMenuRef}
+          className="fixed z-50 rounded-md border border-border bg-popover p-2 shadow-lg"
+          style={{ left: clampMenuPosition(colorMenu.x, colorMenu.y, 200, 120).x, top: clampMenuPosition(colorMenu.x, colorMenu.y, 200, 120).y }}
+        >
+          <div className="mb-2">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Keyframe color
+            </label>
+            <ColorPickerPopover
+              value={(() => {
+                const binding = transition.layerBindings[colorMenu.key.bindingIndex];
+                const track = (binding?.tracks ?? []).find((t) => t.property === colorMenu.key.property);
+                if (track && !isNumericTrack(track)) {
+                  return track.keyframes[colorMenu.key.keyframeIndex] ?? '#000000';
+                }
+                return '#000000';
+              })()}
+              onChange={(hex) => handleColorKeyframeChange(colorMenu.key, hex)}
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start text-sm text-destructive hover:text-destructive"
+            onClick={() => { deleteColorKeyframe(colorMenu.key); setColorMenu(null); }}
+          >
+            Delete
+          </Button>
         </div>
       ) : null}
     </div>

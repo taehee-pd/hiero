@@ -101,6 +101,11 @@ export type Variant = {
   defaultState: string;
   states: Record<string, State>;
   variableValue?: number;  // 0.0-1.0, controls progressive layer fill
+  weightControlPoints?: {
+    ultralight?: string;  // SVG d string
+    regular?: string;
+    black?: string;
+  };
 };
 
 export type State = {
@@ -237,6 +242,11 @@ export type LayerBinding = {
     mixer?: 'native' | 'flubber';
   };
   compoundTrimMode?: CompoundTrimMode;
+  /** Phase I7: Optional strategy override. When set to a non-'auto' value,
+   *  the per-binding animation strategy is forced instead of auto-classified. */
+  strategyOverride?: 'auto' | 'morph' | 'trim' | 'crossfade';
+  /** Phase I10: Indicates this binding's tracks were auto-populated by the system. */
+  autoPopulated?: boolean;
 };
 
 export type TimelineTrack =

@@ -25,6 +25,8 @@ This directory contains structured specifications for the icon authoring tool's 
 |------|-------------|
 | [editor-store.md](./editor/editor-store.md) | Zustand editor state, actions (layer rename, transition preview), and undo/redo |
 | [cross-icon-transitions.md](./editor/cross-icon-transitions.md) | Cross-icon transition UI: endpoint pickers, direction selector, and preview integration |
+| [animation-tab.md](./editor/animation-tab.md) | Animation tab redesign: trim path UI, per-subpath strategy display, variable value preview |
+| [inspect-tab.md](./editor/inspect-tab.md) | Inspect tab redesign: variable value, topology, strategy badges, weight, gradient |
 
 ## Export
 

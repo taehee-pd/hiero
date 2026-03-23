@@ -18,7 +18,7 @@ export type CrossIconContext = {
 };
 
 export type FallbackMode = 'fade-through' | 'scale-through' | 'slide-through' | 'replace-with-delay';
-export type AnimationType = 'morph' | 'fade-out' | 'fade-in' | 'scale' | 'translate' | 'rotate' | 'replace';
+export type AnimationType = 'morph' | 'trim' | 'fade-out' | 'fade-in' | 'scale' | 'translate' | 'rotate' | 'replace';
 
 export type MorphReadiness = {
   score: number;
@@ -361,6 +361,74 @@ function resolveLayerBinding(
     easing: transition.stagger?.easing ?? transition.easing ?? 'linear',
     diagnostics,
   };
+
+  // I7: Honour per-binding strategyOverride before the automatic strategy cascade.
+  const override = binding.strategyOverride;
+  if (override && override !== 'auto') {
+    const fromD = fromLayer?.path?.d;
+    const toD = toLayer?.path?.d;
+
+    if (override === 'morph' && fromD && toD) {
+      diagnostics.push('strategyOverride:morph');
+      // Attempt strict morph, then bestGuess, then crossIcon
+      try {
+        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
+        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
+        const sm = strictMorph(fromCanonical, toCanonical);
+        resolved.morph = sm;
+        resolved.animationType = 'morph';
+        return resolved;
+      } catch { /* fall through to bestGuess */ }
+
+      {
+        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
+        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
+        const bg = bestGuessMorph(fromCanonical, toCanonical) ?? undefined;
+        if (bg) {
+          resolved.morph = bg;
+          resolved.animationType = 'morph';
+          return resolved;
+        }
+      }
+
+      try {
+        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
+        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
+        const cm = attemptCrossIconMorph(fromCanonical, toCanonical);
+        if (cm) {
+          resolved.morph = cm;
+          resolved.animationType = 'morph';
+          diagnostics.push('overrideMorphViaCrossIcon');
+          return resolved;
+        }
+      } catch { /* fall through to default */ }
+
+      diagnostics.push('overrideMorphFailed:allStrategiesExhausted');
+      // Fall through to default cascade below
+    }
+
+    if (override === 'trim') {
+      diagnostics.push('strategyOverride:trim');
+      resolved.morph = undefined;
+      resolved.animationType = 'trim';
+      // Ensure default trim tracks exist if the binding has none
+      const hasTrimTrack = resolved.tracks.some(
+        (t) => t.property === 'trimStart' || t.property === 'trimEnd' || t.property === 'trimOffset',
+      );
+      if (!hasTrimTrack) {
+        resolved.tracks.push({ property: 'trimEnd', keyframes: [0, 1], easing: transition.easing ?? 'linear' });
+      }
+      return resolved;
+    }
+
+    if (override === 'crossfade') {
+      diagnostics.push('strategyOverride:crossfade');
+      resolved.morph = undefined;
+      resolved.fallback = 'fade-through';
+      resolved.animationType = 'replace';
+      return resolved;
+    }
+  }
 
   // Track-strategy bindings with explicit tracks are animated via their track
   // keyframes only. Path morphing would double-animate (morph + CSS transform).

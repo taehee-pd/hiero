@@ -568,11 +568,16 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
 
   // I3: State for the add-track dropdown per binding
   const [addTrackOpen, setAddTrackOpen] = useState<number | null>(null);
+  const addTrackMenuRef = useRef<HTMLDivElement>(null);
 
   // I3: Dismiss add-track dropdown on click outside
   useEffect(() => {
     if (addTrackOpen === null) return;
-    const handleClick = () => setAddTrackOpen(null);
+    const handleClick = (e: MouseEvent) => {
+      // Don't dismiss if the click is inside the menu itself
+      if (addTrackMenuRef.current && addTrackMenuRef.current.contains(e.target as Node)) return;
+      setAddTrackOpen(null);
+    };
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAddTrackOpen(null); };
     // Delay listener attachment so the opening click doesn't immediately close
     const timer = setTimeout(() => {
@@ -849,7 +854,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
                 Add Track ({layerId})
               </Button>
               {isOpen && (
-                <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
+                <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
                   {grouped.map((group) => (
                     <div key={group.category}>
                       <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">

@@ -1612,7 +1612,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
       {desktop ? <TitleTabBar /> : null}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_196px_minmax(0,1fr)_288px]">
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_220px_minmax(0,1fr)_304px]">
         <ToolRail
           onOpenCommand={() => setCommandOpen(true)}
           onOpenImport={() => setImportDialogOpen(true)}

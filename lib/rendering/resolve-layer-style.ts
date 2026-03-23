@@ -55,11 +55,9 @@ export function resolveLayerStyleForRendering(
     fill = coercePaint(fill, paletteColor);
     stroke = coercePaint(stroke, paletteColor);
   } else if (renderingMode === 'autoGradient') {
-    // Auto-gradient mode: resolve as monochrome (currentColor) and flag for
-    // gradient rendering.  Full <linearGradient> SVG generation is a TODO;
-    // for now the flag lets the renderer know this mode is active.
-    fill = coercePaint(fill, 'currentColor');
-    stroke = coercePaint(stroke, 'currentColor');
+    // Auto-gradient mode: preserve original fill/stroke colors so the
+    // renderer can derive gradient stops from them, and set the flag so
+    // the SVG renderer generates <linearGradient> defs.
     autoGradientFlag = true;
   }
 

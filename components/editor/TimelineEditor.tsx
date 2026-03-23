@@ -28,7 +28,8 @@ const TRACKS: NumericTrackProperty[] = [
   'strokeWidth',
   'fillOpacity',
   'strokeOpacity',
-  'variableValue',
+  // variableValue is excluded from the UI until preview-svg and the runtime
+  // playback store handle it (the track serialises fine but never affects output).
 ];
 
 const COLOR_TRACKS = ['fill', 'stroke'] as const;

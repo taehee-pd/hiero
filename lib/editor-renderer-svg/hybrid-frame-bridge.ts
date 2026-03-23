@@ -55,8 +55,18 @@ export function applyHybridFrameToSVG(
   // Nothing to render — leave element untouched
   if (totalEntries === 0) return;
 
-  // Fast path: single strategy with a single subpath — update in-place
+  // Fast path: single strategy with a single subpath — update in-place.
+  // Clean up any stale hybrid subpath elements that may have been injected
+  // by a previous mixed-mode call before applying the single entry.
   if (totalEntries === 1) {
+    const staleElements = svgElement.querySelectorAll<SVGPathElement>(
+      `path[${HYBRID_SUBPATH_ATTR}][data-layer-id="${escapedId}"]`,
+    );
+    staleElements.forEach((el) => el.remove());
+
+    // Restore original path visibility (may have been hidden by mixed-mode)
+    pathEl.style.removeProperty('display');
+
     applySingleEntry(pathEl, frame);
     return;
   }

@@ -5,6 +5,7 @@ import {
   resolveVariantRenderingMode,
 } from '@/lib/rendering/resolve-layer-style';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
+import { generateAutoGradient } from '@/lib/rendering/auto-gradient';
 
 export type RenderSvgInput = {
   icon: Icon;
@@ -185,11 +186,33 @@ function applyLayerStyle(
 ): void {
   const baseStyle = resolveLayerStyleForRendering(layer, renderingMode, tokens);
   const s = variableValue ? applyVariableValue(baseStyle, variableValue) : baseStyle;
-  el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
-  el.setAttribute(
-    'stroke',
-    resolvePaint(s.stroke, layer.id, 'stroke', defs, tokens),
-  );
+
+  // Auto-gradient: replace solid fills with a generated linear gradient
+  if (s.autoGradient) {
+    const fillColor = extractFixedColor(s.fill);
+    if (fillColor) {
+      const gradientId = `auto-gradient-${layer.id}-fill`;
+      defs.appendChild(createAutoGradientDef(gradientId, fillColor));
+      el.setAttribute('fill', `url(#${gradientId})`);
+    } else {
+      el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
+    }
+
+    const strokeColor = extractFixedColor(s.stroke);
+    if (strokeColor) {
+      const gradientId = `auto-gradient-${layer.id}-stroke`;
+      defs.appendChild(createAutoGradientDef(gradientId, strokeColor));
+      el.setAttribute('stroke', `url(#${gradientId})`);
+    } else {
+      el.setAttribute('stroke', resolvePaint(s.stroke, layer.id, 'stroke', defs, tokens));
+    }
+  } else {
+    el.setAttribute('fill', resolvePaint(s.fill, layer.id, 'fill', defs, tokens));
+    el.setAttribute(
+      'stroke',
+      resolvePaint(s.stroke, layer.id, 'stroke', defs, tokens),
+    );
+  }
 
   if (s.strokeWidth !== undefined) {
     el.setAttribute('stroke-width', String(s.strokeWidth));
@@ -379,4 +402,36 @@ function getLinearGradientVector(
 function formatNumber(value: number): string {
   const rounded = Number(value.toFixed(6));
   return Object.is(rounded, -0) ? '0' : String(rounded);
+}
+
+/**
+ * Extract a fixed hex color from a PaintRef, returning undefined if the
+ * paint is not a simple fixed color.
+ */
+function extractFixedColor(paint: PaintRef | undefined): string | undefined {
+  if (!paint) return undefined;
+  if (paint.mode === 'fixed' && paint.value !== 'none') return paint.value;
+  return undefined;
+}
+
+/**
+ * Create a `<linearGradient>` SVG def from a fixed color using the
+ * auto-gradient algorithm (lighter → original → darker, top-to-bottom).
+ */
+function createAutoGradientDef(
+  id: string,
+  sourceColor: string,
+): SVGLinearGradientElement {
+  const stops = generateAutoGradient(sourceColor);
+  const [x1, y1, x2, y2] = getLinearGradientVector(180); // top-to-bottom
+  const gradient = document.createElementNS(SVG_NS, 'linearGradient');
+
+  gradient.setAttribute('id', id);
+  gradient.setAttribute('x1', formatNumber(x1));
+  gradient.setAttribute('y1', formatNumber(y1));
+  gradient.setAttribute('x2', formatNumber(x2));
+  gradient.setAttribute('y2', formatNumber(y2));
+  appendGradientStops(gradient, stops);
+
+  return gradient;
 }

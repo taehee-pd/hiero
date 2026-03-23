@@ -71,11 +71,18 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   const [newMasterSize, setNewMasterSize] = useState<(typeof SIZE_OPTIONS)[number]>('24');
   const [customSize, setCustomSize] = useState('24');
   const [newItemKind, setNewItemKind] = useState<GuideItem['kind']>('rect');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedMasterId && guideMasters[selectedMasterId]) return;
     setSelectedMasterId(activeMasterId ?? guideMasterList[0]?.id ?? null);
   }, [activeMasterId, guideMasterList, guideMasters, selectedMasterId]);
+
+  useEffect(() => {
+    if (!pendingDeleteId) return;
+    const timer = window.setTimeout(() => setPendingDeleteId(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [pendingDeleteId]);
 
   const selectedMaster =
     selectedMasterId && guideMasters[selectedMasterId]
@@ -124,8 +131,12 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   };
 
   const handleDeleteMaster = (master: GuideMaster) => {
-    if (!window.confirm(`Delete guide master "${master.name}"?`)) return;
-    removeGuideMaster(master.id);
+    if (pendingDeleteId === master.id) {
+      setPendingDeleteId(null);
+      removeGuideMaster(master.id);
+    } else {
+      setPendingDeleteId(master.id);
+    }
   };
 
   const handleAddGuideItem = () => {
@@ -240,7 +251,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                             'w-full rounded-xl border px-3 py-3 text-left transition',
                             isSelected
                               ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
-                              : 'border-border/80 bg-background/80 hover:border-foreground/12 hover:bg-background',
+                              : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
                           )}
                         >
                           <div className="flex items-center justify-between gap-3">
@@ -299,15 +310,39 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                     >
                       <Copy className="size-3.5" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteMaster(selectedMaster)}
-                      aria-label="Delete guide master"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
+                    {pendingDeleteId === selectedMaster.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-destructive">Confirm delete?</span>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="workspace-tool-button h-7 rounded-lg px-2 text-xs font-semibold text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteMaster(selectedMaster)}
+                          aria-label="Confirm delete guide master"
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="workspace-tool-button h-7 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => setPendingDeleteId(null)}
+                          aria-label="Cancel delete"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteMaster(selectedMaster)}
+                        aria-label="Delete guide master"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 

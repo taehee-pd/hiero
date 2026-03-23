@@ -344,14 +344,7 @@ export function GeometryChangeWarning({
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: 0,
-      }}
-    >
+    <div className="flex flex-col gap-2" role="alert" aria-live="polite">
       {Array.from(byTransition.entries()).map(([transitionId, transitionWarnings]) => (
         <TransitionWarningCard
           key={transitionId}
@@ -388,8 +381,6 @@ function TransitionWarningCard({
   const [collapsed, setCollapsed] = useState(false);
 
   const hasError = warnings.some((w) => w.severity === 'error');
-  const borderColor = hasError ? '#f59e0b' : '#fbbf24';
-  const bgColor = hasError ? '#fffbeb' : '#fefce8';
 
   const strategyLabel = transition?.strategy ?? 'unknown';
   const fromTo = transition
@@ -398,36 +389,22 @@ function TransitionWarningCard({
 
   return (
     <div
-      style={{
-        background: bgColor,
-        border: `1px solid ${borderColor}`,
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 12,
-      }}
+      className={`rounded-lg border p-3 text-xs ${
+        hasError ? 'border-amber-500 bg-amber-50' : 'border-amber-400 bg-yellow-50'
+      }`}
+      role="alert"
+      aria-live="polite"
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          marginBottom: collapsed ? 0 : 8,
-        }}
-      >
-        <span style={{ fontSize: 14 }}>&#x26A0;</span>
-        <span style={{ fontWeight: 600, color: '#92400e', flex: 1 }}>
+      <div className={`flex items-center gap-1.5 ${collapsed ? '' : 'mb-2'}`}>
+        <span className="text-sm">&#x26A0;</span>
+        <span className="flex-1 font-semibold text-amber-800">
           Geometry Change Breaks Transition
         </span>
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
-          style={{
-            all: 'unset',
-            cursor: 'pointer',
-            fontSize: 11,
-            color: '#92400e',
-            padding: '2px 4px',
-          }}
+          className="cursor-pointer rounded px-1 py-0.5 text-[11px] text-amber-800 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           {collapsed ? 'Show' : 'Hide'}
         </button>
@@ -436,71 +413,27 @@ function TransitionWarningCard({
       {!collapsed && (
         <>
           {/* Transition info */}
-          <div
-            style={{
-              fontSize: 11,
-              color: '#78350f',
-              marginBottom: 8,
-              display: 'flex',
-              gap: 6,
-              alignItems: 'center',
-            }}
-          >
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] text-amber-900">
             <span>Transition:</span>
-            <span
-              style={{
-                padding: '1px 5px',
-                borderRadius: 3,
-                background: '#fde68a',
-                fontFamily: 'monospace',
-                fontSize: 10,
-              }}
-            >
+            <span className="rounded bg-amber-200 px-1.5 py-px font-mono text-[10px]">
               {fromTo}
             </span>
-            <span
-              style={{
-                padding: '1px 5px',
-                borderRadius: 3,
-                background: '#fcd34d',
-                fontFamily: 'monospace',
-                fontSize: 10,
-              }}
-            >
+            <span className="rounded bg-amber-300 px-1.5 py-px font-mono text-[10px]">
               {strategyLabel}
             </span>
           </div>
 
           {/* Issue list */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              marginBottom: 10,
-            }}
-          >
+          <div className="mb-2.5 flex flex-col gap-1">
             {warnings.map((w, i) => (
               <div
                 key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 6,
-                  fontSize: 11,
-                  color: '#78350f',
-                }}
+                className="flex items-start gap-1.5 text-[11px] text-amber-900"
               >
                 <span
-                  style={{
-                    display: 'inline-block',
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: w.severity === 'error' ? '#ef4444' : '#f59e0b',
-                    marginTop: 4,
-                    flexShrink: 0,
-                  }}
+                  className={`mt-1 inline-block size-1.5 shrink-0 rounded-full ${
+                    w.severity === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                  }`}
                 />
                 <span>{w.issue}</span>
               </div>
@@ -508,37 +441,21 @@ function TransitionWarningCard({
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="flex gap-1.5">
             {hasError && onDowngradeStrategy && (
               <button
+                type="button"
                 onClick={() => onDowngradeStrategy(transitionId, 'replace')}
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  background: '#f59e0b',
-                  color: 'white',
-                  fontSize: 11,
-                  fontWeight: 500,
-                }}
+                className="cursor-pointer rounded bg-amber-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Downgrade to crossfade
               </button>
             )}
             {onDismiss && (
               <button
+                type="button"
                 onClick={onDismiss}
-                style={{
-                  all: 'unset',
-                  cursor: 'pointer',
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  border: '1px solid #d97706',
-                  color: '#92400e',
-                  fontSize: 11,
-                  fontWeight: 500,
-                }}
+                className="cursor-pointer rounded border border-amber-600 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 Dismiss
               </button>

@@ -134,6 +134,36 @@
   --font-system-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-system-rounded: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'SF Pro', 'Helvetica Neue', sans-serif;
 
+  /* ── Spacing Scale (8px base grid) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --panel-padding: var(--space-3);
+  --panel-gap: var(--space-2);
+  --section-gap: var(--space-3);
+
+  /* ── Typography Scale ── */
+  --text-heading: 13px;
+  --text-body: 13px;
+  --text-label: 11px;
+  --text-caption: 10px;
+  --text-kicker: 9px;
+
+  /* ── Border Levels ── */
+  --border-level-1: var(--border-subtle);
+  --border-level-2: var(--border-separator);
+  --border-level-3: rgba(0, 0, 0, 0.16);
+
+  /* ── Shadow Levels ── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.10);
+
   /* ── macOS-native Spacing ── */
   --toolbar-height: 38px;
   --sidebar-width: 240px;
@@ -355,6 +385,17 @@
   --bg-content: #1C1C1E;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-separator: rgba(255, 255, 255, 0.1);
+
+  /* ── Dark Border Levels ── */
+  --border-level-1: rgba(255, 255, 255, 0.06);
+  --border-level-2: rgba(255, 255, 255, 0.1);
+  --border-level-3: rgba(255, 255, 255, 0.18);
+
+  /* ── Dark Shadow Levels ── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.16);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.22);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.24);
 }
 
 /* ══════════════════════════════════════════════════
@@ -598,6 +639,26 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-secondary) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
   }
 
   html {
@@ -768,21 +829,62 @@
   .workspace-tool-button {
     border: 1px solid transparent;
     background: transparent;
+    transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
   }
 
   .workspace-tool-button:hover {
-    border-color: var(--border-secondary);
-    background: var(--background-hover);
-  }
-
-  .workspace-tool-button[data-active='true'] {
-    border-color: var(--border-secondary);
+    border-color: var(--border-level-2);
     background: var(--background-hover);
     color: var(--foreground);
   }
 
+  .workspace-tool-button[data-active='true'] {
+    border-color: var(--border-level-2);
+    background: var(--background-hover);
+    color: var(--foreground);
+  }
+
+  .workspace-tool-button:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
   .workspace-scroll {
     scrollbar-color: var(--border-secondary) transparent;
+    scrollbar-width: thin;
+  }
+
+  .workspace-scroll ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .workspace-scroll ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .workspace-scroll ::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: 999px;
+  }
+
+  .workspace-scroll ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  .workspace-coming-soon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--muted);
+    padding: 0.125rem 0.5rem;
+    font-size: var(--text-caption);
+    line-height: 1;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    white-space: nowrap;
   }
 
   .workspace-canvas-shell {
@@ -1456,7 +1558,10 @@
   }
 
   .wire-section {
-    padding: 0 0 10px;
+    padding: 10px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .wire-section-header {
@@ -1751,6 +1856,15 @@
     letter-spacing: 0.05em;
     color: rgba(0, 0, 0, 0.4);
     text-transform: uppercase;
+    padding-top: 2px;
+  }
+
+  .wire-label + .wire-label,
+  .wire-field + .wire-label,
+  .grid + .wire-label {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
   }
 
   .wire-field {

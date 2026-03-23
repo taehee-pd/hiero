@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -49,7 +49,7 @@ function hasSvgDragData(dataTransfer: DataTransfer): boolean {
   );
 }
 
-export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
+export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const interactionRootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -65,6 +65,7 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
   const [isDropActive, setIsDropActive] = useState(false);
   const [isSpacePanEnabled, setIsSpacePanEnabled] = useState(false);
   const [isDragPanning, setIsDragPanning] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const lastAutoFitTargetRef = useRef<string | null>(null);
 
   // Subscribe to relevant state for re-render
@@ -196,7 +197,9 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
     try {
       await importSvgFileIntoEditor(file);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to import SVG file.');
+      const message = error instanceof Error ? error.message : 'Failed to import SVG file.';
+      setImportError(message);
+      setTimeout(() => setImportError(null), 3000);
     }
   }, []);
 
@@ -828,9 +831,18 @@ export function Canvas({ showStatusHud = true }: { showStatusHud?: boolean }) {
           Drop SVG to import
         </div>
       ) : null}
+
+      {importError && (
+        <div
+          role="alert"
+          className="absolute bottom-4 left-1/2 z-50 max-w-sm -translate-x-1/2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur-sm"
+        >
+          {importError}
+        </div>
+      )}
     </div>
   );
-}
+});
 
 function getControlHandlePosition(
   subPath: SubPath,

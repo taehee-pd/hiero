@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Search, Shapes } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
@@ -31,7 +31,7 @@ type IconListPanelProps = {
   onSelectIcon?: (iconId: string) => void;
 };
 
-export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
+export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconListPanelProps) {
   const icons = useIconList();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const { setCurrentIcon } = useEditorActions();
@@ -49,11 +49,11 @@ export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="workspace-panel-header px-3 py-2.5">
+      <div className="workspace-panel-header sticky top-0 z-10 bg-background px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="workspace-kicker text-[11px]">Icon List</p>
-            <p className="mt-1 text-[13px] font-semibold text-foreground">Switch Icons</p>
+            <p className="workspace-kicker text-[length:var(--text-label)]">Icon List</p>
+            <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">Switch Icons</p>
           </div>
           <span className="workspace-badge">{icons.length}</span>
         </div>
@@ -71,7 +71,7 @@ export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
       </div>
 
       <ScrollArea className="workspace-scroll flex-1">
-        <div className="flex flex-col gap-0.5 p-1.5">
+        <div className="flex flex-col gap-0.5 p-3">
           {filteredIcons.length === 0 && (
             <div className="workspace-empty-state mx-1 rounded-xl px-3 py-5 text-center text-xs text-muted-foreground">
               <p className="font-medium text-foreground">No matching icons</p>
@@ -84,7 +84,7 @@ export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
               key={icon.id}
               onClick={() => handleSelectIcon(icon.id)}
               className={cn(
-                'flex items-start gap-2 rounded-xl border border-transparent px-2.5 py-2 text-left text-sm transition-colors',
+                'flex items-start gap-2 rounded-xl border border-transparent px-3 py-2 text-left text-sm transition-colors',
                 'hover:border-border/70 hover:bg-secondary/50',
                 icon.id === currentIconId
                   ? 'border-primary/25 bg-primary/8 text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]'
@@ -93,8 +93,8 @@ export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
             >
               <Shapes className="mt-0.5 size-3.5 shrink-0 opacity-60" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium">{icon.name}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">{icon.id}</span>
+                <span className="block truncate text-[length:var(--text-body)] font-medium">{icon.name}</span>
+                <span className="block truncate text-[length:var(--text-label)] text-muted-foreground">{icon.id}</span>
               </span>
             </button>
           ))}
@@ -102,4 +102,4 @@ export function IconListPanel({ onSelectIcon }: IconListPanelProps) {
       </ScrollArea>
     </div>
   );
-}
+});

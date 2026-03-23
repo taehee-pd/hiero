@@ -136,7 +136,11 @@ export function DesktopCommandBridge() {
     const installed = await installUpdate();
     if (!installed) {
       setIsInstallingUpdate(false);
-      window.alert('The update is not ready to install yet.');
+      document.dispatchEvent(
+        new CustomEvent('coniva:toast', {
+          detail: { message: 'The update is not ready to install yet.' },
+        }),
+      );
     }
   };
 
@@ -292,7 +296,11 @@ async function handleDesktopCommand(
       await openExternal(DOCUMENTATION_URL);
       return;
     case 'help.about':
-      window.alert('Coniva\nIcon design studio for stateful, animated SVG icons.');
+      document.dispatchEvent(
+        new CustomEvent('coniva:toast', {
+          detail: { message: 'Coniva — Icon design studio for stateful, animated SVG icons.' },
+        }),
+      );
       return;
     case 'context.layer.rename':
       renameLayer(command.payload);
@@ -368,7 +376,11 @@ function loadProjectFromJson(data: string) {
     editorStore.getState().loadProject(parsed);
     return true;
   } catch {
-    window.alert('Failed to open project.');
+    document.dispatchEvent(
+      new CustomEvent('coniva:toast', {
+        detail: { message: 'Failed to open project.' },
+      }),
+    );
     return false;
   }
 }
@@ -478,22 +490,13 @@ function renameLayer(payload?: Record<string, unknown>) {
   const layerId = getStringPayload(payload, 'layerId');
   if (!layerId) return;
 
-  const nextId = window.prompt('Rename layer', layerId)?.trim();
-  if (!nextId || nextId === layerId) return;
-
-  mutateCurrentStateLayers((layers) => {
-    if (!layers[layerId] || layers[nextId]) return layers;
-
-    const nextLayers: Record<string, Layer> = {};
-    for (const [key, layer] of Object.entries(layers)) {
-      if (key === layerId) {
-        nextLayers[nextId] = { ...layer, id: nextId };
-      } else {
-        nextLayers[key] = patchLayerReferences(layer, layerId, nextId);
-      }
-    }
-    return nextLayers;
-  }, nextId);
+  // Dispatch event so the layer panel can activate inline rename for this layer.
+  // The layer panel handles the actual rename via its own inline editing UI.
+  document.dispatchEvent(
+    new CustomEvent('coniva:layer-rename', {
+      detail: { layerId },
+    }),
+  );
 }
 
 function duplicateLayer(payload?: Record<string, unknown>) {
@@ -557,7 +560,17 @@ function addIconToCollection(payload?: Record<string, unknown>) {
   const iconId = getStringPayload(payload, 'iconId');
   if (!iconId) return;
 
-  const collectionName = window.prompt('Collection name');
+  // Dispatch event so the explorer UI can show an inline input for collection name.
+  // The UI handler should call applyCollectionName() with the user-provided name.
+  document.dispatchEvent(
+    new CustomEvent('coniva:collection-prompt', {
+      detail: { iconId },
+    }),
+  );
+}
+
+/** Apply a collection tag to an icon. Called by the UI after the user provides a name. */
+function applyCollectionName(iconId: string, collectionName: string) {
   if (!collectionName) return;
 
   mutateProject((project) => {
@@ -569,6 +582,13 @@ function addIconToCollection(payload?: Record<string, unknown>) {
     tags.add(tag);
     icon.tags = [...tags].sort((left, right) => left.localeCompare(right));
   });
+}
+
+// Listen for collection name responses from the UI
+if (typeof window !== 'undefined') {
+  window.addEventListener('coniva:collection-response', ((event: CustomEvent<{ iconId: string; name: string }>) => {
+    applyCollectionName(event.detail.iconId, event.detail.name);
+  }) as EventListener);
 }
 
 function toggleFavoriteIcon(payload?: Record<string, unknown>) {
@@ -594,14 +614,29 @@ function deleteExplorerIcon(
   router: ReturnType<typeof useRouter>,
 ) {
   const iconId = getStringPayload(payload, 'iconId');
-  if (!iconId || !window.confirm(`Delete ${iconId}?`)) return;
+  if (!iconId) return;
 
-  mutateProject((project) => {
-    delete project.icons[iconId];
-  });
+  // Dispatch confirmation event; the UI should show an inline confirm and dispatch
+  // coniva:explorer-delete-confirmed when the user confirms.
+  document.dispatchEvent(
+    new CustomEvent('coniva:confirm', {
+      detail: { message: `Delete ${iconId}?`, action: 'explorer-delete', iconId },
+    }),
+  );
 
-  const nextIconId = editorStore.getState().currentIconId;
-  router.push(nextIconId ? buildEditorRoute(nextIconId, editorStore.getState().activeIconSetId) : '/');
+  // Listen once for confirmation response
+  const handler = ((event: CustomEvent<{ iconId: string }>) => {
+    if (event.detail.iconId !== iconId) return;
+    window.removeEventListener('coniva:explorer-delete-confirmed', handler as EventListener);
+
+    mutateProject((project) => {
+      delete project.icons[iconId];
+    });
+
+    const nextIconId = editorStore.getState().currentIconId;
+    router.push(nextIconId ? buildEditorRoute(nextIconId, editorStore.getState().activeIconSetId) : '/');
+  }) as EventListener;
+  window.addEventListener('coniva:explorer-delete-confirmed', handler as EventListener);
 }
 
 function mutateProject(mutator: (project: Project) => void, nextIconId?: string | null) {
@@ -664,7 +699,7 @@ function mutateCurrentStateLayers(
   }
 }
 
-function patchLayerReferences(layer: Layer, previousId: string, nextId: string): Layer {
+function _patchLayerReferences(layer: Layer, previousId: string, nextId: string): Layer {
   return {
     ...layer,
     clipPathLayerId: layer.clipPathLayerId === previousId ? nextId : layer.clipPathLayerId,

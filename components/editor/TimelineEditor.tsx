@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import type { TimelineTrack, Transition, Variant } from '@/lib/schema/types';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
@@ -20,10 +21,26 @@ const TRACKS: NumericTrackProperty[] = [
 ];
 const PX_PER_MS = 0.35;
 
+/** Clamp a menu position so it stays within the viewport. */
+function clampMenuPosition(x: number, y: number, menuWidth = 160, menuHeight = 80): { x: number; y: number } {
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1920;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 1080;
+  return {
+    x: Math.min(x, vw - menuWidth - 8),
+    y: Math.min(y, vh - menuHeight - 8),
+  };
+}
+
 type SelectedKeyframe = {
   bindingIndex: number;
   property: NumericTrackProperty;
   keyframeIndex: number;
+};
+
+/** UX-F1: Inline keyframe value editor (replaces window.prompt). */
+type InlineEditState = {
+  key: SelectedKeyframe;
+  value: string;
 };
 
 export function buildTimelineTransitionPreview(
@@ -48,17 +65,32 @@ export function buildTimelineTransitionPreview(
   };
 }
 
-export function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: Transition; variant: Variant }) {
+export const TimelineEditor = memo(function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: Transition; variant: Variant }) {
   const { patchTransition, setTransitionPreview } = useEditorActions();
   const preview = useEditorStore((s) => s.transitionPreview);
   const [selected, setSelected] = useState<SelectedKeyframe | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; key: SelectedKeyframe } | null>(null);
+  const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
+  const inlineInputRef = useRef<HTMLInputElement | null>(null);
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
   const rafRef = useRef<number | null>(null);
 
   const duration = Math.max(transition.durationMs, 1);
-  const width = Math.max(duration * PX_PER_MS, 500);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const width = Math.max(containerWidth, duration * PX_PER_MS);
 
   useEffect(() => {
     if (preview?.transitionId === transition.id) {
@@ -157,6 +189,43 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
     }));
   }, [updateTransition]);
 
+  // UX-F1 — Commit inline keyframe value edit
+  const commitInlineEdit = useCallback(() => {
+    if (!inlineEdit) return;
+    const value = Number.parseFloat(inlineEdit.value);
+    if (!Number.isFinite(value)) {
+      setInlineEdit(null);
+      return;
+    }
+    updateTransition((draft) => ({
+      ...draft,
+      layerBindings: draft.layerBindings.map((binding, idx) => {
+        if (idx !== inlineEdit.key.bindingIndex) return binding;
+        const tracks = (binding.tracks ?? []).map((track) => {
+          if (track.property !== inlineEdit.key.property) return track;
+          if (!isNumericTrack(track)) return track;
+          const nextKeyframes = [...track.keyframes];
+          nextKeyframes[inlineEdit.key.keyframeIndex] = value;
+          return { ...track, keyframes: nextKeyframes };
+        });
+        return { ...binding, tracks };
+      }),
+    }));
+    setInlineEdit(null);
+  }, [inlineEdit, updateTransition]);
+
+  const cancelInlineEdit = useCallback(() => {
+    setInlineEdit(null);
+  }, []);
+
+  // Focus the inline input when it appears
+  useEffect(() => {
+    if (inlineEdit && inlineInputRef.current) {
+      inlineInputRef.current.focus();
+      inlineInputRef.current.select();
+    }
+  }, [inlineEdit]);
+
   // C3 — Per-track easing update
   const handleTrackEasingChange = useCallback((bindingIndex: number, property: string, easing: EasingValue) => {
     updateTransition((draft) => ({
@@ -196,6 +265,28 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
     return () => window.removeEventListener('keydown', onKey);
   }, [deleteSelected, handleAddKeyframe, playhead, scrubTo, selected, togglePlay]);
 
+  // E-4 — Dismiss context menu on click outside or Escape
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenu(null);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [menu]);
+
   const rows = useMemo(() => {
     return transition.layerBindings.flatMap((binding, bindingIndex) => {
       const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
@@ -207,16 +298,22 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
   }, [transition.layerBindings]);
 
   return (
-    <div className="rounded-xl border border-border/80 bg-background/60 p-2">
-      <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-        <button type="button" className="rounded border px-2 py-1" onClick={togglePlay}>{playing ? 'Pause' : 'Play'}</button>
-        <button type="button" className="rounded border px-2 py-1" onClick={() => scrubTo(0)}>Start</button>
-        <button type="button" className="rounded border px-2 py-1" onClick={() => scrubTo(1)}>End</button>
-        <span>{Math.round(playhead * 100)}%</span>
+    <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground" role="toolbar" aria-label="Timeline playback controls">
+        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background transition-colors hover:bg-accent" onClick={() => scrubTo(0)} aria-label="Skip to start">
+          <SkipBack className="size-3.5" />
+        </button>
+        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-primary transition-colors hover:bg-primary/20" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing}>
+          {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+        </button>
+        <button type="button" className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border/70 bg-background transition-colors hover:bg-accent" onClick={() => scrubTo(1)} aria-label="Skip to end">
+          <SkipForward className="size-3.5" />
+        </button>
+        <span className="ml-1.5 tabular-nums" aria-label={`Playhead at ${Math.round(playhead * 100)} percent`}>{Math.round(playhead * 100)}%</span>
       </div>
-      <div className="overflow-auto">
-        <div className="relative min-w-[640px]" style={{ width }}>
-          <div className="absolute bottom-0 top-0 z-20 w-px bg-primary" style={{ left: `${playhead * 100}%` }} />
+      <div ref={containerRef} className="overflow-auto">
+        <div className="relative min-w-full" style={{ width }}>
+          <div className="absolute bottom-0 top-0 z-20 w-[3px] rounded-full bg-primary shadow-[0_0_6px_var(--primary)]" style={{ left: `${playhead * 100}%`, marginLeft: '-1px' }} />
           {rows.map((row, rowIndex) => {
             const keyframes = row.track?.keyframes ?? [];
             const trackEasing = row.track?.easing;
@@ -224,9 +321,9 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
             return (
               <div
                 key={`${row.layerId}-${row.property}-${rowIndex}`}
-                className={cn('relative grid grid-cols-[180px_auto_1fr] border-b border-border/60 text-xs', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
+                className={cn('relative grid grid-cols-[180px_auto_1fr] border-b border-border/70 text-[length:var(--text-label)]', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
               >
-                <div className="truncate px-2 py-2 font-medium text-foreground">
+                <div className="truncate px-3 py-2 font-medium text-foreground">
                   {row.layerId} · {row.property}
                 </div>
 
@@ -238,7 +335,7 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
                       onSelect={(val) => handleTrackEasingChange(row.bindingIndex, row.property, val)}
                     />
                   ) : (
-                    <span className="text-[10px] text-muted-foreground/40">—</span>
+                    <span className="text-[length:var(--text-caption)] text-muted-foreground/40">—</span>
                   )}
                 </div>
 
@@ -256,17 +353,20 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
                       <button
                         key={index}
                         type="button"
-                        className={cn('absolute top-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-primary bg-background', selected?.bindingIndex === row.bindingIndex && selected?.property === row.property && selected?.keyframeIndex === index ? 'ring-2 ring-primary' : '')}
+                        aria-label={`Keyframe ${index + 1} for ${row.property} at ${Math.round(progress * 100)}%`}
+                        className={cn('absolute top-1/2 z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border border-primary bg-background cursor-grab', selected?.bindingIndex === row.bindingIndex && selected?.property === row.property && selected?.keyframeIndex === index ? 'ring-2 ring-primary' : '')}
                         style={{ left: `${progress * 100}%` }}
                         onMouseDown={(event) => {
                           event.preventDefault();
                           setSelected({ bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index });
+                          document.body.style.cursor = 'grabbing';
                           const startRect = (event.currentTarget.parentElement as HTMLDivElement).getBoundingClientRect();
                           const move = (ev: MouseEvent) => {
                             const p = (ev.clientX - startRect.left) / startRect.width;
                             handleDragKeyframe({ bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index }, p);
                           };
                           const up = () => {
+                            document.body.style.cursor = '';
                             window.removeEventListener('mousemove', move);
                             window.removeEventListener('mouseup', up);
                           };
@@ -289,35 +389,72 @@ export function TimelineEditor({ iconId, transition, variant }: { iconId: string
         </div>
       </div>
 
+      {/* UX-F5: Collision-aware context menu positioning */}
       {menu ? (
-        <div className="fixed z-50 rounded-md border border-border bg-popover p-1 shadow" style={{ left: menu.x, top: menu.y }}>
-          <button type="button" className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => { deleteSelected(menu.key); setMenu(null); }}>Delete</button>
-          <button type="button" className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent" onClick={() => {
-            const raw = prompt('Set keyframe value', '0');
-            if (raw === null) return;
-            const value = Number.parseFloat(raw);
-            if (!Number.isFinite(value)) return;
-            updateTransition((draft) => ({
-              ...draft,
-              layerBindings: draft.layerBindings.map((binding, idx) => {
-                if (idx !== menu.key.bindingIndex) return binding;
-                const tracks = (binding.tracks ?? []).map((track) => {
-                  if (track.property !== menu.key.property) return track;
-                  if (!isNumericTrack(track)) return track;
-                  const nextKeyframes = [...track.keyframes];
-                  nextKeyframes[menu.key.keyframeIndex] = value;
-                  return { ...track, keyframes: nextKeyframes };
-                });
-                return { ...binding, tracks };
-              }),
-            }));
-            setMenu(null);
-          }}>Set Value</button>
+        <div
+          ref={menuRef}
+          className="fixed z-50 rounded-md border border-border bg-popover p-1 shadow-lg"
+          style={{ left: clampMenuPosition(menu.x, menu.y).x, top: clampMenuPosition(menu.x, menu.y).y }}
+        >
+          <button
+            type="button"
+            className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent"
+            onClick={() => { deleteSelected(menu.key); setMenu(null); }}
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-accent"
+            onClick={() => {
+              // UX-F1: Open inline editor instead of window.prompt()
+              const binding = transition.layerBindings[menu.key.bindingIndex];
+              const track = (binding?.tracks ?? []).find((t) => t.property === menu.key.property);
+              const currentValue = track && isNumericTrack(track) ? track.keyframes[menu.key.keyframeIndex] ?? 0 : 0;
+              setInlineEdit({ key: menu.key, value: String(currentValue) });
+              setMenu(null);
+            }}
+          >
+            Set Value
+          </button>
+        </div>
+      ) : null}
+
+      {/* UX-F1: Inline keyframe value editor */}
+      {inlineEdit ? (
+        <div className="fixed inset-0 z-50" onClick={cancelInlineEdit}>
+          <div
+            className="absolute rounded-lg border border-primary/40 bg-popover p-2 shadow-lg"
+            style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Set keyframe value
+            </label>
+            <input
+              ref={inlineInputRef}
+              type="number"
+              step="any"
+              className="h-8 w-32 rounded-md border border-border bg-background px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              value={inlineEdit.value}
+              onChange={(e) => setInlineEdit({ ...inlineEdit, value: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitInlineEdit();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelInlineEdit();
+                }
+              }}
+              onBlur={commitInlineEdit}
+            />
+          </div>
         </div>
       ) : null}
     </div>
   );
-}
+});
 
 function isNumericTrack(
   track: TimelineTrack,

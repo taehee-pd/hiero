@@ -45,6 +45,8 @@ export type EditorState = {
   project: Project | null;
   activeIconSetId: string | null;
   isDirty: boolean;
+  /** UX-F8: Timestamp of last successful save */
+  lastSavedAt: number | null;
   currentIconId: string | null;
   currentVariantId: string | null;
   currentStateId: string | null;
@@ -249,6 +251,7 @@ const initialState: EditorState = {
   project: null,
   activeIconSetId: null,
   isDirty: false,
+  lastSavedAt: null,
   currentIconId: null,
   currentVariantId: null,
   currentStateId: null,
@@ -960,6 +963,7 @@ function createActions(): EditorActions {
         if (!s.project) return s;
         return {
           isDirty: false,
+          lastSavedAt: Date.now(),
         };
       });
     },

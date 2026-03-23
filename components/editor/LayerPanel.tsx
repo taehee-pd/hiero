@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useCallback, useRef, useState } from 'react';
 import { Eye, EyeOff, Link2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Button } from '@/components/kibo-ui/button';
@@ -11,10 +12,12 @@ import {
 import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { cn } from '@/lib/utils';
+import type { Layer } from '@/lib/schema/types';
 
-export function LayerPanel() {
+export const LayerPanel = memo(function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
   const selection = useSelection();
+  const renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const componentByLayerId = useEditorStore((s) => {
     if (!s.currentIconId) return new Map<string, 'badge' | 'slash' | 'enclosure'>();
@@ -28,50 +31,153 @@ export function LayerPanel() {
     return map;
   });
   const currentStateId = useEditorStore((s) => s.currentStateId);
-  const { setSelection, setLayerVisibility } = useEditorActions();
+  const { setSelection, setLayerVisibility, patchLayer, removeSelectedLayers } = useEditorActions();
+
+  // UX-F4: Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // UX-F4: Handle keyboard navigation on the layer list container
+  const handleListKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (renamingLayerId) return; // Don't navigate while renaming
+      if (rows.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIdx = Math.min(focusedIndex + 1, rows.length - 1);
+        setFocusedIndex(nextIdx);
+        setSelection({ layerIds: [rows[nextIdx]!.layer.id], pointIds: [] });
+        itemRefs.current.get(nextIdx)?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const nextIdx = Math.max(focusedIndex - 1, 0);
+        setFocusedIndex(nextIdx);
+        setSelection({ layerIds: [rows[nextIdx]!.layer.id], pointIds: [] });
+        itemRefs.current.get(nextIdx)?.focus();
+      } else if (e.key === 'F2' && focusedIndex >= 0 && focusedIndex < rows.length) {
+        e.preventDefault();
+        const layer = rows[focusedIndex]!.layer;
+        setRenamingLayerId(layer.id);
+        setRenameValue(layer.id);
+      } else if (e.key === 'Delete' && focusedIndex >= 0) {
+        e.preventDefault();
+        removeSelectedLayers();
+      }
+    },
+    [focusedIndex, renamingLayerId, removeSelectedLayers, rows, setSelection],
+  );
+
+  const commitRename = useCallback(
+    (layerId: string) => {
+      const trimmed = renameValue.trim();
+      if (trimmed && trimmed !== layerId && currentIconId && currentStateId) {
+        patchLayer(currentIconId, currentStateId, layerId, { id: trimmed } as Partial<Layer>);
+      }
+      setRenamingLayerId(null);
+    },
+    [currentIconId, currentStateId, patchLayer, renameValue],
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="workspace-panel-header flex items-center justify-between px-3 py-2.5">
+      <div className="workspace-panel-header sticky top-0 z-10 flex items-center justify-between bg-background px-3 py-2">
         <div>
-          <p className="workspace-kicker text-[11px]">Structure</p>
-          <p className="mt-1 text-[13px] font-semibold text-foreground">Layers</p>
+          <p className="workspace-kicker text-[length:var(--text-label)]">Structure</p>
+          <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">Layers</p>
         </div>
         <span className="workspace-badge">{rows.length}</span>
       </div>
       <ScrollArea className="workspace-scroll flex-1">
-        <div className="flex flex-col gap-2 p-2.5">
+        {/* UX-F4: Keyboard navigable layer list */}
+        <div
+          ref={listRef}
+          className="flex flex-col gap-2 p-3"
+          role="listbox"
+          tabIndex={0}
+          onKeyDown={handleListKeyDown}
+          aria-label="Layer list"
+        >
+          {/* UX-F7: Visual onboarding empty state with illustrated shortcuts */}
           {rows.length === 0 ? (
-            <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">No layers</p>
-              <p className="mt-1 text-muted-foreground">
-                Use the Pen tool (P) or Shape tool (U) to draw, or drag an SVG file onto the canvas.
+            <div className="workspace-empty-state rounded-xl px-4 py-8 text-center text-xs text-muted-foreground">
+              {/* Illustrated icon hint */}
+              <div className="mx-auto mb-3 flex items-center justify-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-primary/40 bg-primary/5">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                    <path d="M2 2l7.586 7.586" />
+                    <circle cx="11" cy="11" r="2" />
+                  </svg>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  </svg>
+                </div>
+              </div>
+              <p className="font-semibold text-foreground">No layers yet</p>
+              <p className="mt-1.5 text-muted-foreground">
+                Get started by drawing or importing:
               </p>
+              <div className="mt-3 flex flex-col gap-1.5">
+                <div className="flex items-center justify-center gap-2 text-[11px]">
+                  <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">P</kbd>
+                  <span>Pen tool</span>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-[11px]">
+                  <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">U</kbd>
+                  <span>Shape tool</span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground/70">
+                  or drag an SVG file onto the canvas
+                </div>
+              </div>
             </div>
           ) : null}
-          {rows.map(({ layer, depth, maskLayerId, clippedLayerIds }) => {
+          {rows.map(({ layer, depth, maskLayerId, clippedLayerIds }, rowIndex) => {
             const isSelected = selection.layerIds.includes(layer.id);
             const isVisible = layer.visible !== false;
             const isMask = layer.isClipMask === true;
             const componentKind = componentByLayerId.get(layer.id);
+            const isFocused = focusedIndex === rowIndex;
+            const isRenaming = renamingLayerId === layer.id;
 
             return (
               <div
                 key={layer.id}
+                ref={(el) => {
+                  if (el) itemRefs.current.set(rowIndex, el);
+                  else itemRefs.current.delete(rowIndex);
+                }}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-2.5 py-2 text-[13px] transition',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-[length:var(--text-body)] transition',
                   isSelected
                     ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
-                    : 'border-border/80 bg-background/80 hover:border-foreground/12 hover:bg-background',
+                    : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
+                  isFocused && !isSelected && 'ring-1 ring-primary/30',
                 )}
-                onClick={() => setSelection({ layerIds: [layer.id], pointIds: [] })}
+                onClick={() => {
+                  setFocusedIndex(rowIndex);
+                  setSelection({ layerIds: [layer.id], pointIds: [] });
+                }}
+                onDoubleClick={() => {
+                  // UX-F4: Double-click to rename
+                  setRenamingLayerId(layer.id);
+                  setRenameValue(layer.id);
+                }}
                 onContextMenu={(event) => {
                   event.preventDefault();
+                  setFocusedIndex(rowIndex);
                   setSelection({ layerIds: [layer.id], pointIds: [] });
                   void showNativeContextMenu('layerPanel', { layerId: layer.id });
                 }}
-                role="button"
-                tabIndex={0}
+                role="option"
+                tabIndex={-1}
                 aria-selected={isSelected}
                 style={{ marginLeft: depth === 0 ? 0 : 16 }}
                 onKeyDown={(e) => {
@@ -89,19 +195,50 @@ export function LayerPanel() {
                 />
                 <span
                   className={cn(
-                    'ml-2 size-2.5 shrink-0 rounded-full',
+                    'ml-2 size-2.5 shrink-0 rounded-full transition-opacity',
                     layer.role === 'primary' && 'bg-accent',
                     layer.role === 'secondary' && 'bg-muted-foreground',
                     layer.role === 'tertiary' && 'bg-chart-3',
                     !layer.role && 'bg-muted-foreground/40',
+                    renderingMode === 'multicolor' && 'opacity-30',
                   )}
+                  title={
+                    renderingMode === 'multicolor'
+                      ? `${layer.role ?? 'no role'} – not active in multicolor mode. Switch to hierarchical or palette to see the effect.`
+                      : layer.role
+                        ? `${layer.role} – ${renderingMode === 'hierarchical' ? 'controls layer opacity' : 'controls palette color assignment'}`
+                        : 'No role assigned'
+                  }
                 />
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-40')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (
                       <Link2 className="size-3 shrink-0 text-muted-foreground" />
                     ) : null}
-                    <p className="truncate text-[13px] font-medium text-foreground">{layer.id}</p>
+                    {/* UX-F4: Inline rename when F2 is pressed or double-clicked */}
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        className="h-5 w-full rounded border border-primary bg-background px-1 text-[13px] font-medium text-foreground outline-none"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitRename(layer.id);
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setRenamingLayerId(null);
+                          }
+                          e.stopPropagation();
+                        }}
+                        onBlur={() => commitRename(layer.id)}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <p className="truncate text-[length:var(--text-body)] font-medium text-foreground">{layer.id}</p>
+                    )}
                     {isMask ? (
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
                         Mask
@@ -113,7 +250,7 @@ export function LayerPanel() {
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-0.5 text-[11px] uppercase text-muted-foreground">
+                  <p className="mt-0.5 text-[length:var(--text-label)] uppercase text-muted-foreground">
                     {maskLayerId
                       ? `clipped by ${maskLayerId}`
                       : clippedLayerIds.length > 0
@@ -142,4 +279,4 @@ export function LayerPanel() {
       </ScrollArea>
     </div>
   );
-}
+});

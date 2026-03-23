@@ -7,6 +7,7 @@ import {
   deleteSelectedPoints,
   insertPointAfterSelection,
   nudgeSelectedPointByArrow,
+  nudgeSelectedLayerByArrow,
   toggleSelectedPathClosed,
   toggleSelectedPointType,
 } from './vector-commands';
@@ -168,6 +169,12 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   }
 
   if (nudgeSelectedPointByArrow(e.key, e.shiftKey)) {
+    e.preventDefault();
+    return;
+  }
+
+  // Fallback: nudge entire layer via transform for non-editable paths
+  if (nudgeSelectedLayerByArrow(e.key, e.shiftKey)) {
     e.preventDefault();
     return;
   }

@@ -84,7 +84,7 @@ function createMockStore(state: EditorStore): StoreLike & { emit: () => void } {
 
 describe('snap engine', () => {
   test('computeSnap snaps to grid by default', () => {
-    editorStore.setState({ snapEnabled: true, activeSnapGuides: [] });
+    editorStore.setState({ snapEnabled: true, activeSnapGuides: [], project: null, currentIconId: null, currentVariantId: null, currentStateId: null });
     const result = computeSnap(
       { x: 3.24, y: 6.76 },
       {

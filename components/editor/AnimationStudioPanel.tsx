@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
@@ -10,6 +11,7 @@ import { EffectPlayer } from '@/lib/animation/effect-player';
 import type { Effect, Transition } from '@/lib/schema/types';
 import { TimelineEditor } from './TimelineEditor';
 import { EasingPicker, type EasingValue } from './EasingPicker';
+import { ColorPickerPopover } from './ColorPickerPopover';
 
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
@@ -188,15 +190,16 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           </div>
 
           {transitions.length > 0 ? (
-            <select
-              value={selectedTransition?.id ?? ''}
-              onChange={(event) => setSelectedTransitionId(event.target.value || null)}
-              className="h-9 w-full rounded-xl border border-border bg-background px-2 text-sm"
-            >
-              {transitions.map((transition) => (
-                <option key={transition.id} value={transition.id}>{transition.id}: {transition.from} → {transition.to}</option>
-              ))}
-            </select>
+            <Select value={selectedTransition?.id ?? '__none__'} onValueChange={(v) => setSelectedTransitionId(v === '__none__' ? null : v)}>
+              <SelectTrigger className="h-9 w-full rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {transitions.map((transition) => (
+                  <SelectItem key={transition.id} value={transition.id}>{transition.id}: {transition.from} → {transition.to}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
               <p className="text-xs font-medium text-foreground">No transitions available for timeline editing.</p>
@@ -259,15 +262,14 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                     <div className="space-y-1">
                       {(effect.palette ?? []).map((color, index) => (
                         <div key={index} className="flex items-center gap-2">
-                          <input
-                            type="color"
+                          <ColorPickerPopover
                             value={color}
-                            onChange={(e) => {
+                            onChange={(hex) => {
                               const next = [...(effect.palette ?? [])];
-                              next[index] = e.target.value;
+                              next[index] = hex;
                               handlePaletteChange(effect.id, next);
                             }}
-                            className="h-7 w-7 cursor-pointer rounded border border-border/70 p-0"
+                            className="h-7 w-7 rounded border-border/70"
                           />
                           <span className="text-xs text-muted-foreground font-mono">{color}</span>
                           <Button

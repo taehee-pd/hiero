@@ -120,8 +120,17 @@ export function resolveTransition(
     // 8.3 — When topology is incompatible, override morph bindings with
     // the appropriate crossfade strategy so geometry never deforms
     // across incompatible topologies.
+    //
+    // However, subpath-count-mismatch alone should NOT prevent morphing
+    // because the cross-icon morph pipeline handles differing sub-path
+    // counts via sub-path matching, De Casteljau subdivision, and
+    // centroid collapse.  Only override when there are "hard"
+    // incompatibilities (closed/open mismatch, fill-mode change, etc.).
+    const hardIncompatibilities = topologyAnalysis.incompatibilities.filter(
+      (i) => i !== 'subpath-count-mismatch',
+    );
     if (
-      !topologyAnalysis.compatible &&
+      hardIncompatibilities.length > 0 &&
       !resolved.preserved &&
       resolved.animationType === 'morph'
     ) {

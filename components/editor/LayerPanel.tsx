@@ -4,6 +4,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 import { Eye, EyeOff, Link2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Button } from '@/components/kibo-ui/button';
+import { Input } from '@/components/kibo-ui/input';
 import {
   useSelection,
   useEditorStore,
@@ -216,9 +217,9 @@ export const LayerPanel = memo(function LayerPanel() {
                     ) : null}
                     {/* UX-F4: Inline rename when F2 is pressed or double-clicked */}
                     {isRenaming ? (
-                      <input
+                      <Input
                         type="text"
-                        className="h-5 w-full rounded border border-primary bg-background px-1 text-[13px] font-medium text-foreground outline-none"
+                        className="h-5 w-full text-[13px] font-medium"
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onKeyDown={(e) => {

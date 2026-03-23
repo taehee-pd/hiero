@@ -68,8 +68,12 @@ import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
+import { Slider } from '@/components/kibo-ui/slider';
+import { Input } from '@/components/kibo-ui/input';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
+import { ColorPickerPopover } from './ColorPickerPopover';
 
 type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
@@ -435,7 +439,7 @@ function LeftSidebar({
               <span>Sizes</span>
             </div>
             <div className="wire-inline-form">
-              <input
+              <Input
                 value={newVariantSize}
                 onChange={(event) => onNewVariantSizeChange(event.target.value)}
                 type="number"
@@ -462,7 +466,7 @@ function LeftSidebar({
             <div className="wire-section-header mt-3">
               <span>States</span>
             </div>
-            <input
+            <Input
               value={newStateName}
               onChange={(event) => onNewStateNameChange(event.target.value)}
               placeholder="hover"
@@ -591,7 +595,7 @@ function CanvasDock({
                 commitZoomInput();
               }}
             >
-              <input
+              <Input
                 autoFocus
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
@@ -804,7 +808,7 @@ function RightSidebar({
               <>
                 <TinyLabel>Layer</TinyLabel>
                 <RowField label="Role">
-                  <input
+                  <Input
                     key={selectedLayer.id}
                     defaultValue={selectedLayer.role ?? ''}
                     onBlur={(event) =>
@@ -815,11 +819,9 @@ function RightSidebar({
                 </RowField>
                 <div className="grid grid-cols-2 gap-1.5">
                   <RowField label="Fill">
-                    <select
+                    <Select
                       value={fillMode}
-                      className="wire-select"
-                      onChange={(event) => {
-                        const nextMode = event.target.value;
+                      onValueChange={(nextMode) => {
                         if (nextMode === 'none') {
                           onPatchSelectedLayerStyle({ fill: undefined });
                           return;
@@ -839,17 +841,20 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <option value="none">None</option>
-                      <option value="fixed">Fixed</option>
-                      <option value="currentColor">Current</option>
-                    </select>
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="currentColor">Current</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </RowField>
                   <RowField label="Stroke">
-                    <select
+                    <Select
                       value={strokeMode}
-                      className="wire-select"
-                      onChange={(event) => {
-                        const nextMode = event.target.value;
+                      onValueChange={(nextMode) => {
                         if (nextMode === 'none') {
                           onPatchSelectedLayerStyle({ stroke: undefined });
                           return;
@@ -869,28 +874,31 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <option value="none">None</option>
-                      <option value="fixed">Fixed</option>
-                      <option value="currentColor">Current</option>
-                    </select>
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="currentColor">Current</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </RowField>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <RowField label="Fill color">
                     {fillMode === 'fixed' ? (
-                      <input
-                        type="color"
+                      <ColorPickerPopover
                         value={
                           selectedLayer.style.fill?.mode === 'fixed'
                             ? selectedLayer.style.fill.value
                             : '#111111'
                         }
-                        onChange={(event) =>
+                        onChange={(hex) =>
                           debouncedPatchStyle({
-                            fill: { mode: 'fixed', value: event.target.value },
+                            fill: { mode: 'fixed', value: hex },
                           })
                         }
-                        className="wire-color"
                       />
                     ) : (
                       <PropertyValue>{describePaint(selectedLayer.style.fill)}</PropertyValue>
@@ -898,19 +906,17 @@ function RightSidebar({
                   </RowField>
                   <RowField label="Stroke color">
                     {strokeMode === 'fixed' ? (
-                      <input
-                        type="color"
+                      <ColorPickerPopover
                         value={
                           selectedLayer.style.stroke?.mode === 'fixed'
                             ? selectedLayer.style.stroke.value
                             : '#111111'
                         }
-                        onChange={(event) =>
+                        onChange={(hex) =>
                           debouncedPatchStyle({
-                            stroke: { mode: 'fixed', value: event.target.value },
+                            stroke: { mode: 'fixed', value: hex },
                           })
                         }
-                        className="wire-color"
                       />
                     ) : (
                       <PropertyValue>{describePaint(selectedLayer.style.stroke)}</PropertyValue>
@@ -919,7 +925,7 @@ function RightSidebar({
                 </div>
                 <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
                   <RowField label="Stroke width">
-                    <input
+                    <Input
                       type="number"
                       step="0.1"
                       value={selectedLayer.style.strokeWidth ?? 0}
@@ -938,7 +944,7 @@ function RightSidebar({
                 <TinyLabel>Position</TinyLabel>
                 <div className="grid grid-cols-3 gap-1.5">
                   <RowField label="X">
-                    <input
+                    <Input
                       type="number"
                       step="0.5"
                       value={selectedLayer.transform?.x ?? 0}
@@ -951,7 +957,7 @@ function RightSidebar({
                     />
                   </RowField>
                   <RowField label="Y">
-                    <input
+                    <Input
                       type="number"
                       step="0.5"
                       value={selectedLayer.transform?.y ?? 0}
@@ -964,7 +970,7 @@ function RightSidebar({
                     />
                   </RowField>
                   <RowField label="Rot">
-                    <input
+                    <Input
                       type="number"
                       step="1"
                       value={selectedLayer.transform?.rotate ?? 0}
@@ -982,7 +988,7 @@ function RightSidebar({
               <>
                 <TinyLabel>Document</TinyLabel>
                 <RowField label="Name">
-                  <input
+                  <Input
                     key={currentIcon?.id}
                     defaultValue={currentIcon?.name ?? ''}
                     onBlur={(event) => onRenameIcon(event.target.value)}
@@ -991,7 +997,7 @@ function RightSidebar({
                 </RowField>
                 <div className="grid grid-cols-2 gap-1.5">
                   <RowField label="State">
-                    <input
+                    <Input
                       key={currentState?.id}
                       defaultValue={currentState?.id ?? ''}
                       onBlur={(event) => onRenameState(event.target.value)}
@@ -999,7 +1005,7 @@ function RightSidebar({
                     />
                   </RowField>
                   <RowField label="Size">
-                    <input
+                    <Input
                       type="number"
                       min="1"
                       step="1"
@@ -1012,19 +1018,23 @@ function RightSidebar({
                   </RowField>
                 </div>
                 <RowField label="Rendering">
-                  <select
+                  <Select
                     value={currentVariant?.renderingMode ?? 'monochrome'}
-                    onChange={(event) =>
-                      onPatchVariant({ renderingMode: event.target.value as RenderingMode })
+                    onValueChange={(value) =>
+                      onPatchVariant({ renderingMode: value as RenderingMode })
                     }
-                    className="wire-select"
                   >
-                    {RENDERING_MODE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RENDERING_MODE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </RowField>
                 <TinyLabel>Guides</TinyLabel>
                 <div className="wire-meta-row">
@@ -1069,7 +1079,7 @@ function RightSidebar({
               {selectedTransition ? (
                 <>
                   <RowField label="Duration">
-                    <input
+                    <Input
                       type="number"
                       min="0"
                       step="10"
@@ -1083,52 +1093,59 @@ function RightSidebar({
                     />
                   </RowField>
                   <RowField label="Strategy">
-                    <select
+                    <Select
                       value={selectedTransition.strategy}
-                      className="wire-select"
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         onPatchTransition({
-                          strategy: event.target.value as Transition['strategy'],
+                          strategy: value as Transition['strategy'],
                         })
                       }
                     >
-                      {TRANSITION_STRATEGIES.map((strategy) => (
-                        <option key={strategy} value={strategy}>
-                          {strategy}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TRANSITION_STRATEGIES.map((strategy) => (
+                          <SelectItem key={strategy} value={strategy}>
+                            {strategy}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </RowField>
                   <RowField label="Easing">
-                    <select
+                    <Select
                       value={
                         typeof selectedTransition.easing === 'string'
                           ? selectedTransition.easing
                           : 'ease-in-out'
                       }
-                      className="wire-select"
-                      onChange={(event) => onPatchTransition({ easing: event.target.value })}
+                      onValueChange={(value) => onPatchTransition({ easing: value })}
                     >
-                      {EASING_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EASING_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </RowField>
                   <RowField label="Preview">
                     <div className="grid gap-1.5">
                       <div className="flex items-center gap-2">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={Math.round(previewProgress * 100)}
-                          onChange={(event) =>
-                            onPreviewProgressChange(Number.parseInt(event.target.value, 10) / 100)
+                        <Slider
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={[Math.round(previewProgress * 100)]}
+                          onValueChange={([v]) =>
+                            onPreviewProgressChange(v / 100)
                           }
                           className="wire-range flex-1"
-                          style={{ accentColor: 'var(--primary)' }}
                         />
                         <span className="min-w-[3ch] text-right text-[length:var(--text-label)] tabular-nums text-muted-foreground">
                           {Math.round(previewProgress * 100)}%
@@ -1154,33 +1171,41 @@ function RightSidebar({
               ) : null}
               <TinyLabel>New transition</TinyLabel>
               <RowField label="From">
-                <select
+                <Select
                   value={transitionDraft.from}
-                  className="wire-select"
-                  onChange={(event) => onTransitionDraftChange({ from: event.target.value })}
+                  onValueChange={(value) => onTransitionDraftChange({ from: value })}
                 >
-                  {stateIds.map((stateId) => (
-                    <option key={stateId} value={stateId}>
-                      {stateId}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stateIds.map((stateId) => (
+                      <SelectItem key={stateId} value={stateId}>
+                        {stateId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </RowField>
               <RowField label="To">
-                <select
+                <Select
                   value={transitionDraft.to}
-                  className="wire-select"
-                  onChange={(event) => onTransitionDraftChange({ to: event.target.value })}
+                  onValueChange={(value) => onTransitionDraftChange({ to: value })}
                 >
-                  {stateIds.map((stateId) => (
-                    <option key={stateId} value={stateId}>
-                      {stateId}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stateIds.map((stateId) => (
+                      <SelectItem key={stateId} value={stateId}>
+                        {stateId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </RowField>
               <RowField label="Duration">
-                <input
+                <Input
                   value={transitionDraft.durationMs}
                   onChange={(event) => onTransitionDraftChange({ durationMs: event.target.value })}
                   type="number"

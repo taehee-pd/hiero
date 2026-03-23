@@ -1558,10 +1558,10 @@
   }
 
   .wire-section {
-    padding: 10px 10px 10px;
+    padding: 12px 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
   }
 
   .wire-section-header {
@@ -1640,7 +1640,6 @@
   }
 
   .wire-input,
-  .wire-select,
   .wire-color {
     min-height: 24px;
     border: 1px solid #e6e6e6;
@@ -1658,7 +1657,6 @@
   }
 
   .wire-input:focus,
-  .wire-select:focus,
   .wire-color:focus {
     border-color: #0d99ff;
   }
@@ -1856,21 +1854,21 @@
     letter-spacing: 0.05em;
     color: rgba(0, 0, 0, 0.4);
     text-transform: uppercase;
-    padding-top: 2px;
+    padding-bottom: 2px;
   }
 
   .wire-label + .wire-label,
   .wire-field + .wire-label,
   .grid + .wire-label {
-    margin-top: 6px;
-    padding-top: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid #f0f0f0;
   }
 
   .wire-field {
     display: grid;
     gap: 3px;
-    padding-top: 6px;
+    padding-top: 4px;
   }
 
   .wire-field-name {

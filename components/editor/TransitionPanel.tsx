@@ -10,9 +10,11 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Slider } from '@/components/kibo-ui/slider';
 import { Switch } from '@/components/kibo-ui/switch';
 import { toast } from '@/components/ui/use-toast';
-import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler } from '@/lib/runtime-core';
+import { bestGuessMorph, interpolateTransitionValues, resolveTransition, strictMorph, TransitionScheduler, computeReadiness, canonicalizeLayerPath, classifySubPathStrategies } from '@/lib/runtime-core';
+import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
+import type { SubPathStrategyResult } from '@/lib/runtime-core/topology-detection';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { Icon, Transition, TransitionEndpoint, LayerBinding, State, TransitionStagger, StateTrigger, Variant } from '@/lib/schema/types';
+import type { Icon, Transition, TransitionEndpoint, LayerBinding, Layer, State, TransitionStagger, StateTrigger, Variant } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
@@ -1053,6 +1055,193 @@ function TriggerEditor({
   );
 }
 
+// --- Phase I: Per-binding strategy hook & display ---
+
+type BindingStrategyOverall = 'morph' | 'trim' | 'crossfade' | 'preserved';
+
+type BindingStrategyInfo = {
+  strategies: SubPathStrategyResult[];
+  readiness: MorphReadiness | null;
+  overallStrategy: BindingStrategyOverall;
+};
+
+function useBindingStrategies(
+  binding: LayerBinding,
+  fromState: State | undefined,
+  toState: State | undefined,
+): BindingStrategyInfo {
+  return useMemo(() => {
+    const defaultResult: BindingStrategyInfo = {
+      strategies: [],
+      readiness: null,
+      overallStrategy: 'crossfade',
+    };
+
+    if (!fromState || !toState) return defaultResult;
+
+    // Check for strategy override
+    if (binding.strategyOverride && binding.strategyOverride !== 'auto') {
+      return {
+        strategies: [],
+        readiness: null,
+        overallStrategy: binding.strategyOverride as BindingStrategyOverall,
+      };
+    }
+
+    const fromLayer = binding.fromLayerId ? fromState.layers[binding.fromLayerId] : undefined;
+    const toLayer = binding.toLayerId ? toState.layers[binding.toLayerId] : undefined;
+
+    if (!fromLayer || !toLayer) return defaultResult;
+
+    // Get geometry stats via canonicalizeLayerPath
+    const fromCanon = canonicalizeLayerPath(fromLayer);
+    const toCanon = canonicalizeLayerPath(toLayer);
+
+    if (!fromCanon || !toCanon) return defaultResult;
+
+    // Classify per-subpath strategies
+    const strategies = classifySubPathStrategies(fromCanon.stats, toCanon.stats);
+
+    // Compute readiness for morph bindings
+    const readiness = computeReadiness(fromLayer, toLayer);
+
+    // Determine overall strategy from subpath results
+    let overallStrategy: BindingStrategyOverall = 'morph';
+    if (strategies.length === 0) {
+      overallStrategy = 'crossfade';
+    } else {
+      const hasCrossfade = strategies.some((s) => s.strategy === 'crossfade');
+      const hasTrim = strategies.some((s) => s.strategy === 'trim');
+      if (hasCrossfade) {
+        overallStrategy = 'crossfade';
+      } else if (hasTrim) {
+        overallStrategy = 'trim';
+      } else {
+        overallStrategy = 'morph';
+      }
+    }
+
+    return { strategies, readiness, overallStrategy };
+  }, [binding.fromLayerId, binding.toLayerId, binding.strategyOverride, fromState, toState]);
+}
+
+const STRATEGY_BADGE_STYLES: Record<BindingStrategyOverall, { bg: string; text: string; label: string }> = {
+  morph: { bg: 'bg-emerald-500/15', text: 'text-emerald-600', label: 'morph' },
+  trim: { bg: 'bg-amber-500/15', text: 'text-amber-700', label: 'trim' },
+  crossfade: { bg: 'bg-red-500/15', text: 'text-red-600', label: 'crossfade' },
+  preserved: { bg: 'bg-blue-500/15', text: 'text-blue-600', label: 'preserved' },
+};
+
+const STRATEGY_OVERRIDE_OPTIONS: Array<{ value: LayerBinding['strategyOverride']; label: string }> = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'morph', label: 'Morph' },
+  { value: 'trim', label: 'Trim' },
+  { value: 'crossfade', label: 'Crossfade' },
+];
+
+/** I4–I6: Strategy badge, readiness score, and per-subpath breakdown */
+function BindingStrategyDisplay({
+  binding,
+  fromState,
+  toState,
+  isPreserved,
+}: {
+  binding: LayerBinding;
+  fromState: State | undefined;
+  toState: State | undefined;
+  isPreserved: boolean;
+}) {
+  const { strategies, readiness, overallStrategy } = useBindingStrategies(binding, fromState, toState);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showSubpaths, setShowSubpaths] = useState(false);
+
+  const displayStrategy: BindingStrategyOverall = isPreserved ? 'preserved' : overallStrategy;
+  const badge = STRATEGY_BADGE_STYLES[displayStrategy];
+
+  return (
+    <div className="grid gap-1">
+      {/* I4: Strategy badge */}
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+            badge.bg,
+            badge.text,
+          )}
+        >
+          {badge.label}
+        </span>
+
+        {/* I5: Readiness score (only for morph strategy) */}
+        {displayStrategy === 'morph' && readiness && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+            onClick={(e) => { e.stopPropagation(); setShowDetails((v) => !v); }}
+          >
+            <span className="font-medium">{Math.round(readiness.score * 100)}%</span>
+            {showDetails ? (
+              <ChevronDown className="size-2.5" />
+            ) : (
+              <ChevronRight className="size-2.5" />
+            )}
+          </button>
+        )}
+
+        {/* I6: Subpath count indicator (when > 1 subpath) */}
+        {strategies.length > 1 && !isPreserved && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+            onClick={(e) => { e.stopPropagation(); setShowSubpaths((v) => !v); }}
+          >
+            <span>{strategies.length} subpaths</span>
+            {showSubpaths ? (
+              <ChevronDown className="size-2.5" />
+            ) : (
+              <ChevronRight className="size-2.5" />
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* I5: Expanded readiness detail */}
+      {showDetails && readiness && (
+        <div className="ml-1 grid gap-0.5 border-l-2 border-emerald-500/30 pl-2 text-[10px] text-muted-foreground">
+          <span>Command compatibility: {Math.round(readiness.commandCompatibility * 100)}%</span>
+          <span>Subpath compatibility: {Math.round(readiness.subpathCompatibility * 100)}%</span>
+          <span>BBox similarity: {Math.round(readiness.bboxSimilarity * 100)}%</span>
+          <span>Centroid similarity: {Math.round(readiness.centroidSimilarity * 100)}%</span>
+        </div>
+      )}
+
+      {/* I6: Per-subpath strategy breakdown */}
+      {showSubpaths && strategies.length > 1 && (
+        <div className="ml-1 grid gap-0.5 border-l-2 border-border/50 pl-2 text-[10px] text-muted-foreground">
+          {strategies.map((sp, i) => {
+            const spBadge = STRATEGY_BADGE_STYLES[sp.strategy as BindingStrategyOverall] ?? STRATEGY_BADGE_STYLES.crossfade;
+            return (
+              <div key={i} className="flex items-center gap-1">
+                <span className="font-mono text-foreground/70">#{sp.fromIndex}</span>
+                <span
+                  className={cn(
+                    'inline-flex rounded-full px-1 py-px text-[9px] font-semibold leading-none',
+                    spBadge.bg,
+                    spBadge.text,
+                  )}
+                >
+                  {sp.strategy}
+                </span>
+                <span className="truncate">{sp.reason.split(' — ')[0]}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- C2: Layer Binding List ---
 
 function LayerBindingList({
@@ -1106,73 +1295,18 @@ function LayerBindingList({
   return (
     <div className="mt-2 grid gap-1.5">
       {transition.layerBindings.map((binding, index) => (
-        <div
+        <BindingRow
           key={`${binding.fromLayerId}-${binding.toLayerId}-${index}`}
-          className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2"
-        >
-          <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
-            <Select value={binding.fromLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { fromLayerId: v === '__none__' ? undefined : v })}>
-              <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">(none)</SelectItem>
-                {fromLayerIds.map((id) => (
-                  <SelectItem key={id} value={id}>{id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-[length:var(--text-caption)] text-muted-foreground">-&gt;</span>
-            <Select value={binding.toLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { toLayerId: v === '__none__' ? undefined : v })}>
-              <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">(none)</SelectItem>
-                {toLayerIds.map((id) => (
-                  <SelectItem key={id} value={id}>{id}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <button
-              type="button"
-              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-              onClick={(e) => { e.stopPropagation(); removeBinding(index); }}
-            >
-              <Trash2 className="size-3" />
-            </button>
-          </div>
-
-          {/* C4 — Per-binding delay/duration */}
-          <div className="grid grid-cols-2 gap-1.5">
-            <div className="grid gap-0.5">
-              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Delay (ms)</Label>
-              <Input
-                type="number" min="0" step="10"
-                value={binding.delayMs ?? 0}
-                className="h-6 text-[length:var(--text-label)]"
-                onChange={(e) =>
-                  updateBinding(index, {
-                    delayMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-0.5">
-              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Duration (ms)</Label>
-              <Input
-                type="number" min="0" step="10"
-                value={binding.durationMs ?? transition.durationMs}
-                className="h-6 text-[length:var(--text-label)]"
-                onChange={(e) =>
-                  updateBinding(index, {
-                    durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
-                  })
-                }
-              />
-            </div>
-          </div>
-        </div>
+          binding={binding}
+          index={index}
+          transition={transition}
+          fromState={fromState}
+          toState={toState}
+          fromLayerIds={fromLayerIds}
+          toLayerIds={toLayerIds}
+          updateBinding={updateBinding}
+          removeBinding={removeBinding}
+        />
       ))}
 
       <div className="flex gap-1.5">
@@ -1192,6 +1326,201 @@ function LayerBindingList({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Individual binding row — extracted so the useBindingStrategies hook can be
+ *  called at the component level (Rules of Hooks). */
+function BindingRow({
+  binding,
+  index,
+  transition,
+  fromState,
+  toState,
+  fromLayerIds,
+  toLayerIds,
+  updateBinding,
+  removeBinding,
+}: {
+  binding: LayerBinding;
+  index: number;
+  transition: Transition;
+  fromState: State;
+  toState: State;
+  fromLayerIds: string[];
+  toLayerIds: string[];
+  updateBinding: (index: number, patch: Partial<LayerBinding>) => void;
+  removeBinding: (index: number) => void;
+}) {
+  // Check if this layer is preserved (Magic Replace)
+  const isPreserved = Boolean(
+    binding.fromLayerId &&
+    binding.toLayerId &&
+    binding.fromLayerId === binding.toLayerId,
+  ) && transition.strategy === 'replace';
+
+  return (
+    <div className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2">
+      <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
+        <Select value={binding.fromLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { fromLayerId: v === '__none__' ? undefined : v })}>
+          <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">(none)</SelectItem>
+            {fromLayerIds.map((id) => (
+              <SelectItem key={id} value={id}>{id}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-[length:var(--text-caption)] text-muted-foreground">-&gt;</span>
+        <Select value={binding.toLayerId ?? '__none__'} onValueChange={(v) => updateBinding(index, { toLayerId: v === '__none__' ? undefined : v })}>
+          <SelectTrigger className="h-7 rounded-lg text-[length:var(--text-label)]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">(none)</SelectItem>
+            {toLayerIds.map((id) => (
+              <SelectItem key={id} value={id}>{id}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <button
+          type="button"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+          onClick={(e) => { e.stopPropagation(); removeBinding(index); }}
+        >
+          <Trash2 className="size-3" />
+        </button>
+      </div>
+
+      {/* I4–I6: Strategy badge, readiness, subpath breakdown */}
+      <BindingStrategyDisplay
+        binding={binding}
+        fromState={fromState}
+        toState={toState}
+        isPreserved={isPreserved}
+      />
+
+      {/* I7: Strategy override dropdown */}
+      <div className="flex items-center gap-1.5">
+        <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Strategy</Label>
+        <Select
+          value={binding.strategyOverride ?? 'auto'}
+          onValueChange={(v) =>
+            updateBinding(index, {
+              strategyOverride: v as LayerBinding['strategyOverride'],
+            })
+          }
+        >
+          <SelectTrigger className="h-6 w-24 rounded-lg text-[10px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STRATEGY_OVERRIDE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value!}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* C4 — Per-binding delay/duration */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid gap-0.5">
+          <Label className="text-[length:var(--text-caption)] text-muted-foreground">Delay (ms)</Label>
+          <Input
+            type="number" min="0" step="10"
+            value={binding.delayMs ?? 0}
+            className="h-6 text-[length:var(--text-label)]"
+            onChange={(e) =>
+              updateBinding(index, {
+                delayMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
+              })
+            }
+          />
+        </div>
+        <div className="grid gap-0.5">
+          <Label className="text-[length:var(--text-caption)] text-muted-foreground">Duration (ms)</Label>
+          <Input
+            type="number" min="0" step="10"
+            value={binding.durationMs ?? transition.durationMs}
+            className="h-6 text-[length:var(--text-label)]"
+            onChange={(e) =>
+              updateBinding(index, {
+                durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
+              })
+            }
+          />
+        </div>
+      </div>
+
+      {/* I8: Compound trim mode selector — shown when binding has trim tracks */}
+      <CompoundTrimModeSelector binding={binding} index={index} updateBinding={updateBinding} />
+
+      {/* I10: Auto-populated keyframes badge */}
+      <AutoPopulatedBadge binding={binding} />
+    </div>
+  );
+}
+
+// --- I8: Compound Trim Mode Selector ---
+
+const TRIM_TRACK_PROPS = new Set(['trimStart', 'trimEnd', 'trimOffset']);
+
+function CompoundTrimModeSelector({
+  binding,
+  index,
+  updateBinding,
+}: {
+  binding: LayerBinding;
+  index: number;
+  updateBinding: (index: number, patch: Partial<LayerBinding>) => void;
+}) {
+  const hasTrimTracks = (binding.tracks ?? []).some((t) => TRIM_TRACK_PROPS.has(t.property));
+  if (!hasTrimTracks) return null;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Trim Mode</Label>
+      <Select
+        value={binding.compoundTrimMode ?? 'simultaneously'}
+        onValueChange={(v) =>
+          updateBinding(index, {
+            compoundTrimMode: v as LayerBinding['compoundTrimMode'],
+          })
+        }
+      >
+        <SelectTrigger className="h-6 w-32 rounded-lg text-[10px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="simultaneously">Simultaneously</SelectItem>
+          <SelectItem value="individually">Individually</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+// --- I10: Auto-populated keyframes badge ---
+
+function AutoPopulatedBadge({ binding }: { binding: LayerBinding }) {
+  const hasAutoTrimEnd = (binding.tracks ?? []).some(
+    (t) => t.property === 'trimEnd' && t.keyframes.length === 2 &&
+      (t as { keyframes: number[] }).keyframes[0] === 0 &&
+      (t as { keyframes: number[] }).keyframes[1] === 1,
+  );
+  const hasAutoPopulated = binding.autoPopulated;
+
+  if (!hasAutoPopulated && !hasAutoTrimEnd) return null;
+  if (!hasAutoPopulated) return null;
+
+  return (
+    <span className="inline-flex items-center rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-sky-600">
+      Auto
+    </span>
   );
 }
 
@@ -1290,10 +1619,57 @@ function buildDefaultLayerBindings(
       return { fromLayerId, toLayerId, morph: { topology: 'bestGuess' } };
     }
     if (strategy === 'track') {
+      // I10: Auto-populate trim keyframes when the layer is classified as 'trim'
+      const fromLayer = fromState.layers[fromLayerId];
+      const toLayer = toState.layers[toLayerId];
+      const isTrimCandidate = detectTrimCandidate(fromLayer, toLayer);
+      if (isTrimCandidate) {
+        return {
+          fromLayerId,
+          toLayerId,
+          tracks: [{ property: 'trimEnd' as const, keyframes: [0, 1] }],
+          autoPopulated: true,
+        };
+      }
       return { fromLayerId, toLayerId, tracks: [] };
     }
     return { fromLayerId, toLayerId };
   });
+}
+
+/**
+ * I10: Detect whether a layer pair should use trim animation.
+ * Uses a simple heuristic: if both layers have path data and either has
+ * open subpaths (not ending in Z), classify as trim candidate.
+ */
+function detectTrimCandidate(
+  fromLayer: Layer | undefined,
+  toLayer: Layer | undefined,
+): boolean {
+  const fromD = fromLayer?.path?.d;
+  const toD = toLayer?.path?.d;
+  if (!fromD && !toD) return false;
+
+  // Check if any layer has open subpaths
+  const hasOpenSubpath = (d: string): boolean => {
+    const subPaths = d.split(/(?=[Mm])/).filter((s) => s.trim().length > 0);
+    return subPaths.some((sp) => !/[Zz]\s*$/.test(sp.trim()));
+  };
+
+  if (fromD && hasOpenSubpath(fromD)) return true;
+  if (toD && hasOpenSubpath(toD)) return true;
+
+  // Also classify as trim if the strategy system would yield trim
+  if (fromD && toD) {
+    const fromCanon = canonicalizeLayerPath(fromLayer!);
+    const toCanon = canonicalizeLayerPath(toLayer!);
+    if (fromCanon && toCanon) {
+      const strategies = classifySubPathStrategies(fromCanon.stats, toCanon.stats);
+      return strategies.some((s) => s.strategy === 'trim');
+    }
+  }
+
+  return false;
 }
 
 function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {

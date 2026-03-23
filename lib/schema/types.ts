@@ -237,6 +237,11 @@ export type LayerBinding = {
     mixer?: 'native' | 'flubber';
   };
   compoundTrimMode?: CompoundTrimMode;
+  /** Phase I7: Optional strategy override. When set to a non-'auto' value,
+   *  the per-binding animation strategy is forced instead of auto-classified. */
+  strategyOverride?: 'auto' | 'morph' | 'trim' | 'crossfade';
+  /** Phase I10: Indicates this binding's tracks were auto-populated by the system. */
+  autoPopulated?: boolean;
 };
 
 export type TimelineTrack =

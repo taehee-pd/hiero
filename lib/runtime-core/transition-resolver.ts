@@ -455,7 +455,7 @@ function decideRuntimeStrategy(
   return declared;
 }
 
-function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadiness {
+export function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadiness {
   const from = canonicalizeLayerPath(fromLayer);
   const to = canonicalizeLayerPath(toLayer);
 

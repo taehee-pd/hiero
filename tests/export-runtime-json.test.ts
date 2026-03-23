@@ -129,7 +129,7 @@ describe('export runtime json', () => {
 
   test('matches the sample project snapshot', () => {
     const json = exportRuntimeJson({
-      ...structuredClone(SAMPLE_PROJECT.icons['icon-chevron']),
+      ...structuredClone(SAMPLE_PROJECT.icons['icon-home']),
       tokenSet: structuredClone(SAMPLE_PROJECT.tokenSet),
     });
 

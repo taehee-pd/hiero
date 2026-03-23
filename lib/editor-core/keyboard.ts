@@ -179,23 +179,13 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
     return;
   }
 
-  // Escape exits direct-select mode first, then point editing, then clears selection.
+  // Escape: switch to select tool if in direct-select, then always clear selection.
   if (key === 'escape') {
     e.preventDefault();
     const state = editorStore.getState();
 
     if (state.tool === 'direct-select') {
       state.setTool('select');
-      return;
-    }
-
-    if (state.selection.pointIds.length > 0) {
-      state.setSelection({
-        layerIds: state.selection.layerIds,
-        pointIds: [],
-        guideIndexes: state.selection.guideIndexes ?? [],
-      });
-      return;
     }
 
     state.clearSelection();

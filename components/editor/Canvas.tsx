@@ -764,6 +764,17 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       )}
       data-canvas-root
       style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
+      onPointerDown={(e) => {
+        // Click on empty canvas area → deselect (only for select/direct-select tools, no Shift)
+        const target = e.target as HTMLElement;
+        const isLayerHit = target.closest('[data-layer-hit-id], [data-layer-id], [data-editor-handle]');
+        if (!isLayerHit && !e.shiftKey) {
+          const { tool, clearSelection } = editorStore.getState();
+          if (tool === 'select' || tool === 'direct-select') {
+            clearSelection();
+          }
+        }
+      }}
       onPointerDownCapture={handlePanPointerDownCapture}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}

@@ -8,24 +8,28 @@ describe('export svg package', () => {
     const keys = Object.keys(fileMap).sort();
 
     expect(keys).toEqual([
-      'icons/chevron-right/24.svg',
-      'icons/play/24.svg',
+      'icons/bell/24.svg',
+      'icons/heart/24.svg',
+      'icons/home/24.svg',
+      'icons/search/24.svg',
+      'icons/settings/24.svg',
+      'icons/star/24.svg',
     ]);
-    expect(fileMap['icons/chevron-right/24.svg']).toContain('<svg');
-    expect(fileMap['icons/play/24.svg']).toContain('<svg');
+    expect(fileMap['icons/home/24.svg']).toContain('<svg');
+    expect(fileMap['icons/search/24.svg']).toContain('<svg');
   });
 
   test('adds mode suffix when multiple rendering modes are requested', () => {
     const fileMap = exportSvgPackage(SAMPLE_PROJECT, {
       renderingMode: ['monochrome', 'multicolor'],
-      icons: ['icon-play'],
+      icons: ['icon-search'],
       variants: ['v24'],
     });
 
     const keys = Object.keys(fileMap).sort();
     expect(keys).toEqual([
-      'icons/play/24-monochrome.svg',
-      'icons/play/24-multicolor.svg',
+      'icons/search/24-monochrome.svg',
+      'icons/search/24-multicolor.svg',
     ]);
   });
 });

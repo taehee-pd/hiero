@@ -2,7 +2,7 @@ import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 
 const runtimeProject = structuredClone(SAMPLE_PROJECT);
-const runtimeIcon = runtimeProject.icons['icon-chevron']!;
+const runtimeIcon = runtimeProject.icons['icon-home']!;
 const runtimeVariant = runtimeIcon.variants.v24;
 const defaultState = runtimeVariant.states.default;
 
@@ -11,8 +11,8 @@ runtimeVariant.states.active = {
   id: 'active',
   layers: {
     ...structuredClone(defaultState.layers),
-    chevron: {
-      ...structuredClone(defaultState.layers.chevron),
+    roof: {
+      ...structuredClone(defaultState.layers.roof),
       path: {
         d: 'M7 5l7 7-7 7',
       },
@@ -21,8 +21,8 @@ runtimeVariant.states.active = {
 };
 
 runtimeIcon.customGuides = [
-  { kind: 'drawPoint', layerId: 'chevron', t: 0, direction: 'forward' },
-  { kind: 'drawPoint', layerId: 'chevron', t: 1, direction: 'forward' },
+  { kind: 'drawPoint', layerId: 'roof', t: 0, direction: 'forward' },
+  { kind: 'drawPoint', layerId: 'roof', t: 1, direction: 'forward' },
 ];
 
 runtimeIcon.transitions = {
@@ -35,8 +35,8 @@ runtimeIcon.transitions = {
     easing: 'ease-in-out',
     layerBindings: [
       {
-        fromLayerId: 'chevron',
-        toLayerId: 'chevron',
+        fromLayerId: 'roof',
+        toLayerId: 'roof',
         tracks: [
           { property: 'opacity', keyframes: [0.35, 1] },
           { property: 'translateX', keyframes: [-1.5, 0] },

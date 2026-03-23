@@ -13,13 +13,13 @@ describe('variant management', () => {
     bootstrap();
 
     const state = editorStore.getState();
-    state.addVariant('icon-chevron', {
+    state.addVariant('icon-home', {
       size: 32,
       viewBox: [0, 0, 32, 32],
       sourceVariantId: 'v24',
     });
 
-    let icon = editorStore.getState().project!.icons['icon-chevron']!;
+    let icon = editorStore.getState().project!.icons['icon-home']!;
     expect(icon.variants.v32).toMatchObject({
       id: 'v32',
       size: 32,
@@ -28,9 +28,9 @@ describe('variant management', () => {
     });
     expect(editorStore.getState().currentVariantId).toBe('v32');
 
-    editorStore.getState().removeVariant('icon-chevron', 'v32');
+    editorStore.getState().removeVariant('icon-home', 'v32');
 
-    icon = editorStore.getState().project!.icons['icon-chevron']!;
+    icon = editorStore.getState().project!.icons['icon-home']!;
     expect(icon.variants.v32).toBeUndefined();
     expect(editorStore.getState().currentVariantId).toBe('v24');
   });
@@ -39,12 +39,12 @@ describe('variant management', () => {
     bootstrap();
 
     const state = editorStore.getState();
-    state.addVariant('icon-chevron', {
+    state.addVariant('icon-home', {
       size: 16,
       viewBox: [0, 0, 16, 16],
       sourceVariantId: 'v24',
     });
-    state.addVariant('icon-chevron', {
+    state.addVariant('icon-home', {
       size: 32,
       viewBox: [0, 0, 32, 32],
       sourceVariantId: 'v24',

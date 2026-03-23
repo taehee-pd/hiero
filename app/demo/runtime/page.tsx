@@ -7,16 +7,16 @@ import { HAMBURGER_CLOSE_ICON } from '@/lib/schema/sample-icons/hamburger-close'
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
 
-const chevronIcon = SAMPLE_PROJECT.icons['icon-chevron']!;
+const homeIcon = SAMPLE_PROJECT.icons['icon-home']!;
 export default function RuntimeDemoPage() {
   const hamburger = useIconState('open');
-  const chevron = useIconState('default');
+  const home = useIconState('default');
   const [animate, setAnimate] = useState(true);
   const [exportResult, setExportResult] = useState<string | null>(null);
 
   function handleExportRuntimeJson() {
     try {
-      const result = exportRuntimeIconVariant(SAMPLE_PROJECT, 'icon-chevron', 'v24');
+      const result = exportRuntimeIconVariant(SAMPLE_PROJECT, 'icon-home', 'v24');
       setExportResult(JSON.stringify(result.variant, null, 2).slice(0, 500) + '\n...');
       if (result.diagnostics.length > 0) {
         setExportResult((prev) =>
@@ -54,18 +54,18 @@ export default function RuntimeDemoPage() {
           </button>
         </section>
 
-        {/* Chevron demo */}
+        {/* Home icon demo */}
         <section className="flex flex-col items-center gap-4">
-          <h2 className="text-lg font-semibold">Chevron</h2>
+          <h2 className="text-lg font-semibold">Home</h2>
           <ConivaIcon
-            icon={chevronIcon}
+            icon={homeIcon}
             variant="v24"
-            state={chevron.state}
+            state={home.state}
             animate={animate}
             size={72}
             color="#2563eb"
           />
-          <p className="text-sm text-gray-500">State: {chevron.state}</p>
+          <p className="text-sm text-gray-500">State: {home.state}</p>
         </section>
       </div>
 
@@ -89,7 +89,7 @@ export default function RuntimeDemoPage() {
           className="rounded border px-4 py-2"
           onClick={handleExportRuntimeJson}
         >
-          Export Chevron → Runtime JSON
+          Export Home → Runtime JSON
         </button>
         {exportResult && (
           <pre className="max-w-xl overflow-auto rounded bg-gray-100 p-4 text-xs dark:bg-gray-900">

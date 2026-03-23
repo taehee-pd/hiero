@@ -72,11 +72,11 @@ describe('runtime core store', () => {
     store.advanceTo(now);
     snapshot = store.getSnapshot();
 
-    const chevron = snapshot.snapshot.layers.find((layer) => layer.id === 'chevron');
+    const roofLayer = snapshot.snapshot.layers.find((layer) => layer.id === 'roof');
     expect(snapshot.isAnimating).toBeTrue();
-    expect(chevron?.transform).toContain('translate(-0.75, 0)');
-    expect(chevron?.pathLengthProgress).toBeGreaterThan(0.5);
-    expect(chevron?.pathLengthProgress).toBeLessThan(0.7);
+    expect(roofLayer?.transform).toContain('translate(-0.75, 0)');
+    expect(roofLayer?.pathLengthProgress).toBeGreaterThan(0.5);
+    expect(roofLayer?.pathLengthProgress).toBeLessThan(0.7);
 
     now = 240;
     store.advanceTo(now);
@@ -158,12 +158,12 @@ describe('runtime core store', () => {
     now = 160;
     store.advanceTo(now);
     let snapshot = store.getSnapshot();
-    const chevron = snapshot.snapshot.layers.find((layer) => layer.id === 'chevron');
+    const roofLayer = snapshot.snapshot.layers.find((layer) => layer.id === 'roof');
 
     expect(snapshot.activeEffectId).toBe('drawOn');
     expect(snapshot.isAnimating).toBeTrue();
-    expect(chevron?.pathLengthProgress).toBeGreaterThan(0.7);
-    expect(chevron?.pathLengthProgress).toBeLessThan(0.8);
+    expect(roofLayer?.pathLengthProgress).toBeGreaterThan(0.7);
+    expect(roofLayer?.pathLengthProgress).toBeLessThan(0.8);
 
     now = 321;
     store.advanceTo(now);

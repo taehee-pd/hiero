@@ -20,6 +20,10 @@ import type { Project } from '../lib/schema/types';
 function bootstrap() {
   const state = editorStore.getState();
   state.loadProject(structuredClone(SAMPLE_PROJECT));
+  // Replace the complex Lucide path with a simple 3-point polyline for point-editing tests
+  state.patchLayer('icon-home', 'default', 'roof', {
+    path: { d: 'M9.5 7 L14.5 12 L9.5 17' },
+  });
 }
 
 function setupLayerSelection(pointKey: string) {
@@ -31,7 +35,7 @@ function setupLayerMultiSelection(pointKeys: string[]) {
   const iconId = state.currentIconId!;
   const variantId = state.currentVariantId!;
   const stateId = state.currentStateId!;
-  const layerId = 'chevron';
+  const layerId = 'roof';
   state.setSelection({ layerIds: [layerId], pointIds: pointKeys });
   return { iconId, variantId, stateId, layerId };
 }
@@ -148,11 +152,11 @@ describe('vector commands', () => {
     setupLayerSelection('0:1');
 
     expect(toggleSelectedPointType()).toBeTrue();
-    const smooth = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const smooth = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(smooth.includes('C')).toBeTrue();
 
     expect(toggleSelectedPointType()).toBeTrue();
-    const corner = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const corner = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(corner).toBe('M9.5 7 C9.5 7 14.5 12 14.5 12 C14.5 12 9.5 17 9.5 17');
   });
 
@@ -162,7 +166,7 @@ describe('vector commands', () => {
 
     expect(insertPointAfterSelection()).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(d).toBe('M9.5 7 L12 9.5 L14.5 12 L9.5 17');
   });
 
@@ -171,11 +175,11 @@ describe('vector commands', () => {
     setupLayerSelection('0:0');
 
     expect(toggleSelectedPathClosed()).toBeTrue();
-    const closed = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const closed = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(closed.endsWith(' Z')).toBeTrue();
 
     expect(toggleSelectedPathClosed()).toBeTrue();
-    const reopened = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const reopened = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(reopened).toBe('M9.5 7 L14.5 12 L9.5 17');
   });
 
@@ -185,7 +189,7 @@ describe('vector commands', () => {
 
     expect(nudgeSelectedPointByArrow('ArrowRight')).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(d).toBe('M9.5 7 L15 12 L9.5 17');
   });
 
@@ -228,7 +232,7 @@ describe('vector commands', () => {
 
     expect(alignSelectedPoints('x', 'min')).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     const path = parseSvgPath(d);
     const xValues = path.subPaths[0]!.points.map((point) => point.position.x);
     expect(xValues).toEqual([9.5, 9.5, 9.5]);
@@ -240,7 +244,7 @@ describe('vector commands', () => {
 
     expect(alignSelectedPoints('y', 'center')).toBeTrue();
 
-    const path = parseSvgPath(getLayerPath('icon-chevron', 'v24', 'default', 'chevron'));
+    const path = parseSvgPath(getLayerPath('icon-home', 'v24', 'default', 'roof'));
     const yValues = path.subPaths[0]!.points.map((point) => point.position.y);
     expect(yValues).toEqual([12, 12, 12]);
   });
@@ -248,28 +252,28 @@ describe('vector commands', () => {
   test('distributes selected points evenly on an axis', () => {
     bootstrap();
     const state = editorStore.getState();
-    state.patchLayer('icon-chevron', 'default', 'chevron', {
+    state.patchLayer('icon-home', 'default', 'roof', {
       path: { d: 'M0 0 L2 0 L15 0 L20 0' },
     });
     setupLayerMultiSelection(['0:0', '0:1', '0:2', '0:3']);
 
     expect(distributeSelectedPoints('x')).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(d).toBe('M0 0 L6.667 0 L13.333 0 L20 0');
   });
 
   test('sets symmetric point type with mirrored handles', () => {
     bootstrap();
     const state = editorStore.getState();
-    state.patchLayer('icon-chevron', 'default', 'chevron', {
+    state.patchLayer('icon-home', 'default', 'roof', {
       path: { d: 'M0 0 L10 10 L20 0' },
     });
     setupLayerSelection('0:1');
 
     expect(setSelectedPointType('symmetric')).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     const path = parseSvgPath(d);
     const point = path.subPaths[0]!.points[1]!;
     expect(point.handleIn).not.toBeNull();
@@ -302,7 +306,7 @@ describe('vector commands', () => {
 
     expect(nudgeSelectedPointByArrow('ArrowRight')).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(d).toBe('M10 7 L15 12 L10 17');
   });
 
@@ -312,7 +316,7 @@ describe('vector commands', () => {
 
     expect(deleteSelectedPoints()).toBeTrue();
 
-    const d = getLayerPath('icon-chevron', 'v24', 'default', 'chevron');
+    const d = getLayerPath('icon-home', 'v24', 'default', 'roof');
     expect(d).toBe('M9.5 17');
   });
 

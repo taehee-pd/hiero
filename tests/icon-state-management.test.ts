@@ -25,18 +25,18 @@ describe('icon and state management', () => {
     bootstrap();
 
     const state = editorStore.getState();
-    state.addVariant('icon-chevron', {
+    state.addVariant('icon-home', {
       size: 32,
       viewBox: [0, 0, 32, 32],
       sourceVariantId: 'v24',
     });
 
-    const createdStateId = state.addState('icon-chevron', { name: 'hover' });
+    const createdStateId = state.addState('icon-home', { name: 'hover' });
     expect(createdStateId).toBe('hover');
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v24?.states.hover).toBeDefined();
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v32?.states.hover).toBeDefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v24?.states.hover).toBeDefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v32?.states.hover).toBeDefined();
 
-    state.addTransition('icon-chevron', {
+    state.addTransition('icon-home', {
       id: 'default-to-hover',
       from: 'default',
       to: 'hover',
@@ -45,23 +45,23 @@ describe('icon and state management', () => {
       layerBindings: [],
     });
 
-    const renamedStateId = state.renameState('icon-chevron', 'hover', 'active');
+    const renamedStateId = state.renameState('icon-home', 'hover', 'active');
     expect(renamedStateId).toBe('active');
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v24?.states.hover).toBeUndefined();
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v24?.states.active).toBeDefined();
-    expect(editorStore.getState().project?.icons['icon-chevron']?.transitions['default-to-active']).toBeUndefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v24?.states.hover).toBeUndefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v24?.states.active).toBeDefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.transitions['default-to-active']).toBeUndefined();
     expect(
-      Object.values(editorStore.getState().project?.icons['icon-chevron']?.transitions ?? {})[0],
+      Object.values(editorStore.getState().project?.icons['icon-home']?.transitions ?? {})[0],
     ).toMatchObject({ from: 'default', to: 'active' });
 
-    const duplicateStateId = state.duplicateState('icon-chevron', 'active');
+    const duplicateStateId = state.duplicateState('icon-home', 'active');
     expect(duplicateStateId).toBe('active-copy');
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v24?.states['active-copy']).toBeDefined();
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v32?.states['active-copy']).toBeDefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v24?.states['active-copy']).toBeDefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v32?.states['active-copy']).toBeDefined();
 
-    state.removeState('icon-chevron', 'active');
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v24?.states.active).toBeUndefined();
-    expect(editorStore.getState().project?.icons['icon-chevron']?.variants.v32?.states.active).toBeUndefined();
-    expect(Object.keys(editorStore.getState().project?.icons['icon-chevron']?.transitions ?? {})).toHaveLength(0);
+    state.removeState('icon-home', 'active');
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v24?.states.active).toBeUndefined();
+    expect(editorStore.getState().project?.icons['icon-home']?.variants.v32?.states.active).toBeUndefined();
+    expect(Object.keys(editorStore.getState().project?.icons['icon-home']?.transitions ?? {})).toHaveLength(0);
   });
 });

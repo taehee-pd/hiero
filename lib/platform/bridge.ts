@@ -520,7 +520,14 @@ export async function setWindowTitle(projectName: string | null | undefined, isD
 
 export async function confirmUnsavedChanges(): Promise<'save' | 'discard' | 'cancel'> {
   if (!isElectrobunEnvironment()) {
-    return window.confirm('You have unsaved changes. Save before quitting?') ? 'save' : 'cancel';
+    // In the web environment, default to saving. A proper confirmation dialog
+    // should be handled by the UI layer listening for coniva:confirm events.
+    document.dispatchEvent(
+      new CustomEvent('coniva:confirm', {
+        detail: { message: 'You have unsaved changes. Save before quitting?' },
+      }),
+    );
+    return 'save';
   }
 
   return await electrobunRequest<'save' | 'discard' | 'cancel'>('confirmUnsavedChanges', {});

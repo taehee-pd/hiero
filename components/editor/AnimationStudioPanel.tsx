@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
@@ -9,12 +9,24 @@ import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
 import type { Effect, Transition } from '@/lib/schema/types';
 import { TimelineEditor } from './TimelineEditor';
-import { EasingPicker } from './EasingPicker';
+import { EasingPicker, type EasingValue } from './EasingPicker';
 
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
 
-export function AnimationStudioPanel({
+const EFFECT_KIND_LABELS: Record<string, string> = {
+  lineDrawOn: 'Line Draw On',
+  lineDrawOff: 'Line Draw Off',
+  variableColor: 'Variable Color',
+};
+
+function formatEffectKind(kind: string): string {
+  if (EFFECT_KIND_LABELS[kind]) return EFFECT_KIND_LABELS[kind];
+  // Capitalize first letter for generic kinds
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   onOpenTransitionEditor,
   showTimelineEditor = true,
 }: {
@@ -28,6 +40,7 @@ export function AnimationStudioPanel({
   const { patchTransition, setSelectedTransitionId } = useEditorActions();
   const currentEffect = useRef<Effect | null>(null);
   const playerRef = useRef<EffectPlayer | null>(null);
+  const canvasRafCleanupRef = useRef<(() => void) | null>(null);
 
   const [speed, setSpeed] = useState<Speed>(1);
   const [loop, setLoop] = useState(false);
@@ -59,7 +72,8 @@ export function AnimationStudioPanel({
       return;
     }
 
-    previewCanvasEffect(effect, speed);
+    canvasRafCleanupRef.current?.();
+    canvasRafCleanupRef.current = previewCanvasEffect(effect, speed);
   };
 
   const handleSave = () => {
@@ -85,55 +99,71 @@ export function AnimationStudioPanel({
     editorStore.getState().removeEffect(iconId, effectId);
   };
 
-  const handleRename = (effect: Effect) => {
-    if (!iconId) return;
-    const nextEasing = prompt(
-      'Easing',
-      typeof effect.easing === 'string' ? effect.easing : 'linear',
-    );
-    if (!nextEasing) return;
-    editorStore.getState().patchEffect(iconId, effect.id, { easing: nextEasing });
+  // UX-F1: Replace prompt() with inline easing editing state
+  const [editingEffectId, setEditingEffectId] = useState<string | null>(null);
+
+  const handleEditEasing = (effect: Effect) => {
+    setEditingEffectId(effect.id);
   };
+
+  // C-4: Clean up EffectPlayer and rAF loops on unmount
+  useEffect(() => {
+    return () => {
+      playerRef.current?.stop();
+      playerRef.current = null;
+      canvasRafCleanupRef.current?.();
+      canvasRafCleanupRef.current = null;
+    };
+  }, []);
+
+  const handleEasingChange = useCallback(
+    (effectId: string, nextEasing: EasingValue) => {
+      if (!iconId) return;
+      editorStore.getState().patchEffect(iconId, effectId, { easing: nextEasing });
+      setEditingEffectId(null);
+    },
+    [iconId],
+  );
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-3 p-3">
+      <div className="space-y-3 p-[var(--panel-padding)]">
         <div>
-          <p className="text-sm font-semibold">Animate</p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[length:var(--text-heading)] font-semibold">Animate</p>
+          <p className="text-[length:var(--text-label)] text-muted-foreground">
             Preview effects, tune transitions, and manage motion behavior.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           {PRESET_CARDS.map((preset) => (
-            <button key={preset.key} type="button" className="rounded-xl border border-border/80 bg-background p-2 text-left hover:bg-accent" onClick={() => playPreset(preset.key)}>
-              <p className="text-xs font-medium">{preset.label}</p>
-              <p className="text-[11px] text-muted-foreground">{preset.description}</p>
+            <button key={preset.key} type="button" className="rounded-xl border border-border/70 bg-background p-3 text-left transition-all duration-150 hover:bg-accent hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30" onClick={() => playPreset(preset.key)}>
+              <p className="text-[length:var(--text-body)] font-medium">{preset.label}</p>
+              <p className="text-[length:var(--text-label)] text-muted-foreground">{preset.description}</p>
             </button>
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={togglePlay}>Play</Button>
-          <Button size="sm" variant="outline" onClick={handlePause}>Pause</Button>
-          <Button size="sm" variant={loop ? 'default' : 'outline'} onClick={() => setLoop((v) => !v)}>Loop</Button>
-          <Button size="sm" variant="outline" onClick={handleSave} disabled={!currentEffect.current}>Save Effect</Button>
+        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Animation playback controls">
+          <Button size="sm" variant="secondary" onClick={togglePlay} aria-label="Play animation">Play</Button>
+          <Button size="sm" variant="outline" onClick={handlePause} aria-label="Pause animation">Pause</Button>
+          <Button size="sm" variant={loop ? 'default' : 'outline'} onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
+          <Button size="sm" variant="outline" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save Effect</Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Playback speed">
           {SPEEDS.map((value) => (
-            <Button key={value} size="sm" variant={speed === value ? 'default' : 'outline'} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }}>
+            <Button key={value} size="sm" variant={speed === value ? 'default' : 'outline'} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
               {value}x
             </Button>
           ))}
         </div>
 
-        {previewLabel ? <p className="text-xs text-muted-foreground">Preview: {previewLabel}</p> : null}
+        {previewLabel ? <p className="text-[length:var(--text-label)] text-muted-foreground">Preview: {formatEffectKind(previewLabel)}</p> : null}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">
               Transitions
             </p>
             <div className="flex items-center gap-2">
@@ -186,22 +216,34 @@ export function AnimationStudioPanel({
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Saved Effects</p>
+          <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">Saved Effects</p>
           {savedEffects.length === 0 ? (
             <p className="text-xs text-muted-foreground">No saved effects yet.</p>
           ) : (
             savedEffects.map((effect) => (
-              <div key={effect.id} className="flex items-center justify-between rounded-lg border border-border/80 p-2">
-                <div>
-                  <p className="text-sm font-medium">{effect.kind}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {effect.durationMs}ms • {typeof effect.easing === 'string' ? effect.easing : 'spring'}
-                  </p>
+              <div key={effect.id} className="rounded-lg border border-border/70 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{formatEffectKind(effect.kind)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {effect.durationMs}ms • {typeof effect.easing === 'string' ? effect.easing : 'spring'}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => handleEditEasing(effect)}>Edit</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(effect.id)}>Delete</Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" onClick={() => handleRename(effect)}>Edit</Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(effect.id)}>Delete</Button>
-                </div>
+                {/* UX-F1: Inline easing editor replaces window.prompt() */}
+                {editingEffectId === effect.id && (
+                  <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-2">
+                    <EasingPicker
+                      value={typeof effect.easing === 'string' ? effect.easing : (effect.easing ?? 'linear')}
+                      onSelect={(val) => handleEasingChange(effect.id, val)}
+                    />
+                    <Button size="sm" variant="ghost" onClick={() => setEditingEffectId(null)}>Cancel</Button>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -209,16 +251,19 @@ export function AnimationStudioPanel({
       </div>
     </ScrollArea>
   );
-}
+});
 
-function previewCanvasEffect(effect: Effect, speed: number) {
+function previewCanvasEffect(effect: Effect, speed: number): () => void {
   const svg = document.querySelector<SVGSVGElement>('svg');
-  if (!svg) return;
+  if (!svg) return () => {};
   const paths = Array.from(svg.querySelectorAll<SVGPathElement>('path[data-layer-id]'));
   const duration = Math.max(1, effect.durationMs / speed);
   const start = performance.now();
+  let rafId: number | null = null;
+  let cancelled = false;
 
   const apply = (t: number) => {
+    if (cancelled) return;
     const p = Math.min((t - start) / duration, 1);
     for (const path of paths) {
       const wave = Math.sin(p * Math.PI * 2);
@@ -240,8 +285,17 @@ function previewCanvasEffect(effect: Effect, speed: number) {
       path.style.transformOrigin = 'center';
     }
 
-    if (p < 1) requestAnimationFrame(apply);
+    if (p < 1) {
+      rafId = requestAnimationFrame(apply);
+    }
   };
 
-  requestAnimationFrame(apply);
+  rafId = requestAnimationFrame(apply);
+
+  return () => {
+    cancelled = true;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+    }
+  };
 }

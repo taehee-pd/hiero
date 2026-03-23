@@ -509,6 +509,42 @@ export function nudgeSelectedPointByArrow(key: string, shiftKey = false): boolea
   return true;
 }
 
+/**
+ * Nudge the selected layer's transform by arrow key direction.
+ * Fallback for non-editable paths where point nudging doesn't work.
+ */
+export function nudgeSelectedLayerByArrow(key: string, shiftKey = false): boolean {
+  const state = editorStore.getState();
+  const iconId = state.currentIconId;
+  const variantId = state.currentVariantId;
+  const stateId = state.currentStateId;
+  const layerId = state.selection.layerIds[0];
+  if (!iconId || !variantId || !stateId || !layerId) return false;
+
+  const layer =
+    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId];
+  if (!layer?.path?.d) return false;
+
+  const step = shiftKey ? NUDGE_STEP * 10 : NUDGE_STEP;
+  const delta = {
+    ArrowLeft: { x: -step, y: 0 },
+    ArrowRight: { x: step, y: 0 },
+    ArrowUp: { x: 0, y: -step },
+    ArrowDown: { x: 0, y: step },
+  }[key];
+  if (!delta) return false;
+
+  state.patchLayer(iconId, stateId, layerId, {
+    transform: {
+      ...(layer.transform ?? {}),
+      x: (layer.transform?.x ?? 0) + delta.x,
+      y: (layer.transform?.y ?? 0) + delta.y,
+    },
+  });
+
+  return true;
+}
+
 export function alignSelectedPoints(
   axis: 'x' | 'y',
   anchor: 'min' | 'center' | 'max',

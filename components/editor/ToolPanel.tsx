@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import {
   ChevronDown,
   Circle,
@@ -51,7 +51,7 @@ export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
   return SHAPE_SUB_TOOLS.find((shape) => shape.id === shapeSubTool)?.label ?? 'Shape';
 }
 
-export function ToolPanel({
+export const ToolPanel = memo(function ToolPanel({
   guidePanelOpen = false,
   layout = 'panel',
 }: {
@@ -71,12 +71,13 @@ export function ToolPanel({
       className={cn(
         'flex flex-col gap-2',
         isDock &&
-          'flex-row items-center gap-2 rounded-[1.35rem] border border-border/70 bg-background/88 p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur-xl',
+          'flex-row items-center gap-2 rounded-[1.35rem] border bg-background/88 p-2 backdrop-blur-xl',
+        isDock && 'border-[var(--border-level-2)] shadow-[var(--shadow-panel)]',
       )}
     >
       {!isDock ? (
-        <div className="px-2 py-1">
-          <p className="text-xs font-medium text-muted-foreground">Tools</p>
+        <div className="px-3 py-2">
+          <p className="text-[length:var(--text-label)] font-medium text-muted-foreground">Tools</p>
         </div>
       ) : null}
 
@@ -117,10 +118,10 @@ export function ToolPanel({
                     data-active={isActive ? 'true' : 'false'}
                     className={cn(
                       isDock
-                        ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/80 bg-background/90 px-0'
+                        ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
                         : 'workspace-nav-button h-10 rounded-md px-3 py-2',
                       !isDock && isShapeTool && isActive && 'rounded-r-sm',
-                      tool.disabled && !isGuideEntry && 'opacity-50',
+                      tool.disabled && !isGuideEntry && 'opacity-40',
                     )}
                   >
                     <span className={cn('flex items-center gap-2', isDock && 'gap-0')}>
@@ -136,8 +137,10 @@ export function ToolPanel({
                         <span className="text-sm font-medium text-foreground">{tool.label}</span>
                       ) : null}
                     </span>
-                    {!isDock ? (
-                      <span className="text-xs font-mono uppercase text-muted-foreground">
+                    {!isDock && tool.disabled && !isGuideEntry ? (
+                      <span className="workspace-coming-soon">Soon</span>
+                    ) : !isDock ? (
+                      <span className="text-[length:var(--text-label)] font-mono uppercase text-muted-foreground">
                         {tool.shortcut}
                       </span>
                     ) : null}
@@ -146,7 +149,7 @@ export function ToolPanel({
                 <TooltipContent side="right">
                   {tooltipLabel}
                   {tool.disabled && !isGuideEntry ? (
-                    <span className="ml-2 text-xs text-muted-foreground">Preset only</span>
+                    <span className="ml-2 text-[length:var(--text-caption)] text-muted-foreground">Coming Soon</span>
                   ) : null}
                 </TooltipContent>
               </Tooltip>
@@ -205,8 +208,8 @@ export function ToolPanel({
       </div>
 
       {!isDock ? (
-        <div className="mt-3 px-2 py-1">
-          <p className="text-xs font-medium text-muted-foreground">Snapping</p>
+        <div className="mt-3 px-3 py-2">
+          <p className="text-[length:var(--text-label)] font-medium text-muted-foreground">Snapping</p>
         </div>
       ) : (
         <div className="h-8 w-px bg-border/70" />
@@ -220,7 +223,7 @@ export function ToolPanel({
             data-active={snapEnabled ? 'true' : 'false'}
             className={cn(
               isDock
-                ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/80 bg-background/90 px-0'
+                ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
                 : 'workspace-nav-button h-10 rounded-md px-3 py-2',
             )}
           >
@@ -254,4 +257,4 @@ export function ToolPanel({
       ) : null}
     </div>
   );
-}
+});

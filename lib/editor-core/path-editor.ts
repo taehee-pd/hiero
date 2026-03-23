@@ -20,13 +20,14 @@ import {
 } from './path-shapes';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { PathPoint } from './path-model';
-import type { GuideItem } from '@/lib/schema/types';
+import type { GuideItem, Layer } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
 
 type ControlDirection = 'in' | 'out';
 type DragMode =
   | 'layer'
+  | 'layer-resize'
   | 'point'
   | 'control'
   | 'point-marquee'
@@ -35,6 +36,15 @@ type DragMode =
   | 'selection-move'
   | 'selection-resize'
   | null;
+
+type LayerResizePlacement = {
+  layerId: string;
+  pointerId: number;
+  handle: BBoxHandle;
+  startSvg: { x: number; y: number };
+  bbox: { x: number; y: number; width: number; height: number };
+  originalTransform: { x?: number; y?: number; scaleX?: number; scaleY?: number };
+};
 type PenPlacement = {
   layerId: string;
   pointKey: string;
@@ -122,6 +132,7 @@ export class PathEditor {
   private shapePlacement: ShapePlacement | null = null;
   private pointMarqueePlacement: PointMarqueePlacement | null = null;
   private selectionTransformPlacement: SelectionTransformPlacement | null = null;
+  private layerResizePlacement: LayerResizePlacement | null = null;
   private cleanup: (() => void) | null = null;
   private snapEngine = new SnapEngine(editorStore);
 
@@ -539,6 +550,14 @@ export class PathEditor {
       return;
     }
 
+    if (
+      this.layerResizePlacement &&
+      e.pointerId === this.layerResizePlacement.pointerId
+    ) {
+      this.updateLayerResizePreview(e);
+      return;
+    }
+
     if (this.pointMarqueePlacement && e.pointerId === this.pointMarqueePlacement.pointerId) {
       this.updatePointMarquee(e);
       return;
@@ -587,11 +606,16 @@ export class PathEditor {
     const layerId = state.selection.layerIds[0] ?? null;
     if (!iconId || !stateId || !layerId) return false;
 
-    const pathD = getActiveVariantState(state, iconId, stateId)?.layers[layerId]?.path?.d;
-    if (!pathD || !isPathDirectlyEditable(pathD)) return false;
+    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
+    const pathD = layer?.path?.d;
+    if (!pathD) return false;
+
+    // For non-editable paths (circles, etc.), use transform-based resize
+    if (!isPathDirectlyEditable(pathD)) {
+      return this.beginLayerTransformResize(e, handle, layerId, layer!);
+    }
 
     const editable = parseSvgPath(pathD);
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
     const layerTransformX = layer?.transform?.x ?? 0;
     const layerTransformY = layer?.transform?.y ?? 0;
     if (layerTransformX !== 0 || layerTransformY !== 0) {
@@ -652,6 +676,188 @@ export class PathEditor {
     });
     pauseHistory();
     return true;
+  }
+
+  /**
+   * Handle resize for non-directly-editable paths (circles, complex shapes)
+   * by using scaleX/scaleY transforms instead of modifying path points.
+   */
+  private beginLayerTransformResize(
+    e: PointerEvent,
+    handle: BBoxHandle,
+    layerId: string,
+    layer: Layer,
+  ): boolean {
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return false;
+
+    // Get bounding box from the SVG element directly
+    const pathEl = this.svg.querySelector<SVGPathElement>(
+      `path[data-layer-id="${CSS.escape(layerId)}"]`,
+    );
+    if (!pathEl) return false;
+
+    let bounds: DOMRect;
+    try {
+      bounds = pathEl.getBBox();
+      if (!Number.isFinite(bounds.x + bounds.y + bounds.width + bounds.height)) return false;
+      if (bounds.width < 0.001 || bounds.height < 0.001) return false;
+    } catch {
+      return false;
+    }
+
+    this.dragMode = 'layer-resize';
+    this.isDragging = true;
+    this.dragLayerId = layerId;
+    this.dragStartX = e.clientX;
+    this.dragStartY = e.clientY;
+    this.layerResizePlacement = {
+      layerId,
+      pointerId: e.pointerId,
+      handle,
+      startSvg: svgPoint,
+      bbox: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
+      originalTransform: {
+        x: layer.transform?.x,
+        y: layer.transform?.y,
+        scaleX: layer.transform?.scaleX,
+        scaleY: layer.transform?.scaleY,
+      },
+    };
+
+    const state = editorStore.getState();
+    state.setPointTransformLabel({
+      width: bounds.width,
+      height: bounds.height,
+    });
+    pauseHistory();
+    return true;
+  }
+
+  private updateLayerResizePreview(e: PointerEvent) {
+    if (!this.layerResizePlacement || !this.dragLayerId) return;
+
+    const currentSvg = this.clientToSvg(e.clientX, e.clientY);
+    if (!currentSvg) return;
+
+    const p = this.layerResizePlacement;
+    const dx = currentSvg.x - p.startSvg.x;
+    const dy = currentSvg.y - p.startSvg.y;
+
+    const { scaleX: sx, scaleY: sy, tx, ty } = this.computeLayerResizeTransform(p, dx, dy);
+
+    // Apply visual preview directly to SVG elements
+    const transformStr = `translate(${tx}, ${ty}) scale(${sx}, ${sy})`;
+    const pathEl = this.svg.querySelector(`[data-layer-id="${this.dragLayerId}"]`);
+    const hitEl = this.svg.querySelector(`[data-layer-hit-id="${this.dragLayerId}"]`);
+    if (pathEl) pathEl.setAttribute('transform', transformStr);
+    if (hitEl) hitEl.setAttribute('transform', transformStr);
+
+    editorStore.getState().setPointTransformLabel({
+      width: Math.abs(p.bbox.width * sx),
+      height: Math.abs(p.bbox.height * sy),
+    });
+  }
+
+  private commitLayerResize(e: PointerEvent) {
+    if (!this.layerResizePlacement || !this.dragLayerId) {
+      discardHistory();
+      this.resetDrag();
+      return;
+    }
+
+    const currentSvg = this.clientToSvg(e.clientX, e.clientY);
+    if (!currentSvg) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    const p = this.layerResizePlacement;
+    const dx = currentSvg.x - p.startSvg.x;
+    const dy = currentSvg.y - p.startSvg.y;
+
+    if (Math.abs(dx) <= 0.01 && Math.abs(dy) <= 0.01) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    const state = editorStore.getState();
+    const iconId = state.currentIconId;
+    const stateId = state.currentStateId;
+    if (!iconId || !stateId) {
+      discardHistory();
+      state.setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    const { scaleX, scaleY, tx, ty } = this.computeLayerResizeTransform(p, dx, dy);
+
+    const layer = getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId];
+    state.patchLayer(iconId, stateId, this.dragLayerId, {
+      transform: {
+        ...(layer?.transform ?? {}),
+        x: tx,
+        y: ty,
+        scaleX,
+        scaleY,
+      },
+    });
+
+    state.setPointTransformLabel(null);
+    resumeHistory();
+    commitHistory('layer-resize');
+    this.resetDrag();
+  }
+
+  private computeLayerResizeTransform(
+    p: LayerResizePlacement,
+    dx: number,
+    dy: number,
+  ): { scaleX: number; scaleY: number; tx: number; ty: number } {
+    const baseScaleX = p.originalTransform.scaleX ?? 1;
+    const baseScaleY = p.originalTransform.scaleY ?? 1;
+    const baseTx = p.originalTransform.x ?? 0;
+    const baseTy = p.originalTransform.y ?? 0;
+
+    // Compute new scale factors based on handle direction
+    let newScaleX = baseScaleX;
+    let newScaleY = baseScaleY;
+    let newTx = baseTx;
+    let newTy = baseTy;
+
+    const w = p.bbox.width;
+    const h = p.bbox.height;
+    const handle = p.handle;
+
+    const isRight = handle === 'e' || handle === 'ne' || handle === 'se';
+    const isLeft = handle === 'w' || handle === 'nw' || handle === 'sw';
+    const isBottom = handle === 's' || handle === 'se' || handle === 'sw';
+    const isTop = handle === 'n' || handle === 'ne' || handle === 'nw';
+
+    if (isRight) {
+      newScaleX = baseScaleX * ((w + dx) / w);
+    } else if (isLeft) {
+      newScaleX = baseScaleX * ((w - dx) / w);
+      newTx = baseTx + dx;
+    }
+
+    if (isBottom) {
+      newScaleY = baseScaleY * ((h + dy) / h);
+    } else if (isTop) {
+      newScaleY = baseScaleY * ((h - dy) / h);
+      newTy = baseTy + dy;
+    }
+
+    // Prevent collapsing to zero
+    if (Math.abs(newScaleX) < 0.01) newScaleX = 0.01 * Math.sign(newScaleX || 1);
+    if (Math.abs(newScaleY) < 0.01) newScaleY = 0.01 * Math.sign(newScaleY || 1);
+
+    return { scaleX: newScaleX, scaleY: newScaleY, tx: newTx, ty: newTy };
   }
 
   private beginSelectionBoundsDrag(e: PointerEvent): boolean {
@@ -1066,6 +1272,13 @@ export class PathEditor {
       return;
     }
 
+    if (this.layerResizePlacement) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
     if (this.pointMarqueePlacement) {
       editorStore.getState().setPointMarquee(null);
       this.resetDrag();
@@ -1094,6 +1307,13 @@ export class PathEditor {
     }
 
     if (this.selectionTransformPlacement) {
+      discardHistory();
+      editorStore.getState().setPointTransformLabel(null);
+      this.resetDrag();
+      return;
+    }
+
+    if (this.layerResizePlacement) {
       discardHistory();
       editorStore.getState().setPointTransformLabel(null);
       this.resetDrag();
@@ -1133,6 +1353,14 @@ export class PathEditor {
       e.pointerId === this.selectionTransformPlacement.pointerId
     ) {
       this.commitSelectionTransform(e);
+      return;
+    }
+
+    if (
+      this.layerResizePlacement &&
+      e.pointerId === this.layerResizePlacement.pointerId
+    ) {
+      this.commitLayerResize(e);
       return;
     }
 
@@ -1220,26 +1448,38 @@ export class PathEditor {
     if (!iconId || !stateId) return;
 
     const layer = getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId];
-    if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return;
+    if (!layer?.path?.d) return;
 
-    const editable = parseSvgPath(layer.path.d);
-    editable.subPaths.forEach((subPath) => {
-      subPath.points.forEach((point) => {
-        translatePathPoint(point, dx, dy);
+    if (isPathDirectlyEditable(layer.path.d)) {
+      // For editable paths, translate the path points directly and reset the transform offset
+      const editable = parseSvgPath(layer.path.d);
+      editable.subPaths.forEach((subPath) => {
+        subPath.points.forEach((point) => {
+          translatePathPoint(point, dx, dy);
+        });
       });
-    });
 
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
-      path: {
-        ...layer.path,
-        d: serializePath(editable),
-      },
-      transform: {
-        ...(layer.transform ?? {}),
-        x: 0,
-        y: 0,
-      },
-    });
+      state.patchLayer(iconId, stateId, this.dragLayerId, {
+        path: {
+          ...layer.path,
+          d: serializePath(editable),
+        },
+        transform: {
+          ...(layer.transform ?? {}),
+          x: 0,
+          y: 0,
+        },
+      });
+    } else {
+      // For non-editable paths (circles, complex shapes), persist the move via transform
+      state.patchLayer(iconId, stateId, this.dragLayerId, {
+        transform: {
+          ...(layer.transform ?? {}),
+          x: (layer.transform?.x ?? 0) + dx,
+          y: (layer.transform?.y ?? 0) + dy,
+        },
+      });
+    }
   }
 
   private commitPointDrag(e: PointerEvent) {
@@ -1751,6 +1991,7 @@ export class PathEditor {
     this.shapePlacement = null;
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
+    this.layerResizePlacement = null;
   }
 
   private buildPenHandlePreview(

@@ -263,7 +263,7 @@ export function BezierCurveEditor({
               width={SVG_SIZE}
               height={SVG_SIZE}
               viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-              className="mx-auto block cursor-crosshair rounded-lg border border-border/60 bg-muted/30"
+              className="mx-auto block cursor-crosshair rounded-lg border border-border/70 bg-muted/30"
             >
               {/* Grid */}
               <line
@@ -320,7 +320,7 @@ export function BezierCurveEditor({
 
             <div className="mt-2 grid grid-cols-4 gap-1.5">
               <div>
-                <Label className="text-[10px] text-muted-foreground">x1</Label>
+                <Label className="text-[length:var(--text-caption)] text-muted-foreground">x1</Label>
                 <Input
                   type="number" step="0.01" min="0" max="1"
                   value={x1.toFixed(2)}
@@ -332,7 +332,7 @@ export function BezierCurveEditor({
                 />
               </div>
               <div>
-                <Label className="text-[10px] text-muted-foreground">y1</Label>
+                <Label className="text-[length:var(--text-caption)] text-muted-foreground">y1</Label>
                 <Input
                   type="number" step="0.01" min="-0.5" max="1.5"
                   value={y1.toFixed(2)}
@@ -344,7 +344,7 @@ export function BezierCurveEditor({
                 />
               </div>
               <div>
-                <Label className="text-[10px] text-muted-foreground">x2</Label>
+                <Label className="text-[length:var(--text-caption)] text-muted-foreground">x2</Label>
                 <Input
                   type="number" step="0.01" min="0" max="1"
                   value={x2.toFixed(2)}
@@ -356,7 +356,7 @@ export function BezierCurveEditor({
                 />
               </div>
               <div>
-                <Label className="text-[10px] text-muted-foreground">y2</Label>
+                <Label className="text-[length:var(--text-caption)] text-muted-foreground">y2</Label>
                 <Input
                   type="number" step="0.01" min="-0.5" max="1.5"
                   value={y2.toFixed(2)}
@@ -370,7 +370,7 @@ export function BezierCurveEditor({
             </div>
 
             <div className="mt-2">
-              <Label className="text-[10px] uppercase text-muted-foreground">Presets</Label>
+              <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {CURVE_PRESETS.map((preset) => (
                   <button
@@ -398,7 +398,7 @@ export function BezierCurveEditor({
               width={SVG_SIZE}
               height={SVG_SIZE}
               viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
-              className="mx-auto block rounded-lg border border-border/60 bg-muted/30"
+              className="mx-auto block rounded-lg border border-border/70 bg-muted/30"
             >
               {/* Grid */}
               <line
@@ -422,8 +422,8 @@ export function BezierCurveEditor({
             <div className="mt-2 grid gap-2">
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] text-muted-foreground">Stiffness</Label>
-                  <span className="text-[10px] text-muted-foreground">{stiffness}</span>
+                  <Label className="text-[length:var(--text-caption)] text-muted-foreground">Stiffness</Label>
+                  <span className="text-[length:var(--text-caption)] text-muted-foreground">{stiffness}</span>
                 </div>
                 <input
                   type="range" min="50" max="500" step="1" value={stiffness}
@@ -437,8 +437,8 @@ export function BezierCurveEditor({
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] text-muted-foreground">Damping</Label>
-                  <span className="text-[10px] text-muted-foreground">{dampingVal}</span>
+                  <Label className="text-[length:var(--text-caption)] text-muted-foreground">Damping</Label>
+                  <span className="text-[length:var(--text-caption)] text-muted-foreground">{dampingVal}</span>
                 </div>
                 <input
                   type="range" min="1" max="40" step="0.5" value={dampingVal}
@@ -452,8 +452,8 @@ export function BezierCurveEditor({
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] text-muted-foreground">Mass</Label>
-                  <span className="text-[10px] text-muted-foreground">{mass.toFixed(1)}</span>
+                  <Label className="text-[length:var(--text-caption)] text-muted-foreground">Mass</Label>
+                  <span className="text-[length:var(--text-caption)] text-muted-foreground">{mass.toFixed(1)}</span>
                 </div>
                 <input
                   type="range" min="0.1" max="3" step="0.1" value={mass}
@@ -468,7 +468,7 @@ export function BezierCurveEditor({
             </div>
 
             <div className="mt-2">
-              <Label className="text-[10px] uppercase text-muted-foreground">Presets</Label>
+              <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {SPRING_PRESET_ENTRIES.map(([name, preset]) => (
                   <button

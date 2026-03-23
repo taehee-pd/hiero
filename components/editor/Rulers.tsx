@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useEditorActions } from '@/lib/editor-store/hooks';
 import type { GuideItem } from '@/lib/schema/types';
 
@@ -25,7 +25,7 @@ type DragState = {
   value: number;
 };
 
-export function Rulers({
+export const Rulers = memo(function Rulers({
   containerRef,
   currentIconId,
   viewBox,
@@ -537,7 +537,7 @@ export function Rulers({
       ) : null}
     </div>
   );
-}
+});
 
 function buildTicks(
   minValue: number,

@@ -33,10 +33,10 @@ export function TriggerEditor({
 
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[11px] uppercase text-muted-foreground">
+      <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">
         Interaction Triggers
       </Label>
-      <p className="text-[10px] text-muted-foreground/70">
+      <p className="text-[length:var(--text-caption)] text-muted-foreground/70">
         Advisory metadata for generated component code.
       </p>
       <div className="flex flex-wrap gap-1">
@@ -46,7 +46,7 @@ export function TriggerEditor({
             type="button"
             title={TRIGGER_DESCRIPTIONS[event]}
             className={cn(
-              'rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors',
+              'rounded-full px-2.5 py-0.5 text-[length:var(--text-label)] font-medium transition-colors',
               active.has(event)
                 ? 'bg-primary/15 text-primary'
                 : 'bg-muted text-muted-foreground hover:text-foreground',

@@ -11,7 +11,7 @@ needs over product feature speculation.
 Maintenance rule: update this file after every materially completed repository
 change so the task status and implementation notes continue to match the code.
 
-**Last updated:** 2026-03-21 (editor timeline preview fix completed)
+**Last updated:** 2026-03-23 (UX audit, animation model refactor, SF Symbols gap analysis)
 **Canonical product name:** Coniva (rename tracked in task 4C.1)
 
 ### Implementation order (start here)
@@ -28,6 +28,288 @@ in this order:
 6. ~~**Phase D** — React API Enrichment~~ (completed)
 7. ~~**Phase 7** — Cross-Platform Adapters~~ (completed)
 8. ~~**Phase 8** — Cross-Icon Morphing~~ (completed)
+9. **Phase F** — Cross-Icon Transition Model (open — animation model refactor)
+10. **Phase G** — Closed/Open Path Animation Strategy (open — dual animation model)
+11. **Phase H** — SF Symbols Parity (open — close remaining gaps)
+12. **Phase UX** — Visual & Interaction Polish (open — UX audit findings)
+
+---
+
+## Phase F — Cross-Icon Transition Model
+
+Status: **open** (animation model refactor from same-icon states to cross-icon transitions)
+
+The current animation model treats transitions as state changes within a
+single icon variant (State A → State B of the same icon). The target model
+supports transitions between *different* icons (Icon A → Icon B), matching
+the SF Symbols `.contentTransition(.symbolEffect(.replace))` paradigm.
+
+**Key insight:** The Phase 8.2 `crossIconMorph()` pipeline already supports
+arbitrary path pairs regardless of source icon. The limitation is purely at
+the schema and transition-resolver layers, not the interpolation engine.
+
+- [ ] **F1 — Extend Transition schema for cross-icon references.**
+  Update `Transition` type in `lib/schema/types.ts` to support optional
+  cross-icon endpoint references. Proposed shape:
+  ```
+  TransitionEndpoint = { iconId: string; variantId: string; stateId: string }
+  ```
+  Existing intra-variant transitions remain valid (backward compatible).
+  When `fromIcon`/`toIcon` fields are absent, behavior is unchanged.
+
+- [ ] **F2 — Update transition resolver for cross-icon context.**
+  `lib/runtime-core/transition-resolver.ts`: update `resolveTransition()`
+  to accept a `crossIconContext` option carrying source/target icon IDs.
+  Layer binding resolution (`resolveBindings`) must handle layer matching
+  across different icons using semantic matching (name, role, path
+  similarity) instead of ID equality. Topology analysis already works
+  for arbitrary state pairs — no changes needed there.
+
+- [ ] **F3 — Update editor store for cross-icon preview.**
+  `lib/editor-store/store.ts`: extend `TransitionPreview` type to carry
+  `baseIconId`/`baseVariantId`/`targetIconId`/`targetVariantId`. The
+  preview rendering pipeline must load and resolve layers from two
+  different icons simultaneously.
+
+- [ ] **F4 — Cross-icon transition UI in TransitionPanel.**
+  `components/editor/TransitionPanel.tsx`: add a "Cross-Icon" transition
+  mode alongside existing "Intra-Variant" mode. In cross-icon mode, show
+  two pickers: source icon/variant/state and target icon/variant/state.
+  Compatibility display and morph readiness indicator already work for
+  arbitrary state pairs — reuse as-is.
+
+- [ ] **F5 — Replace transition direction support.**
+  Add `direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic'` to
+  `Transition` type. Implement directional slide+fade in the replace
+  strategy instead of pure crossfade. Matches SF Symbols
+  `.replace.downUp` / `.replace.upUp` options.
+
+---
+
+## Phase G — Closed/Open Path Animation Strategy
+
+Status: **open** (dual animation model based on path topology)
+
+Research conclusion: the industry-standard approach (SF Symbols, After
+Effects, Lottie, GSAP) is to apply different animation strategies based
+on whether a path is closed or open:
+
+- **Closed paths** → geometric morphing (shape A → shape B)
+- **Open paths** → trim/draw animation (stroke reveal via pathLength)
+- **Mixed** → per-subpath strategy selection
+
+The current codebase already has both engines (`crossIconMorph` for closed
+paths, `draw-executor` for open paths) but treats each *layer* uniformly.
+The gap is per-subpath strategy splitting within a single layer.
+
+- [ ] **G1 — Per-subpath animation strategy classifier.**
+  New function in `lib/runtime-core/topology-detection.ts`:
+  `classifySubPathStrategies(fromPath, toPath)` returns per-subpath-pair
+  animation strategy (`'morph' | 'trim' | 'crossfade'`). Uses the
+  existing `CubicSubPath.closed` boolean and `TopologyContract.closed[]`
+  for classification. Rules: both closed → morph; both open with matching
+  topology → morph; both open with mismatched topology → trim/draw;
+  closed-to-open → crossfade with draw-coordinated transition.
+
+- [ ] **G2 — Trim path start/end/offset (Lottie-style).**
+  Extend `TimelineTrack` property union with `trimStart`, `trimEnd`,
+  `trimOffset` (0-1 normalized). This enables traveling-segment effects,
+  bidirectional draws, and rotational reveals beyond the current single
+  `pathLength` (0-1 draw-on) model. Renderer: compute `stroke-dasharray`
+  and `stroke-dashoffset` from `(trimEnd - trimStart) * pathLength` and
+  `trimStart * pathLength + trimOffset * pathLength`.
+
+- [ ] **G3 — Open-path geometry morphing.**
+  Allow morphing between two open paths with matching command signatures.
+  Currently `topology-detection.ts` flags `closed-open-mismatch` only
+  when one path is closed and the other is open. Add handling for the
+  case where both paths are open with compatible topology — these should
+  morph geometrically, not use trim animation.
+
+- [ ] **G4 — Compound path trim modes.**
+  For compound paths with multiple open subpaths, add a trim mode option:
+  `'simultaneously'` (all subpaths trim together as one continuous path)
+  vs `'individually'` (each subpath trims independently). Mirrors After
+  Effects' "Trim Multiple Shapes" behavior. Implement in
+  `lib/runtime-core/draw-executor.ts`.
+
+- [ ] **G5 — Hybrid morph+trim animation compositor.**
+  New compositing function that takes per-subpath strategies from G1 and
+  applies morph interpolation to closed subpaths while applying trim/draw
+  to open subpaths within the same frame. Renders into a single `<path>`
+  or splits into multiple `<path>` elements as needed.
+
+---
+
+## Phase H — SF Symbols Parity
+
+Status: **open** (close remaining gaps with SF Symbols 5-7 spec)
+
+Gap analysis shows ~85-90% feature parity with SF Symbols. The following
+items close the most impactful remaining gaps.
+
+### Priority 1 — High Impact
+
+- [ ] **H1 — Variable Value system (independent of draw).**
+  Add `variableValue?: number` (0.0-1.0) to variant/icon driver state.
+  Implement progressive layer opacity/visibility based on value and layer
+  hierarchy level (primary/secondary/tertiary). Independent of draw
+  animation — controls how many layers are "filled." Use cases: wifi
+  signal bars, battery level, speaker volume indicators.
+  Builds on existing layer role system and rendering mode infrastructure.
+
+- [ ] **H2 — Parallel effect + transition execution (Phase B2).**
+  Replace single `activeEffectScheduler` with `Map<string, EffectScheduler>`.
+  Effects stack: transforms are additive, opacity is multiplicative.
+  Same effect ID replaces; different IDs compose. Add `cancelEffect(id)`
+  and `cancelAllEffects()` to `IconDriver`.
+
+- [ ] **H3 — Additional animatable properties (Phase B1).**
+  Add `strokeWidth`, `fillOpacity`, `strokeOpacity` to `TimelineTrack`
+  property union. Wire into `applyAnimatedValues` in renderer. Extend
+  `CompiledTrackProperty`. Schema types already exist — this is wiring.
+
+### Priority 2 — Medium Impact
+
+- [ ] **H4 — "Individually" sequential playback mode.**
+  Add `'individually'` to stagger mode enum. Each layer completes its
+  animation before the next starts (strict sequential). Implementation:
+  compute total duration as `n * effectDurationMs`, delay each layer by
+  `i * effectDurationMs`. Trivial given existing stagger infrastructure.
+
+- [ ] **H5 — Variant derivation system.**
+  Define `SymbolVariantModifier` type: `'fill' | 'circle' | 'square' |
+  'slash' | 'badge'`. Auto-generate fill variants from outline variants
+  (path boolean operations or pre-authored). Context-aware variant
+  selection (platform/container hints). Matches SF Symbols
+  `.symbolVariant(.fill)` auto-application. High effort — requires
+  path boolean operations or manual authoring tooling.
+
+- [ ] **H6 — Animation callbacks (Phase B3).**
+  `AnimationEvent` type: transitionStart/Complete, effectStart/Complete.
+  `CreateIconDriverOptions.onAnimationEvent` callback. ConivaIcon props:
+  `onTransitionStart`, `onTransitionComplete`, `onEffectComplete`.
+
+- [ ] **H7 — variableColor implementation (Phase B4).**
+  Add optional `palette?: string[]` to `Effect`. `effect-scheduler.ts`:
+  variableColor case cycles through palette colors per layer role using
+  A3 color interpolation utilities.
+
+### Priority 3 — Lower Impact
+
+- [ ] **H8 — Auto-gradient rendering mode.**
+  Add `'autoGradient'` rendering mode modifier. Auto-generate linear
+  gradient stops from a single source color (lighter to darker). Apply
+  across all rendering modes. Matches SF Symbols 7 gradient rendering.
+
+- [ ] **H9 — Weight interpolation engine.**
+  Accept 3 weight variants (ultralight, regular, black) as control points.
+  Interpolate intermediate weights using path-level cubic interpolation.
+  Requires paths across variants to maintain same command structure
+  (already enforced by `TopologyContract`). Very high effort — essentially
+  a font interpolation engine.
+
+- [ ] **H10 — Standardized category taxonomy.**
+  Define enum of SF Symbols categories (22 categories) as suggested
+  defaults. Map existing freeform `Icon.category` values to standard
+  categories. Non-blocking, organizational improvement.
+
+---
+
+## Phase UX — Visual & Interaction Polish
+
+Status: **open** (findings from UX audit comparing to Figma, Notion, Codex, Claude Cowork)
+
+### UX-V: Visual Enhancements
+
+- [ ] **UX-V1 — Unified spacing system.**
+  Establish consistent 8px base grid across all panels. Current state:
+  LayerPanel uses `p-2.5`, AnimationPanel uses `p-3`, Toolbar uses
+  asymmetric `mx-3 mb-2 mt-3`. Standardize to 2-3 spacing tokens.
+
+- [ ] **UX-V2 — Typography scale consistency.**
+  Define 4-5 typographic sizes and apply uniformly. Current state: mix of
+  `text-[13px]`, `text-[11px]`, `text-[10px]`, `text-xs` across panels.
+  Use semantic tokens (body, caption, label, heading).
+
+- [ ] **UX-V3 — Border and shadow standardization.**
+  Reduce border opacity variants from 4+ (`border-border/80`, `/70`,
+  `/60`, plain) to 2-3 levels. Normalize shadow values — ToolPanel's
+  `shadow-[0_18px_45px]` is too heavy vs. other panels.
+
+- [ ] **UX-V4 — Interactive state polish.**
+  Replace `hover:opacity-80` on buttons with background color shifts.
+  Standardize active states (currently inconsistent: some use
+  `border-primary/40 bg-primary/6`, others use solid backgrounds).
+  Make disabled states more obvious (add "Coming Soon" badge instead
+  of just `opacity-50` for disabled tools).
+
+- [ ] **UX-V5 — Timeline scrubber affordance.**
+  Playhead line is currently 1px — increase to 3-4px with subtle glow.
+  Add play/pause icons to replace text-only "Play"/"Pause" buttons.
+
+- [ ] **UX-V6 — Preset card interaction polish.**
+  Animation panel preset cards need hover lift effect or accent highlight.
+  Current flat `rounded-xl border border-border/80` doesn't communicate
+  interactivity. Add `hover:shadow-md hover:-translate-y-0.5` or similar.
+
+- [ ] **UX-V7 — Custom scrollbar styling.**
+  Replace default browser scrollbars in ScrollArea panels with
+  `scrollbar-thin scrollbar-thumb-rounded` matching Figma/Notion aesthetic.
+
+- [ ] **UX-V8 — Sticky panel headers.**
+  LayerPanel and other scrollable panels lose their headers on scroll.
+  Add `sticky top-0 z-10 bg-background` to panel headers.
+
+### UX-F: Flow & Interaction Fixes
+
+- [ ] **UX-F1 — Replace `window.prompt()` with inline editing.**
+  TimelineEditor uses `window.prompt()` for keyframe value editing.
+  Replace with a focused number input field with validation and
+  escape-to-cancel behavior.
+
+- [ ] **UX-F2 — Easing picker live preview.**
+  Changing easing on tracks shows no real-time transition preview.
+  Add a mini animation preview in the easing picker dropdown showing
+  the curve's effect on a sample element.
+
+- [ ] **UX-F3 — Morph readiness actionable guidance.**
+  `MorphReadinessIndicator` shows red/yellow/green but doesn't say
+  what to do. Add actionable buttons: "Auto-fix bindings", "Switch to
+  crossfade", or link to relevant documentation.
+
+- [ ] **UX-F4 — Keyboard navigation for layer panel.**
+  Add arrow-key traversal through layers, F2 to rename, Delete to
+  remove. Currently mouse-only. Expected by Figma/Notion users.
+
+- [ ] **UX-F5 — Context menu positioning safety.**
+  Timeline context menus use raw `position: fixed` that can go
+  off-screen. Use a proper popover with collision detection
+  (Radix `Popover` or `DropdownMenu`).
+
+- [ ] **UX-F6 — Export action discoverability.**
+  "Export SVG Package" and "Export React Library" are buried 2+ levels
+  deep in dropdowns. Surface primary export actions at the top level of
+  the toolbar or as a dedicated panel section.
+
+- [ ] **UX-F7 — Onboarding empty states.**
+  Layer panel shows text "Use Pen tool (P) or Shape tool (U)" but no
+  visual cues or highlighted tools. Add pulsing indicators on relevant
+  tools or a quick-start overlay for first-time users.
+
+- [ ] **UX-F8 — Unsaved changes indicator with timestamp.**
+  "Saved" badge doesn't show when last saved. Add "Last saved 2m ago"
+  style indicator like Notion. Also warn when switching icons with
+  unsaved changes.
+
+- [ ] **UX-F9 — Visual zoom feedback.**
+  Zoom in/out buttons lack confirmation. Show an animated zoom level
+  indicator (e.g., "150%" briefly overlaid on canvas) when zoom changes.
+
+- [ ] **UX-F10 — Transition panel cognitive load reduction.**
+  TransitionPanel manages transitions, easing, timeline, and layer
+  bindings in one panel. Split into collapsible sections or tabbed
+  sub-views to reduce cognitive load.
 
 ---
 
@@ -523,29 +805,10 @@ Status: **completed** (verified 2026-03-18).
 
 ## Phase B — Runtime Capability Expansion
 
-- [ ] **B1 — Additional animatable properties.**
-  Schema: add `strokeWidth`, `fillOpacity`, `strokeOpacity` to
-  `TimelineTrack` property union. Renderer: handle new properties in
-  `applyAnimatedValues`. Compiler contracts: extend
-  `CompiledTrackProperty`. Export: add to `SUPPORTED_TRACK_PROPERTIES`.
+Status: **consolidated into Phase H** (SF Symbols Parity).
 
-- [ ] **B2 — Parallel effect + transition execution.**
-  `lib/runtime-dom/driver.ts`: replace single `activeEffectScheduler`
-  with `Map<string, EffectScheduler>`. Different effects stack; same
-  effect ID replaces. Add `cancelEffect(effectId)` and
-  `cancelAllEffects()` to `IconDriver`. Renderer: compose transition
-  values + effect deltas (effects are additive for transforms,
-  multiplicative for opacity).
-
-- [ ] **B3 — Animation callbacks.**
-  `AnimationEvent` type: transitionStart/Complete, effectStart/Complete.
-  `CreateIconDriverOptions.onAnimationEvent` callback. ConivaIcon props:
-  `onTransitionStart`, `onTransitionComplete`, `onEffectComplete`.
-
-- [ ] **B4 — variableColor implementation.**
-  Schema: add optional `palette?: string[]` to `Effect`.
-  `lib/runtime-core/effect-scheduler.ts`: variableColor case cycles
-  through palette colors per layer role using A3 color utilities.
+B1-B4 items are now tracked as H3, H2, H6, H7 respectively in Phase H
+with updated priorities based on SF Symbols gap analysis.
 
 ---
 
@@ -835,9 +1098,12 @@ This backlog is derived from:
 - desktop build/release docs
 - dated planning docs in `docs/plans/`
 - CI workflow definitions in `.github/workflows/`
-- SF Symbols 7 animation model (Draw, Variable Draw, Magic Replace, replace effects)
+- SF Symbols 5-7 animation model (Draw, Variable Draw, Magic Replace, replace effects, gradient rendering)
 - Framer Motion / Motion API patterns (spring physics, gesture-driven animation)
 - GSAP MorphSVG, Flubber, and SVG Morpheus morphing algorithm research
+- After Effects trim paths, Lottie animation model, Rive state machine architecture
+- UX audit comparing to Figma, Notion, Codex, Claude Cowork (2026-03-23)
+- Closed vs open vector animation research (industry-standard dual model)
 
 ## Known Conflicts / Notes
 
@@ -845,3 +1111,7 @@ This backlog is derived from:
 - This file intentionally favors repository-stability and operational needs over product feature speculation.
 - Phase numbering: 1-8 align with R0-R9 from `IMPLEMENTATION.md`; Phases A-D are animation architecture phases not in the original roadmap.
 - Phase E (adoption readiness) should be implemented before Phases A-D. Phases A and 8 can run in parallel. Phase C depends on A. Phase D depends on B.
+- Phase F (cross-icon transitions) depends on Phase 8 (cross-icon morphing). The morph engines are ready; changes are at schema/resolver/UI layers.
+- Phase G (closed/open path strategy) is independent and can run in parallel with Phase F.
+- Phase H consolidates Phase B items (B1→H3, B2→H2, B3→H6, B4→H7) and adds SF Symbols 5-7 gap items.
+- Phase UX visual items (UX-V*) can be worked on independently of runtime phases. Flow items (UX-F*) may depend on component architecture changes.

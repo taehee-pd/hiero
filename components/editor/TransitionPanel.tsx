@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Pause, Play, RotateCcw, Trash2, WandSparkles } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/kibo-ui/button';
@@ -35,7 +35,7 @@ type ActivePreview = {
   resolved: ReturnType<typeof resolveTransition>;
 };
 
-export function TransitionPanel() {
+export const TransitionPanel = memo(function TransitionPanel() {
   const currentIcon = useEditorStore((s) =>
     s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null,
   );
@@ -61,6 +61,9 @@ export function TransitionPanel() {
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
   const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const [deleteTransitionId, setDeleteTransitionId] = useState<string | null>(null);
+
+  // UX-F10: Collapsible section state per transition
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, Set<string>>>({});
   const schedulerRef = useRef<TransitionScheduler | null>(null);
 
   const stateIds = useMemo(
@@ -351,6 +354,29 @@ export function TransitionPanel() {
     });
   }, []);
 
+  // UX-F10: Toggle collapsible section within a transition card
+  const isSectionCollapsed = useCallback(
+    (transitionId: string, section: string) => {
+      return collapsedSections[transitionId]?.has(section) ?? false;
+    },
+    [collapsedSections],
+  );
+
+  const toggleSection = useCallback(
+    (transitionId: string, section: string) => {
+      setCollapsedSections((prev) => {
+        const current = new Set(prev[transitionId] ?? []);
+        if (current.has(section)) {
+          current.delete(section);
+        } else {
+          current.add(section);
+        }
+        return { ...prev, [transitionId]: current };
+      });
+    },
+    [],
+  );
+
   if (!currentIcon || !currentVariant) {
     return null;
   }
@@ -500,89 +526,101 @@ export function TransitionPanel() {
 
                 {compatibility ? <CompatibilityBadge status={compatibility} /> : null}
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <InlineSelect
-                    label="Strategy"
-                    value={transition.strategy}
-                    onChange={(value) =>
-                      patchTransition(currentIcon.id, transition.id, {
-                        strategy: value as Transition['strategy'],
-                        layerBindings: buildDefaultLayerBindings(
-                          currentVariant.states[transition.from]!,
-                          currentVariant.states[transition.to]!,
-                          value as Transition['strategy'],
-                        ),
-                      })
-                    }
-                    options={['track', 'strictMorph', 'bestGuessMorph', 'replace']}
-                  />
-                  <div className="grid gap-1.5">
-                    <Label className="text-[11px] uppercase text-muted-foreground">Easing</Label>
-                    <EasingPicker
-                      value={transition.easing ?? 'linear'}
-                      onSelect={(value) =>
-                        patchTransition(currentIcon.id, transition.id, { easing: value })
+                {/* UX-F10: Collapsible "Configuration" section */}
+                <CollapsibleSection
+                  title="Configuration"
+                  subtitle={`${transition.strategy} / ${transition.durationMs}ms`}
+                  collapsed={isSectionCollapsed(transition.id, 'config')}
+                  onToggle={() => toggleSection(transition.id, 'config')}
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <InlineSelect
+                      label="Strategy"
+                      value={transition.strategy}
+                      onChange={(value) =>
+                        patchTransition(currentIcon.id, transition.id, {
+                          strategy: value as Transition['strategy'],
+                          layerBindings: buildDefaultLayerBindings(
+                            currentVariant.states[transition.from]!,
+                            currentVariant.states[transition.to]!,
+                            value as Transition['strategy'],
+                          ),
+                        })
+                      }
+                      options={['track', 'strictMorph', 'bestGuessMorph', 'replace']}
+                    />
+                    <div className="grid gap-1.5">
+                      <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">Easing</Label>
+                      <EasingPicker
+                        value={transition.easing ?? 'linear'}
+                        onSelect={(value) =>
+                          patchTransition(currentIcon.id, transition.id, { easing: value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid gap-1.5">
+                    <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">
+                      Duration
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={transition.durationMs}
+                      onChange={(event) =>
+                        patchTransition(currentIcon.id, transition.id, {
+                          durationMs: Math.max(Number.parseInt(event.target.value, 10) || 0, 0),
+                        })
                       }
                     />
                   </div>
-                </div>
+                </CollapsibleSection>
 
-                <div className="mt-2 grid gap-1.5">
-                  <Label className="text-[11px] uppercase text-muted-foreground">
-                    Duration
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="10"
-                    value={transition.durationMs}
-                    onChange={(event) =>
-                      patchTransition(currentIcon.id, transition.id, {
-                        durationMs: Math.max(Number.parseInt(event.target.value, 10) || 0, 0),
-                      })
+                {/* UX-F10: Collapsible "Stagger" section */}
+                <CollapsibleSection
+                  title="Stagger"
+                  subtitle={transition.stagger ? `${transition.stagger.mode}` : 'Off'}
+                  collapsed={isSectionCollapsed(transition.id, 'stagger')}
+                  onToggle={() => toggleSection(transition.id, 'stagger')}
+                >
+                  <StaggerControls
+                    transition={transition}
+                    onPatch={(patch) => patchTransition(currentIcon.id, transition.id, patch)}
+                  />
+                </CollapsibleSection>
+
+                {/* UX-F10: Collapsible "Triggers" section */}
+                <CollapsibleSection
+                  title="Triggers"
+                  subtitle={transition.triggers?.length ? `${transition.triggers.length} trigger(s)` : 'None'}
+                  collapsed={isSectionCollapsed(transition.id, 'triggers')}
+                  onToggle={() => toggleSection(transition.id, 'triggers')}
+                >
+                  <TriggerEditor
+                    triggers={transition.triggers}
+                    onChange={(triggers) =>
+                      patchTransition(currentIcon.id, transition.id, { triggers })
                     }
                   />
-                </div>
+                </CollapsibleSection>
 
-                {/* C4 — Stagger controls */}
-                <StaggerControls
-                  transition={transition}
-                  onPatch={(patch) => patchTransition(currentIcon.id, transition.id, patch)}
-                />
-
-                {/* C6 — Trigger editor */}
-                <TriggerEditor
-                  triggers={transition.triggers}
-                  onChange={(triggers) =>
-                    patchTransition(currentIcon.id, transition.id, { triggers })
-                  }
-                />
-
-                {/* C2 — Layer binding controls */}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                    onClick={(e) => { e.stopPropagation(); toggleBindingExpand(transition.id); }}
-                  >
-                    {isBindingsExpanded
-                      ? <ChevronDown className="size-3.5" />
-                      : <ChevronRight className="size-3.5" />
+                {/* UX-F10: Collapsible "Layer Bindings" section */}
+                <CollapsibleSection
+                  title={`Layer Bindings (${transition.layerBindings.length})`}
+                  collapsed={!isBindingsExpanded}
+                  onToggle={() => { toggleBindingExpand(transition.id); }}
+                >
+                  <LayerBindingList
+                    transition={transition}
+                    fromState={currentVariant.states[transition.from]}
+                    toState={currentVariant.states[transition.to]}
+                    onPatchTransition={(patch) =>
+                      patchTransition(currentIcon.id, transition.id, patch)
                     }
-                    Layer Bindings ({transition.layerBindings.length})
-                  </button>
-
-                  {isBindingsExpanded ? (
-                    <LayerBindingList
-                      transition={transition}
-                      fromState={currentVariant.states[transition.from]}
-                      toState={currentVariant.states[transition.to]}
-                      onPatchTransition={(patch) =>
-                        patchTransition(currentIcon.id, transition.id, patch)
-                      }
-                    />
-                  ) : null}
-                </div>
+                  />
+                </CollapsibleSection>
 
                 {!isPreviewable ? (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -633,7 +671,7 @@ export function TransitionPanel() {
                         ))}
                       </select>
                     </div>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[length:var(--text-label)] text-muted-foreground">
                       {Math.round((activePreview?.progress ?? 0) * 100)}%
                     </p>
                   </div>
@@ -670,9 +708,48 @@ export function TransitionPanel() {
       </AlertDialog>
     </section>
   );
-}
+});
 
 // --- C4: Stagger Controls ---
+
+// UX-F10: Reusable collapsible section with smooth toggle
+function CollapsibleSection({
+  title,
+  subtitle,
+  collapsed,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  collapsed: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-border/40">
+      <button
+        type="button"
+        className="flex w-full items-center gap-1.5 px-2.5 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      >
+        {collapsed
+          ? <ChevronRight className="size-3.5 shrink-0" />
+          : <ChevronDown className="size-3.5 shrink-0" />
+        }
+        <span className="font-semibold text-foreground">{title}</span>
+        {subtitle && collapsed && (
+          <span className="ml-auto truncate text-[10px] text-muted-foreground/70">{subtitle}</span>
+        )}
+      </button>
+      {!collapsed && (
+        <div className="border-t border-border/30 px-2.5 pb-2.5 pt-2">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function StaggerControls({
   transition,
@@ -687,7 +764,7 @@ function StaggerControls({
   return (
     <div className="mt-2 grid gap-1.5">
       <div className="flex items-center gap-2">
-        <Label className="text-[11px] uppercase text-muted-foreground">Stagger</Label>
+        <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">Stagger</Label>
         <input
           type="checkbox"
           checked={enabled}
@@ -707,7 +784,7 @@ function StaggerControls({
       {enabled && stagger ? (
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-1">
-            <Label className="text-[10px] text-muted-foreground">Mode</Label>
+            <Label className="text-[length:var(--text-caption)] text-muted-foreground">Mode</Label>
             <select
               value={stagger.mode}
               onChange={(e) =>
@@ -723,7 +800,7 @@ function StaggerControls({
             </select>
           </div>
           <div className="grid gap-1">
-            <Label className="text-[10px] text-muted-foreground">Per Layer (ms)</Label>
+            <Label className="text-[length:var(--text-caption)] text-muted-foreground">Per Layer (ms)</Label>
             <Input
               type="number"
               min="0"
@@ -759,7 +836,7 @@ function TriggerEditor({
 
   return (
     <div className="mt-2 grid gap-1.5">
-      <Label className="text-[11px] uppercase text-muted-foreground">
+      <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">
         Interaction Triggers
       </Label>
       <div className="flex flex-wrap gap-1">
@@ -768,7 +845,7 @@ function TriggerEditor({
             key={event}
             type="button"
             className={cn(
-              'rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors',
+              'rounded-full px-2.5 py-0.5 text-[length:var(--text-label)] font-medium transition-colors',
               active.has(event)
                 ? 'bg-primary/15 text-primary'
                 : 'bg-muted text-muted-foreground hover:text-foreground',
@@ -845,24 +922,24 @@ function LayerBindingList({
       {transition.layerBindings.map((binding, index) => (
         <div
           key={`${binding.fromLayerId}-${binding.toLayerId}-${index}`}
-          className="grid gap-1.5 rounded-lg border border-border/50 bg-muted/10 p-2"
+          className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2"
         >
           <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-1.5">
             <select
               value={binding.fromLayerId ?? ''}
               onChange={(e) => updateBinding(index, { fromLayerId: e.target.value || undefined })}
-              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[11px] text-foreground"
+              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
             >
               <option value="">(none)</option>
               {fromLayerIds.map((id) => (
                 <option key={id} value={id}>{id}</option>
               ))}
             </select>
-            <span className="text-[10px] text-muted-foreground">-&gt;</span>
+            <span className="text-[length:var(--text-caption)] text-muted-foreground">-&gt;</span>
             <select
               value={binding.toLayerId ?? ''}
               onChange={(e) => updateBinding(index, { toLayerId: e.target.value || undefined })}
-              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[11px] text-foreground"
+              className="h-7 rounded-lg border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
             >
               <option value="">(none)</option>
               {toLayerIds.map((id) => (
@@ -881,11 +958,11 @@ function LayerBindingList({
           {/* C4 — Per-binding delay/duration */}
           <div className="grid grid-cols-2 gap-1.5">
             <div className="grid gap-0.5">
-              <Label className="text-[10px] text-muted-foreground">Delay (ms)</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Delay (ms)</Label>
               <Input
                 type="number" min="0" step="10"
                 value={binding.delayMs ?? 0}
-                className="h-6 text-[11px]"
+                className="h-6 text-[length:var(--text-label)]"
                 onChange={(e) =>
                   updateBinding(index, {
                     delayMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
@@ -894,11 +971,11 @@ function LayerBindingList({
               />
             </div>
             <div className="grid gap-0.5">
-              <Label className="text-[10px] text-muted-foreground">Duration (ms)</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Duration (ms)</Label>
               <Input
                 type="number" min="0" step="10"
                 value={binding.durationMs ?? transition.durationMs}
-                className="h-6 text-[11px]"
+                className="h-6 text-[length:var(--text-label)]"
                 onChange={(e) =>
                   updateBinding(index, {
                     durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0),
@@ -913,14 +990,14 @@ function LayerBindingList({
       <div className="flex gap-1.5">
         <Button
           type="button" size="sm" variant="outline"
-          className="h-6 rounded-lg text-[11px]"
+          className="h-6 rounded-lg text-[length:var(--text-label)]"
           onClick={(e) => { e.stopPropagation(); addBinding(); }}
         >
           Add Binding
         </Button>
         <Button
           type="button" size="sm" variant="ghost"
-          className="h-6 rounded-lg text-[11px]"
+          className="h-6 rounded-lg text-[length:var(--text-label)]"
           onClick={(e) => { e.stopPropagation(); resetToAuto(); }}
         >
           Reset to Auto
@@ -1016,7 +1093,7 @@ function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
   return (
     <span
       className={cn(
-        'mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]',
+        'mt-2 inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-[0.16em]',
         status.tone === 'green' && 'bg-emerald-500/10 text-emerald-600',
         status.tone === 'yellow' && 'bg-amber-500/10 text-amber-700',
         status.tone === 'red' && 'bg-red-500/10 text-red-600',
@@ -1069,7 +1146,7 @@ function InlineSelect({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[11px] uppercase text-muted-foreground">{label}</Label>
+      <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">{label}</Label>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}

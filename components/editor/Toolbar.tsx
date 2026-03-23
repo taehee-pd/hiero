@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Undo2,
@@ -74,10 +74,46 @@ export function Toolbar() {
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
   const isDirty = useEditorStore((s) => s.isDirty);
+  const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const currentIconName = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [toolbarError, setToolbarError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const toolbarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToolbarError = useCallback((message: string) => {
+    setToolbarError(message);
+    if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
+    toolbarErrorTimerRef.current = setTimeout(() => setToolbarError(null), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
+    };
+  }, []);
+
+  // UX-F8: Relative time ago string
+  const [savedAgoLabel, setSavedAgoLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lastSavedAt) {
+      setSavedAgoLabel(null);
+      return;
+    }
+    const update = () => {
+      const diff = Math.floor((Date.now() - lastSavedAt) / 1000);
+      if (diff < 10) setSavedAgoLabel('just now');
+      else if (diff < 60) setSavedAgoLabel(`${diff}s ago`);
+      else if (diff < 3600) setSavedAgoLabel(`${Math.floor(diff / 60)}m ago`);
+      else setSavedAgoLabel(`${Math.floor(diff / 3600)}h ago`);
+    };
+    update();
+    const interval = setInterval(update, 10_000);
+    return () => clearInterval(interval);
+  }, [lastSavedAt]);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
@@ -114,11 +150,11 @@ export function Toolbar() {
         editorStore.getState().loadProject(json);
       } else {
         clearCurrentProjectPath();
-        window.alert('Invalid Coniva workspace file.');
+        showToolbarError('Invalid Coniva workspace file.');
       }
     } catch {
       clearCurrentProjectPath();
-      window.alert('Failed to parse JSON file.');
+      showToolbarError('Failed to parse JSON file.');
     }
   }, []);
 
@@ -168,14 +204,21 @@ export function Toolbar() {
     const { project } = editorStore.getState();
     if (!project) return;
 
-    const fileMap = exportSvgPackage(project);
-    const zipBlob = createZipBlob(fileMap);
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setExporting(true);
+    try {
+      const fileMap = exportSvgPackage(project);
+      const zipBlob = createZipBlob(fileMap);
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2000);
+    } finally {
+      setExporting(false);
+    }
   }, []);
 
   const handleExportRuntimeJson = useCallback(() => {
@@ -200,53 +243,85 @@ export function Toolbar() {
     const { project } = editorStore.getState();
     if (!project) return;
 
-    const fileMap = generateIconLibrary(project, {
-      packageName: `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-icons`,
-      typescript: true,
-    });
-    const zipBlob = createZipBlob(fileMap);
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-library.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setExporting(true);
+    try {
+      const fileMap = generateIconLibrary(project, {
+        packageName: `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-icons`,
+        typescript: true,
+      });
+      const zipBlob = createZipBlob(fileMap);
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-library.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2000);
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
+  // UX-F9: Zoom feedback overlay state
+  const [zoomOverlay, setZoomOverlay] = useState<string | null>(null);
+  const zoomOverlayTimerRef = useCallback((label: string) => {
+    setZoomOverlay(label);
+    setTimeout(() => setZoomOverlay(null), 900);
   }, []);
 
   const handleZoomIn = useCallback(() => {
     const { viewport, setViewport } = editorStore.getState();
-    setViewport({ zoom: Math.min(viewport.zoom * 1.25, 32) });
-  }, []);
+    const next = Math.min(viewport.zoom * 1.25, 32);
+    setViewport({ zoom: next });
+    zoomOverlayTimerRef(`${Math.round(next * 100)}%`);
+  }, [zoomOverlayTimerRef]);
 
   const handleZoomOut = useCallback(() => {
     const { viewport, setViewport } = editorStore.getState();
-    setViewport({ zoom: Math.max(viewport.zoom / 1.25, 0.1) });
-  }, []);
+    const next = Math.max(viewport.zoom / 1.25, 0.1);
+    setViewport({ zoom: next });
+    zoomOverlayTimerRef(`${Math.round(next * 100)}%`);
+  }, [zoomOverlayTimerRef]);
 
   const handleZoomFit = useCallback(() => {
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
-  }, []);
+    // Show overlay after a tick so the zoom value has updated
+    setTimeout(() => {
+      const { viewport } = editorStore.getState();
+      zoomOverlayTimerRef(`${Math.round(viewport.zoom * 100)}%`);
+    }, 50);
+  }, [zoomOverlayTimerRef]);
 
   return (
     <>
       <header
-        className="workspace-header mx-3 mb-2 mt-3 rounded-[1.35rem] px-3 py-1.5"
+        className="workspace-header mx-2 mb-2 mt-2 rounded-[1.35rem] px-3 py-1.5"
         style={{ fontFamily: 'var(--font-system)', minHeight: 'var(--toolbar-height)' }}
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="mr-auto min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <p className="truncate text-[13px] font-semibold tracking-tight text-foreground">
+              <p className="truncate text-[length:var(--text-heading)] font-semibold tracking-tight text-foreground">
                 {projectName}
               </p>
+              {/* UX-F8: Unsaved changes indicator with relative timestamp */}
               <Badge
                 variant="outline"
-                className="h-6 rounded-full border-border/70 bg-background/80 px-2 text-[10px] font-medium text-muted-foreground"
+                className={`h-6 rounded-full px-2 text-[length:var(--text-caption)] font-medium ${
+                  isDirty
+                    ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
+                    : 'border-border/70 bg-background/80 text-muted-foreground'
+                }`}
               >
-                {isDirty ? 'Unsaved' : 'Saved'}
+                {isDirty
+                  ? 'Unsaved changes'
+                  : savedAgoLabel
+                    ? `Saved ${savedAgoLabel}`
+                    : 'Saved'}
               </Badge>
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground">
               <span className="truncate">{currentIconName ?? 'No icon selected'}</span>
               <span className="text-border-subtle">/</span>
               <span>{selectionCount} selected</span>
@@ -262,7 +337,7 @@ export function Toolbar() {
                       variant="ghost"
                       size="icon-sm"
                       aria-label="File menu"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80"
+                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
                       <FilePlus2 className="size-3.5" />
                     </Button>
@@ -307,6 +382,21 @@ export function Toolbar() {
               compact
               shortcut="Cmd/Ctrl+S"
             />
+            {/* UX-F6: Primary export actions surfaced directly in toolbar */}
+            <ToolbarButton
+              icon={Download}
+              label={exporting ? 'Exporting...' : exportSuccess ? 'Exported!' : 'SVG Package'}
+              onClick={handleExportSvgPackage}
+              compact={false}
+              disabled={exporting}
+            />
+            <ToolbarButton
+              icon={Download}
+              label={exporting ? 'Exporting...' : exportSuccess ? 'Exported!' : 'React Library'}
+              onClick={handleExportReactLibrary}
+              compact={false}
+              disabled={exporting}
+            />
             <Tooltip>
               <DropdownMenu>
                 <TooltipTrigger asChild>
@@ -314,8 +404,8 @@ export function Toolbar() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Export"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80"
+                      aria-label="More exports"
+                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
                       <Download className="size-3.5" />
                     </Button>
@@ -340,7 +430,7 @@ export function Toolbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <TooltipContent side="bottom">Export</TooltipContent>
+              <TooltipContent side="bottom">More exports</TooltipContent>
             </Tooltip>
             <SyncPrPanel />
           </ToolbarGroup>
@@ -359,7 +449,7 @@ export function Toolbar() {
           <ToolbarGroup>
             <Badge
               variant="outline"
-              className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[11px] font-medium"
+              className="min-w-[3.75rem] rounded-lg px-2 py-0.5 text-[length:var(--text-label)] font-medium"
             >
               {Math.round(zoom * 100)}%
             </Badge>
@@ -394,6 +484,17 @@ export function Toolbar() {
           </ToolbarGroup>
         </div>
       </header>
+
+      {/* E-2: Inline error toast replacing window.alert() */}
+      {toolbarError && (
+        <div
+          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 shadow-lg"
+          role="alert"
+          aria-live="assertive"
+        >
+          {toolbarError}
+        </div>
+      )}
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
 
@@ -440,6 +541,30 @@ export function Toolbar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* UX-F9: Animated zoom level overlay */}
+      {zoomOverlay ? (
+        <div
+          className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+          key={zoomOverlay}
+        >
+          <div
+            className="rounded-2xl border border-border/50 bg-background/90 px-6 py-3 text-2xl font-bold text-foreground shadow-xl backdrop-blur-sm"
+            style={{
+              animation: 'zoom-overlay-fade 900ms ease-out forwards',
+            }}
+          >
+            {zoomOverlay}
+          </div>
+          <style>{`
+            @keyframes zoom-overlay-fade {
+              0% { opacity: 1; transform: scale(1.1); }
+              60% { opacity: 1; transform: scale(1); }
+              100% { opacity: 0; transform: scale(0.95); }
+            }
+          `}</style>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -476,8 +601,8 @@ function ToolbarButton({
           disabled={disabled}
           className={
             compact
-              ? 'workspace-tool-button h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-transparent hover:opacity-80'
-              : 'workspace-tool-button h-7 rounded-lg px-2.5 text-[13px] text-foreground hover:bg-transparent hover:opacity-80'
+              ? 'workspace-tool-button h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40'
+              : 'workspace-tool-button h-7 rounded-lg px-2.5 text-[length:var(--text-body)] text-foreground hover:bg-accent/40'
           }
         >
           <Icon className="size-3.5" />

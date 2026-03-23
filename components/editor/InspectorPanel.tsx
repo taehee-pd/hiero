@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   LoaderCircle,
   AlignCenterHorizontal,
@@ -94,6 +94,17 @@ const POINT_DISTRIBUTE_ACTIONS = [
 ] as const;
 
 const SYMBOL_WEIGHT_OPTIONS: SymbolWeight[] = ['ultralight', 'thin', 'light', 'regular', 'medium', 'semibold', 'bold', 'heavy', 'black'];
+const WEIGHT_ABBREVIATIONS: Record<SymbolWeight, string> = {
+  ultralight: 'UL',
+  thin: 'Th',
+  light: 'Lt',
+  regular: 'Rg',
+  medium: 'Md',
+  semibold: 'Sb',
+  bold: 'Bd',
+  heavy: 'Hv',
+  black: 'Bk',
+};
 const SYMBOL_SCALE_OPTIONS: SymbolScale[] = ['small', 'medium', 'large'];
 
 const NODE_TYPE_OPTIONS = [
@@ -102,7 +113,7 @@ const NODE_TYPE_OPTIONS = [
   { value: 'symmetric', label: 'Mirror Angle + Length', glyph: '⇄' },
 ] as const;
 
-export function InspectorPanel() {
+export const InspectorPanel = memo(function InspectorPanel() {
   const tool = useEditorStore((s) => s.tool);
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const shapePolygonSides = useEditorStore((s) => s.shapePolygonSides);
@@ -191,6 +202,15 @@ export function InspectorPanel() {
   const canReleaseClipMask =
     selection.layerIds.length === 1 &&
     Boolean(layer?.isClipMask || layer?.clipPathLayerId);
+  const handlePatchVariant = useCallback(
+    (patch: Partial<Pick<Variant, 'weight' | 'scale'>>) => {
+      if (currentIcon && currentVariantId) {
+        editorStore.getState().patchVariant(currentIcon.id, currentVariantId, patch);
+      }
+    },
+    [currentIcon, currentVariantId],
+  );
+
   const handleBooleanAction = useCallback(
     async (mode: BooleanMode) => {
       if (booleanDisabled) return;
@@ -283,8 +303,8 @@ export function InspectorPanel() {
     return (
       <div className="flex h-full flex-col bg-transparent">
         <div className="px-3 pt-3 pb-2">
-          <span className="workspace-kicker text-[11px]">Inspect</span>
-          <p className="mt-1 text-[13px] font-semibold text-foreground">Nothing selected</p>
+          <span className="workspace-kicker text-[length:var(--text-label)]">Inspect</span>
+          <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">Nothing selected</p>
         </div>
         <div className="flex flex-1 items-center justify-center px-4">
           <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
@@ -301,8 +321,8 @@ export function InspectorPanel() {
   return (
     <div className="flex h-full flex-col bg-transparent">
       <div className="px-3 pt-3 pb-2">
-        <span className="workspace-kicker text-[11px]">Inspect</span>
-        <p className="mt-1 text-[13px] font-semibold text-foreground">
+        <span className="workspace-kicker text-[length:var(--text-label)]">Inspect</span>
+        <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">
           {layer ? layer.id : showShapeToolSettings ? 'Shape tool' : currentVariant?.id ?? 'Inspector'}
         </p>
       </div>
@@ -332,7 +352,7 @@ export function InspectorPanel() {
                           <span className="mt-1 text-xs text-muted-foreground">
                             {variant.size}px
                           </span>
-                          <span className="truncate font-mono text-[11px] text-muted-foreground">
+                          <span className="truncate font-mono text-[length:var(--text-label)] text-muted-foreground">
                             {formatVariantViewBox(variant)}
                           </span>
                         </button>
@@ -354,31 +374,32 @@ export function InspectorPanel() {
 
                 {currentVariant ? (
                   <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-                    <Label className="text-[11px] uppercase text-[var(--system-gray)]">Weight</Label>
+                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Weight</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
                         <button
                           key={weight}
                           type="button"
-                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { weight })}
+                          title={weight}
+                          onClick={() => handlePatchVariant({ weight })}
                           className={cn(
-                            'rounded-lg border px-2 py-1 text-[11px] font-medium',
+                            'rounded-lg border px-2 py-1 text-[length:var(--text-label)] font-medium',
                             currentVariant.weight === weight
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground'
                               : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
                           )}
                         >
-                          {weight}
+                          {WEIGHT_ABBREVIATIONS[weight]}
                         </button>
                       ))}
                     </div>
-                    <Label className="text-[11px] uppercase text-[var(--system-gray)]">Scale</Label>
+                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Scale</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
                         <button
                           key={scale}
                           type="button"
-                          onClick={() => currentIcon && currentVariantId && editorStore.getState().patchVariant(currentIcon.id, currentVariantId, { scale })}
+                          onClick={() => handlePatchVariant({ scale })}
                           className={cn(
                             'rounded-lg border px-2 py-1 text-xs font-medium',
                             currentVariant.scale === scale
@@ -427,9 +448,9 @@ export function InspectorPanel() {
                 </div>
 
                 <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-                  <Label className="text-[11px] uppercase text-[var(--system-gray)]">Generate Variant Matrix</Label>
+                  <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Generate Variant Matrix</Label>
                   <div className="grid gap-1">
-                    <p className="text-[11px] text-muted-foreground">Sizes</p>
+                    <p className="text-[length:var(--text-label)] text-muted-foreground">Sizes</p>
                     <div className="flex flex-wrap gap-1.5">
                       {VARIANT_SIZE_PRESETS.map((size) => (
                         <button
@@ -444,22 +465,23 @@ export function InspectorPanel() {
                     </div>
                   </div>
                   <div className="grid gap-1">
-                    <p className="text-[11px] text-muted-foreground">Weights</p>
+                    <p className="text-[length:var(--text-label)] text-muted-foreground">Weights</p>
                     <div className="flex flex-wrap gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
                         <button
                           key={weight}
                           type="button"
+                          title={weight}
                           onClick={() => toggleMatrixWeight(weight)}
                           className={cn('rounded-lg border px-2 py-1 text-xs', matrixWeights.includes(weight) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
                         >
-                          {weight}
+                          {WEIGHT_ABBREVIATIONS[weight]}
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="grid gap-1">
-                    <p className="text-[11px] text-muted-foreground">Scales</p>
+                    <p className="text-[length:var(--text-label)] text-muted-foreground">Scales</p>
                     <div className="flex flex-wrap gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
                         <button
@@ -568,7 +590,7 @@ export function InspectorPanel() {
                     </p>
                   </div>
                   {isTopologyLocked ? (
-                    <span className="rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                    <span className="rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-[0.16em] text-primary">
                       Locked
                     </span>
                   ) : null}
@@ -961,7 +983,7 @@ export function InspectorPanel() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="w-20 shrink-0 text-[11px] text-[var(--system-gray)]">
+                  <Label className="w-20 shrink-0 text-[length:var(--text-label)] text-[var(--system-gray)]">
                     Type
                   </Label>
                   <div className="flex flex-1 items-center gap-1">
@@ -1124,7 +1146,7 @@ export function InspectorPanel() {
       </ScrollArea>
     </div>
   );
-}
+});
 
 function patchStyle(
   iconId: string | null,
@@ -1480,7 +1502,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[11px] font-semibold uppercase text-[var(--system-gray)]">
+      <span className="text-[length:var(--text-label)] font-semibold uppercase text-[var(--system-gray)]">
         {title}
       </span>
       {children}
@@ -1525,7 +1547,7 @@ function ReadOnlyField({
 }) {
   return (
     <div className="grid gap-1">
-      <Label className="text-[11px] uppercase text-[var(--system-gray)]">
+      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
         {label}
       </Label>
       <span
@@ -1564,7 +1586,7 @@ function NumberField({
 
   return (
     <div className="grid gap-1">
-      <Label className="text-[11px] uppercase text-[var(--system-gray)]">
+      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
         {label}
       </Label>
       <Input
@@ -1620,7 +1642,7 @@ function AxisField({
 
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-[11px] text-[var(--system-gray)]">{label}</Label>
+      <Label className="text-[length:var(--text-label)] text-[var(--system-gray)]">{label}</Label>
       <Input
         type="text"
         inputMode="decimal"
@@ -1653,7 +1675,7 @@ function IconNumberField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="flex w-20 shrink-0 items-center gap-1 text-[11px] text-[var(--system-gray)]">
+      <Label className="flex w-20 shrink-0 items-center gap-1 text-[length:var(--text-label)] text-[var(--system-gray)]">
         <span className="font-mono text-sm leading-none">{icon}</span>
         <span>{label}</span>
       </Label>
@@ -1717,7 +1739,7 @@ function SelectField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-[11px] text-[var(--system-gray)]">
+      <Label className="w-20 shrink-0 text-[length:var(--text-label)] text-[var(--system-gray)]">
         {label}
       </Label>
       <select
@@ -2039,9 +2061,9 @@ function PaintField({
   }, [boundedSelectedStopIndex, commitGradient, gradientPaint]);
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/35 p-3">
+    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/35 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-[11px] uppercase text-[var(--system-gray)]">
+        <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
           {label}
         </Label>
         <div className="flex items-center gap-1.5">
@@ -2115,7 +2137,7 @@ function PaintField({
             <div className="relative pt-8">
               <div
                 ref={gradientBarRef}
-                className="relative h-10 rounded-xl border border-border/80 bg-muted/40 shadow-inner"
+                className="relative h-10 rounded-xl border border-border/70 bg-muted/40 shadow-inner"
                 style={{ backgroundImage: buildGradientPreview(gradientPaint.stops) }}
               />
               {gradientPaint.stops.map((stop, index) => {
@@ -2299,7 +2321,7 @@ function GradientInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-[11px] text-[var(--system-gray)]">{label}</Label>
+      <Label className="text-[length:var(--text-label)] text-[var(--system-gray)]">{label}</Label>
       <Input
         type="number"
         value={value}

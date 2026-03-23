@@ -132,6 +132,10 @@ export function ExplorerShell() {
   >(null);
   const [deleteProjectTarget, setDeleteProjectTarget] = useState<WorkspaceIconSet | null>(null);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState('');
+  const [inlineNewCollection, setInlineNewCollection] = useState(false);
+  const [inlineNewCollectionValue, setInlineNewCollectionValue] = useState('');
+  const [inlineNewProject, setInlineNewProject] = useState(false);
+  const [inlineNewProjectValue, setInlineNewProjectValue] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -337,16 +341,36 @@ export function ExplorerShell() {
   const handleExportIconSet = () => exportIconsToZip(Object.keys(project?.icons ?? {}), 'icon-set');
 
   const createCollection = () => {
-    const name = prompt('Collection name');
-    if (!name?.trim()) return;
+    setInlineNewCollection(true);
+    setInlineNewCollectionValue('');
+  };
+
+  const confirmCreateCollection = () => {
+    const name = inlineNewCollectionValue.trim();
+    if (!name) {
+      setInlineNewCollection(false);
+      return;
+    }
     const id = toKebab(name);
-    addCollection({ id, name: name.trim(), iconIds: [] });
+    addCollection({ id, name, iconIds: [] });
+    setInlineNewCollection(false);
+    setInlineNewCollectionValue('');
   };
 
   const createIconSet = () => {
-    const name = prompt('Project name');
-    if (!name?.trim()) return;
-    addIconSet(name.trim());
+    setInlineNewProject(true);
+    setInlineNewProjectValue('');
+  };
+
+  const confirmCreateIconSet = () => {
+    const name = inlineNewProjectValue.trim();
+    if (!name) {
+      setInlineNewProject(false);
+      return;
+    }
+    addIconSet(name);
+    setInlineNewProject(false);
+    setInlineNewProjectValue('');
   };
 
   const openImportIntoCurrentProject = useCallback(() => {
@@ -409,7 +433,7 @@ export function ExplorerShell() {
         className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4"
         style={{ fontFamily: 'var(--font-system)' }}
       >
-        <nav className="flex min-w-0 items-center gap-1 text-[13px]">
+        <nav className="flex min-w-0 items-center gap-1 text-[length:var(--text-heading)]">
           <button
             type="button"
             onClick={goBackToWorkspace}
@@ -438,7 +462,7 @@ export function ExplorerShell() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={view.level === 'workspace' ? 'Search projects…' : 'Search icons…'}
-            className="h-7 rounded-lg border-border/60 bg-background/60 pl-8 text-xs shadow-none"
+            className="h-7 rounded-lg border-border/70 bg-background/60 pl-8 text-xs shadow-none"
           />
         </div>
 
@@ -520,6 +544,11 @@ export function ExplorerShell() {
           onEnterProject={enterProject}
           onImport={openImportIntoNewProject}
           onCreateProject={createIconSet}
+          inlineNewProject={inlineNewProject}
+          inlineNewProjectValue={inlineNewProjectValue}
+          onInlineNewProjectChange={setInlineNewProjectValue}
+          onInlineNewProjectConfirm={confirmCreateIconSet}
+          onInlineNewProjectCancel={() => setInlineNewProject(false)}
           onRenameProject={(iconSetId) => {
             const iconSet = workspace?.iconSets[iconSetId];
             if (!iconSet) return;
@@ -551,6 +580,11 @@ export function ExplorerShell() {
           onSetCategoryInput={setCategoryInput}
           onAssignCategory={assignCategory}
           onCreateCollection={createCollection}
+          inlineNewCollection={inlineNewCollection}
+          inlineNewCollectionValue={inlineNewCollectionValue}
+          onInlineNewCollectionChange={setInlineNewCollectionValue}
+          onInlineNewCollectionConfirm={confirmCreateCollection}
+          onInlineNewCollectionCancel={() => setInlineNewCollection(false)}
           onCreateBlankIcon={handleCreateBlankIcon}
           onImportSvg={openImportIntoCurrentProject}
           onRenameCollection={(collectionId) => {
@@ -674,6 +708,11 @@ function WorkspaceView({
   onEnterProject,
   onImport,
   onCreateProject,
+  inlineNewProject,
+  inlineNewProjectValue,
+  onInlineNewProjectChange,
+  onInlineNewProjectConfirm,
+  onInlineNewProjectCancel,
   onRenameProject,
   onDeleteProject,
 }: {
@@ -681,6 +720,11 @@ function WorkspaceView({
   onEnterProject: (id: string) => void;
   onImport: () => void;
   onCreateProject: () => void;
+  inlineNewProject: boolean;
+  inlineNewProjectValue: string;
+  onInlineNewProjectChange: (v: string) => void;
+  onInlineNewProjectConfirm: () => void;
+  onInlineNewProjectCancel: () => void;
   onRenameProject: (id: string) => void;
   onDeleteProject: (id: string) => void;
 }) {
@@ -690,8 +734,8 @@ function WorkspaceView({
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <LayoutGrid className="size-4 text-muted-foreground" />
-            <h2 className="text-[13px] font-semibold text-foreground">Projects</h2>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <h2 className="text-[length:var(--text-heading)] font-semibold text-foreground">Projects</h2>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-muted-foreground">
               {iconSets.length}
             </span>
           </div>
@@ -732,6 +776,23 @@ function WorkspaceView({
             ))}
           </div>
         )}
+
+        {inlineNewProject && (
+          <div className="mt-4">
+            <Input
+              autoFocus
+              placeholder="Project name"
+              value={inlineNewProjectValue}
+              onChange={(e) => onInlineNewProjectChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onInlineNewProjectConfirm();
+                if (e.key === 'Escape') onInlineNewProjectCancel();
+              }}
+              onBlur={onInlineNewProjectConfirm}
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
       </div>
     </ScrollArea>
   );
@@ -762,7 +823,7 @@ function ProjectCard({
               type="button"
               variant="outline"
               size="icon-sm"
-              className="rounded-lg border-border/80 bg-background/90"
+              className="rounded-lg border-border/70 bg-background/90"
               onClick={(event) => event.stopPropagation()}
               aria-label={`Project actions for ${iconSet.name}`}
             >
@@ -806,7 +867,7 @@ function ProjectCard({
         onClick={onOpen}
         className="flex flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       >
-        <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/40">
+        <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/70">
           {thumbnailIcons.length > 0 ? (
             <div className="flex flex-wrap items-center justify-center gap-4 p-5">
               {thumbnailIcons.map((icon) => {
@@ -838,14 +899,14 @@ function ProjectCard({
           ) : (
             <div className="flex flex-col items-center gap-2">
               <FolderOpen className="size-6 text-muted-foreground/30" />
-              <span className="text-[10px] text-muted-foreground/50">Empty</span>
+              <span className="text-[length:var(--text-caption)] text-muted-foreground/50">Empty</span>
             </div>
           )}
         </div>
 
         <div className="flex flex-col gap-0.5 px-3.5 py-3">
           <span className="truncate text-sm font-medium text-foreground">{iconSet.name}</span>
-          <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-2 text-[length:var(--text-label)] text-muted-foreground">
             <span>
               {iconSet.iconCount} icon{iconSet.iconCount !== 1 ? 's' : ''}
             </span>
@@ -856,7 +917,7 @@ function ProjectCard({
               </>
             )}
           </span>
-          <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition group-hover:text-foreground">
+          <span className="mt-1 inline-flex items-center gap-1 text-[length:var(--text-label)] font-medium text-muted-foreground transition group-hover:text-foreground">
             Open
             <ArrowUpRight className="size-3.5" />
           </span>
@@ -885,6 +946,11 @@ function ProjectDetailView({
   onSetCategoryInput,
   onAssignCategory,
   onCreateCollection,
+  inlineNewCollection,
+  inlineNewCollectionValue,
+  onInlineNewCollectionChange,
+  onInlineNewCollectionConfirm,
+  onInlineNewCollectionCancel,
   onCreateBlankIcon,
   onImportSvg,
   onRenameCollection,
@@ -909,6 +975,11 @@ function ProjectDetailView({
   onSetCategoryInput: (v: string) => void;
   onAssignCategory: () => void;
   onCreateCollection: () => void;
+  inlineNewCollection: boolean;
+  inlineNewCollectionValue: string;
+  onInlineNewCollectionChange: (v: string) => void;
+  onInlineNewCollectionConfirm: () => void;
+  onInlineNewCollectionCancel: () => void;
   onCreateBlankIcon: () => void;
   onImportSvg: () => void;
   onRenameCollection: (id: string) => void;
@@ -923,7 +994,7 @@ function ProjectDetailView({
       >
         <div className="space-y-4 px-2.5 py-3">
           <section>
-            <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
               Filter
             </h3>
             <div className="grid gap-0.5">
@@ -944,7 +1015,7 @@ function ProjectDetailView({
 
           {groups.length > 0 && (
             <section>
-              <h3 className="mb-1 px-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
                 Categories
               </h3>
               <div className="grid gap-0.5">
@@ -963,7 +1034,7 @@ function ProjectDetailView({
 
           <section>
             <div className="mb-1 flex items-center justify-between px-1.5">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
                 Collections
               </h3>
               <button
@@ -976,7 +1047,7 @@ function ProjectDetailView({
             </div>
             <div className="grid gap-0.5">
               {collections.length === 0 && (
-                <p className="px-1 text-[10px] text-muted-foreground/60">None</p>
+                <p className="px-1 text-[length:var(--text-caption)] text-muted-foreground/60">None</p>
               )}
               {collections.map((collection) => (
                 <SidebarButton
@@ -1014,12 +1085,28 @@ function ProjectDetailView({
                   }
                 />
               ))}
+              {inlineNewCollection && (
+                <div className="mt-1 px-1">
+                  <Input
+                    autoFocus
+                    placeholder="Collection name"
+                    value={inlineNewCollectionValue}
+                    onChange={(e) => onInlineNewCollectionChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') onInlineNewCollectionConfirm();
+                      if (e.key === 'Escape') onInlineNewCollectionCancel();
+                    }}
+                    onBlur={onInlineNewCollectionConfirm}
+                    className="h-7 text-xs"
+                  />
+                </div>
+              )}
             </div>
           </section>
 
           {selection.length > 0 && (
-            <section className="space-y-1.5 rounded-lg border border-border/60 bg-background/60 p-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <section className="space-y-1.5 rounded-lg border border-border/70 bg-background/60 p-2.5">
+              <p className="text-[length:var(--text-caption)] font-semibold uppercase tracking-wider text-muted-foreground">
                 Assign category
               </p>
               <Input
@@ -1043,7 +1130,7 @@ function ProjectDetailView({
       </aside>
 
       <section className="min-h-0 overflow-hidden">
-        <div className="flex h-9 items-center justify-between border-b border-border/40 px-4">
+        <div className="flex h-9 items-center justify-between border-b border-border/70 px-4">
           <span className="text-xs text-muted-foreground">
             {visibleIcons.length} icon{visibleIcons.length !== 1 ? 's' : ''}
             {selection.length > 0 && (
@@ -1051,7 +1138,7 @@ function ProjectDetailView({
             )}
           </span>
           {project?.sync && (
-            <span className="text-[10px] text-muted-foreground/70">
+            <span className="text-[length:var(--text-caption)] text-muted-foreground/70">
               {project.sync.owner}/{project.sync.repo}
             </span>
           )}
@@ -1112,6 +1199,19 @@ function ProjectDetailView({
                 <article
                   key={icon.id}
                   role="listitem"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      editorStore.getState().setCurrentIcon(icon.id);
+                      if (activeIconSetId) {
+                        onOpenIconTab(activeIconSetId, icon.id);
+                      }
+                      // Navigate via the link inside
+                      const link = e.currentTarget.querySelector('a');
+                      link?.click();
+                    }
+                  }}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     void showNativeContextMenu('explorerIcon', {
@@ -1120,7 +1220,7 @@ function ProjectDetailView({
                     });
                   }}
                   className={cn(
-                    'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100',
+                    'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
                     active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
                   )}
                 >
@@ -1177,7 +1277,7 @@ function ProjectDetailView({
                       )}
                     </div>
                     <div className="w-full text-center">
-                      <p className="truncate text-[11px] font-medium text-foreground">{icon.name}</p>
+                      <p className="truncate text-[length:var(--text-label)] font-medium text-foreground">{icon.name}</p>
                     </div>
                   </Link>
                 </article>
@@ -1206,7 +1306,7 @@ function SidebarButton({
   return (
     <div
       className={cn(
-        'group flex w-full items-center gap-2 rounded-md px-2 py-1 text-[13px] transition-colors',
+        'group flex w-full items-center gap-2 rounded-md px-2 py-1 text-[length:var(--text-heading)] transition-colors',
         active
           ? 'bg-[var(--system-blue)]/10 text-[var(--system-blue)]'
           : 'text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-foreground',
@@ -1220,7 +1320,7 @@ function SidebarButton({
         <span className="truncate">{label}</span>
       </button>
       <span className="ml-auto flex items-center gap-2">
-        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{count}</span>
+        <span className="shrink-0 tabular-nums text-[length:var(--text-caption)] text-muted-foreground">{count}</span>
         {actions}
       </span>
     </div>

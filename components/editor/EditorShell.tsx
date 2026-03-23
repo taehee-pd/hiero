@@ -1,22 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Blend,
+  Check,
   ChevronDown,
   Copy,
   Crosshair,
   Eye,
   EyeOff,
   FolderOpen,
+  Loader2,
+  Menu,
   MousePointer2,
   PenTool,
   Plus,
   Search,
   Sparkles,
   Square,
+  X,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -319,6 +323,7 @@ function LeftSidebar({
   onCreateDuplicateState: () => void;
   onCreateBlankState: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
   return (
     <aside className="wire-sidebar wire-sidebar-left">
       <div className="wire-sidebar-block wire-sidebar-head">
@@ -333,21 +338,27 @@ function LeftSidebar({
           <button
             type="button"
             className="wire-sidebar-subtitle-action"
+            aria-label="Copy icon slug"
             onClick={() => {
               if (currentIcon) {
-                navigator.clipboard.writeText(slugify(currentIcon.name)).catch(() => {});
+                navigator.clipboard.writeText(slugify(currentIcon.name)).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }).catch(() => {});
               }
             }}
           >
             <span>{currentIcon ? slugify(currentIcon.name) : 'select-an-icon'}</span>
-            <Copy className="size-3" />
+            {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
           </button>
         </div>
 
         <div className="wire-tab-row">
-          <div className="wire-tabs">
+          <div className="wire-tabs" role="tablist" aria-label="Left sidebar">
             <button
               type="button"
+              role="tab"
+              aria-selected={leftTab === 'layers'}
               data-active={leftTab === 'layers' ? 'true' : 'false'}
               className="wire-tab-button"
               onClick={() => onLeftTabChange('layers')}
@@ -356,6 +367,8 @@ function LeftSidebar({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={leftTab === 'variants'}
               data-active={leftTab === 'variants' ? 'true' : 'false'}
               className="wire-tab-button"
               onClick={() => onLeftTabChange('variants')}
@@ -368,16 +381,19 @@ function LeftSidebar({
 
       <ScrollArea className="min-h-0 flex-1">
         {leftTab === 'layers' ? (
-          <div className="wire-section">
+          <div key="layers" role="tabpanel" aria-label="Layers" className="wire-section animate-in fade-in duration-150">
             <div className="wire-section-header">
               <span>{currentVariant ? formatVariantLabel(currentVariant) : 'Variant'}</span>
             </div>
             {layerRows.length === 0 ? (
               <div className="wire-empty-note">No layers</div>
             ) : (
-              layerRows.map((row) => (
+              <div role="listbox" aria-label="Layers">
+              {layerRows.map((row) => (
                 <div
                   key={row.layer.id}
+                  role="option"
+                  aria-selected={row.layer.id === selectedLayerId}
                   data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
                   className="wire-layer-row"
                 >
@@ -409,11 +425,12 @@ function LeftSidebar({
                     )}
                   </button>
                 </div>
-              ))
+              ))}
+              </div>
             )}
           </div>
         ) : (
-          <div className="wire-section">
+          <div key="variants" role="tabpanel" aria-label="Variants" className="wire-section animate-in fade-in duration-150">
             <div className="wire-section-header">
               <span>Sizes</span>
             </div>
@@ -564,11 +581,11 @@ function CanvasDock({
         <PopoverContent
           side="top"
           align="center"
-          className="w-[220px] overflow-hidden rounded-xl border border-border/70 bg-background p-0 text-foreground shadow-[0_20px_44px_rgba(15,23,42,0.14)]"
+          className="w-[200px] overflow-hidden rounded-lg border border-border/70 bg-background p-0 text-foreground shadow-[var(--shadow-panel)]"
         >
           <div className="flex flex-col">
             <form
-              className="border-b border-border/70 px-4 pb-3 pt-4"
+              className="border-b border-border/70 px-2.5 py-2.5"
               onSubmit={(event) => {
                 event.preventDefault();
                 commitZoomInput();
@@ -579,7 +596,7 @@ function CanvasDock({
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
                 onBlur={() => commitZoomInput({ closeMenu: false })}
-                className="block h-11 w-full rounded-lg border-2 border-sky-500 bg-background px-3 font-[var(--font-geist-sans)] text-[15px] leading-5 font-[550] text-foreground outline-none"
+                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
               />
@@ -592,7 +609,7 @@ function CanvasDock({
                 onClick={() => handleZoomAction(zoom * 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom in</span>
-                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd +</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd +</span>
               </button>
               <button
                 type="button"
@@ -600,7 +617,7 @@ function CanvasDock({
                 onClick={() => handleZoomAction(zoom / 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom out</span>
-                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd -</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd -</span>
               </button>
               <button
                 type="button"
@@ -608,7 +625,7 @@ function CanvasDock({
                 onClick={() => handleZoomAction('fit')}
               >
                 <span className="min-w-0 flex-1">Zoom to fit</span>
-                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">
                   Shift 1
                 </span>
               </button>
@@ -625,7 +642,7 @@ function CanvasDock({
                 onClick={() => handleZoomAction(1)}
               >
                 <span className="min-w-0 flex-1">Zoom to 100%</span>
-                <span className="shrink-0 text-[11px] leading-4 text-muted-foreground">Cmd 0</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd 0</span>
               </button>
               <button
                 type="button"
@@ -643,6 +660,8 @@ function CanvasDock({
         <button
           type="button"
           data-active={snapEnabled ? 'true' : 'false'}
+          aria-pressed={snapEnabled}
+          aria-label="Toggle snap"
           className="wire-dock-icon"
           onClick={onToggleSnap}
           title="Toggle snap"
@@ -652,6 +671,8 @@ function CanvasDock({
         <button
           type="button"
           data-active={guidesVisible ? 'true' : 'false'}
+          aria-pressed={guidesVisible}
+          aria-label="Toggle guides"
           className="wire-dock-icon"
           onClick={onToggleGuides}
           title="Toggle guides"
@@ -727,13 +748,32 @@ function RightSidebar({
   const fillMode = selectedLayer?.style.fill?.mode ?? 'none';
   const strokeMode = selectedLayer?.style.stroke?.mode ?? 'none';
 
+  // D-4: Debounce color input changes (~100ms)
+  const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+    };
+  }, []);
+  const debouncedPatchStyle = useCallback(
+    (patch: Partial<Layer['style']>) => {
+      if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+      colorDebounceRef.current = setTimeout(() => {
+        onPatchSelectedLayerStyle(patch);
+      }, 100);
+    },
+    [onPatchSelectedLayerStyle],
+  );
+
   return (
     <aside className="wire-sidebar wire-sidebar-right">
       <div className="wire-sidebar-block wire-sidebar-head">
         <div className="wire-tab-row">
-          <div className="wire-tabs">
+          <div className="wire-tabs" role="tablist" aria-label="Right sidebar">
             <button
               type="button"
+              role="tab"
+              aria-selected={rightTab === 'inspect'}
               data-active={rightTab === 'inspect' ? 'true' : 'false'}
               className="wire-tab-button"
               onClick={() => onRightTabChange('inspect')}
@@ -742,6 +782,8 @@ function RightSidebar({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={rightTab === 'animation'}
               data-active={rightTab === 'animation' ? 'true' : 'false'}
               className="wire-tab-button"
               onClick={() => onRightTabChange('animation')}
@@ -756,13 +798,14 @@ function RightSidebar({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="wire-section">
+        <div key={rightTab} role="tabpanel" aria-label={rightTab === 'inspect' ? 'Inspect' : 'Animation'} className="wire-section animate-in fade-in duration-150">
           {rightTab === 'inspect' ? (
             selectedLayer ? (
               <>
                 <TinyLabel>Layer</TinyLabel>
                 <RowField label="Role">
                   <input
+                    key={selectedLayer.id}
                     defaultValue={selectedLayer.role ?? ''}
                     onBlur={(event) =>
                       onPatchSelectedLayer({ role: event.target.value || undefined })
@@ -843,7 +886,7 @@ function RightSidebar({
                             : '#111111'
                         }
                         onChange={(event) =>
-                          onPatchSelectedLayerStyle({
+                          debouncedPatchStyle({
                             fill: { mode: 'fixed', value: event.target.value },
                           })
                         }
@@ -863,7 +906,7 @@ function RightSidebar({
                             : '#111111'
                         }
                         onChange={(event) =>
-                          onPatchSelectedLayerStyle({
+                          debouncedPatchStyle({
                             stroke: { mode: 'fixed', value: event.target.value },
                           })
                         }
@@ -940,6 +983,7 @@ function RightSidebar({
                 <TinyLabel>Document</TinyLabel>
                 <RowField label="Name">
                   <input
+                    key={currentIcon?.id}
                     defaultValue={currentIcon?.name ?? ''}
                     onBlur={(event) => onRenameIcon(event.target.value)}
                     className="wire-input w-full"
@@ -948,6 +992,7 @@ function RightSidebar({
                 <div className="grid grid-cols-2 gap-1.5">
                   <RowField label="State">
                     <input
+                      key={currentState?.id}
                       defaultValue={currentState?.id ?? ''}
                       onBlur={(event) => onRenameState(event.target.value)}
                       className="wire-input w-full"
@@ -1073,16 +1118,22 @@ function RightSidebar({
                   </RowField>
                   <RowField label="Preview">
                     <div className="grid gap-1.5">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={Math.round(previewProgress * 100)}
-                        onChange={(event) =>
-                          onPreviewProgressChange(Number.parseInt(event.target.value, 10) / 100)
-                        }
-                        className="wire-range"
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={Math.round(previewProgress * 100)}
+                          onChange={(event) =>
+                            onPreviewProgressChange(Number.parseInt(event.target.value, 10) / 100)
+                          }
+                          className="wire-range flex-1"
+                          style={{ accentColor: 'var(--primary)' }}
+                        />
+                        <span className="min-w-[3ch] text-right text-[length:var(--text-label)] tabular-nums text-muted-foreground">
+                          {Math.round(previewProgress * 100)}%
+                        </span>
+                      </div>
                       <button
                         type="button"
                         className="wire-mini-button"
@@ -1215,6 +1266,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
   const [transitionDraft, setTransitionDraft] = useState<TransitionDraft>({
@@ -1310,19 +1365,17 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, [requestedIconId, searchIconSetId]);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleEditorKeyDown);
-    return () => window.removeEventListener('keydown', handleEditorKeyDown);
-  }, []);
-
-  useEffect(() => {
-    const handleCommandShortcut = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Cmd/Ctrl+K opens the command palette
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setCommandOpen(true);
+        return;
       }
+      handleEditorKeyDown(event);
     };
-    window.addEventListener('keydown', handleCommandShortcut);
-    return () => window.removeEventListener('keydown', handleCommandShortcut);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -1382,7 +1435,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         cancelAnimationFrame(previewFrameRef.current);
       }
     };
-  }, [currentVariant, previewPlaying, previewProgress, selectedTransition, setTransitionPreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewProgress is read only for initial startTime; including it would teardown/restart the rAF loop every frame
+  }, [currentVariant, previewPlaying, selectedTransition, setTransitionPreview]);
 
   const serializeWorkspace = () => {
     const { workspace: currentWorkspace } = editorStore.getState();
@@ -1406,51 +1460,72 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     const result = await saveProject(payload.data);
     if (result) {
       editorStore.getState().markSaved(payload.updatedAt);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 1500);
     }
   };
 
-  const handleExportCurrentSvg = async () => {
-    const state = editorStore.getState();
-    if (!currentIcon || !currentVariant || !currentState) return;
-
-    const svg = exportSvgString(
-      currentIcon,
-      currentVariant.id,
-      currentState.id,
-      state.project?.tokenSet?.colors,
-      state.renderingMode,
-    );
-
-    await exportSvg(svg, `${slugify(currentIcon.name)}.svg`);
+  const runExport = async (label: string, fn: () => void | Promise<void>) => {
+    setExporting(true);
+    setExportMessage(null);
+    try {
+      await fn();
+      setExportMessage(`${label} exported`);
+      setTimeout(() => setExportMessage(null), 2000);
+    } catch {
+      setExportMessage(`${label} export failed`);
+      setTimeout(() => setExportMessage(null), 3000);
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleExportSvgPackage = () => {
-    if (!project) return;
-    const fileMap = exportSvgPackage(project);
-    const zipBlob = createZipBlob(fileMap);
-    downloadBlob(zipBlob, `${slugify(project.meta.name)}-svg-package.zip`);
-  };
+  const handleExportCurrentSvg = () =>
+    runExport('SVG', async () => {
+      const state = editorStore.getState();
+      if (!currentIcon || !currentVariant || !currentState) return;
 
-  const handleExportRuntimeJson = () => {
-    if (!currentIcon || !project) return;
-    const runtimeJson = exportRuntimeJson({
-      ...currentIcon,
-      tokenSet: project.tokenSet,
+      const svg = exportSvgString(
+        currentIcon,
+        currentVariant.id,
+        currentState.id,
+        state.project?.tokenSet?.colors,
+        state.renderingMode,
+      );
+
+      await exportSvg(svg, `${slugify(currentIcon.name)}.svg`);
     });
-    downloadBlob(
-      new Blob([runtimeJson], { type: 'application/json' }),
-      `${slugify(currentIcon.name)}.runtime.json`,
-    );
-  };
 
-  const handleExportReactLibrary = () => {
-    if (!project) return;
-    const fileMap = generateIconLibrary(project, {
-      packageName: `${slugify(project.meta.name)}-react-icons`,
-      typescript: true,
+  const handleExportSvgPackage = () =>
+    runExport('SVG package', () => {
+      if (!project) return;
+      const fileMap = exportSvgPackage(project);
+      const zipBlob = createZipBlob(fileMap);
+      downloadBlob(zipBlob, `${slugify(project.meta.name)}-svg-package.zip`);
     });
-    downloadBlob(createZipBlob(fileMap), `${slugify(project.meta.name)}-react-library.zip`);
-  };
+
+  const handleExportRuntimeJson = () =>
+    runExport('Runtime JSON', () => {
+      if (!currentIcon || !project) return;
+      const runtimeJson = exportRuntimeJson({
+        ...currentIcon,
+        tokenSet: project.tokenSet,
+      });
+      downloadBlob(
+        new Blob([runtimeJson], { type: 'application/json' }),
+        `${slugify(currentIcon.name)}.runtime.json`,
+      );
+    });
+
+  const handleExportReactLibrary = () =>
+    runExport('React library', () => {
+      if (!project) return;
+      const fileMap = generateIconLibrary(project, {
+        packageName: `${slugify(project.meta.name)}-react-icons`,
+        typescript: true,
+      });
+      downloadBlob(createZipBlob(fileMap), `${slugify(project.meta.name)}-react-library.zip`);
+    });
 
   const handleSelectIcon = (iconId: string) => {
     if (!iconId) return;
@@ -1612,40 +1687,65 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
       {desktop ? <TitleTabBar /> : null}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[52px_220px_minmax(0,1fr)_304px]">
-        <ToolRail
-          onOpenCommand={() => setCommandOpen(true)}
-          onOpenImport={() => setImportDialogOpen(true)}
-        />
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[52px_220px_minmax(0,1fr)_304px]">
+        {/* Mobile/tablet sidebar toggle */}
+        <button
+          type="button"
+          className="fixed left-3 top-3 z-40 flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background shadow-sm lg:hidden"
+          onClick={() => setLeftSidebarOpen((v) => !v)}
+          aria-label={leftSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+        >
+          {leftSidebarOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+        </button>
 
-        <LeftSidebar
-          leftTab={leftTab}
-          onLeftTabChange={setLeftTab}
-          workspaceName={projectName}
-          currentIcon={currentIcon}
-          currentVariant={currentVariant}
-          currentStateId={currentStateId}
-          layerRows={layerRows}
-          selectedLayerId={selectedLayerId}
-          onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
-          onToggleLayerVisibility={(layerId, visible) => {
-            if (!currentIcon || !currentState) return;
-            patchLayer(currentIcon.id, currentState.id, layerId, { visible });
-          }}
-          variants={variants}
-          currentVariantId={currentVariantId}
-          stateIds={stateIds}
-          transitionCounts={transitionCounts}
-          onSelectVariant={setCurrentVariant}
-          onSelectState={setCurrentState}
-          newVariantSize={newVariantSize}
-          onNewVariantSizeChange={setNewVariantSize}
-          onCreateVariant={handleCreateVariant}
-          newStateName={newStateName}
-          onNewStateNameChange={setNewStateName}
-          onCreateDuplicateState={handleCreateDuplicateState}
-          onCreateBlankState={handleCreateBlankState}
-        />
+        {/* Left sidebar overlay for md breakpoint */}
+        {leftSidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/20 lg:hidden"
+            onClick={() => setLeftSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        <div
+          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 lg:col-span-2 ${
+            leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <ToolRail
+            onOpenCommand={() => setCommandOpen(true)}
+            onOpenImport={() => setImportDialogOpen(true)}
+          />
+
+          <LeftSidebar
+            leftTab={leftTab}
+            onLeftTabChange={setLeftTab}
+            workspaceName={projectName}
+            currentIcon={currentIcon}
+            currentVariant={currentVariant}
+            currentStateId={currentStateId}
+            layerRows={layerRows}
+            selectedLayerId={selectedLayerId}
+            onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
+            onToggleLayerVisibility={(layerId, visible) => {
+              if (!currentIcon || !currentState) return;
+              patchLayer(currentIcon.id, currentState.id, layerId, { visible });
+            }}
+            variants={variants}
+            currentVariantId={currentVariantId}
+            stateIds={stateIds}
+            transitionCounts={transitionCounts}
+            onSelectVariant={setCurrentVariant}
+            onSelectState={setCurrentState}
+            newVariantSize={newVariantSize}
+            onNewVariantSizeChange={setNewVariantSize}
+            onCreateVariant={handleCreateVariant}
+            newStateName={newStateName}
+            onNewStateNameChange={setNewStateName}
+            onCreateDuplicateState={handleCreateDuplicateState}
+            onCreateBlankState={handleCreateBlankState}
+          />
+        </div>
 
         <main className="wire-canvas-shell">
           <div className="wire-canvas-area">
@@ -1862,6 +1962,44 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       </AlertDialog>
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
+      {/* F-7: Save success flash */}
+      {saveSuccess && (
+        <div
+          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-800 shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          Saved successfully
+        </div>
+      )}
+
+      {/* REMAINING-4: Export loading indicator */}
+      {exporting && (
+        <div
+          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="size-4 animate-spin" />
+          Exporting...
+        </div>
+      )}
+
+      {/* REMAINING-4: Export success/failure message */}
+      {!exporting && exportMessage && (
+        <div
+          className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
+            exportMessage.includes('failed')
+              ? 'border-red-200 bg-red-50 text-red-800'
+              : 'border-green-200 bg-green-50 text-green-800'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {exportMessage}
+        </div>
+      )}
     </div>
   );
 }

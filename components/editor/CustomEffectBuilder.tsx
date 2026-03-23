@@ -79,7 +79,7 @@ export function CustomEffectBuilder({
         <div className="mt-3 grid gap-2">
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Kind</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Kind</Label>
               <select
                 value={effect.kind}
                 onChange={(e) => onUpdate({ kind: e.target.value as Effect['kind'] })}
@@ -91,7 +91,7 @@ export function CustomEffectBuilder({
               </select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Duration (ms)</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Duration (ms)</Label>
               <Input
                 type="number" min="0" step="50"
                 value={effect.durationMs}
@@ -105,7 +105,7 @@ export function CustomEffectBuilder({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Delay (ms)</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Delay (ms)</Label>
               <Input
                 type="number" min="0" step="50"
                 value={effect.delay ?? 0}
@@ -116,7 +116,7 @@ export function CustomEffectBuilder({
               />
             </div>
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Repeat</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Repeat</Label>
               <Input
                 type="text"
                 value={effect.repeat === 'infinite' ? 'infinite' : String(effect.repeat ?? 1)}
@@ -136,7 +136,7 @@ export function CustomEffectBuilder({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Direction</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Direction</Label>
               <select
                 value={effect.direction ?? 'normal'}
                 onChange={(e) =>
@@ -150,7 +150,7 @@ export function CustomEffectBuilder({
               </select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-[10px] text-muted-foreground">Easing</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Easing</Label>
               <EasingPicker
                 value={effect.easing ?? 'linear'}
                 onSelect={(val) => onUpdate({ easing: val })}
@@ -209,10 +209,10 @@ function CustomTracksEditor({
   return (
     <div className="mt-2 grid gap-2">
       <div className="flex items-center justify-between">
-        <Label className="text-[10px] uppercase text-muted-foreground">Custom Tracks</Label>
+        <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Custom Tracks</Label>
         <Button
           type="button" size="sm" variant="outline"
-          className="h-6 gap-1 rounded-lg text-[10px]"
+          className="h-6 gap-1 rounded-lg text-[length:var(--text-caption)]"
           onClick={addTrack}
         >
           <Plus className="size-3" /> Add Track
@@ -230,7 +230,7 @@ function CustomTracksEditor({
               onChange={(e) =>
                 updateTrack(index, { property: e.target.value })
               }
-              className="h-6 rounded border border-border bg-background px-1.5 text-[11px] text-foreground"
+              className="h-6 rounded border border-border bg-background px-1.5 text-[length:var(--text-label)] text-foreground"
             >
               {TRACK_PROPERTIES.map((prop) => (
                 <option key={prop} value={prop}>{prop}</option>
@@ -257,7 +257,7 @@ function CustomTracksEditor({
           </div>
 
           <div className="grid gap-0.5">
-            <Label className="text-[10px] text-muted-foreground">
+            <Label className="text-[length:var(--text-caption)] text-muted-foreground">
               Keyframes (comma-separated)
             </Label>
             <Input
@@ -267,7 +267,7 @@ function CustomTracksEditor({
                   ? (track.keyframes as number[]).join(', ')
                   : ''
               }
-              className="h-6 text-[11px]"
+              className="h-6 text-[length:var(--text-label)]"
               onChange={(e) => {
                 const values = e.target.value
                   .split(',')

@@ -1121,8 +1121,14 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Auto-select the first visible layer only when switching icons/states
+  // (not when user explicitly clears selection via Escape or empty-canvas click)
+  const autoSelectKeyRef = useRef('');
   useEffect(() => {
-    if (!project || !currentIconId || !currentStateId || selection.layerIds.length > 0) return;
+    const key = `${currentIconId}:${currentVariantId}:${currentStateId}`;
+    if (key === autoSelectKeyRef.current) return;
+    autoSelectKeyRef.current = key;
+    if (!project || !currentIconId || !currentStateId) return;
     const layers = currentVariantId
       ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
         {})
@@ -1136,7 +1142,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     currentStateId,
     currentVariantId,
     project,
-    selection.layerIds.length,
     setSelection,
   ]);
 

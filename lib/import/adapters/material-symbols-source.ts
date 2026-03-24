@@ -109,18 +109,57 @@ function normalizeMaterialSymbolSvg(svgContent: string): string {
 
   const rootAttributes = rootMatch[1] ?? '';
   const innerContent = (rootMatch[2] ?? '').trim();
-  const xmlns = extractSvgRootAttribute(rootAttributes, 'xmlns') ?? 'http://www.w3.org/2000/svg';
+  const sourceAttributes = parseRootAttributes(rootAttributes);
+  const sourceViewBox = sourceAttributes.get('viewBox') ?? sourceAttributes.get('viewbox');
+  const xmlns = sourceAttributes.get('xmlns') ?? 'http://www.w3.org/2000/svg';
+
+  const normalizedAttributes = new Map<string, string>();
+  for (const [name, value] of sourceAttributes.entries()) {
+    const lower = name.toLowerCase();
+    if (lower === 'width' || lower === 'height' || lower === 'viewbox' || lower === 'xmlns') {
+      continue;
+    }
+    normalizedAttributes.set(name, value);
+  }
+  normalizedAttributes.set('xmlns', xmlns);
+  normalizedAttributes.set('width', '24');
+  normalizedAttributes.set('height', '24');
+  normalizedAttributes.set('viewBox', '0 0 24 24');
+
+  const shouldWrapWithCoordinateTransform = sourceViewBox?.trim() !== '0 0 24 24';
 
   // Material Symbols are authored in a 960x960 coordinate system with
   // viewBox "0 -960 960 960". Wrap source paths in a transform so they map
   // to a canonical 24x24 coordinate space while preserving path geometry.
-  const normalizedInner = `<g transform="translate(0 24) scale(0.025)">${innerContent}</g>`;
+  const normalizedInner = shouldWrapWithCoordinateTransform
+    ? `<g transform="translate(0 24) scale(0.025)">${innerContent}</g>`
+    : innerContent;
 
-  return `<svg xmlns="${xmlns}" width="24" height="24" viewBox="0 0 24 24">${normalizedInner}</svg>`;
+  return `<svg ${serializeRootAttributes(normalizedAttributes)}>${normalizedInner}</svg>`;
 }
 
-function extractSvgRootAttribute(rootAttributes: string, attributeName: string): string | null {
-  const pattern = new RegExp(`${attributeName}\\s*=\\s*"([^"]*)"`, 'i');
-  const match = rootAttributes.match(pattern);
-  return match?.[1] ?? null;
+function parseRootAttributes(rootAttributes: string): Map<string, string> {
+  const attrs = new Map<string, string>();
+  const pattern = /([:@A-Za-z_][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  for (const match of rootAttributes.matchAll(pattern)) {
+    const key = match[1];
+    const value = match[2] ?? match[3];
+    if (!key || value === undefined) continue;
+    attrs.set(key, value);
+  }
+  return attrs;
+}
+
+function serializeRootAttributes(attributes: Map<string, string>): string {
+  return [...attributes.entries()]
+    .map(([key, value]) => `${key}="${escapeXmlAttribute(value)}"`)
+    .join(' ');
+}
+
+function escapeXmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 }

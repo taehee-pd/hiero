@@ -172,13 +172,30 @@ function extractPathElements(source: string, variant: 'outline' | 'solid'): stri
 
 function parseReactPropsObject(objectLiteral: string): Map<string, string> {
   const props = new Map<string, string>();
-  for (const match of objectLiteral.matchAll(/([A-Za-z_$][\w$]*):\s*"([^"]*)"/g)) {
-    const key = match[1];
-    const value = match[2];
-    if (!key || value === undefined) continue;
+  const propertyPattern =
+    /((?:'[^']+'|"[^"]+"|[A-Za-z_$][\w$-]*))\s*:\s*(?:"([^"]*)"|'([^']*)'|(-?(?:\d+\.?\d*|\.\d+))|\b(true|false)\b)/g;
+
+  for (const match of objectLiteral.matchAll(propertyPattern)) {
+    const rawKey = match[1];
+    const key = normalizeObjectKey(rawKey);
+    if (!key) continue;
+
+    const value = match[2] ?? match[3] ?? match[4] ?? match[5];
+    if (value === undefined) continue;
     props.set(key, value);
   }
   return props;
+}
+
+function normalizeObjectKey(rawKey: string | undefined): string | null {
+  if (!rawKey) return null;
+  if (
+    (rawKey.startsWith('"') && rawKey.endsWith('"')) ||
+    (rawKey.startsWith("'") && rawKey.endsWith("'"))
+  ) {
+    return rawKey.slice(1, -1).trim() || null;
+  }
+  return rawKey.trim() || null;
 }
 
 function serializeSvgAttributes(props: Map<string, string>): string {

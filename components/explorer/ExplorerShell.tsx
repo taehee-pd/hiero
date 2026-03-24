@@ -1,16 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
-  Check,
   ChevronRight,
   Ellipsis,
   FolderOpen,
   Grid3X3,
-  Heart,
   Import,
   LayoutGrid,
   Pencil,
@@ -59,6 +56,7 @@ import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
 import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { cn } from '@/lib/utils';
 import type { Collection, Icon, Project } from '@/lib/schema/types';
+import { IconGridItem } from './IconGridItem';
 
 export type ExplorerIcon = {
   id: string;
@@ -1196,22 +1194,22 @@ function ProjectDetailView({
               const favorite = favoritesSet.has(icon.id);
 
               return (
-                <article
+                <IconGridItem
                   key={icon.id}
-                  role="listitem"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      editorStore.getState().setCurrentIcon(icon.id);
-                      if (activeIconSetId) {
-                        onOpenIconTab(activeIconSetId, icon.id);
-                      }
-                      // Navigate via the link inside
-                      const link = e.currentTarget.querySelector('a');
-                      link?.click();
+                  iconId={icon.id}
+                  iconName={icon.name}
+                  activeIconSetId={activeIconSetId}
+                  svg={svg}
+                  active={active}
+                  favorite={favorite}
+                  onOpen={() => {
+                    editorStore.getState().setCurrentIcon(icon.id);
+                    if (activeIconSetId) {
+                      onOpenIconTab(activeIconSetId, icon.id);
                     }
                   }}
+                  onToggleFavorite={() => onToggleFavorite(icon.id)}
+                  onToggleSelection={() => onToggleSelection(icon.id)}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     void showNativeContextMenu('explorerIcon', {
@@ -1219,68 +1217,7 @@ function ProjectDetailView({
                       favorite,
                     });
                   }}
-                  className={cn(
-                    'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-                    active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
-                  )}
-                >
-                  <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      type="button"
-                      onClick={() => onToggleFavorite(icon.id)}
-                      aria-label={favorite ? `Unfavorite ${icon.name}` : `Favorite ${icon.name}`}
-                      className={cn(
-                        'flex size-5 items-center justify-center rounded-md transition',
-                        favorite
-                          ? 'bg-rose-500/10 text-rose-500'
-                          : 'bg-background/80 text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      <Heart className={cn('size-3', favorite && 'fill-current')} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onToggleSelection(icon.id)}
-                      aria-pressed={active}
-                      aria-label={active ? `Deselect ${icon.name}` : `Select ${icon.name}`}
-                      className={cn(
-                        'flex size-5 items-center justify-center rounded-md transition',
-                        active
-                          ? 'bg-primary/15 text-primary'
-                          : 'bg-background/80 text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      <Check className="size-3" />
-                    </button>
-                  </div>
-
-                  <Link
-                    href={buildEditorRoute(icon.id, activeIconSetId)}
-                    onClick={() => {
-                      editorStore.getState().setCurrentIcon(icon.id);
-                      if (activeIconSetId) {
-                        onOpenIconTab(activeIconSetId, icon.id);
-                      }
-                    }}
-                    className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                    aria-label={`Open ${icon.name}`}
-                  >
-                    <div className="flex aspect-square w-full items-center justify-center rounded-md">
-                      {svg ? (
-                        <div
-                          aria-hidden="true"
-                          className="size-10 text-foreground transition-transform duration-100 group-hover:scale-[1.04]"
-                          dangerouslySetInnerHTML={{ __html: svg }}
-                        />
-                      ) : (
-                        <Grid3X3 className="size-4 text-muted-foreground/40" />
-                      )}
-                    </div>
-                    <div className="w-full text-center">
-                      <p className="truncate text-[length:var(--text-label)] font-medium text-foreground">{icon.name}</p>
-                    </div>
-                  </Link>
-                </article>
+                />
               );
             })}
           </div>

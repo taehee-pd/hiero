@@ -72,6 +72,8 @@ import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorPickerPopover } from './ColorPickerPopover';
 import { TransitionPanel } from './TransitionPanel';
+import { EditorSidebarTabs } from './EditorSidebarTabs';
+import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 
 type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
@@ -271,30 +273,15 @@ function LeftSidebar({
           </button>
         </div>
 
-        <div className="wire-tab-row">
-          <div className="wire-tabs" role="tablist" aria-label="Left sidebar">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={leftTab === 'layers'}
-              data-active={leftTab === 'layers' ? 'true' : 'false'}
-              className="wire-tab-button"
-              onClick={() => onLeftTabChange('layers')}
-            >
-              Layers
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={leftTab === 'variants'}
-              data-active={leftTab === 'variants' ? 'true' : 'false'}
-              className="wire-tab-button"
-              onClick={() => onLeftTabChange('variants')}
-            >
-              Variants
-            </button>
-          </div>
-        </div>
+        <EditorSidebarTabs
+          ariaLabel="Left sidebar"
+          value={leftTab}
+          onChange={onLeftTabChange}
+          options={[
+            { value: 'layers', label: 'Layers' },
+            { value: 'variants', label: 'Variants' },
+          ]}
+        />
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
@@ -666,30 +653,15 @@ function RightSidebar({
   return (
     <aside className="wire-sidebar wire-sidebar-right">
       <div className="wire-sidebar-block wire-sidebar-head">
-        <div className="wire-tab-row">
-          <div className="wire-tabs" role="tablist" aria-label="Right sidebar">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={rightTab === 'inspect'}
-              data-active={rightTab === 'inspect' ? 'true' : 'false'}
-              className="wire-tab-button"
-              onClick={() => onRightTabChange('inspect')}
-            >
-              Inspect
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={rightTab === 'animation'}
-              data-active={rightTab === 'animation' ? 'true' : 'false'}
-              className="wire-tab-button"
-              onClick={() => onRightTabChange('animation')}
-            >
-              Animation
-            </button>
-          </div>
-        </div>
+        <EditorSidebarTabs
+          ariaLabel="Right sidebar"
+          value={rightTab}
+          onChange={onRightTabChange}
+          options={[
+            { value: 'inspect', label: 'Inspect' },
+            { value: 'animation', label: 'Animation' },
+          ]}
+        />
         <div className="wire-panel-title">
           {selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
         </div>
@@ -735,7 +707,7 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                      <SelectTrigger className={editorSelectTriggerClassName}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -768,7 +740,7 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                      <SelectTrigger className={editorSelectTriggerClassName}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -920,7 +892,7 @@ function RightSidebar({
                       onPatchVariant({ renderingMode: value as RenderingMode })
                     }
                   >
-                    <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                    <SelectTrigger className={editorSelectTriggerClassName}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1379,7 +1351,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   );
 
   return (
-    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
+    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
       {desktop ? <TitleTabBar /> : null}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
@@ -1403,7 +1375,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         )}
 
         <div
-          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 lg:col-span-2 ${
+          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 ${
             leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >

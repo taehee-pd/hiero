@@ -164,18 +164,26 @@ describe('interpolateWeight', () => {
 
   test('returns exact control-point path at control-point weight', () => {
     expect(interpolateWeight(threePoint, 'ultralight')).toBe(
-      threePoint.ultralight,
+      'M0 0 L10 0 L10 10 L0 10 Z',
     );
     expect(interpolateWeight(threePoint, 'regular')).toBe(
-      threePoint.regular,
+      'M0 0 L20 0 L20 20 L0 20 Z',
     );
-    expect(interpolateWeight(threePoint, 'black')).toBe(threePoint.black);
+    expect(interpolateWeight(threePoint, 'black')).toBe(
+      'M0 0 L30 0 L30 30 L0 30 Z',
+    );
   });
 
   test('returns exact path for numeric weight matching a control point', () => {
-    expect(interpolateWeight(threePoint, 100)).toBe(threePoint.ultralight);
-    expect(interpolateWeight(threePoint, 400)).toBe(threePoint.regular);
-    expect(interpolateWeight(threePoint, 900)).toBe(threePoint.black);
+    expect(interpolateWeight(threePoint, 100)).toBe(
+      'M0 0 L10 0 L10 10 L0 10 Z',
+    );
+    expect(interpolateWeight(threePoint, 400)).toBe(
+      'M0 0 L20 0 L20 20 L0 20 Z',
+    );
+    expect(interpolateWeight(threePoint, 900)).toBe(
+      'M0 0 L30 0 L30 30 L0 30 Z',
+    );
   });
 
   test('returns null for incompatible paths', () => {
@@ -209,8 +217,12 @@ describe('interpolateWeight', () => {
   });
 
   test('clamps to nearest endpoint for out-of-range weights', () => {
-    expect(interpolateWeight(threePoint, 50)).toBe(threePoint.ultralight);
-    expect(interpolateWeight(threePoint, 950)).toBe(threePoint.black);
+    expect(interpolateWeight(threePoint, 50)).toBe(
+      'M0 0 L10 0 L10 10 L0 10 Z',
+    );
+    expect(interpolateWeight(threePoint, 950)).toBe(
+      'M0 0 L30 0 L30 30 L0 30 Z',
+    );
   });
 
   test('works with 5 control points', () => {

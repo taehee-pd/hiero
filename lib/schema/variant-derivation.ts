@@ -236,12 +236,20 @@ export async function applyDerivedVariant(
 /**
  * N1: Fill derivation — pure style transform, no boolean ops.
  * For each layer with stroke but no fill, produce a filled copy.
+ *
+ * currentColor is treated as a valid paint (it renders at runtime),
+ * so a layer with `stroke: { mode: 'currentColor' }` IS considered
+ * to have a stroke, and `fill: { mode: 'currentColor' }` IS considered
+ * to have a fill.
  */
 function applyFillDerivation(state: State): void {
   for (const [layerId, layer] of Object.entries(state.layers)) {
     if (!layer.style) continue;
-    const hasStroke = layer.style.stroke && layer.style.stroke.mode !== 'currentColor';
-    const hasFill = layer.style.fill && layer.style.fill.mode !== 'currentColor';
+
+    // A layer "has stroke" if stroke paint exists (any mode, including currentColor)
+    const hasStroke = !!layer.style.stroke;
+    // A layer "has fill" if fill paint exists (any mode, including currentColor)
+    const hasFill = !!layer.style.fill;
 
     if (hasStroke && !hasFill) {
       const cloned = cloneLayer(layer);

@@ -976,6 +976,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const viewport = useEditorStore((s) => s.viewport);
   const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
+  const isDeriving = useEditorStore((s) => s.isDeriving);
   const currentGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const currentIcon = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
@@ -1447,9 +1448,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                 <span>This variant has derived variants. Changes may require re-derivation.</span>
                 <button
                   type="button"
-                  className="ml-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
+                  disabled={isDeriving}
+                  className="ml-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={async () => {
-                    if (!currentIcon || !currentVariantId) return;
+                    if (!currentIcon || !currentVariantId || isDeriving) return;
                     const specs = currentIcon.meta?.derivedSpecs?.filter(
                       (s) => s.baseVariantId === currentVariantId,
                     ) ?? [];
@@ -1459,7 +1461,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                     toast({ title: `Re-derived ${specs.length} variant(s)` });
                   }}
                 >
-                  Re-derive
+                  {isDeriving ? 'Deriving…' : 'Re-derive'}
                 </button>
               </div>
             )}

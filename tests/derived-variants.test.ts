@@ -191,8 +191,18 @@ describe('availableModifiers', () => {
 });
 
 describe('applyDerivedVariant', () => {
-  test('fill derivation flips stroke to fill', async () => {
-    const icon = makeIcon();
+  test('fill derivation flips stroke to fill on stroke-only layers', async () => {
+    // Layer with stroke but NO fill — eligible for fill derivation
+    const strokeOnlyLayer = makeLayer('stroke-only', 'M0 0L24 24', {
+      style: {
+        fill: undefined as unknown as Layer['style'] extends undefined ? never : NonNullable<Layer['style']>['fill'],
+        stroke: { mode: 'fixed' as const, value: '#FF0000' },
+        strokeWidth: 2,
+      },
+    });
+    const icon = makeIcon({
+      layers: { 'primary-layer': strokeOnlyLayer },
+    });
     const spec = createDerivedVariantSpec('24', 'fill');
     const result = await applyDerivedVariant(icon, spec);
 
@@ -200,9 +210,24 @@ describe('applyDerivedVariant', () => {
     const derivedState = result.variants['24.fill']!.states.default;
     const layer = derivedState.layers['primary-layer'];
     // Fill should now have the stroke's value
-    expect(layer.style?.fill).toEqual({ mode: 'fixed', value: '#000000' });
+    expect(layer.style?.fill).toEqual({ mode: 'fixed', value: '#FF0000' });
     // Stroke should be cleared
     expect(layer.style?.strokeWidth).toBe(0);
+  });
+
+  test('fill derivation skips layers that already have fill (including currentColor)', async () => {
+    // Default makeIcon layers have both currentColor fill and fixed stroke
+    const icon = makeIcon();
+    const spec = createDerivedVariantSpec('24', 'fill');
+    const result = await applyDerivedVariant(icon, spec);
+
+    expect(result.variants['24.fill']).toBeDefined();
+    const derivedState = result.variants['24.fill']!.states.default;
+    const layer = derivedState.layers['primary-layer'];
+    // Layer already has fill (currentColor) — should NOT be converted
+    expect(layer.style?.fill).toEqual({ mode: 'currentColor' });
+    // Stroke should remain
+    expect(layer.style?.stroke).toEqual({ mode: 'fixed', value: '#000000' });
   });
 
   test('fill derivation stores spec in meta.derivedSpecs', async () => {

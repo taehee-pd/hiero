@@ -362,30 +362,6 @@ the full pattern. This phase adds four high-demand adapters.
 
 ### Priority 2 — SF Symbols SVG Import
 
-- [ ] **P4 — SF Symbols SVG adapter.** ⚠️ REQUIRES LEGAL REVIEW BEFORE SHIPPING
-  Apple's SF Symbols license (SFSymbols License Agreement) explicitly
-  restricts distribution of the symbols and may prohibit exporting them
-  to non-Apple platforms via Coniva. **Do not ship this adapter without
-  legal sign-off.** The adapter itself can be built and tested in isolation;
-  ship it only after confirming the use case is covered under the
-  license (e.g., the adapter imports custom SVGs *inspired by* SF Symbols
-  style, not the Apple-supplied symbol files themselves).
-  Create `lib/import/adapters/sf-symbols-adapter.ts`. SF Symbols SVGs
-  are exported from the SF Symbols macOS app as `.svg` files with
-  multi-weight layer groups (each group named `ultralight-S`,
-  `regular-S`, `black-S`, etc.). The adapter:
-  1. Reads the layered SVG.
-  2. Groups layers by weight tag.
-  3. Creates one Coniva icon with one variant containing one state per
-     detected weight group.
-  4. Populates `Variant.weightControlPoints` from the ultralight,
-     regular, and black layers.
-  5. Detects SF Symbols-style variable-value layers (`primary`,
-     `secondary`, `tertiary` role attributes in the SVG) and maps them
-     to `Layer.role`.
-  Input mode: `file` (drag-and-drop `.svg` export from SF Symbols app).
-  No network search — file-only.
-
 ### Priority 3 — Import UX Polish
 
 - [ ] **P5 — Adapter capability display in ImportIconDialog.**

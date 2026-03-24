@@ -26,13 +26,29 @@ type Prepared = {
   iconName: string;
 };
 
+type LibrarySourceId = 'raw-svg' | 'lucide' | 'heroicons' | 'phosphor' | 'material-symbols';
+
+const LIBRARY_SOURCES: Array<{
+  id: LibrarySourceId;
+  label: string;
+  badges?: string[];
+}> = [
+  { id: 'raw-svg', label: 'Raw SVG' },
+  { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
+  { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
+  { id: 'phosphor', label: 'Phosphor', badges: ['Searchable', '4 weights', 'MIT'] },
+  { id: 'material-symbols', label: 'Material', badges: ['Searchable', 'Apache-2.0'] },
+];
+
 export function ImportIconDialog({ open, onOpenChange }: Props) {
-  const [sourceId, setSourceId] = useState<'raw-svg' | 'lucide'>('raw-svg');
+  const [sourceId, setSourceId] = useState<LibrarySourceId>('raw-svg');
   const [rawSvg, setRawSvg] = useState('');
-  const [lucideName, setLucideName] = useState('');
+  const [libraryIconName, setLibraryIconName] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const [state, dispatch] = useReducer(reduceImportUxState, INITIAL_IMPORT_UX_STATE);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
+  const [batchNames, setBatchNames] = useState('');
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function runSvgImport(input: { svg: string; name: string; tags?: string[]; provenance?: { adapterId: string; sourceLibrary?: string; sourceVersion?: string; sourceIconId?: string; sourceLicense?: string; importedAt: string } }) {
     dispatch({ type: 'start_validating' });
@@ -66,16 +82,17 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     }
   }
 
-  async function runLucideImport() {
+  async function runLibraryImport(adapterId: string, iconName: string) {
     dispatch({ type: 'start_validating' });
     try {
-      const response = await fetch('/api/import/lucide', {
+      const response = await fetch(`/api/import/${adapterId}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ iconName: lucideName.trim() }),
+        body: JSON.stringify({ iconName: iconName.trim() }),
       });
       if (!response.ok) {
-        dispatch({ type: 'failed', message: 'Lucide icon was not found. Check the icon name and try again.' });
+        const source = LIBRARY_SOURCES.find((s) => s.id === adapterId);
+        dispatch({ type: 'failed', message: `${source?.label ?? adapterId} icon "${iconName}" was not found.` });
         return;
       }
       const payload = await response.json() as {
@@ -91,8 +108,22 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         provenance: payload.provenance,
       });
     } catch {
-      dispatch({ type: 'failed', message: 'Unable to contact Lucide source. Please try again.' });
+      dispatch({ type: 'failed', message: `Unable to contact ${adapterId} source. Please try again.` });
     }
+  }
+
+  async function runBatchImport(adapterId: string, names: string[]) {
+    const limited = names.slice(0, 50);
+    setBatchProgress({ done: 0, total: limited.length });
+    for (let i = 0; i < limited.length; i++) {
+      try {
+        await runLibraryImport(adapterId, limited[i]!);
+      } catch {
+        // Continue on failure for batch
+      }
+      setBatchProgress({ done: i + 1, total: limited.length });
+    }
+    setBatchProgress(null);
   }
 
   const busy = state.status === 'validating' || state.status === 'importing';
@@ -108,10 +139,29 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         <div className="space-y-3">
           <div className="space-y-1">
             <Label>Source</Label>
-            <div className="flex gap-2">
-              <Button size="sm" variant={sourceId === 'raw-svg' ? 'default' : 'outline'} onClick={() => setSourceId('raw-svg')}>Raw SVG</Button>
-              <Button size="sm" variant={sourceId === 'lucide' ? 'default' : 'outline'} onClick={() => setSourceId('lucide')}>Lucide</Button>
+            <div className="flex flex-wrap gap-2">
+              {LIBRARY_SOURCES.map((source) => (
+                <Button
+                  key={source.id}
+                  size="sm"
+                  variant={sourceId === source.id ? 'default' : 'outline'}
+                  onClick={() => { setSourceId(source.id); setLibraryIconName(''); setBatchNames(''); }}
+                  className="gap-1.5"
+                >
+                  {source.label}
+                </Button>
+              ))}
             </div>
+            {/* P5: Capability badges for the selected source */}
+            {LIBRARY_SOURCES.find((s) => s.id === sourceId)?.badges && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {LIBRARY_SOURCES.find((s) => s.id === sourceId)!.badges!.map((badge) => (
+                  <span key={badge} className="rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {sourceId === 'raw-svg' ? (
@@ -141,9 +191,48 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
             </Tabs>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="lucide-name">Lucide icon name</Label>
-              <Input id="lucide-name" value={lucideName} onChange={(e) => setLucideName(e.target.value)} placeholder="e.g. arrow-right" />
-              <Button disabled={busy || !lucideName.trim()} onClick={() => void runLucideImport()}>Validate & Import</Button>
+              <Label htmlFor="lib-name">{LIBRARY_SOURCES.find((s) => s.id === sourceId)?.label ?? sourceId} icon name</Label>
+              <Input
+                id="lib-name"
+                value={libraryIconName}
+                onChange={(e) => setLibraryIconName(e.target.value)}
+                placeholder="e.g. arrow-right"
+              />
+              <div className="flex gap-2">
+                <Button
+                  disabled={busy || !libraryIconName.trim()}
+                  onClick={() => void runLibraryImport(sourceId, libraryIconName)}
+                >
+                  Validate & Import
+                </Button>
+              </div>
+
+              {/* P6: Batch import */}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                  Batch import (comma-separated names, max 50)
+                </summary>
+                <div className="mt-2 space-y-2">
+                  <Textarea
+                    value={batchNames}
+                    onChange={(e) => setBatchNames(e.target.value)}
+                    className="min-h-20"
+                    placeholder="arrow-right, arrow-left, check, x"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busy || !batchNames.trim() || batchProgress !== null}
+                    onClick={() => {
+                      const names = batchNames.split(',').map((n) => n.trim()).filter(Boolean);
+                      if (names.length > 0) void runBatchImport(sourceId, names);
+                    }}
+                  >
+                    {batchProgress
+                      ? `Importing ${batchProgress.done}/${batchProgress.total}…`
+                      : `Import All`}
+                  </Button>
+                </div>
+              </details>
             </div>
           )}
 

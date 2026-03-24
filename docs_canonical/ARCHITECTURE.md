@@ -48,9 +48,12 @@ These modules support the editor UI but do not define the canonical document sha
 
 ### Import and Export
 
-- `lib/import/`: converts SVG input into schema-compliant icon data.
+- `lib/import/`: converts SVG input into schema-compliant icon data and
+  hosts the external adapter SDK plus built-in source adapters
+  (Lucide, Heroicons, Phosphor, Material Symbols).
 - `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
-- `lib/export/`: produces SVG, runtime JSON, compiled icon artifacts, package manifests, change diffs, and generated component outputs.
+- `lib/export/`: produces SVG, runtime JSON, Lottie JSON, compiled icon
+  artifacts, package manifests, change diffs, and generated component outputs.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter) and downgrade rules for cross-platform export.
 - `lib/compiler-contracts/`: validates compiled/exported artifact shapes.
 
@@ -106,7 +109,7 @@ Adapters are pure transforms (`Icon + RuntimeVariantPayload[] -> GeneratedFile[]
 
 The repository contains multiple runtime-focused layers:
 
-- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, and state-machine behavior
+- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, state-machine behavior, and cubic weight interpolation
 - `lib/runtime-dom/`: DOM renderer/driver for runtime icons
 - `lib/runtime-react/`: React wrapper components (`ConivaIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
 - `lib/runtime-sdk/`: compiled icon rendering primitives and renderer logic
@@ -134,9 +137,18 @@ Desktop-only behavior crosses through a platform boundary:
 
 - `desktop/src/shared/rpc-types.ts`: typed request/message contract
 - `lib/platform/bridge.ts`: browser-side environment abstraction
+- `lib/platform/keychain.ts`: token storage abstraction for npm-registry delivery targets
 - `desktop/src/bun/`: native file/menu/window/update operations
 
 This keeps product UI code mostly shared between browser and desktop.
+
+### Registry Distribution Boundary
+
+- `lib/sync-service/contracts.ts`: shared `SyncConnector` interface
+- `lib/sync-service/connectors/npm-connector.ts`: npm-registry delivery connector
+- `app/api/publish-npm/route.ts`: web-side secure publish proxy using
+  a server-side `NPM_PUBLISH_TOKEN`
+- `lib/sync-service/auto-publish.ts`: debounced auto-publish scheduler/cancel manager
 
 ## High-Level Data Flow
 

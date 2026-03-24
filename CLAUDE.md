@@ -91,6 +91,13 @@ tests/                # Bun test files
 - **Shipped phases:** Q (NPM Registry, #73), M (Lottie Export, #74), N (Derived Variants, #75), P (Import Ecosystem, #76)
 - **Open phases:** O (Cubic Weight Interpolation)
 
+## Project-Local Skills
+
+- Repo-local Codex skills live under `.codex/skills/`.
+- `figma-use`: `.codex/skills/figma-use/SKILL.md`
+  Use this before any Figma Plugin API / `use_figma` write action or
+  unique JS-based Figma file inspection flow.
+
 ## gstack
 
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__Claude_in_Chrome__*` tools.

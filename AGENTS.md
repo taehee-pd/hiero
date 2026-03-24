@@ -28,6 +28,13 @@ canonical documentation takes precedence.
 - **Per-branch design docs:** `~/.gstack/projects/taehee-pd-icon-authoring-tool/`
   (created by gstack `/office-hours` skill).
 
+## Project-Local Skills
+
+- Repo-local Codex skills live under `.codex/skills/`.
+- `figma-use` is available at `.codex/skills/figma-use/SKILL.md`.
+- Use `figma-use` before any Figma Plugin API / `use_figma` write flow or
+  unique JS-based Figma read flow.
+
 ## CI Emulation (mandatory before push)
 
 CI uses `bun install --frozen-lockfile` which fails if `bun.lock` is out of sync

@@ -40,6 +40,19 @@ Cross-platform adapter generation:
 
 Adapters in `lib/export/adapters/` generate platform-native components from runtime payloads. They are invoked by sync connectors (`lib/sync-service/connectors/`) during local-directory or Git PR sync. Supported platforms: React (`react-adapter.ts`), Swift/SwiftUI/UIKit (`swift-adapter.ts`), Flutter/Dart (`flutter-adapter.ts`). Downgrade rules (`downgrade-rules.ts`) handle features unsupported on each platform (e.g., morph -> crossfade on Swift/Flutter).
 
+Lottie export flow:
+
+- Core exporter: `lib/export/export-lottie.ts`
+- Downgrade analysis: `lib/export/lottie-downgrade.ts`
+- UI panel component: `components/export/LottieExportPanel.tsx`
+- Dependency: `lottie-web` (lazy-loaded preview behind `NEXT_PUBLIC_LOTTIE_PREVIEW_ENABLED`)
+
+Import-adapter flow:
+
+- Server-side adapter routes live under `app/api/import/`
+- Built-in adapters currently include Lucide, Heroicons, Phosphor, and Material Symbols
+- Local verification entrypoint: `corepack pnpm test:import`
+
 ## Deployment and Release
 
 Desktop release flow exists in-repo:
@@ -57,6 +70,14 @@ The release script:
 - writes `desktop/artifacts/latest.json`
 
 Signing and notarization expectations live in `desktop/SIGNING.md`.
+
+Registry distribution flow also exists in-repo:
+
+- Delivery mode: `SyncTarget.deliveryMode === 'npm-registry'`
+- Connector: `lib/sync-service/connectors/npm-connector.ts`
+- Desktop publish path: `lib/platform/bridge.ts` `npmPublish(...)`
+- Web publish path: `app/api/publish-npm/route.ts`
+- Token storage: `lib/platform/keychain.ts`
 
 ## CI/CD Status
 

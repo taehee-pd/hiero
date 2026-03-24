@@ -36,13 +36,15 @@ The same product codebase also supports a desktop shell through Electrobun. In a
 - `lib/editor-core/`: geometry parsing, editing commands, snapping, topology, keyboard handling, and shape generation.
 - `lib/editor-renderer-svg/`: SVG rendering for the editor surface and transition preview application.
 - `lib/editor-overlay-canvas/`: overlay rendering for guides, selections, and editor-only affordances.
-- `lib/import/`: SVG import and normalization.
-- `lib/export/`: SVG export, runtime JSON export, compiled package generation, and diffing.
+- `lib/import/`: SVG import/normalization plus external adapter SDK and built-in adapters for Lucide, Heroicons, Phosphor, and Material Symbols.
+- `lib/export/`: SVG export, runtime JSON export, Lottie export, compiled package generation, and diffing.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter), downgrade rules, storybook generation, and manifest cleanup.
 - `lib/compiler-contracts/`: compiled artifact types and validators.
-- `lib/runtime-core/`: transition resolution, morph interpolation (strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, and state-machine behavior.
+- `lib/runtime-core/`: transition resolution, morph interpolation (strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, state-machine behavior, and cubic weight interpolation.
 - `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
-- `lib/platform/`: desktop bridge and route helpers shared with the web app.
+- `lib/platform/`: desktop bridge, keychain helpers, and route helpers shared with the web app.
+- `app/api/import/`, `app/api/publish-npm/`: server-side adapter import and npm publish proxy routes.
+- `lib/sync-service/connectors/`: local-directory, git-pr, and npm-registry delivery connectors.
 
 ## Dependency Shape
 

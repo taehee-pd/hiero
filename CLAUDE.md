@@ -88,8 +88,8 @@ tests/                # Bun test files
 
 - **Spec-kit specs:** `/specs/` — structured markdown specs for all major systems
 - **Task backlog:** `/docs_canonical/TASKS.md` — engineering phases with task checklists
-- **Shipped phases:** Q (NPM Registry, #73), M (Lottie Export, #74)
-- **Open phases:** N (Derived Variants), P (Import Ecosystem), O (Cubic Weight Interpolation)
+- **Shipped phases:** Q (NPM Registry, #73), M (Lottie Export, #74), N (Derived Variants, #75), P (Import Ecosystem, #76)
+- **Open phases:** O (Cubic Weight Interpolation)
 
 ## gstack
 

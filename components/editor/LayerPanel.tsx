@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 export const LayerPanel = memo(function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
   const selection = useSelection();
-  const renderingMode = useEditorStore((s) => s.renderingMode);
+  const _renderingMode = useEditorStore((s) => s.renderingMode);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const componentByLayerId = useEditorStore((s) => {
     if (!s.currentIconId) return new Map<string, 'badge' | 'slash' | 'enclosure'>();
@@ -212,23 +212,7 @@ export const LayerPanel = memo(function LayerPanel() {
                     isSelected ? 'bg-primary' : 'bg-transparent',
                   )}
                 />
-                <span
-                  className={cn(
-                    'ml-2 size-2.5 shrink-0 rounded-full transition-opacity',
-                    layer.role === 'primary' && 'bg-accent',
-                    layer.role === 'secondary' && 'bg-muted-foreground',
-                    layer.role === 'tertiary' && 'bg-chart-3',
-                    !layer.role && 'bg-muted-foreground/40',
-                    renderingMode === 'multicolor' && 'opacity-30',
-                  )}
-                  title={
-                    renderingMode === 'multicolor'
-                      ? `${layer.role ?? 'no role'} – not active in multicolor mode. Switch to hierarchical or palette to see the effect.`
-                      : layer.role
-                        ? `${layer.role} – ${renderingMode === 'hierarchical' ? 'controls layer opacity' : 'controls palette color assignment'}`
-                        : 'No role assigned'
-                  }
-                />
+                <span className="ml-2 size-2.5 shrink-0" />
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-40')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (
@@ -284,7 +268,7 @@ export const LayerPanel = memo(function LayerPanel() {
                       ? `clipped by ${maskLayerId}`
                       : clippedLayerIds.length > 0
                         ? `${clippedLayerIds.length} clipped`
-                        : (layer.role ?? 'layer')}
+                        : 'layer'}
                   </p>
                 </div>
                 <Button

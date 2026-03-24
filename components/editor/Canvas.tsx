@@ -442,16 +442,20 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           pendingPenHandle?.pointKey === pointKey
             ? pendingPenHandle
             : null;
+        // Corner points should NOT show bezier handles — they are
+        // sharp corners with no tangent control. Only smooth/symmetric
+        // points and points being actively dragged (pen tool) show handles.
+        const isCorner = point.nodeType === 'corner';
         const handleIn =
-          showControls
+          showControls && !isCorner
             ? pendingHandleForPoint?.handleIn ??
               getControlHandlePosition(subPath, pointIndex, 'in')
-            : null;
+            : pendingHandleForPoint?.handleIn ?? null;
         const handleOut =
-          showControls
+          showControls && !isCorner
             ? pendingHandleForPoint?.handleOut ??
               getControlHandlePosition(subPath, pointIndex, 'out')
-            : null;
+            : pendingHandleForPoint?.handleOut ?? null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;

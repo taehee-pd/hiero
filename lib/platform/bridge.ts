@@ -279,7 +279,11 @@ function ensureElectrobunClient() {
   return true;
 }
 
-async function electrobunRequest<T>(method: string, params: unknown): Promise<T> {
+async function electrobunRequest<T>(
+  method: string,
+  params: unknown,
+  timeoutMs?: number,
+): Promise<T> {
   if (!ensureElectrobunClient()) {
     throw new Error('Electrobun bridge is unavailable.');
   }
@@ -296,7 +300,7 @@ async function electrobunRequest<T>(method: string, params: unknown): Promise<T>
     const timeout = setTimeout(() => {
       pendingRequests.delete(id);
       reject(new Error(`Timed out waiting for Electrobun request: ${method}`));
-    }, REQUEST_TIMEOUT_MS);
+    }, timeoutMs ?? REQUEST_TIMEOUT_MS);
 
     pendingRequests.set(id, { resolve: resolve as (value: unknown) => void, reject, timeout });
     window.__electrobunBunBridge?.postMessage(payload);
@@ -549,4 +553,33 @@ export async function getDesktopSettings(): Promise<DesktopSettings> {
 export async function installUpdate() {
   if (!isElectrobunEnvironment()) return false;
   return await electrobunRequest<boolean>('installUpdate', {});
+}
+
+// ---------------------------------------------------------------------------
+// NPM publish (desktop only — web uses API proxy route)
+// ---------------------------------------------------------------------------
+
+const NPM_PUBLISH_TIMEOUT_MS = 60_000;
+
+export type NpmPublishRpcResult = {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+};
+
+export async function npmPublish(args: {
+  cwd: string;
+  registry: string;
+  tag?: string;
+  dryRun?: boolean;
+}): Promise<NpmPublishRpcResult> {
+  if (!isElectrobunEnvironment()) {
+    throw new Error('npm-publish is only available in the desktop environment.');
+  }
+
+  return await electrobunRequest<NpmPublishRpcResult>(
+    'npm-publish',
+    args,
+    NPM_PUBLISH_TIMEOUT_MS,
+  );
 }

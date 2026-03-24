@@ -14,7 +14,10 @@ export type SyncErrorCode =
   | 'PR_CREATION_FAILURE'
   | 'VALIDATION_FAILURE'
   | 'CONFLICT_DETECTED'
-  | 'PROVIDER_ERROR';
+  | 'PROVIDER_ERROR'
+  | 'NPM_PUBLISH_FAILURE'
+  | 'NPM_AUTH_FAILURE'
+  | 'NPM_REGISTRY_ERROR';
 
 export class SyncError extends Error {
   readonly code: SyncErrorCode;
@@ -98,6 +101,27 @@ export class ProviderError extends SyncError {
   constructor(message = 'Git provider request failed.', cause?: unknown) {
     super('PROVIDER_ERROR', message, 502, cause);
     this.name = 'ProviderError';
+  }
+}
+
+export class NpmPublishError extends SyncError {
+  constructor(message = 'npm publish failed.', cause?: unknown) {
+    super('NPM_PUBLISH_FAILURE', message, 502, cause);
+    this.name = 'NpmPublishError';
+  }
+}
+
+export class NpmAuthError extends SyncError {
+  constructor(message = 'npm authentication failed.', cause?: unknown) {
+    super('NPM_AUTH_FAILURE', message, 401, cause);
+    this.name = 'NpmAuthError';
+  }
+}
+
+export class NpmRegistryError extends SyncError {
+  constructor(message = 'npm registry request failed.', cause?: unknown) {
+    super('NPM_REGISTRY_ERROR', message, 502, cause);
+    this.name = 'NpmRegistryError';
   }
 }
 

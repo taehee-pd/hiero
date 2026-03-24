@@ -120,6 +120,21 @@ export type SyncErrorResponse = {
 };
 
 // ---------------------------------------------------------------------------
+// Generic sync connector interface
+// ---------------------------------------------------------------------------
+
+/**
+ * A sync connector pushes compiled output to a delivery target.
+ * Each delivery mode (local-directory, git-pr, npm-registry) implements this.
+ */
+export interface SyncConnector<TRequest, TResult> {
+  /** Execute the sync operation. */
+  push(request: TRequest): Promise<TResult>;
+  /** Optional pre-flight validation (no side effects). */
+  validate?(request: TRequest): { ok: boolean; errors: string[] };
+}
+
+// ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
 

@@ -2,6 +2,7 @@
 
 export { syncPr, type SyncPrOptions, type SyncPrResult } from './sync-pr';
 export {
+  type SyncConnector,
   type SyncPrRequest,
   type SyncPrResponse,
   type SyncConflictResponse,
@@ -49,6 +50,9 @@ export {
   ValidationFailureError,
   ProviderError,
   classifyGitHubError,
+  NpmPublishError,
+  NpmAuthError,
+  NpmRegistryError,
   type SyncErrorCode,
 } from './errors';
 export {

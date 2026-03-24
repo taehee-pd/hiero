@@ -20,7 +20,7 @@ export type SyncTarget = {
   /** The target platform adapter to use. */
   platform: 'react' | 'swift' | 'flutter' | 'web-component';
   /** How the output is delivered. */
-  deliveryMode: 'local-directory' | 'git-pr';
+  deliveryMode: 'local-directory' | 'git-pr' | 'npm-registry';
   /** Adapter-specific configuration. */
   adapterConfig?: {
     /** Runtime package import path (React adapter). */
@@ -42,6 +42,28 @@ export type SyncTarget = {
     /** Path prefix inside the repo (e.g. "packages/icons"). */
     packagePath?: string;
   };
+  /** NPM registry connector config. */
+  npmRegistry?: {
+    /** Registry URL (default: "https://registry.npmjs.org"). */
+    registry: string;
+    /** Optional scope (e.g. "@myorg"). */
+    scope?: string;
+    /** Full package name (e.g. "@myorg/icons"). */
+    packageName: string;
+    /** Whether a token has been stored in the platform keychain. UI hint only. */
+    tokenStored?: boolean;
+    /** Last published version (e.g. "1.2.3"). */
+    lastPublishedVersion?: string;
+  };
+  /** Auto-publish configuration. */
+  autoPublish?: {
+    /** When to auto-publish. */
+    on: 'save' | 'manual';
+    /** Semver bump strategy for auto-publish. */
+    semver: 'patch' | 'minor';
+  };
+  /** When true, run the full pipeline but skip actual publish. */
+  dryRun?: boolean;
 };
 
 export type IconSet = {

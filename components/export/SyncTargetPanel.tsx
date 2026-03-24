@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { Plus, Trash2, FolderOpen, GitBranch } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, GitBranch, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,7 @@ import { useEditorStore, useEditorActions } from '@/lib/editor-store/hooks';
 import type { SyncTarget } from '@/lib/schema/types';
 
 const PLATFORMS = ['react', 'swift', 'flutter', 'web-component'] as const;
-const DELIVERY_MODES = ['local-directory', 'git-pr'] as const;
+const DELIVERY_MODES = ['local-directory', 'git-pr', 'npm-registry'] as const;
 
 function generateId(): string {
   return `sync-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -120,6 +120,8 @@ function SyncTargetCard({
         <div className="flex items-center gap-2">
           {target.deliveryMode === 'local-directory' ? (
             <FolderOpen className="size-4 text-muted-foreground" />
+          ) : target.deliveryMode === 'npm-registry' ? (
+            <Package className="size-4 text-muted-foreground" />
           ) : (
             <GitBranch className="size-4 text-muted-foreground" />
           )}
@@ -141,6 +143,28 @@ function SyncTargetCard({
             <span className="text-[10px] text-muted-foreground">
               {target.gitPr.owner}/{target.gitPr.repo}
             </span>
+          ) : null}
+          {target.deliveryMode === 'npm-registry' && target.npmRegistry ? (
+            <>
+              <span className="text-[10px] text-muted-foreground">
+                {target.npmRegistry.packageName}
+              </span>
+              {target.npmRegistry.lastPublishedVersion ? (
+                <Badge variant="secondary" className="text-[10px]">
+                  v{target.npmRegistry.lastPublishedVersion}
+                </Badge>
+              ) : null}
+              {target.autoPublish?.on === 'save' ? (
+                <Badge variant="outline" className="text-[10px] text-green-600">
+                  auto-publish
+                </Badge>
+              ) : null}
+              {target.dryRun ? (
+                <Badge variant="outline" className="text-[10px] text-amber-600">
+                  dry-run
+                </Badge>
+              ) : null}
+            </>
           ) : null}
         </div>
       </div>
@@ -177,12 +201,19 @@ function AddTargetForm({
   const [packagePath, setPackagePath] = useState('');
   const [runtimePackage, setRuntimePackage] = useState('@coniva/runtime-react');
   const [outputDir, setOutputDir] = useState('src');
+  // npm-registry fields
+  const [registryUrl, setRegistryUrl] = useState('https://registry.npmjs.org');
+  const [scope, setScope] = useState('');
+  const [packageName, setPackageName] = useState('');
+  const [autoPublishOn, setAutoPublishOn] = useState<'save' | 'manual'>('save');
 
   const isValid =
     name.trim().length > 0 &&
     (deliveryMode === 'local-directory'
       ? localPath.trim().length > 0
-      : owner.trim().length > 0 && repo.trim().length > 0);
+      : deliveryMode === 'npm-registry'
+        ? packageName.trim().length > 0
+        : owner.trim().length > 0 && repo.trim().length > 0);
 
   const handleSave = () => {
     const target: SyncTarget = {
@@ -198,6 +229,13 @@ function AddTargetForm({
 
     if (deliveryMode === 'local-directory') {
       target.localDirectory = { path: localPath.trim() };
+    } else if (deliveryMode === 'npm-registry') {
+      target.npmRegistry = {
+        registry: registryUrl.trim() || 'https://registry.npmjs.org',
+        scope: scope.trim() || undefined,
+        packageName: packageName.trim(),
+      };
+      target.autoPublish = { on: autoPublishOn, semver: 'patch' };
     } else {
       target.gitPr = {
         owner: owner.trim(),
@@ -261,6 +299,45 @@ function AddTargetForm({
               onChange={(e) => setLocalPath(e.target.value)}
             />
           </div>
+        ) : deliveryMode === 'npm-registry' ? (
+          <>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Package Name</Label>
+              <Input
+                placeholder="@myorg/icons"
+                value={packageName}
+                onChange={(e) => setPackageName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Registry URL</Label>
+                <Input
+                  value={registryUrl}
+                  onChange={(e) => setRegistryUrl(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Scope (optional)</Label>
+                <Input
+                  placeholder="@myorg"
+                  value={scope}
+                  onChange={(e) => setScope(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Auto-Publish</Label>
+              <select
+                value={autoPublishOn}
+                onChange={(e) => setAutoPublishOn(e.target.value as 'save' | 'manual')}
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="save">On save (5-min cooldown with cancel)</option>
+                <option value="manual">Manual only</option>
+              </select>
+            </div>
+          </>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">

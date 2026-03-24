@@ -16,6 +16,7 @@ import type {
 } from '@/lib/export/export-runtime-json';
 import type { ReactAdapterOptions } from '@/lib/export/adapters/react-adapter';
 import { generateReactFromRuntime } from '@/lib/export/adapters/react-adapter';
+import type { SyncConnector } from '../contracts';
 import {
   MANIFEST_FILENAME,
   buildManifest,
@@ -168,4 +169,26 @@ function joinPath(left: string, right: string): string {
 function parentDir(path: string): string {
   const lastSlash = path.lastIndexOf('/');
   return lastSlash > 0 ? path.slice(0, lastSlash) : path;
+}
+
+// ---------------------------------------------------------------------------
+// Class wrapper (implements SyncConnector interface)
+// ---------------------------------------------------------------------------
+
+export class LocalDirectorySyncConnector
+  implements SyncConnector<LocalDirectorySyncRequest, LocalDirectorySyncResult>
+{
+  constructor(private readonly fs: FileSystem) {}
+
+  async push(request: LocalDirectorySyncRequest): Promise<LocalDirectorySyncResult> {
+    return syncLocalDirectory(request, this.fs);
+  }
+
+  validate(request: LocalDirectorySyncRequest): { ok: boolean; errors: string[] } {
+    const errors: string[] = [];
+    if (!request.targetDir) errors.push('targetDir is required.');
+    if (!request.icons || request.icons.length === 0)
+      errors.push('At least one icon is required.');
+    return { ok: errors.length === 0, errors };
+  }
 }

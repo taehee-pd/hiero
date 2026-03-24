@@ -28,6 +28,7 @@ import type { GitProvider } from '../git-provider';
 import type { SyncAnalytics } from '../analytics';
 import { createNoOpAnalytics } from '../analytics';
 import { classifyGitHubError } from '../errors';
+import type { SyncConnector } from '../contracts';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -326,4 +327,27 @@ function normalizePackagePath(path: string): string {
 
 function joinPath(left: string, right: string): string {
   return `${left}/${right}`.replace(/\/+/g, '/');
+}
+
+// ---------------------------------------------------------------------------
+// Class wrapper (implements SyncConnector interface)
+// ---------------------------------------------------------------------------
+
+export class AdapterPrSyncConnector
+  implements SyncConnector<AdapterPrSyncRequest, AdapterPrSyncResult>
+{
+  constructor(private readonly options: AdapterPrSyncOptions) {}
+
+  async push(request: AdapterPrSyncRequest): Promise<AdapterPrSyncResult> {
+    return syncAdapterPr(request, this.options);
+  }
+
+  validate(request: AdapterPrSyncRequest): { ok: boolean; errors: string[] } {
+    const errors: string[] = [];
+    if (!request.owner) errors.push('owner is required.');
+    if (!request.repo) errors.push('repo is required.');
+    if (!request.icons || request.icons.length === 0)
+      errors.push('At least one icon is required.');
+    return { ok: errors.length === 0, errors };
+  }
 }

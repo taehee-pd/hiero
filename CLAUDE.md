@@ -16,9 +16,37 @@ pnpm dev           # Start dev server
 pnpm build         # Production build (output: .next/)
 pnpm lint          # ESLint check
 pnpm format:check  # Prettier check
-bun test           # Run all tests (972 tests across 87 files)
+bun test           # Run all tests
 npx tsc --noEmit   # Type-check without emitting
 ```
+
+## CI Emulation (run before every push)
+
+CI uses `bun install --frozen-lockfile`, which **fails if `bun.lock` is out of sync**
+with `package.json`. After adding/removing any dependency, always run:
+
+```bash
+bun install                     # Regenerate bun.lock
+bun install --frozen-lockfile   # Emulate CI — must pass before pushing
+bun run format:check            # Prettier check (CI runs this on pnpm-lock.yaml too)
+bun run lint                    # ESLint — 0 errors required
+bun test                        # Run tests
+pnpm build                      # Verify production build
+```
+
+**Why both lockfiles?** The project uses `pnpm` as the primary package manager but CI
+and the test runner use `bun`. Both `pnpm-lock.yaml` and `bun.lock` must stay in sync.
+When adding a dependency via `pnpm add <pkg>`, always follow up with `bun install` to
+regenerate `bun.lock`. Commit both lockfiles together.
+
+## Design Documentation
+
+- **SSOT (Single Source of Truth):** `docs_canonical/DESIGN.md` — master design document
+  covering product vision, architecture, all phases, and security posture
+- **Task backlog:** `docs_canonical/TASKS.md` — engineering phases with task checklists
+- **Per-branch design docs:** `~/.gstack/projects/taehee-pd-icon-authoring-tool/` — created
+  by `/office-hours` during gstack review pipeline
+- **Spec-kit specs:** `specs/` — structured markdown specs for all major systems
 
 ## Project Structure
 
@@ -60,7 +88,8 @@ tests/                # Bun test files
 
 - **Spec-kit specs:** `/specs/` — structured markdown specs for all major systems
 - **Task backlog:** `/docs_canonical/TASKS.md` — engineering phases with task checklists
-- **Open phases:** I (Animation Tab Surface), J (Preview & Composition), K (Advanced Authoring)
+- **Shipped phases:** Q (NPM Registry, #73), M (Lottie Export, #74)
+- **Open phases:** N (Derived Variants), P (Import Ecosystem), O (Cubic Weight Interpolation)
 
 ## gstack
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { Plus, Trash2, FolderOpen, GitBranch, Package, X } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, GitBranch, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

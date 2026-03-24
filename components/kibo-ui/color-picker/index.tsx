@@ -26,6 +26,17 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+/** Safely parse a color value, returning null for invalid/empty values like "none". */
+function safeColor(value: Parameters<typeof Color>[0] | undefined): ReturnType<typeof Color> | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" && (value === "none" || value === "transparent" || value === "")) return null;
+  try {
+    return Color(value);
+  } catch {
+    return null;
+  }
+}
+
 type ColorPickerContextValue = {
   hue: number;
   saturation: number;
@@ -66,34 +77,44 @@ export const ColorPicker = ({
   className,
   ...props
 }: ColorPickerProps) => {
-  const selectedColor = Color(value);
+  const selectedColor = safeColor(value) ?? Color(defaultValue);
   const defaultColor = Color(defaultValue);
 
-  const [hue, setHue] = useState(
-    selectedColor.hue() || defaultColor.hue() || 0
+  // Use ?? (not ||) so that 0 is preserved — 0 is valid for hue, saturation, lightness.
+  const [hue, setHueRaw] = useState(
+    selectedColor.hue() ?? defaultColor.hue() ?? 0
   );
-  const [saturation, setSaturation] = useState(
-    selectedColor.saturationl() || defaultColor.saturationl() || 100
+  const [saturation, setSaturationRaw] = useState(
+    selectedColor.saturationl() ?? defaultColor.saturationl() ?? 100
   );
-  const [lightness, setLightness] = useState(
-    selectedColor.lightness() || defaultColor.lightness() || 50
+  const [lightness, setLightnessRaw] = useState(
+    selectedColor.lightness() ?? defaultColor.lightness() ?? 50
   );
-  const [alpha, setAlpha] = useState(
-    selectedColor.alpha() * 100 || defaultColor.alpha() * 100
+  const [alpha, setAlphaRaw] = useState(
+    (selectedColor.alpha() ?? 1) * 100
   );
   const [mode, setMode] = useState("hex");
+
+  // Wrap setters to guarantee values are always finite numbers.
+  // This prevents undefined/NaN from reaching inputs (controlled→uncontrolled).
+  const setHue = useCallback((v: number) => setHueRaw(Number.isFinite(v) ? v : 0), []);
+  const setSaturation = useCallback((v: number) => setSaturationRaw(Number.isFinite(v) ? v : 100), []);
+  const setLightness = useCallback((v: number) => setLightnessRaw(Number.isFinite(v) ? v : 50), []);
+  const setAlpha = useCallback((v: number) => setAlphaRaw(Number.isFinite(v) ? v : 100), []);
 
   // Update color when controlled value changes
   useEffect(() => {
     if (value) {
-      const color = Color.rgb(value).rgb().object();
+      const parsed = safeColor(value);
+      if (!parsed) return;
+      const hslColor = parsed.hsl();
 
-      setHue(color.r);
-      setSaturation(color.g);
-      setLightness(color.b);
-      setAlpha(color.a);
+      setHue(hslColor.hue() ?? 0);
+      setSaturation(hslColor.saturationl() ?? 100);
+      setLightness(hslColor.lightness() ?? 50);
+      setAlpha((parsed.alpha() ?? 1) * 100);
     }
-  }, [value]);
+  }, [value, setHue, setSaturation, setLightness, setAlpha]);
 
   // Notify parent of changes
   useEffect(() => {
@@ -330,12 +351,18 @@ export const ColorPickerOutput = ({
 
 type PercentageInputProps = ComponentProps<typeof Input>;
 
-const PercentageInput = ({ className, ...props }: PercentageInputProps) => {
+const PercentageInput = ({ className, value, ...props }: PercentageInputProps) => {
+  // Ensure value is always a string to prevent controlled→uncontrolled warnings.
+  const safeValue = value == null || (typeof value === "number" && !Number.isFinite(value))
+    ? "100"
+    : String(Math.round(Number(value)));
+
   return (
     <div className="relative">
       <Input
         readOnly
         type="text"
+        value={safeValue}
         {...props}
         className={cn(
           "h-8 w-[3.25rem] rounded-l-none bg-secondary px-2 text-xs shadow-none",
@@ -356,7 +383,12 @@ export const ColorPickerFormat = ({
   ...props
 }: ColorPickerFormatProps) => {
   const { hue, saturation, lightness, alpha, mode } = useColorPicker();
-  const color = Color.hsl(hue, saturation, lightness, alpha / 100);
+  // Clamp values to safe ranges to prevent Color.hsl from throwing
+  const safeH = Number.isFinite(hue) ? hue : 0;
+  const safeS = Number.isFinite(saturation) ? saturation : 0;
+  const safeL = Number.isFinite(lightness) ? lightness : 0;
+  const safeA = Number.isFinite(alpha) ? alpha : 100;
+  const color = Color.hsl(safeH, safeS, safeL, safeA / 100);
 
   if (mode === "hex") {
     const hex = color.hex();
@@ -384,7 +416,7 @@ export const ColorPickerFormat = ({
     const rgb = color
       .rgb()
       .array()
-      .map((value) => Math.round(value));
+      .map((value) => Math.round(value ?? 0));
 
     return (
       <div
@@ -416,7 +448,7 @@ export const ColorPickerFormat = ({
     const rgb = color
       .rgb()
       .array()
-      .map((value) => Math.round(value));
+      .map((value) => Math.round(value ?? 0));
 
     return (
       <div className={cn("w-full rounded-md shadow-sm", className)} {...props}>
@@ -435,7 +467,7 @@ export const ColorPickerFormat = ({
     const hsl = color
       .hsl()
       .array()
-      .map((value) => Math.round(value));
+      .map((value) => Math.round(value ?? 0));
 
     return (
       <div

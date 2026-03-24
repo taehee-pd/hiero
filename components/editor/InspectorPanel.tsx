@@ -2222,7 +2222,9 @@ function PaintField({
     paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
       ? paint.mode
       : paint?.mode === 'fixed' && paint.value === 'none'
-        ? 'none'
+        ? fillModeOptions
+          ? 'currentFill'
+          : 'currentColor'
       : paint?.mode === 'currentColor'
         ? fillModeOptions
           ? 'currentFill'
@@ -2455,9 +2457,7 @@ function PaintField({
         </div>
       </div>
 
-      {paintMode === 'none' ? (
-        <InlineMessage>{label} is disabled for this layer.</InlineMessage>
-      ) : !gradientPaint ? (
+      {!gradientPaint ? (
         <>
           <div className="flex items-center gap-1.5">
             {isColor && (

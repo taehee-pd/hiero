@@ -2457,9 +2457,7 @@ function PaintField({
         </div>
       </div>
 
-      {paintMode === 'none' ? (
-        <InlineMessage>{label} is disabled for this layer.</InlineMessage>
-      ) : !gradientPaint ? (
+      {!gradientPaint ? (
         <>
           <div className="flex items-center gap-1.5">
             {isColor && (

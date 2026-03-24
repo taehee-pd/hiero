@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-/** Safely parse a color string, returning null for invalid/empty values like "none". */
-function safeColor(value: string | undefined): ReturnType<typeof Color> | null {
-  if (!value || value === "none" || value === "transparent") return null;
+/** Safely parse a color value, returning null for invalid/empty values like "none". */
+function safeColor(value: Parameters<typeof Color>[0] | undefined): ReturnType<typeof Color> | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" && (value === "none" || value === "transparent" || value === "")) return null;
   try {
     return Color(value);
   } catch {

@@ -11,7 +11,7 @@
  * @module
  */
 
-import type { Icon, Variant, Transition, LayerBinding, Effect, SpringConfig } from '@/lib/schema/types';
+import type { Icon, Variant, Transition, Effect, SpringConfig } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
 // Types

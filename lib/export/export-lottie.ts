@@ -23,7 +23,6 @@ import type {
   State,
   Layer,
   Transition,
-  LayerBinding,
   TimelineTrack,
   Effect,
   PaintRef,
@@ -322,8 +321,6 @@ export function svgPathToLottieBezier(d: string): LottieBezier {
 
   // Parse SVG path commands (expecting normalized cubic-only: M, C, Z)
   const commands = d.match(/[MCLZ][^MCLZ]*/gi) ?? [];
-  let currentX = 0;
-  let currentY = 0;
 
   for (const cmd of commands) {
     const type = cmd[0]!.toUpperCase();
@@ -335,9 +332,7 @@ export function svgPathToLottieBezier(d: string): LottieBezier {
       .map(Number);
 
     if (type === 'M') {
-      currentX = nums[0] ?? 0;
-      currentY = nums[1] ?? 0;
-      vertices.push([currentX, currentY]);
+      vertices.push([nums[0] ?? 0, nums[1] ?? 0]);
       inTangents.push([0, 0]); // First vertex has no in-tangent
       outTangents.push([0, 0]); // Will be overwritten by next C
     } else if (type === 'C') {
@@ -363,20 +358,13 @@ export function svgPathToLottieBezier(d: string): LottieBezier {
         vertices.push([ex, ey]);
         inTangents.push([c2x - ex, c2y - ey]);
         outTangents.push([0, 0]); // May be overwritten by next C
-
-        currentX = ex;
-        currentY = ey;
       }
     } else if (type === 'L') {
       // Line segments — zero tangents
       for (let i = 0; i < nums.length; i += 2) {
-        const lx = nums[i] ?? 0;
-        const ly = nums[i + 1] ?? 0;
-        vertices.push([lx, ly]);
+        vertices.push([nums[i] ?? 0, nums[i + 1] ?? 0]);
         inTangents.push([0, 0]);
         outTangents.push([0, 0]);
-        currentX = lx;
-        currentY = ly;
       }
     } else if (type === 'Z') {
       closed = true;

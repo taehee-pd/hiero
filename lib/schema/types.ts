@@ -127,7 +127,13 @@ export type Variant = {
   variableValue?: number;  // 0.0-1.0, controls progressive layer fill
   weightControlPoints?: {
     ultralight?: string;  // SVG d string
+    thin?: string;
+    light?: string;
     regular?: string;
+    medium?: string;
+    semibold?: string;
+    bold?: string;
+    heavy?: string;
     black?: string;
   };
 };

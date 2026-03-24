@@ -31,9 +31,21 @@ canonical documentation takes precedence.
 ## Project-Local Skills
 
 - Repo-local Codex skills live under `.codex/skills/`.
+- Repo-local Figma skills installed in this repo:
+  `figma-use`, `figma-generate-design`, `figma-implement-design`,
+  `figma-code-connect-components`, `figma-create-new-file`,
+  `figma-create-design-system-rules`, and `figma-generate-library`.
 - `figma-use` is available at `.codex/skills/figma-use/SKILL.md`.
 - Use `figma-use` before any Figma Plugin API / `use_figma` write flow or
   unique JS-based Figma read flow.
+- Use `figma-generate-design` alongside `figma-use` when building or updating
+  full screens in Figma from the running app or from code.
+
+## Project-Local MCP
+
+- Repo-local Codex MCP config lives in `.codex/config.toml`.
+- `Figma Desktop` is configured there with the local MCP endpoint
+  `http://127.0.0.1:3845/mcp`.
 
 ## CI Emulation (mandatory before push)
 

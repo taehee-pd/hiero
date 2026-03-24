@@ -1372,8 +1372,8 @@
   }
 
   .wireframe-editor {
-    background: #ffffff;
-    color: rgba(0, 0, 0, 0.9);
+    background: var(--background);
+    color: var(--foreground);
     font-family: var(--font-geist-sans);
   }
 
@@ -1384,9 +1384,9 @@
     min-height: 0;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-level-1);
     border-radius: 0;
-    background: #ffffff;
+    background: var(--bg-sidebar);
   }
 
   .wire-sidebar-left {
@@ -1398,14 +1398,14 @@
   }
 
   .wire-sidebar-block {
-    background: #ffffff;
+    background: var(--bg-sidebar);
   }
 
   .wire-sidebar-head {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-bottom: 1px solid #ececec;
+    border-bottom: 1px solid var(--border-level-2);
     padding: 10px 10px 8px;
   }
 
@@ -1429,16 +1429,16 @@
     gap: 4px;
     font-size: 10px;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--foreground-tertiary);
   }
 
   .wire-project-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-level-1);
     border-radius: 14px;
-    background: #ffffff;
+    background: color-mix(in srgb, var(--background) 88%, transparent);
     padding: 0.2rem 0.45rem;
     font-size: 11px;
     line-height: 16px;
@@ -1476,12 +1476,12 @@
     padding: 0 8px;
     font-size: 11px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--foreground-secondary);
   }
 
   .wire-tab-button[data-active='true'] {
-    background: #f5f5f5;
-    color: rgba(0, 0, 0, 0.9);
+    background: color-mix(in srgb, var(--foreground) 7%, var(--background));
+    color: var(--foreground);
     font-weight: 550;
   }
 
@@ -1492,12 +1492,12 @@
     align-items: center;
     justify-content: center;
     border-radius: 5px;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--foreground-secondary);
   }
 
   .wire-icon-button:hover {
-    background: rgba(0, 0, 0, 0.03);
-    color: rgba(0, 0, 0, 0.85);
+    background: color-mix(in srgb, var(--foreground) 6%, transparent);
+    color: var(--foreground);
   }
 
   .wire-section {
@@ -1515,12 +1515,12 @@
     font-size: 10px;
     line-height: 16px;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
   }
 
   /* Top border on non-first section headers (e.g., "States" after "Sizes") */
   .wire-section-header:not(:first-child) {
-    border-top: 1px solid #efefef;
+    border-top: 1px solid var(--border-level-1);
     margin-top: 8px;
     padding-top: 8px;
   }
@@ -1539,7 +1539,7 @@
 
   .wire-layer-row[data-active='true'],
   .wire-list-row[data-active='true'] {
-    background: rgba(13, 153, 255, 0.06);
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
   }
 
   .wire-layer-line {
@@ -1553,14 +1553,14 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
   }
 
   .wire-layer-kind {
     flex-shrink: 0;
     font-size: 10px;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.42);
+    color: var(--foreground-tertiary);
     text-transform: lowercase;
   }
 
@@ -1569,7 +1569,7 @@
   .wire-empty-note {
     font-size: 10px;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--foreground-secondary);
   }
 
   .wire-row-control {
@@ -1578,7 +1578,7 @@
     width: 14px;
     align-items: center;
     justify-content: center;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--foreground-secondary);
   }
 
   .wire-inline-form {
@@ -1591,13 +1591,13 @@
   .wire-input,
   .wire-color {
     min-height: 24px;
-    border: 1px solid #e6e6e6;
+    border: 1px solid var(--border-level-1);
     border-radius: 5px;
-    background: #ffffff;
+    background: color-mix(in srgb, var(--background) 90%, transparent);
     padding: 0 8px;
     font-size: 11px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
     outline: none;
   }
 
@@ -1607,7 +1607,7 @@
 
   .wire-input:focus,
   .wire-color:focus {
-    border-color: #0d99ff;
+    border-color: var(--primary);
   }
 
   .wire-mini-button {
@@ -1616,17 +1616,17 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    border: 1px solid #e6e6e6;
+    border: 1px solid var(--border-level-1);
     border-radius: 4px;
-    background: #ffffff;
+    background: color-mix(in srgb, var(--background) 88%, transparent);
     padding: 0 8px;
     font-size: 11px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
   }
 
   .wire-mini-button:hover {
-    background: #f5f5f5;
+    background: color-mix(in srgb, var(--foreground) 7%, var(--background));
   }
 
   .wire-canvas-shell {
@@ -1638,9 +1638,9 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-level-1);
     border-radius: 0;
-    background: #f7fafc;
+    background: color-mix(in srgb, var(--background) 82%, var(--background-secondary));
   }
 
   .wire-canvas-empty {
@@ -1659,10 +1659,10 @@
     align-items: center;
     gap: 2px;
     overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-level-1);
     border-radius: 9px;
-    background: #ffffff;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
+    background: color-mix(in srgb, var(--background) 88%, transparent);
+    box-shadow: var(--shadow-md);
     transform: translateX(-50%);
     z-index: 25;
   }
@@ -1675,7 +1675,7 @@
   }
 
   .wire-dock-group + .wire-dock-group {
-    border-left: 1px solid #e6e6e6;
+    border-left: 1px solid var(--border-level-1);
   }
 
   .wire-dock-icon {
@@ -1685,12 +1685,12 @@
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--foreground-secondary);
   }
 
   .wire-dock-icon[data-active='true'] {
-    background: rgba(13, 153, 255, 0.12);
-    color: #0d99ff;
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--primary);
   }
 
   .wire-zoom-trigger {
@@ -1698,17 +1698,17 @@
     height: 32px;
     align-items: center;
     gap: 6px;
-    border-right: 1px solid #e6e6e6;
+    border-right: 1px solid var(--border-level-1);
     padding: 0 12px;
     font-family: var(--font-geist-sans);
     font-size: 11px;
     line-height: 16px;
     font-weight: 550;
-    color: rgba(0, 0, 0, 0.88);
+    color: var(--foreground);
   }
 
   .wire-zoom-trigger:hover {
-    background: rgba(13, 153, 255, 0.06);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
   }
 
   .wire-zoom-popover {
@@ -1793,7 +1793,7 @@
     font-size: 12px;
     line-height: 18px;
     font-weight: 550;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
   }
 
   .wire-label {
@@ -1801,7 +1801,7 @@
     line-height: 14px;
     font-weight: 550;
     letter-spacing: 0.05em;
-    color: rgba(0, 0, 0, 0.4);
+    color: var(--foreground-tertiary);
     text-transform: uppercase;
     padding-bottom: 2px;
   }
@@ -1811,7 +1811,7 @@
   .grid + .wire-label {
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--border-level-1);
   }
 
   .wire-field {
@@ -1823,13 +1823,13 @@
   .wire-field-name {
     font-size: 10px;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--foreground-secondary);
   }
 
   .wire-property-value {
     font-size: 10px;
     line-height: 14px;
-    color: rgba(0, 0, 0, 0.9);
+    color: var(--foreground);
   }
 
   .wire-meta-row {
@@ -1866,14 +1866,14 @@
   }
 
   .wire-command {
-    border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-level-1);
     border-radius: 10px;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+    box-shadow: var(--shadow-panel);
   }
 
   .wire-command [data-slot='command-input-wrapper'] {
     height: 40px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid var(--border-level-1);
     padding: 0 12px;
   }
 
@@ -1905,15 +1905,15 @@
   }
 
   .wireframe-editor .workspace-stage {
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    background: #ffffff;
+    border: 1px solid var(--border-level-1);
+    background: color-mix(in srgb, var(--background) 92%, transparent);
     box-shadow: none;
   }
 
   .wireframe-editor .workspace-empty-state {
-    border: 1px dashed rgba(0, 0, 0, 0.08);
-    background: rgba(255, 255, 255, 0.9);
-    color: rgba(0, 0, 0, 0.5);
+    border: 1px dashed var(--border-level-2);
+    background: color-mix(in srgb, var(--background) 90%, transparent);
+    color: var(--foreground-secondary);
   }
 
   .wireframe-editor .workspace-canvas-shell [data-slot='scroll-area-scrollbar'],

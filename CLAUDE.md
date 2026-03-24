@@ -94,9 +94,26 @@ tests/                # Bun test files
 ## Project-Local Skills
 
 - Repo-local Codex skills live under `.codex/skills/`.
+- Repo-local Figma skills installed in this repo:
+  `figma-use`, `figma-generate-design`, `figma-implement-design`,
+  `figma-code-connect-components`, `figma-create-new-file`,
+  `figma-create-design-system-rules`, and `figma-generate-library`.
 - `figma-use`: `.codex/skills/figma-use/SKILL.md`
   Use this before any Figma Plugin API / `use_figma` write action or
   unique JS-based Figma file inspection flow.
+- `figma-generate-design`: `.codex/skills/figma-generate-design/SKILL.md`
+  Use this with `figma-use` when creating or updating full Figma screens from
+  app code, screenshots, or multi-section layouts.
+
+## Project-Local MCP
+
+- Repo-local Codex MCP config lives in `.codex/config.toml`.
+- `Figma Desktop` is configured there with:
+
+```toml
+[mcp_servers."Figma Desktop"]
+url = "http://127.0.0.1:3845/mcp"
+```
 
 ## gstack
 

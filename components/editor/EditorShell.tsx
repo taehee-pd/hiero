@@ -735,7 +735,7 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-border bg-background px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -768,7 +768,7 @@ function RightSidebar({
                         });
                       }}
                     >
-                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                      <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-border bg-background px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -920,7 +920,7 @@ function RightSidebar({
                       onPatchVariant({ renderingMode: value as RenderingMode })
                     }
                   >
-                    <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-[#e6e6e6] bg-white px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
+                    <SelectTrigger className="h-6 min-h-0 rounded-[5px] border-border bg-background px-2 py-0 text-[11px] leading-4 text-foreground/90 shadow-none">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1017,6 +1017,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
 
   const [leftTab, setLeftTab] = useState<LeftTab>('layers');
   const [rightTab, setRightTab] = useState<RightTab>('inspect');
+  const [mounted, setMounted] = useState(false);
   const [desktop, setDesktop] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -1083,6 +1084,10 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const selectedLayerId = selection.layerIds[0] ?? null;
   const selectedLayer = selectedLayerId ? (currentState?.layers[selectedLayerId] ?? null) : null;
   const projectName = project?.meta.name ?? 'Untitled Set';
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -1378,8 +1383,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     [project?.icons],
   );
 
+  if (!mounted) {
+    return <div className="wireframe-editor fixed inset-0 bg-background" aria-hidden="true" />;
+  }
+
   return (
-    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-white">
+    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-background">
       {desktop ? <TitleTabBar /> : null}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
@@ -1403,7 +1412,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         )}
 
         <div
-          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 lg:col-span-2 ${
+          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 ${
             leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >

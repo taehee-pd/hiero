@@ -1,3 +1,6 @@
 [mcp_servers.kibo-ui]
 command = "npx"
 args = ["-y", "mcp-remote", "https://www.kibo-ui.com/api/mcp/mcp"]
+
+[mcp_servers."Figma Desktop"]
+url = "http://127.0.0.1:3845/mcp"

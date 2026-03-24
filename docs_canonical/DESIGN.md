@@ -51,8 +51,8 @@ Per the 2026-03-23 engineering review: **Q → M → N → P → O**
 |-------|------|--------|----|-----------------|
 | Q | NPM Registry Distribution | **shipped** | #73 | `npm-registry` delivery mode, auto-publish, keychain tokens |
 | M | Lottie Export | **shipped** | #74 | `exportLottie()`, lottie-web preview, downgrade diagnostics |
-| N | Derived Variant Generation | planned | — | SF Symbols fill/circle/square/slash via path booleans |
-| P | Import Ecosystem | planned | — | Lucide/Phosphor/SF Symbols import adapters |
+| N | Derived Variant Generation | **shipped** | #75 | fill/slash/circle/square/badge derivation via Paper.js booleans |
+| P | Import Ecosystem | **shipped** | #76 | Heroicons, Phosphor, Material Symbols adapters + batch import |
 | O | Cubic Weight Interpolation | planned | — | Variable font-like weight system |
 
 ## Phase Q — NPM Registry Distribution (shipped)
@@ -89,26 +89,46 @@ Lottie 5.x JSON. Includes morph sampling, trim paths, effects, and lottie-web pr
 
 **Files:** `export-lottie.ts`, `lottie-downgrade.ts`, `LottieExportPanel.tsx`
 
-## Phase N — Derived Variant Generation (planned)
+## Phase N — Derived Variant Generation (shipped)
 
 **Problem:** SF Symbols supports modifier variants (fill, circle, square, slash, badge)
-generated from a base icon. Coniva has the metadata scaffolding but no path boolean
-implementation.
+generated from a base icon. Coniva had metadata scaffolding but no path boolean engine.
 
-**Key constraints (from eng review):**
-- Paper.js boolean ops are async and browser-only — tests must mock `booleanOp`
-- Add `isDeriving: boolean` to editor store to prevent concurrent ops
-- `Icon.meta.derivedSpecs` requires schema migration task (N0)
+**Solution:** `applyDerivedVariant(icon, spec)` generates derived variants via Paper.js
+boolean ops. Fill derivation is a pure style transform (stroke→fill). Slash/badge use
+`booleanOp('subtract')`, circle/square use `booleanOp('unite')`.
 
-## Phase P — Import Ecosystem (planned)
+**Key decisions:**
+- `isDeriving` flag in EditorState prevents concurrent Paper.js scope corruption
+- `meta.derivedSpecs` stores derivation history for re-derive support
+- Re-derive warning banner shows above canvas when base variant has derivations
+- Corner points in derived paths don't show bezier handles (UX fix shipped alongside)
 
-**Problem:** Teams with existing icon libraries (Lucide, Phosphor, Material) can't
-import them into Coniva for animation authoring.
+**Files:** `variant-derivation.ts` (engine), `store.ts` (isDeriving + action),
+`InspectorPanel.tsx` (Derive Variant panel), `EditorShell.tsx` (re-derive banner +
+derived badge in variant list), `tests/derived-variants.test.ts` (16 tests)
 
-**Key constraints (from eng review):**
-- Import adapters need build-time manifest for web (no node_modules filesystem access)
-- Phosphor weight names don't map 1:1 to Coniva — explicit mapping table required
-- SF Symbols adapter (P4) requires legal review (Apple license restrictions)
+## Phase P — Import Ecosystem (shipped)
+
+**Problem:** Teams with existing icon libraries (Heroicons, Phosphor, Material Symbols)
+couldn't import them into Coniva for animation authoring.
+
+**Solution:** Three new import adapters following the Lucide build-time manifest pattern.
+Each adapter has a source resolver (manifest + icon loading) and an adapter (fetch + search).
+
+**Adapters shipped:**
+- **Heroicons** (@heroicons/react) — outline/solid, SVG extracted from React components
+- **Phosphor** (@phosphor-icons/core) — 6 weights, mapping: thin→ultralight, light→light,
+  regular→regular, bold→bold (fill/duotone skipped as rendering styles)
+- **Material Symbols** (@material-symbols/svg-400) — outlined/rounded/sharp, 2800+ icons
+
+**UX additions:**
+- Capability badges per adapter (Searchable, weight count, license)
+- Batch import (comma-separated names, max 50, progress indicator)
+- P4 (SF Symbols) deleted due to Apple license restrictions
+
+**Files:** 6 adapter files, 3 API routes, `ImportIconDialog.tsx` (updated UI),
+3 test files (32 tests)
 
 ## Phase O — Cubic Weight Interpolation (planned)
 

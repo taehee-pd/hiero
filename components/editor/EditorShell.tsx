@@ -322,9 +322,7 @@ function LeftSidebar({
                   >
                     <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
                       <span className="wire-layer-name">{row.layer.id}</span>
-                      {row.layer.role ? (
-                        <span className="wire-layer-kind">{row.layer.role}</span>
-                      ) : null}
+                      {/* Role label removed — internal property, not user-facing */}
                       {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
                     </div>
                   </button>

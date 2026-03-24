@@ -1,6 +1,6 @@
 # Tasks
 
-**Last updated:** 2026-03-23
+**Last updated:** 2026-03-24
 **Canonical product name:** Coniva
 
 Phases I–L and all earlier phases are **completed**. Phases M–Q are
@@ -39,8 +39,9 @@ the active engineering backlog, planned 2026-03-23.
 
 ## Phase M — Lottie Export
 
-Status: **planned** (enable export to the Lottie JSON format for
-cross-platform animated icon delivery)
+Status: **shipped** (#74) — Lottie 5.x JSON exporter with morph
+sampling, trim path mapping, effect conversion, downgrade diagnostics,
+lottie-web preview behind feature flag, and 31 determinism tests.
 
 The schema reserves `ExportProfile.format: 'lottie'` but no exporter
 exists. Lottie is the de-facto standard for animated icons on Android,
@@ -141,8 +142,9 @@ distribution surface.
 
 ## Phase N — Derived Variant Generation
 
-Status: **planned** (complete the SF Symbols variant system by
-generating fill/circle/square/slash/badge variants via path booleans)
+Status: **shipped** (#75) — fill/slash/circle/square/badge derivation
+via Paper.js boolean ops, isDeriving concurrency guard, re-derive
+warning banner, 16 tests with mocked booleanOp.
 
 `lib/schema/variant-derivation.ts` has metadata scaffolding
 (`canDeriveVariant`, `availableModifiers`, `createDerivedVariantSpec`)
@@ -320,8 +322,9 @@ phase.
 
 ## Phase P — Import Adapter Ecosystem
 
-Status: **planned** (expand the icon library import system beyond the
-current Lucide + Raw SVG adapters)
+Status: **shipped** (#76) — Heroicons, Phosphor, Material Symbols
+adapters with build-time manifests, weight mapping, capability badges,
+batch import (max 50), 32 adapter tests. P4 deleted (Apple license).
 
 The adapter SDK (`lib/import/adapter-sdk/`) is complete with a registry,
 types, and a template. The existing `lucide-adapter.ts` demonstrates
@@ -390,8 +393,9 @@ the full pattern. This phase adds four high-demand adapters.
 
 ## Phase Q — NPM Registry Distribution
 
-Status: **planned** (allow teams to publish icon packages directly to
-npm or a private registry from Coniva's sync targets)
+Status: **shipped** (#73) — npm-registry delivery mode, SyncConnector
+interface, keychain token storage, auto-publish with cancel, web proxy,
+private registry support, dry-run mode, 21 connector tests.
 
 Currently `SyncTarget.deliveryMode` supports `local-directory` and
 `git-pr`. Teams who want to `npm install @acme/icons` need to publish

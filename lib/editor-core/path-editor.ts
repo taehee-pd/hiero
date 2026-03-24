@@ -284,8 +284,17 @@ export class PathEditor {
   private onDoubleClick(e: MouseEvent) {
     const state = editorStore.getState();
     const target = e.target as Element;
-    const layerId = target.getAttribute?.('data-layer-id') ?? target.getAttribute?.('data-layer-hit-id');
-    const pointKey = target.getAttribute?.('data-point-key');
+    // Walk up the DOM to find the layer ID — handles clicks on child elements
+    // and the selection bounding box (which has data-layer-id set).
+    const hitEl = target.closest?.('[data-layer-id]') ?? target.closest?.('[data-layer-hit-id]');
+    const layerId =
+      hitEl?.getAttribute('data-layer-id') ??
+      hitEl?.getAttribute('data-layer-hit-id') ??
+      // Fallback: if a layer is already selected and the click is within its
+      // bounding box area, use the selected layer ID. This makes the bounding
+      // box the effective double-click hit target when a layer is selected.
+      (state.selection.layerIds[0] ?? null);
+    const pointKey = target.closest?.('[data-point-key]')?.getAttribute('data-point-key') ?? null;
 
     // If already in direct-select and double-clicking on a path (not a point),
     // add a new point on the segment at the click position

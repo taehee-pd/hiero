@@ -11,6 +11,7 @@ export default tseslint.config(
       'out/',
       'dist/',
       'ci-artifacts/',
+      '.codex/',
       'desktop/node_modules/',
       'desktop/.electrobun/',
       'desktop/.generated/',

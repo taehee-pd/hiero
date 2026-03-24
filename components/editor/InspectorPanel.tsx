@@ -1739,10 +1739,26 @@ function scaleVariantViewBox(
 
 // ── Weight Control Points Editor ──────────────────────────────────────
 
-const WEIGHT_CONTROL_SLOTS = ['ultralight', 'regular', 'black'] as const;
+const WEIGHT_CONTROL_SLOTS = [
+  'ultralight',
+  'thin',
+  'light',
+  'regular',
+  'medium',
+  'semibold',
+  'bold',
+  'heavy',
+  'black',
+] as const;
 const WEIGHT_SLOT_LABELS: Record<(typeof WEIGHT_CONTROL_SLOTS)[number], string> = {
   ultralight: 'Ultralight',
+  thin: 'Thin',
+  light: 'Light',
   regular: 'Regular',
+  medium: 'Medium',
+  semibold: 'Semibold',
+  bold: 'Bold',
+  heavy: 'Heavy',
   black: 'Black',
 };
 
@@ -1757,11 +1773,12 @@ function WeightControlPointsEditor({
   const pasteInputRef = useRef<HTMLInputElement>(null);
 
   const validationResult = useMemo(() => {
-    const ul = weightControlPoints?.ultralight;
-    const reg = weightControlPoints?.regular;
-    const blk = weightControlPoints?.black;
-    if (!ul || !reg || !blk) return null;
-    return validateWeightControlPoints({ ultralight: ul, regular: reg, black: blk });
+    if (!weightControlPoints) return null;
+    const populatedCount = WEIGHT_CONTROL_SLOTS.filter(
+      (s) => Boolean(weightControlPoints[s]),
+    ).length;
+    if (populatedCount < 2) return null;
+    return validateWeightControlPoints(weightControlPoints);
   }, [weightControlPoints]);
 
   const handlePasteControlPoint = useCallback(
@@ -1787,7 +1804,7 @@ function WeightControlPointsEditor({
       if (!weightControlPoints) return;
       const next = { ...weightControlPoints };
       delete next[slot];
-      if (!next.ultralight && !next.regular && !next.black) {
+      if (WEIGHT_CONTROL_SLOTS.every((s) => !next[s])) {
         onPatchVariant({ weightControlPoints: undefined });
       } else {
         onPatchVariant({ weightControlPoints: next });
@@ -1815,7 +1832,7 @@ function WeightControlPointsEditor({
         Weight Control Points
       </Label>
       <p className="text-xs text-muted-foreground">
-        Set SVG path data for three weight anchors to enable continuous weight interpolation.
+        Set SVG path data for weight anchors (min. 2) to enable smooth cubic weight interpolation.
       </p>
 
       <div className="grid gap-1.5">
@@ -1915,7 +1932,7 @@ function WeightControlPointsEditor({
         </div>
       ) : (
         <p className="text-xs text-muted-foreground/70">
-          Set all three control points to check compatibility.
+          Set at least two control points to check compatibility.
         </p>
       )}
     </div>

@@ -28,6 +28,8 @@ with `package.json`. After adding/removing any dependency, always run:
 ```bash
 bun install                     # Regenerate bun.lock
 bun install --frozen-lockfile   # Emulate CI — must pass before pushing
+bun run format:check            # Prettier check (CI runs this on pnpm-lock.yaml too)
+bun run lint                    # ESLint — 0 errors required
 bun test                        # Run tests
 pnpm build                      # Verify production build
 ```

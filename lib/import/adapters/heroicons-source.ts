@@ -134,23 +134,76 @@ function extractSvgFromReactComponent(
   source: string,
   variant: 'outline' | 'solid',
 ): string | null {
-  // Extract all path d attributes
-  const pathMatches = [...source.matchAll(/d:\s*"([^"]+)"/g)];
-  if (pathMatches.length === 0) return null;
+  const pathElements = extractPathElements(source, variant);
+  if (pathElements.length === 0) return null;
 
   const fillAttr = variant === 'outline' ? 'none' : 'currentColor';
   const strokeAttr = variant === 'outline' ? 'currentColor' : 'none';
 
-  const paths = pathMatches
-    .map((m) => {
-      if (variant === 'outline') {
-        return `<path d="${m[1]}" fill="none" stroke="currentColor" stroke-width="1.5"/>`;
-      }
-      return `<path d="${m[1]}" fill="currentColor"/>`;
-    })
-    .join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HEROICONS_SIZE} ${HEROICONS_SIZE}" fill="${fillAttr}" stroke="${strokeAttr}">${pathElements.join('')}</svg>`;
+}
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${HEROICONS_SIZE} ${HEROICONS_SIZE}" fill="${fillAttr}" stroke="${strokeAttr}">${paths}</svg>`;
+function extractPathElements(source: string, variant: 'outline' | 'solid'): string[] {
+  const pathCallMatches = [...source.matchAll(/createElement\("path",\s*\{([^}]*)\}/g)];
+
+  return pathCallMatches
+    .map((match) => {
+      const props = parseReactPropsObject(match[1] ?? '');
+      const d = props.get('d');
+      if (!d) return null;
+
+      // Preserve source path semantics (fill-rule, stroke-linecap, etc.).
+      // Only add canonical defaults when absent.
+      if (variant === 'outline') {
+        if (!props.has('fill')) props.set('fill', 'none');
+        if (!props.has('stroke')) props.set('stroke', 'currentColor');
+        if (!props.has('strokeWidth') && !props.has('stroke-width')) {
+          props.set('stroke-width', '1.5');
+        }
+      } else if (!props.has('fill')) {
+        props.set('fill', 'currentColor');
+      }
+
+      const attributes = serializeSvgAttributes(props);
+      return `<path ${attributes}/>`;
+    })
+    .filter((value): value is string => Boolean(value));
+}
+
+function parseReactPropsObject(objectLiteral: string): Map<string, string> {
+  const props = new Map<string, string>();
+  for (const match of objectLiteral.matchAll(/([A-Za-z_$][\w$]*):\s*"([^"]*)"/g)) {
+    const key = match[1];
+    const value = match[2];
+    if (!key || value === undefined) continue;
+    props.set(key, value);
+  }
+  return props;
+}
+
+function serializeSvgAttributes(props: Map<string, string>): string {
+  const attributePairs = [...props.entries()].map(([key, value]) => [
+    toSvgAttributeName(key),
+    value,
+  ]);
+
+  return attributePairs
+    .map(([key, value]) => `${key}="${escapeSvgAttribute(value)}"`)
+    .join(' ');
+}
+
+function toSvgAttributeName(key: string): string {
+  if (key === 'className') return 'class';
+  if (key.includes('-')) return key;
+  return key.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`);
+}
+
+function escapeSvgAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 }
 
 function toKebab(pascalCase: string): string {

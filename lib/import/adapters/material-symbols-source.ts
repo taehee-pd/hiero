@@ -84,11 +84,7 @@ export function loadMaterialSymbol(
 
   let svgContent = readFileSync(filePath, 'utf8');
 
-  // Normalize: Material Symbols SVGs use viewBox "0 -960 960 960" and
-  // width/height of 48. Normalize to standard 24x24 for Coniva.
-  svgContent = svgContent
-    .replace(/width="\d+"/, 'width="24"')
-    .replace(/height="\d+"/, 'height="24"');
+  svgContent = normalizeMaterialSymbolSvg(svgContent);
 
   return { name: iconName, variant, svgContent };
 }
@@ -105,4 +101,26 @@ function resolveMaterialDir(variant: string): string | null {
   } catch {
     return null;
   }
+}
+
+function normalizeMaterialSymbolSvg(svgContent: string): string {
+  const rootMatch = svgContent.match(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/i);
+  if (!rootMatch) return svgContent;
+
+  const rootAttributes = rootMatch[1] ?? '';
+  const innerContent = (rootMatch[2] ?? '').trim();
+  const xmlns = extractSvgRootAttribute(rootAttributes, 'xmlns') ?? 'http://www.w3.org/2000/svg';
+
+  // Material Symbols are authored in a 960x960 coordinate system with
+  // viewBox "0 -960 960 960". Wrap source paths in a transform so they map
+  // to a canonical 24x24 coordinate space while preserving path geometry.
+  const normalizedInner = `<g transform="translate(0 24) scale(0.025)">${innerContent}</g>`;
+
+  return `<svg xmlns="${xmlns}" width="24" height="24" viewBox="0 0 24 24">${normalizedInner}</svg>`;
+}
+
+function extractSvgRootAttribute(rootAttributes: string, attributeName: string): string | null {
+  const pattern = new RegExp(`${attributeName}\\s*=\\s*"([^"]*)"`, 'i');
+  const match = rootAttributes.match(pattern);
+  return match?.[1] ?? null;
 }

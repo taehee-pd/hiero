@@ -33,6 +33,13 @@ describe('Material Symbols source resolver', () => {
     expect(data!.svgContent).toContain('height="24"');
   });
 
+  test('loadMaterialSymbol normalizes viewBox and scales geometry to 24x24 space', () => {
+    const data = loadMaterialSymbol('search', 'outlined');
+    expect(data).not.toBeNull();
+    expect(data!.svgContent).toContain('viewBox="0 0 24 24"');
+    expect(data!.svgContent).toContain('transform="translate(0 24) scale(0.025)"');
+  });
+
   test('loadMaterialSymbol returns null for unknown icon', () => {
     expect(loadMaterialSymbol('nonexistent-xyz')).toBeNull();
   });

@@ -27,6 +27,13 @@ describe('Heroicons source resolver', () => {
     expect(data!.svgContent).toContain('<path');
   });
 
+  test('loadHeroicon preserves source path semantics for outline icons', () => {
+    const data = loadHeroicon('academic-cap', 'outline');
+    expect(data).not.toBeNull();
+    expect(data!.svgContent).toContain('stroke-linecap=');
+    expect(data!.svgContent).toContain('stroke-linejoin=');
+  });
+
   test('loadHeroicon returns null for unknown icon', () => {
     expect(loadHeroicon('nonexistent-icon-xyz')).toBeNull();
   });

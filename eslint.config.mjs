@@ -8,6 +8,7 @@ export default tseslint.config(
     ignores: [
       'node_modules/',
       '.next/',
+      '.codex/skills/',
       'out/',
       'dist/',
       'ci-artifacts/',

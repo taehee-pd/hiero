@@ -28,14 +28,17 @@ What is **missing** is the actual geometry generation step:
 ## New Function: `applyDerivedVariant`
 
 ```ts
-export function applyDerivedVariant(
+export async function applyDerivedVariant(
   icon: Icon,
   spec: DerivedVariantSpec,
-): Icon
+): Promise<Icon>
 ```
 
 Returns a **new `Icon`** (immutable, does not mutate input) with an
-additional variant added. The new variant ID is
+additional variant added. The function is async because non-fill
+modifiers (`slash`, `circle`, `square`, `badge`) depend on
+`booleanOp()`, which is an async API. Callers (store actions, UI
+handlers) must `await` the result. The new variant ID is
 `${spec.baseVariantId}-${spec.modifier}`.
 
 ### Modifier implementations
@@ -64,7 +67,7 @@ slashPath = mergedPathOfLayers(icon.components['slash'].layerIds, baseState)
 
 For each primary/secondary/tertiary layer in the base state:
 ```ts
-derivedD = booleanOp('subtract', layer.path.d, slashPath)
+derivedD = await booleanOp('subtract', layer.path.d, slashPath)
 ```
 
 The slash component layers are set `visible: false` in the derived
@@ -80,7 +83,7 @@ enclosurePath = mergedPathOfLayers(icon.components['enclosure'].layerIds, baseSt
 
 For each primary layer in the base state:
 ```ts
-derivedD = booleanOp('unite', layer.path.d, enclosurePath)
+derivedD = await booleanOp('unite', layer.path.d, enclosurePath)
 ```
 
 Enclosure layers are set `visible: false` in derived state.
@@ -95,7 +98,7 @@ badgePath = mergedPathOfLayers(icon.components['badge'].layerIds, baseState)
 
 For primary layers where the badge overlaps:
 ```ts
-derivedD = booleanOp('subtract', layer.path.d, badgePath)
+derivedD = await booleanOp('subtract', layer.path.d, badgePath)
 ```
 
 Badge component layers are **kept visible** in derived state (badge

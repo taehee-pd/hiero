@@ -40,7 +40,7 @@ export type LottieExportOptions = {
 | `v` | `"5.12.1"` (fixed) |
 | `fr` | `options.fps ?? 60` |
 | `ip` | `0` |
-| `op` | `longestTransitionMs / 1000 * fr` or `2 * fr` for static icons |
+| `op` | `Math.round(longestTransitionMs / 1000 * fr)` or `2 * fr` for static icons (must be integer) |
 | `w` | `variant.viewBox[2]` |
 | `h` | `variant.viewBox[3]` |
 | `nm` | `icon.name` |
@@ -143,11 +143,15 @@ representable in Lottie).
 
 When a `LayerBinding` uses `strictMorph` or `bestGuessMorph`:
 
-1. Sample `interpolatePaths(fromD, toD, t)` at
-   `t = [0, 0.1, 0.2, ..., 1.0]` (controlled by `morphSteps`).
-2. Emit each sample as a `sh` keyframe at the corresponding frame
+1. Construct an interpolator closure:
+   - For `strictMorph`: `const interpolate = strictMorph(fromD, toD);`
+   - For `bestGuessMorph`: `const interpolate = bestGuessMorph(fromD, toD);`
+     (returns `null` if paths are incompatible — fall back to crossfade).
+2. Sample `interpolate(t)` at `t = [0, 1/morphSteps, 2/morphSteps, ..., 1.0]`
+   where `morphSteps` defaults to 10 (controlled by `options.morphSteps`).
+3. Emit each sample as a `sh` keyframe at the corresponding frame
    time.
-3. Set easing handles to linear between keyframes (Lottie will
+4. Set easing handles to linear between keyframes (Lottie will
    interpolate the bezier vertices).
 
 ### Trim path

@@ -6,6 +6,35 @@
 Phases I–L and all earlier phases are **completed**. Phases M–Q are
 the active engineering backlog, planned 2026-03-23.
 
+**Engineering review findings (2026-03-23):**
+- Priority order revised: Q → M → N → (verify import demand) → P → O
+- Token security: npm tokens must live in platform keychain only, never in schema
+- Phase M: morph sampler must call `strictMorph()`/`bestGuessMorph()` interpolators
+  directly — `interpolatePaths()` does not exist
+- Phase M: frame count must be rounded to integer (`Math.round(durationMs / 1000 * fr)`)
+- Phase M: lottie-web is a regular `dependency` (not peer dep) — add as optional dynamic
+  import with a feature flag to avoid bundle bloat
+- Phase M: downgrade diagnostics go in `lib/export/lottie-downgrade.ts` (not
+  `downgrade-rules.ts`, which is coupled to TargetPlatform)
+- Phase N: Paper.js boolean ops are async and browser-only — tests/derived-variants.test.ts
+  must mock `booleanOp`; see tests/boolean-ops.test.ts for the existing mock pattern
+- Phase N: add `isDeriving: boolean` to editor store (task N2b — see below)
+- Phase N: `Icon.meta.derivedSpecs` requires a schema migration task (N0 — see below)
+- Phase O: `WeightControlPoints` type change is a breaking change — all callers of
+  `validateWeightControlPoints` need null-check updates
+- Phase P: import adapters need a build-time manifest (like lucide-source.ts) for
+  web deployment — direct filesystem access to node_modules not available in browser
+- Phase P: Phosphor weight names (thin/light/regular/bold) don't map 1:1 to Coniva
+  weight names (ultralight/regular/black) — explicit mapping table required
+- Phase P: SF Symbols adapter (P4) requires legal review before shipping — Apple's
+  SF Symbols license may prohibit exporting symbols to non-Apple platforms
+- Phase Q: add explicit prerequisite task Q0 (SyncConnector interface)
+- Phase Q: `npm publish` via `child_process.exec` requires a new RPC method in
+  `lib/platform/bridge.ts` — this is a desktop-specific dependency
+- Phase Q: Q5 web proxy must match existing security posture (server-side token,
+  not client-side) — see GitHub sync proxy for the established pattern
+- Phase Q: Q4 auto-publish needs an explicit cancel/abort mechanism before shipping
+
 ---
 
 ## Phase M — Lottie Export
@@ -23,9 +52,10 @@ distribution surface.
 - [ ] **M1 — Build `export-lottie.ts` exporter.**
   Create `lib/export/export-lottie.ts`. Convert a compiled Coniva icon
   to a Lottie 5.x JSON object. Map `Variant.viewBox` to `w`/`h`/`fr`.
-  Set `fr: 60`, `ip: 0`, `op: durationMs / 1000 * 60` derived from the
-  longest transition. Entry point: `exportLottie(icon: Icon, variantId:
-  string): LottieJson`.
+  Set `fr: 60`, `ip: 0`, `op: Math.round(durationMs / 1000 * fr)` derived
+  from the longest transition (round to integer frame count to avoid
+  fractional `op` values, which are invalid in some Lottie runtimes).
+  Entry point: `exportLottie(icon: Icon, variantId: string): LottieJson`.
 
 - [ ] **M2 — Map layer geometry to Lottie shape layers.**
   For each `Layer`, emit a Lottie shape layer with a `sh` (path) shape.
@@ -44,10 +74,15 @@ distribution surface.
 
 - [ ] **M4 — Map morph keyframes to Lottie shape-path animation.**
   When a binding uses `strictMorph` or `bestGuessMorph`, emit the
-  interpolated path at multiple sampled t-values (e.g. 10 steps) as
-  Lottie shape-path keyframes on `ks.sh`. This approximates smooth
-  morph within Lottie's keyframe model. Use `interpolatePaths()` from
-  `morph.ts`.
+  interpolated path at multiple sampled t-values as Lottie shape-path
+  keyframes on `ks.sh`. This approximates smooth morph within Lottie's
+  keyframe model. **Note:** `interpolatePaths()` does not exist in the
+  codebase. The correct API is `strictMorph(fromD, toD)` and
+  `bestGuessMorph(fromD, toD)` (from `lib/runtime-core/morph.ts`), which
+  return `MorphInterpolator` closures `(t: number) => string`. Call the
+  returned interpolator at `t = [0, 1/steps, 2/steps, ..., 1]`. Number
+  of steps is controlled by `morphQuality: 'low'|'medium'|'high'|'max'`
+  (maps to 5/10/30/60 steps, clamped to [3, 60]).
 
 - [ ] **M5 — Map trim path tracks to Lottie trim shape.**
   When `trimStart`/`trimEnd`/`trimOffset` tracks are present, emit a
@@ -75,11 +110,13 @@ distribution surface.
   downgrade-rules.ts`.
 
 - [ ] **M8 — Lottie preview in ExportPanel.**
-  Embed `lottie-web` (already in many icon toolchains; add as optional
-  peer dep) in a preview pane inside the export panel. Render the
-  exported JSON in a 128×128 `<canvas>` preview so authors can verify
-  the animation before downloading. Gate behind a feature flag
-  `LOTTIE_PREVIEW_ENABLED`.
+  Add `lottie-web` as a regular `dependency` (not a peer dep — this is
+  a Next.js app, not a library). Lazy-import it with `dynamic(() =>
+  import('lottie-web'), { ssr: false })` to keep it out of the initial
+  bundle. Render the exported JSON in a 128×128 `<canvas>` preview so
+  authors can verify the animation before downloading. Gate the preview
+  pane itself behind a feature flag `LOTTIE_PREVIEW_ENABLED` (env var)
+  to allow disabling without removing the dependency.
 
 ### Priority 3 — Roundtrip & Tests
 
@@ -91,11 +128,14 @@ distribution surface.
   transition fallback.
 
 - [ ] **M10 — Downgrade diagnostics for Lottie.**
-  Extend `lib/export/adapters/downgrade-rules.ts` with Lottie-specific
-  rules. Flag: `variableValue` (not representable), `bestGuessMorph`
-  with mismatched command counts (falls back to crossfade), `spring`
+  Create `lib/export/lottie-downgrade.ts` (do NOT modify
+  `downgrade-rules.ts` — that file is coupled to `TargetPlatform` and
+  is unrelated to Lottie format conversion). Export:
+  `collectLottieDowngrades(icon, variantId): LottieDowngradeDiagnostic[]`.
+  Flag: `variableValue` (not representable), `bestGuessMorph` with
+  mismatched command counts (falls back to crossfade), `spring`
   easing (approximated as cubic-bezier), `radialGradient` fills
-  (approximated as solid). Surface diagnostics in ExportPanel.
+  (limited player support). Surface diagnostics in ExportPanel M7.
 
 ---
 
@@ -110,6 +150,25 @@ but explicitly defers "actual generation" to a future phase (the
 comment reads: "path boolean operations which are deferred to a future
 phase"). `lib/editor-core/boolean-ops.ts` provides the Paper.js boolean
 primitive (`booleanOp`). This phase wires them together.
+
+### Priority 0 — Prerequisites
+
+- [ ] **N0 — Add `meta.derivedSpecs` to Icon schema with migration.**
+  Add `derivedSpecs?: DerivedVariantSpec[]` to `Icon.meta` in
+  `lib/schema/types.ts`. This is a new optional field — existing
+  projects that don't have it will read as `undefined` (no migration
+  needed for read path). Add a schema migration test to
+  `tests/schema-migrations.test.ts` asserting that an icon without
+  `derivedSpecs` loads and saves without error. **Must be done before
+  N7 (re-derive warning) which reads this field.**
+
+- [ ] **N0b — Add `isDeriving` flag to editor store.**
+  Add `isDeriving: boolean` to `EditorState` in `lib/editor-store/
+  store.ts`, default `false`. Wrap the `applyDerivedVariant()` dispatch
+  in the store action with `set({ isDeriving: true })` / `set({
+  isDeriving: false })` in a finally block. In the UI (N5), read
+  `isDeriving` to disable all Derive buttons while in progress.
+  This prevents Paper.js scope corruption from concurrent boolean ops.
 
 ### Priority 1 — Variant Generation Engine
 
@@ -173,11 +232,15 @@ primitive (`booleanOp`). This phase wires them together.
 ### Priority 3 — Tests
 
 - [ ] **N8 — Boolean variant tests.**
-  Add `tests/derived-variants.test.ts`. Test: fill derivation produces
-  correct style flip, slash derivation removes area overlapping slash
-  shape, circle derivation unions enclosure correctly, badge derivation
-  preserves badge layers. Use simple rectangle paths for
-  deterministic boolean results.
+  Add `tests/derived-variants.test.ts`. **Important:** Paper.js boolean
+  ops are async and browser-only (`booleanOp` rejects outside a browser
+  context). See `tests/boolean-ops.test.ts` for the existing mock pattern
+  — use the same `mockBooleanOp` helper. Test: fill derivation produces
+  correct style flip (mock not needed — fill is a pure style transform),
+  slash derivation calls `booleanOp('subtract', ...)` with correct args,
+  circle derivation calls `booleanOp('unite', ...)`, badge derivation
+  preserves badge layers. Use simple rectangle path `d` strings for
+  deterministic argument matching.
 
 ---
 
@@ -211,13 +274,19 @@ phase.
   all available control points (2 or 3).
 
 - [ ] **O3 — Support up to 9 weight control points.**
-  Extend `WeightControlPoints` type to make `ultralight` and `black`
-  optional and add optional intermediate weights: `thin`, `light`,
-  `medium`, `semibold`, `bold`, `heavy`. The cubic interpolation uses
-  whichever subset is populated. `validateWeightControlPoints` passes
-  with ≥ 2 control points (previously required exactly 3).
-  Update `Variant.weightControlPoints` in `lib/schema/types.ts` to
-  match.
+  Extend `WeightControlPoints` type to make all fields optional and add
+  intermediate weights: `thin`, `light`, `medium`, `semibold`, `bold`,
+  `heavy`. **Breaking change:** the current type in `weight-interpolation.ts`
+  requires all three of `ultralight`, `regular`, `black` as non-optional
+  strings. After this change, update ALL callers:
+  - `interpolateWeight()` (internal — update validation call)
+  - `validateWeightControlPoints()` (update minimum count to 2)
+  - `InspectorPanel.tsx` weight control point display (update to show
+    all 9 slots)
+  Run `npx tsc --noEmit` to catch all TypeScript call sites.
+  Update `Variant.weightControlPoints` in `lib/schema/types.ts` to match
+  (note: schema already has these fields as optional — the gap is in
+  `weight-interpolation.ts`'s own type declaration).
 
 ### Priority 2 — Editor Integration
 
@@ -261,33 +330,46 @@ the full pattern. This phase adds four high-demand adapters.
 ### Priority 1 — Heroicons & Phosphor
 
 - [ ] **P1 — Heroicons adapter.**
-  Create `lib/import/adapters/heroicons-adapter.ts`. Source:
-  `@heroicons/react` npm package (already broadly installed in Next.js
-  projects). Capabilities: `searchable: true`, variants: `outline` and
-  `solid` (map to Coniva size 24, 20). The manifest is the package's
-  exported icon list. Implement `importById(id)` by loading the
-  corresponding SVG from the package's `24/outline/` directory.
-  Register in `registerBuiltinAdapters()`.
+  Create `lib/import/adapters/heroicons-adapter.ts` and
+  `lib/import/adapters/heroicons-source.ts`. **Cannot use direct
+  filesystem access to `node_modules` in a web deployment.** Follow
+  the Lucide pattern: generate a build-time manifest (`heroicons-source.ts`)
+  that lists all icon names and their SVG content as a JS module, then
+  import from it at runtime. Capabilities: `searchable: true`, variants:
+  `outline` and `solid` (map to Coniva size 24 / 20). Register in
+  `registerBuiltinAdapters()`.
 
 - [ ] **P2 — Phosphor Icons adapter.**
-  Create `lib/import/adapters/phosphor-adapter.ts`. Source:
-  `@phosphor-icons/core` npm package. Capabilities: `searchable: true`,
-  6 weights (`thin`, `light`, `regular`, `bold`, `fill`, `duotone`).
-  Map Phosphor weights to Coniva `Variant.weight`. On import, create
-  one icon with a variant per weight, pre-filling `Variant.
-  weightControlPoints` with the `thin`, `regular`, and `bold` SVG
-  paths to enable immediate weight interpolation.
+  Create `lib/import/adapters/phosphor-adapter.ts` and
+  `lib/import/adapters/phosphor-source.ts` (build-time manifest, same
+  pattern as Lucide). Source: `@phosphor-icons/core` npm package.
+  Capabilities: `searchable: true`, 6 weights (`thin`, `light`,
+  `regular`, `bold`, `fill`, `duotone`). **Weight name mapping:**
+  Phosphor's `fill` is a rendering style (filled path), not a weight —
+  skip it for `weightControlPoints`. Map: Phosphor `thin` → Coniva
+  `ultralight`, `light` → `light`, `regular` → `regular`, `bold` →
+  `bold`, `duotone` → skip (multi-layer style). Pre-fill
+  `Variant.weightControlPoints` with the `ultralight` (`thin`),
+  `regular`, and `bold` paths only.
 
 - [ ] **P3 — Material Symbols adapter.**
   Create `lib/import/adapters/material-symbols-adapter.ts`. Source:
   `@material-symbols/svg-400` (Google's official npm package). Variants:
   outlined/rounded/sharp. Map to Coniva size 24. The package ships
-  individual SVG files — build a manifest at import time by reading
-  the package directory listing. `searchable: true`.
+  individual SVG files — generate a build-time manifest source module
+  (same pattern as Lucide/Heroicons/Phosphor adapters) rather than
+  reading the package directory at runtime. `searchable: true`.
 
 ### Priority 2 — SF Symbols SVG Import
 
-- [ ] **P4 — SF Symbols SVG adapter.**
+- [ ] **P4 — SF Symbols SVG adapter.** ⚠️ REQUIRES LEGAL REVIEW BEFORE SHIPPING
+  Apple's SF Symbols license (SFSymbols License Agreement) explicitly
+  restricts distribution of the symbols and may prohibit exporting them
+  to non-Apple platforms via Coniva. **Do not ship this adapter without
+  legal sign-off.** The adapter itself can be built and tested in isolation;
+  ship it only after confirming the use case is covered under the
+  license (e.g., the adapter imports custom SVGs *inspired by* SF Symbols
+  style, not the Apple-supplied symbol files themselves).
   Create `lib/import/adapters/sf-symbols-adapter.ts`. SF Symbols SVGs
   are exported from the SF Symbols macOS app as `.svg` files with
   multi-weight layer groups (each group named `ultralight-S`,
@@ -340,14 +422,36 @@ Currently `SyncTarget.deliveryMode` supports `local-directory` and
 to a registry manually. This phase adds a `npm-registry` delivery mode
 and an automated publish pipeline.
 
+### Priority 0 — Prerequisites
+
+- [ ] **Q0 — Add formal `SyncConnector` interface to `contracts.ts`.**
+  Define `interface SyncConnector<TRequest, TResult>` with `push(req:
+  TRequest): Promise<TResult>` and optional `validate(req: TRequest):
+  string | null`. Retrofit `LocalDirectorySyncConnector` and
+  `AdapterPrConnector` to implement it. This ensures `NpmConnector`
+  (Q2) is consistent from the start and the dispatch in
+  `SyncTargetPanel.tsx` becomes type-safe. **Must be done before Q2.**
+
+- [ ] **Q0b — Add `npm-publish` RPC method to platform bridge.**
+  `lib/platform/bridge.ts` defines the set of RPC methods available to
+  the desktop app via Electrobun. Add `npm-publish: (args: { cwd: string;
+  registry: string; tag?: string }) => Promise<{ exitCode: number; stdout:
+  string; stderr: string }>`. The native side shells out to the `npm`
+  CLI. **Desktop only.** Web callers use the Q5 proxy route instead.
+  This is required by Q2's `push()` implementation.
+
 ### Priority 1 — Registry Sync Target
 
 - [ ] **Q1 — `npm-registry` delivery mode schema.**
   Add `'npm-registry'` to `SyncTarget.deliveryMode` union in
   `lib/schema/types.ts`. Add `SyncTarget.npmRegistry?: { registry:
-  string; scope?: string; packageName: string; token?: string }`.
-  The `token` field is write-only (masked in UI, stored in platform
-  keychain via `lib/platform/`).
+  string; scope?: string; packageName: string; tokenStored?: boolean }`.
+  **No `token` field in the schema.** The token lives exclusively in
+  the platform keychain (keyed by `syncTarget.id`). The schema has only
+  `tokenStored: boolean` as a UI hint. This prevents tokens from being
+  serialised into project JSON, which can be committed via the git-pr
+  sync connector. Add `lib/platform/keychain.ts` with
+  `getNpmToken(id)` / `setNpmToken(id, token)` / `clearNpmToken(id)`.
 
 - [ ] **Q2 — NPM publish connector.**
   Create `lib/sync-service/connectors/npm-connector.ts`. Implements
@@ -366,11 +470,15 @@ and an automated publish pipeline.
   (`diff-compiled-icons.ts`). The changelog surfaces added, modified,
   removed icon names as human-readable release notes.
 
-- [ ] **Q4 — Automated publish trigger.**
+- [ ] **Q4 — Automated publish trigger with cancel.**
   In `SyncTarget`, add `autoPublish?: { on: 'save' | 'manual'; semver:
   'patch' | 'minor' }`. When `on: 'save'` and icons change, queue a
-  debounced publish (300 s) after the save. Show a "Pending publish"
-  spinner in the tab bar.
+  debounced publish (300 s) after the save. **Must include a cancel
+  mechanism:** show a "Pending publish in 5:00 — [Cancel]" countdown
+  badge in the tab bar. Clicking Cancel clears the debounce timer.
+  Without an explicit cancel path, an accidental geometry change on
+  `on: 'save'` mode queues an automatic publish to a public registry
+  with potentially broken icons.
 
 ### Priority 2 — Web Proxy & Auth
 
@@ -378,9 +486,12 @@ and an automated publish pipeline.
   The web app cannot shell out to `npm` CLI directly. Add an API route
   `app/api/publish-npm/route.ts`. Accepts a multipart POST with the
   tarball and registry config. Calls the npm registry REST API
-  (`PUT /<package>`) with the auth token. Returns the published
-  version. The token is passed as a request header (never stored
-  server-side).
+  (`PUT /<package>`) with the auth token. **Security posture:** follow
+  the existing GitHub sync proxy pattern — the token is stored server-side
+  as an env var (`NPM_PUBLISH_TOKEN`), NOT passed from the client on
+  each request. The client sends `syncTargetId`; the server resolves the
+  token from env. This is consistent with `GITHUB_SYNC_TOKEN` usage and
+  avoids the token traveling over the wire on every publish call.
 
 - [ ] **Q6 — Private registry support (Verdaccio / GitHub Packages / JFrog).**
   Ensure the connector works with non-public registries by honoring the

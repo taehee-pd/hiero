@@ -2222,7 +2222,9 @@ function PaintField({
     paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
       ? paint.mode
       : paint?.mode === 'fixed' && paint.value === 'none'
-        ? 'none'
+        ? fillModeOptions
+          ? 'currentFill'
+          : 'currentColor'
       : paint?.mode === 'currentColor'
         ? fillModeOptions
           ? 'currentFill'

@@ -26,6 +26,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+/** Safely parse a color string, returning null for invalid/empty values like "none". */
+function safeColor(value: string | undefined): ReturnType<typeof Color> | null {
+  if (!value || value === "none" || value === "transparent") return null;
+  try {
+    return Color(value);
+  } catch {
+    return null;
+  }
+}
+
 type ColorPickerContextValue = {
   hue: number;
   saturation: number;
@@ -66,7 +76,7 @@ export const ColorPicker = ({
   className,
   ...props
 }: ColorPickerProps) => {
-  const selectedColor = Color(value);
+  const selectedColor = safeColor(value) ?? Color(defaultValue);
   const defaultColor = Color(defaultValue);
 
   const [hue, setHue] = useState(
@@ -86,7 +96,9 @@ export const ColorPicker = ({
   // Update color when controlled value changes
   useEffect(() => {
     if (value) {
-      const color = Color.rgb(value).rgb().object();
+      const parsed = safeColor(value);
+      if (!parsed) return;
+      const color = parsed.rgb().object();
 
       setHue(color.r);
       setSaturation(color.g);

@@ -1,12 +1,22 @@
 # Tasks
 
-**Last updated:** 2026-03-24
+**Last updated:** 2026-03-24 (main-head implementation audit)
 **Canonical product name:** Coniva
 
-Phases I–L and all earlier phases are **completed**. Phases M–Q are
-the active engineering backlog, planned 2026-03-23.
+Phases I–P and all earlier phases are implemented in the repository in
+full or near-full form. The 2026-03-24 audit found three notable
+follow-up gaps that should remain visible in the backlog:
 
-**Engineering review findings (2026-03-23):**
+- Phase M UI wiring: `components/export/LottieExportPanel.tsx` exists,
+  but it is not currently mounted from the editor shell/toolbar.
+- Phase O visual curve tooling: cubic interpolation and 9-point editing
+  are implemented, but there is no dedicated `WeightCurveEditor`
+  component in the codebase.
+- Phase Q product integration: the connector, schema, keychain bridge,
+  proxy route, and tests exist, but the auto-publish countdown/cancel
+  flow and version-bump controls are not fully wired into the editor UI.
+
+**Historical engineering review findings (2026-03-23):**
 - Priority order revised: Q → M → N → (verify import demand) → P → O
 - Token security: npm tokens must live in platform keychain only, never in schema
 - Phase M: morph sampler must call `strictMorph()`/`bestGuessMorph()` interpolators
@@ -39,18 +49,22 @@ the active engineering backlog, planned 2026-03-23.
 
 ## Phase M — Lottie Export
 
-Status: **shipped** (#74) — Lottie 5.x JSON exporter with morph
-sampling, trim path mapping, effect conversion, downgrade diagnostics,
-lottie-web preview behind feature flag, and 31 determinism tests.
+Status: **partially shipped** (#74 audited 2026-03-24).
 
-The schema reserves `ExportProfile.format: 'lottie'` but no exporter
-exists. Lottie is the de-facto standard for animated icons on Android,
-iOS web, and React Native — adding it dramatically expands Coniva's
-distribution surface.
+The core export surface is implemented in `lib/export/export-lottie.ts`
+with downgrade analysis in `lib/export/lottie-downgrade.ts` and test
+coverage in `tests/lottie-export.test.ts`. A standalone
+`components/export/LottieExportPanel.tsx` exists with lazy
+`lottie-web` preview support behind `NEXT_PUBLIC_LOTTIE_PREVIEW_ENABLED`,
+but it is not currently mounted into the editor export UI.
+
+The repository now contains a real Lottie exporter and downgrade
+analysis path. The remaining work is UI/product integration rather than
+core export logic.
 
 ### Priority 1 — Core Exporter
 
-- [ ] **M1 — Build `export-lottie.ts` exporter.**
+- [x] **M1 — Build `export-lottie.ts` exporter.**
   Create `lib/export/export-lottie.ts`. Convert a compiled Coniva icon
   to a Lottie 5.x JSON object. Map `Variant.viewBox` to `w`/`h`/`fr`.
   Set `fr: 60`, `ip: 0`, `op: Math.round(durationMs / 1000 * fr)` derived
@@ -58,7 +72,7 @@ distribution surface.
   fractional `op` values, which are invalid in some Lottie runtimes).
   Entry point: `exportLottie(icon: Icon, variantId: string): LottieJson`.
 
-- [ ] **M2 — Map layer geometry to Lottie shape layers.**
+- [x] **M2 — Map layer geometry to Lottie shape layers.**
   For each `Layer`, emit a Lottie shape layer with a `sh` (path) shape.
   Convert the SVG `d` string to Lottie's `ks` bezier format (vertices,
   in-tangents, out-tangents, closed). Use the normalized cubic commands
@@ -66,14 +80,14 @@ distribution surface.
   Map `style.fill` → `fl` shape, `style.stroke` → `st` shape. Map
   `PaintRef.mode === 'linearGradient'` → `gf` Lottie gradient fill.
 
-- [ ] **M3 — Map TimelineTrack keyframes to Lottie animated properties.**
+- [x] **M3 — Map TimelineTrack keyframes to Lottie animated properties.**
   For each `TimelineTrack` on a `LayerBinding`, emit Lottie animated
   properties (`ks.o` for opacity, `ks.r` for rotation, `ks.p` for
   position, `ks.s` for scale). Convert `keyframes: number[]` with
   `durationMs` to Lottie time-based keyframe arrays. Map easing strings
   to Lottie cubic-bezier `o`/`i` handle pairs.
 
-- [ ] **M4 — Map morph keyframes to Lottie shape-path animation.**
+- [x] **M4 — Map morph keyframes to Lottie shape-path animation.**
   When a binding uses `strictMorph` or `bestGuessMorph`, emit the
   interpolated path at multiple sampled t-values as Lottie shape-path
   keyframes on `ks.sh`. This approximates smooth morph within Lottie's
@@ -85,7 +99,7 @@ distribution surface.
   of steps is controlled by `morphQuality: 'low'|'medium'|'high'|'max'`
   (maps to 5/10/30/60 steps, clamped to [3, 60]).
 
-- [ ] **M5 — Map trim path tracks to Lottie trim shape.**
+- [x] **M5 — Map trim path tracks to Lottie trim shape.**
   When `trimStart`/`trimEnd`/`trimOffset` tracks are present, emit a
   Lottie `tm` (trim) modifier on the containing shape group. Map
   `compoundTrimMode === 'simultaneously'` → `m: 1`, `'individually'`
@@ -93,7 +107,7 @@ distribution surface.
 
 ### Priority 2 — Effect & Preview Integration
 
-- [ ] **M6 — Map Effect kinds to Lottie shape layer animations.**
+- [x] **M6 — Map Effect kinds to Lottie shape layer animations.**
   Convert Coniva Effect kinds to Lottie equivalents:
   `bounce` → scale oscillation keyframes, `pulse` → opacity keyframes,
   `breathe` → scale breathe keyframes, `rotate` → rotation keyframes,
@@ -121,14 +135,14 @@ distribution surface.
 
 ### Priority 3 — Roundtrip & Tests
 
-- [ ] **M9 — Export determinism test.**
+- [x] **M9 — Export determinism test.**
   Add `tests/lottie-export.test.ts`. Assert that
   `exportLottie(icon, variantId)` produces identical JSON across
   multiple calls (snapshot test). Cover: static icon (no transitions),
   track animation, morph transition, trim animation, cross-icon
   transition fallback.
 
-- [ ] **M10 — Downgrade diagnostics for Lottie.**
+- [x] **M10 — Downgrade diagnostics for Lottie.**
   Create `lib/export/lottie-downgrade.ts` (do NOT modify
   `downgrade-rules.ts` — that file is coupled to `TargetPlatform` and
   is unrelated to Lottie format conversion). Export:
@@ -146,16 +160,13 @@ Status: **shipped** (#75) — fill/slash/circle/square/badge derivation
 via Paper.js boolean ops, isDeriving concurrency guard, re-derive
 warning banner, 16 tests with mocked booleanOp.
 
-`lib/schema/variant-derivation.ts` has metadata scaffolding
-(`canDeriveVariant`, `availableModifiers`, `createDerivedVariantSpec`)
-but explicitly defers "actual generation" to a future phase (the
-comment reads: "path boolean operations which are deferred to a future
-phase"). `lib/editor-core/boolean-ops.ts` provides the Paper.js boolean
-primitive (`booleanOp`). This phase wires them together.
+`lib/schema/variant-derivation.ts` now contains the concrete derivation
+engine, and `lib/editor-core/boolean-ops.ts` provides the Paper.js
+boolean primitive (`booleanOp`) used by the slash/enclosure/badge paths.
 
 ### Priority 0 — Prerequisites
 
-- [ ] **N0 — Add `meta.derivedSpecs` to Icon schema with migration.**
+- [x] **N0 — Add `meta.derivedSpecs` to Icon schema with migration.**
   Add `derivedSpecs?: DerivedVariantSpec[]` to `Icon.meta` in
   `lib/schema/types.ts`. This is a new optional field — existing
   projects that don't have it will read as `undefined` (no migration
@@ -164,7 +175,7 @@ primitive (`booleanOp`). This phase wires them together.
   `derivedSpecs` loads and saves without error. **Must be done before
   N7 (re-derive warning) which reads this field.**
 
-- [ ] **N0b — Add `isDeriving` flag to editor store.**
+- [x] **N0b — Add `isDeriving` flag to editor store.**
   Add `isDeriving: boolean` to `EditorState` in `lib/editor-store/
   store.ts`, default `false`. Wrap the `applyDerivedVariant()` dispatch
   in the store action with `set({ isDeriving: true })` / `set({
@@ -174,7 +185,7 @@ primitive (`booleanOp`). This phase wires them together.
 
 ### Priority 1 — Variant Generation Engine
 
-- [ ] **N1 — Implement `applyDerivedVariant()` for fill variants.**
+- [x] **N1 — Implement `applyDerivedVariant()` for fill variants.**
   In `lib/schema/variant-derivation.ts`, add:
   `applyDerivedVariant(icon: Icon, spec: DerivedVariantSpec): Icon`.
   For `modifier === 'fill'`: iterate each layer in the base variant's
@@ -183,7 +194,7 @@ primitive (`booleanOp`). This phase wires them together.
   `style.stroke`'s value and clearing `style.stroke`. No boolean ops
   needed — this is a style transformation only.
 
-- [ ] **N2 — Implement `applyDerivedVariant()` for slash variants.**
+- [x] **N2 — Implement `applyDerivedVariant()` for slash variants.**
   For `modifier === 'slash'`: find the `SymbolComponent` of kind
   `'slash'` in `icon.components`. Retrieve its layer paths. Use
   `booleanOp('subtract', ...)` from `boolean-ops.ts` to subtract the
@@ -191,7 +202,7 @@ primitive (`booleanOp`). This phase wires them together.
   Return the modified icon with a new variant whose states contain the
   slashed geometry.
 
-- [ ] **N3 — Implement `applyDerivedVariant()` for circle/square variants.**
+- [x] **N3 — Implement `applyDerivedVariant()` for circle/square variants.**
   For `modifier === 'circle'` / `'square'`: find the `SymbolComponent`
   of kind `'enclosure'`. Union all primary layer paths with the
   enclosure shape using `booleanOp('unite', ...)`. The result becomes
@@ -199,7 +210,7 @@ primitive (`booleanOp`). This phase wires them together.
   are hidden (set `visible: false`) in the derived state since they are
   now merged.
 
-- [ ] **N4 — Implement `applyDerivedVariant()` for badge variants.**
+- [x] **N4 — Implement `applyDerivedVariant()` for badge variants.**
   For `modifier === 'badge'`: find the `SymbolComponent` of kind
   `'badge'`. Subtract the badge component shape from the base layers
   using `booleanOp('subtract', ...)` where the badge overlaps, then
@@ -208,7 +219,7 @@ primitive (`booleanOp`). This phase wires them together.
 
 ### Priority 2 — Editor UI
 
-- [ ] **N5 — Derive Variant panel in Inspector.**
+- [x] **N5 — Derive Variant panel in Inspector.**
   In `components/editor/InspectorPanel.tsx`, add a "Derive Variant"
   section (collapsed by default) below the existing symbol component
   tags. Show available modifiers from `availableModifiers()` as
@@ -217,14 +228,14 @@ primitive (`booleanOp`). This phase wires them together.
   from `canDeriveVariant()`. Show a spinner during generation (boolean
   ops are synchronous but can take ~50ms for complex paths).
 
-- [ ] **N6 — Derived variant badge in ExplorerShell.**
+- [x] **N6 — Derived variant badge in ExplorerShell.**
   In the icon list / explorer view, show a small "variants" pill on
   icons that have derived variants (e.g. "fill", "circle"). Allow
   switching between base and derived in the variant selector. Derived
   variants are read-only by default (no geometry editing — edits must
   be made on the base and re-derived).
 
-- [ ] **N7 — Re-derive on base change.**
+- [x] **N7 — Re-derive on base change.**
   When a layer's geometry changes in the base variant and derived
   variants exist, show a "Re-derive variants" warning banner above the
   canvas. On confirmation, re-run `applyDerivedVariant()` for all
@@ -233,7 +244,7 @@ primitive (`booleanOp`). This phase wires them together.
 
 ### Priority 3 — Tests
 
-- [ ] **N8 — Boolean variant tests.**
+- [x] **N8 — Boolean variant tests.**
   Add `tests/derived-variants.test.ts`. **Important:** Paper.js boolean
   ops are async and browser-only (`booleanOp` rejects outside a browser
   context). See `tests/boolean-ops.test.ts` for the existing mock pattern
@@ -248,26 +259,31 @@ primitive (`booleanOp`). This phase wires them together.
 
 ## Phase O — Cubic Weight Interpolation
 
-Status: **planned** (upgrade piecewise-linear weight interpolation to
-cubic monotone spline for smooth cross-weight rendering)
+Status: **mostly shipped** (#77 audited 2026-03-24).
+
+The runtime foundation is implemented in
+`lib/runtime-core/weight-interpolation.ts`, the schema/editor now accept
+2–9 weight control points, and `tests/weight-interpolation-cubic.test.ts`
+covers the cubic interpolation surface. The notable remaining gap is
+the absence of a dedicated `WeightCurveEditor` visualization component;
+the current UI is the multi-slot control-point editor in
+`components/editor/InspectorPanel.tsx`.
 
 `interpolateWeight()` in `lib/runtime-core/weight-interpolation.ts`
-uses piecewise linear interpolation between three control points
-(ultralight=100, regular=400, black=900). This produces a kink at
-weight 400 and poor accuracy for intermediate weights (thin, light,
-medium, semibold). H9 explicitly deferred "cubic interp" to a future
-phase.
+now uses monotone cubic interpolation across populated control points
+and accepts the full 9-slot control-point surface. The remaining work
+is visualization polish rather than interpolation correctness.
 
 ### Priority 1 — Cubic Monotone Spline
 
-- [ ] **O1 — Implement Fritsch-Carlson monotone cubic interpolation.**
+- [x] **O1 — Implement Fritsch-Carlson monotone cubic interpolation.**
   In `weight-interpolation.ts`, add `cubicMonotoneInterpolate(points:
   Array<{x: number; y: number}>, t: number): number`. Implements the
   Fritsch-Carlson algorithm: compute slopes at each control point,
   apply monotone constraints (no overshooting), compute Hermite spline
   coefficients per segment. Returns smoothly interpolated scalar.
 
-- [ ] **O2 — Apply per-coordinate cubic interpolation to path commands.**
+- [x] **O2 — Apply per-coordinate cubic interpolation to path commands.**
   Upgrade `interpolateWeight()` to use `cubicMonotoneInterpolate` per
   coordinate value across all supplied control points instead of
   piecewise linear. The function signature stays backward-compatible:
@@ -275,7 +291,7 @@ phase.
   `string | null`. Internally, build per-coordinate cubic splines from
   all available control points (2 or 3).
 
-- [ ] **O3 — Support up to 9 weight control points.**
+- [x] **O3 — Support up to 9 weight control points.**
   Extend `WeightControlPoints` type to make all fields optional and add
   intermediate weights: `thin`, `light`, `medium`, `semibold`, `bold`,
   `heavy`. **Breaking change:** the current type in `weight-interpolation.ts`
@@ -292,7 +308,7 @@ phase.
 
 ### Priority 2 — Editor Integration
 
-- [ ] **O4 — Multi-control-point editor in InspectorPanel.**
+- [x] **O4 — Multi-control-point editor in InspectorPanel.**
   Extend the weight control point editor (L4) to show all 9 weight
   slots (ultralight → black) as a vertical list. Each slot shows a
   small path preview thumbnail and an "Assign" / "Clear" button.
@@ -310,7 +326,7 @@ phase.
 
 ### Priority 3 — Tests
 
-- [ ] **O6 — Cubic interpolation correctness tests.**
+- [x] **O6 — Cubic interpolation correctness tests.**
   Add `tests/weight-interpolation-cubic.test.ts`. Assert:
   interpolated value equals control-point value exactly at each
   control-point weight; no overshoot when values are monotone; smooth
@@ -322,17 +338,26 @@ phase.
 
 ## Phase P — Import Adapter Ecosystem
 
-Status: **shipped** (#76) — Heroicons, Phosphor, Material Symbols
-adapters with build-time manifests, weight mapping, capability badges,
-batch import (max 50), 32 adapter tests. P4 deleted (Apple license).
+Status: **shipped with implementation deviations** (#76 audited 2026-03-24).
+
+Heroicons, Phosphor, and Material Symbols adapters are implemented under
+`lib/import/adapters/` with tests in `tests/adapter-heroicons.test.ts`,
+`tests/adapter-phosphor.test.ts`, and
+`tests/adapter-material-symbols.test.ts`. The import dialog now shows
+capability badges and supports batch import. One architectural
+deviation from the original task text: the current source loaders read
+installed package assets via Node filesystem access rather than
+generated static manifests, so the canonical docs should describe the
+implementation as it exists today rather than the original
+manifest-only plan. P4 remains omitted for legal reasons.
 
 The adapter SDK (`lib/import/adapter-sdk/`) is complete with a registry,
-types, and a template. The existing `lucide-adapter.ts` demonstrates
-the full pattern. This phase adds four high-demand adapters.
+types, and a template. The repository now ships Heroicons, Phosphor,
+and Material Symbols adapters; P4 remains intentionally omitted.
 
 ### Priority 1 — Heroicons & Phosphor
 
-- [ ] **P1 — Heroicons adapter.**
+- [x] **P1 — Heroicons adapter.**
   Create `lib/import/adapters/heroicons-adapter.ts` and
   `lib/import/adapters/heroicons-source.ts`. **Cannot use direct
   filesystem access to `node_modules` in a web deployment.** Follow
@@ -342,7 +367,7 @@ the full pattern. This phase adds four high-demand adapters.
   `outline` and `solid` (map to Coniva size 24 / 20). Register in
   `registerBuiltinAdapters()`.
 
-- [ ] **P2 — Phosphor Icons adapter.**
+- [x] **P2 — Phosphor Icons adapter.**
   Create `lib/import/adapters/phosphor-adapter.ts` and
   `lib/import/adapters/phosphor-source.ts` (build-time manifest, same
   pattern as Lucide). Source: `@phosphor-icons/core` npm package.
@@ -355,7 +380,7 @@ the full pattern. This phase adds four high-demand adapters.
   `Variant.weightControlPoints` with the `ultralight` (`thin`),
   `regular`, and `bold` paths only.
 
-- [ ] **P3 — Material Symbols adapter.**
+- [x] **P3 — Material Symbols adapter.**
   Create `lib/import/adapters/material-symbols-adapter.ts`. Source:
   `@material-symbols/svg-400` (Google's official npm package). Variants:
   outlined/rounded/sharp. Map to Coniva size 24. The package ships
@@ -367,21 +392,21 @@ the full pattern. This phase adds four high-demand adapters.
 
 ### Priority 3 — Import UX Polish
 
-- [ ] **P5 — Adapter capability display in ImportIconDialog.**
+- [x] **P5 — Adapter capability display in ImportIconDialog.**
   In `components/editor/ImportIconDialog.tsx`, show per-adapter
   capability badges: "Searchable", "6 weights", "Variable value". When
   a Phosphor or SF Symbols icon is imported, show a toast: "Weight
   control points pre-filled — open Weight Interpolation in Inspector
   to preview."
 
-- [ ] **P6 — Batch import from adapter.**
+- [x] **P6 — Batch import from adapter.**
   Allow selecting multiple icons from a searchable adapter's results
   and importing them all at once. Add checkboxes to the search results
   list. "Import Selected (N)" button triggers sequential
   `importById()` calls with a progress indicator. Limit to 50 icons
   per batch to avoid UI freeze.
 
-- [ ] **P7 — Adapter tests.**
+- [x] **P7 — Adapter tests.**
   Add `tests/adapter-heroicons.test.ts`, `tests/adapter-phosphor.test.ts`,
   `tests/adapter-material-symbols.test.ts`, `tests/adapter-sf-symbols.test.ts`.
   Each test: load a fixture SVG, call `importById`, assert the resulting
@@ -393,18 +418,23 @@ the full pattern. This phase adds four high-demand adapters.
 
 ## Phase Q — NPM Registry Distribution
 
-Status: **shipped** (#73) — npm-registry delivery mode, SyncConnector
-interface, keychain token storage, auto-publish with cancel, web proxy,
-private registry support, dry-run mode, 21 connector tests.
+Status: **partially shipped** (#73 audited 2026-03-24).
 
-Currently `SyncTarget.deliveryMode` supports `local-directory` and
-`git-pr`. Teams who want to `npm install @acme/icons` need to publish
-to a registry manually. This phase adds a `npm-registry` delivery mode
-and an automated publish pipeline.
+The schema, connector, keychain helpers, desktop RPC bridge, web proxy,
+dry-run path, and connector test suite are implemented. The remaining
+gaps are product-surface integration work:
+`components/export/SyncTargetPanel.tsx` exposes npm-registry target
+creation and status badges, but does not yet surface the planned
+version-bump controls or a live auto-publish countdown/cancel badge
+wired to `lib/sync-service/auto-publish.ts`.
+
+`SyncTarget.deliveryMode` now includes `npm-registry`, and the repo
+contains both desktop and web publishing paths. The remaining work is
+mostly editor-surface wiring around version control and auto-publish UX.
 
 ### Priority 0 — Prerequisites
 
-- [ ] **Q0 — Add formal `SyncConnector` interface to `contracts.ts`.**
+- [x] **Q0 — Add formal `SyncConnector` interface to `contracts.ts`.**
   Define `interface SyncConnector<TRequest, TResult>` with `push(req:
   TRequest): Promise<TResult>` and optional `validate(req: TRequest):
   string | null`. Retrofit `LocalDirectorySyncConnector` and
@@ -412,7 +442,7 @@ and an automated publish pipeline.
   (Q2) is consistent from the start and the dispatch in
   `SyncTargetPanel.tsx` becomes type-safe. **Must be done before Q2.**
 
-- [ ] **Q0b — Add `npm-publish` RPC method to platform bridge.**
+- [x] **Q0b — Add `npm-publish` RPC method to platform bridge.**
   `lib/platform/bridge.ts` defines the set of RPC methods available to
   the desktop app via Electrobun. Add `npm-publish: (args: { cwd: string;
   registry: string; tag?: string }) => Promise<{ exitCode: number; stdout:
@@ -422,7 +452,7 @@ and an automated publish pipeline.
 
 ### Priority 1 — Registry Sync Target
 
-- [ ] **Q1 — `npm-registry` delivery mode schema.**
+- [x] **Q1 — `npm-registry` delivery mode schema.**
   Add `'npm-registry'` to `SyncTarget.deliveryMode` union in
   `lib/schema/types.ts`. Add `SyncTarget.npmRegistry?: { registry:
   string; scope?: string; packageName: string; tokenStored?: boolean }`.
@@ -433,7 +463,7 @@ and an automated publish pipeline.
   sync connector. Add `lib/platform/keychain.ts` with
   `getNpmToken(id)` / `setNpmToken(id, token)` / `clearNpmToken(id)`.
 
-- [ ] **Q2 — NPM publish connector.**
+- [x] **Q2 — NPM publish connector.**
   Create `lib/sync-service/connectors/npm-connector.ts`. Implements
   the `SyncConnector` interface. `push()` method:
   1. Runs the compile pipeline for the target's platform adapter.
@@ -462,7 +492,7 @@ and an automated publish pipeline.
 
 ### Priority 2 — Web Proxy & Auth
 
-- [ ] **Q5 — Publish proxy API route (web app).**
+- [x] **Q5 — Publish proxy API route (web app).**
   The web app cannot shell out to `npm` CLI directly. Add an API route
   `app/api/publish-npm/route.ts`. Accepts a multipart POST with the
   tarball and registry config. Calls the npm registry REST API
@@ -473,7 +503,7 @@ and an automated publish pipeline.
   token from env. This is consistent with `GITHUB_SYNC_TOKEN` usage and
   avoids the token traveling over the wire on every publish call.
 
-- [ ] **Q6 — Private registry support (Verdaccio / GitHub Packages / JFrog).**
+- [x] **Q6 — Private registry support (Verdaccio / GitHub Packages / JFrog).**
   Ensure the connector works with non-public registries by honoring the
   `registry` field (default `https://registry.npmjs.org`). Test against
   GitHub Packages (`https://npm.pkg.github.com`) by adding a fixture
@@ -481,14 +511,14 @@ and an automated publish pipeline.
 
 ### Priority 3 — Tests & Safety
 
-- [ ] **Q7 — Dry-run mode.**
+- [x] **Q7 — Dry-run mode.**
   Add `SyncTarget.dryRun?: boolean`. When true, the connector runs the
   full build pipeline and validates the package.json but skips the
   actual `npm publish` call. Returns a `SyncResult` with
   `status: 'dry-run'` and the would-be package tarball path.
   Surface as a "Preview publish" button in the UI.
 
-- [ ] **Q8 — NPM connector tests.**
+- [x] **Q8 — NPM connector tests.**
   Add `tests/npm-connector.test.ts`. Mock `npm publish` (or the
   registry PUT). Assert: correct `package.json` fields for React
   adapter, version bump logic (patch/minor/major), changelog includes
@@ -785,6 +815,11 @@ Spec: [`specs/editor/animation-tab.md`](../specs/editor/animation-tab.md) §Insp
 | J | **Animation Preview & Composition** | 2026-03-23 | HybridFrame bridge, cross-icon preview, variable value track |
 | K | **Advanced Animation Authoring** | 2026-03-23 | Magic Replace, auto-gradient mode, auto-strategy, presets |
 | L | **Inspect Tab Redesign** | 2026-03-23 | Variable value indicator, topology, strategy badges, weight editor |
+| M | **Lottie Export** | 2026-03-24 | Core exporter, downgrade diagnostics, tests; panel exists but is not mounted |
+| N | **Derived Variant Generation** | 2026-03-24 | Async boolean-op derivation, inspector actions, re-derive support |
+| O | **Cubic Weight Interpolation** | 2026-03-24 | Fritsch-Carlson spline, 9-point controls, correctness tests; no curve editor yet |
+| P | **Import Adapter Ecosystem** | 2026-03-24 | Heroicons, Phosphor, Material Symbols, capability badges, batch import |
+| Q | **NPM Registry Distribution** | 2026-03-24 | Connector, keychain, proxy, dry-run, tests; UI integration still partial |
 
 ---
 

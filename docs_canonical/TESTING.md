@@ -52,6 +52,13 @@ Representative areas covered:
 - `tests/react-adapter.test.ts`
 - `tests/manifest-cleanup.test.ts`
 - `tests/storybook-generator.test.ts`
+- `tests/lottie-export.test.ts`
+- `tests/derived-variants.test.ts`
+- `tests/weight-interpolation-cubic.test.ts`
+- `tests/adapter-heroicons.test.ts`
+- `tests/adapter-phosphor.test.ts`
+- `tests/adapter-material-symbols.test.ts`
+- `tests/npm-connector.test.ts`
 - `tests/phase-c-editor-animation.test.ts`
 - `tests/phase-d-react-api.test.tsx`
 - `tests/phase6-sync-distribution.test.ts`
@@ -68,6 +75,8 @@ Observed conventions in the current codebase:
 - tests exercise library modules directly rather than only through UI integration
 - feature-specific tests are grouped by behavior area
 - sample schema data and fixtures are reused for repeatability
+- browser-only dependencies such as Paper.js boolean ops are mocked in
+  Bun tests rather than executed directly
 
 ## Coverage Expectations
 
@@ -97,6 +106,22 @@ Cross-platform export adapters (`lib/export/adapters/`) should have tests coveri
 - Stale-file manifest computation (`manifest-cleanup.ts`)
 
 Existing tests: `tests/react-adapter.test.ts`, `tests/manifest-cleanup.test.ts`, `tests/storybook-generator.test.ts`, `tests/platform-types.test.ts`, `tests/phase-7-cross-platform.test.ts`. Swift and Flutter adapter tests are covered in the Phase 7 test file.
+
+## Newer Surface Expectations
+
+Additional observed coverage areas now include:
+
+- Lottie export and downgrade diagnostics: `tests/lottie-export.test.ts`
+- Derived variant generation and mocked boolean ops:
+  `tests/derived-variants.test.ts`
+- Cubic weight interpolation and validation:
+  `tests/weight-interpolation-cubic.test.ts`
+- External import adapters:
+  `tests/adapter-heroicons.test.ts`,
+  `tests/adapter-phosphor.test.ts`,
+  `tests/adapter-material-symbols.test.ts`
+- npm-registry connector, dry-run flow, bump recommendation, and auto-publish manager:
+  `tests/npm-connector.test.ts`
 
 ## Cross-Icon Morphing Test Expectations
 

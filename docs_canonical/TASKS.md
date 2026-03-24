@@ -356,8 +356,9 @@ the full pattern. This phase adds four high-demand adapters.
   Create `lib/import/adapters/material-symbols-adapter.ts`. Source:
   `@material-symbols/svg-400` (Google's official npm package). Variants:
   outlined/rounded/sharp. Map to Coniva size 24. The package ships
-  individual SVG files — build a manifest at import time by reading
-  the package directory listing. `searchable: true`.
+  individual SVG files — generate a build-time manifest source module
+  (same pattern as Lucide/Heroicons/Phosphor adapters) rather than
+  reading the package directory at runtime. `searchable: true`.
 
 ### Priority 2 — SF Symbols SVG Import
 

@@ -166,10 +166,14 @@ async function executeNpmPublish(opts: {
   const cwd = await mkdtemp(join(tmpdir(), 'coniva-npm-'));
 
   try {
-    // Write package.json
+    // Build package.json server-side from strict allowlist.
+    // Never write client-supplied packageJson directly — it could contain
+    // lifecycle scripts (prepublishOnly, prepare, etc.) that execute arbitrary
+    // commands during `npm publish`.
+    const safePackageJson = sanitizePackageJson(opts.packageJson);
     await writeFile(
       join(cwd, 'package.json'),
-      JSON.stringify(opts.packageJson, null, 2),
+      JSON.stringify(safePackageJson, null, 2),
     );
 
     // Write .npmrc with token (scoped to the registry host)
@@ -177,16 +181,27 @@ async function executeNpmPublish(opts: {
     const npmrc = `//${registryHost}/:_authToken=${opts.token}\nregistry=${opts.registry}\n`;
     await writeFile(join(cwd, '.npmrc'), npmrc);
 
-    // Write compiled files
+    // Write compiled files with path traversal protection.
+    // Reject any path that resolves outside the temp directory.
+    const { resolve, relative } = await import('node:path');
     for (const file of opts.files) {
-      const filePath = join(cwd, file.path);
-      const dir = join(filePath, '..');
+      const resolvedPath = resolve(cwd, file.path);
+      const rel = relative(cwd, resolvedPath);
+      if (rel.startsWith('..') || resolve(resolvedPath) !== resolvedPath.replace(/\/+$/, '')) {
+        throw new Error(`Path traversal rejected: ${file.path}`);
+      }
+      // Extra guard: ensure normalized path stays under cwd
+      if (!resolvedPath.startsWith(cwd + '/') && resolvedPath !== cwd) {
+        throw new Error(`Path escape rejected: ${file.path}`);
+      }
+      const dir = join(resolvedPath, '..');
       await mkdir(dir, { recursive: true });
-      await writeFile(filePath, file.contents);
+      await writeFile(resolvedPath, file.contents);
     }
 
-    // Run npm publish
-    const args = ['publish', '--no-git-checks'];
+    // Run npm publish with --ignore-scripts to prevent RCE from any
+    // residual lifecycle hooks (defense in depth alongside sanitizePackageJson).
+    const args = ['publish', '--no-git-checks', '--ignore-scripts'];
     if (opts.dryRun) args.push('--dry-run');
 
     const { stdout, stderr } = await execFileAsync('npm', args, {
@@ -214,4 +229,54 @@ async function executeNpmPublish(opts: {
     // Cleanup temp directory
     await rm(cwd, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+// ---------------------------------------------------------------------------
+// Package.json sanitization — strict allowlist
+// ---------------------------------------------------------------------------
+
+const ALLOWED_PKG_KEYS = new Set([
+  'name',
+  'version',
+  'description',
+  'main',
+  'module',
+  'types',
+  'exports',
+  'files',
+  'license',
+  'publishConfig',
+  'repository',
+  'keywords',
+  'author',
+  'peerDependencies',
+  'dependencies',
+]);
+
+/**
+ * Build a safe package.json from client-supplied data.
+ * Only copies allowlisted keys — strips `scripts`, `bin`, `install`,
+ * `preinstall`, `postinstall`, `prepublishOnly`, `prepare`, etc.
+ * This prevents RCE via npm lifecycle hooks during `npm publish`.
+ */
+function sanitizePackageJson(
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+
+  for (const key of ALLOWED_PKG_KEYS) {
+    if (key in input && input[key] !== undefined) {
+      safe[key] = input[key];
+    }
+  }
+
+  // Ensure name and version exist (required for npm publish)
+  if (typeof safe.name !== 'string' || !safe.name) {
+    throw new Error('package.json must have a non-empty "name" field.');
+  }
+  if (typeof safe.version !== 'string' || !safe.version) {
+    throw new Error('package.json must have a non-empty "version" field.');
+  }
+
+  return safe;
 }

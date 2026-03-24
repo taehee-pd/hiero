@@ -14,8 +14,11 @@ import type { SyncTarget, Project } from '@/lib/schema/types';
 import { compileProject } from '@/lib/export/compile-pipeline';
 import type { CompilePipelineResult } from '@/lib/export/compile-pipeline';
 import { diffCompiledIcons } from '@/lib/export/diff-compiled-icons';
-import type { CompiledIcon } from '@/lib/compiler-contracts/types';
-import type { IconChangeRecord } from '@/lib/compiler-contracts/types';
+import {
+  ICON_CHANGE_RECORD_SCHEMA_URI,
+  type CompiledIcon,
+  type IconChangeRecord,
+} from '@/lib/compiler-contracts/types';
 
 // ---------------------------------------------------------------------------
 // Publisher abstraction (for testability)
@@ -222,10 +225,58 @@ function generateChangelog(
   previousIcons?: Record<string, CompiledIcon>,
 ): IconChangeRecord[] {
   if (!previousIcons) return [];
-  return compiled.compiledIcons
-    .filter((icon) => previousIcons[icon.id])
-    .map((icon) => diffCompiledIcons(previousIcons[icon.id]!, icon))
-    .filter((record) => record.changes.length > 0);
+
+  const records: IconChangeRecord[] = [];
+  const currentIds = new Set(compiled.compiledIcons.map((i) => i.id));
+  const previousIds = new Set(Object.keys(previousIcons));
+
+  // Modified icons — exist in both previous and current
+  for (const icon of compiled.compiledIcons) {
+    if (previousIcons[icon.id]) {
+      const record = diffCompiledIcons(previousIcons[icon.id]!, icon);
+      if (record.changes.length > 0) {
+        records.push(record);
+      }
+    }
+  }
+
+  // Added icons — exist in current but not in previous (minor bump)
+  for (const icon of compiled.compiledIcons) {
+    if (!previousIds.has(icon.id)) {
+      records.push({
+        $schema: ICON_CHANGE_RECORD_SCHEMA_URI,
+        iconId: icon.id,
+        iconName: icon.name,
+        componentName: icon.componentName,
+        fromVersion: '',
+        toVersion: '',
+        publishedAt: new Date().toISOString(),
+        bump: 'minor',
+        isBreaking: false,
+        changes: [{ kind: 'variant-added', summary: `Icon "${icon.name}" added`, breaking: false }],
+      });
+    }
+  }
+
+  // Removed icons — exist in previous but not in current (breaking/major bump)
+  for (const [id, prev] of Object.entries(previousIcons)) {
+    if (!currentIds.has(id)) {
+      records.push({
+        $schema: ICON_CHANGE_RECORD_SCHEMA_URI,
+        iconId: id,
+        iconName: prev.name,
+        componentName: prev.componentName,
+        fromVersion: '',
+        toVersion: '',
+        publishedAt: new Date().toISOString(),
+        bump: 'major',
+        isBreaking: true,
+        changes: [{ kind: 'variant-removed', summary: `Icon "${prev.name}" removed`, breaking: true }],
+      });
+    }
+  }
+
+  return records;
 }
 
 function parentDir(path: string): string {

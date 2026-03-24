@@ -835,12 +835,11 @@ export const InspectorPanel = memo(function InspectorPanel() {
             <>
           <Section title="Layer">
             <ReadOnlyField label="ID" value={layer.id} />
-            <div className="flex items-center gap-2">
-              <ReadOnlyField label="Role" value={layer.role ?? 'none'} />
-              {animationStrategyBadge ? (
+            {animationStrategyBadge ? (
+              <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'mt-auto shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-white',
+                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-white',
                     animationStrategyBadge === 'morph' && 'bg-green-600',
                     animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
                     animationStrategyBadge === 'crossfade' && 'bg-red-500',
@@ -849,8 +848,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 >
                   {animationStrategyBadge}
                 </span>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
             {variableValueInfo ? (
               <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs text-foreground/80">
                 <span className="font-medium">Variable Value:</span>{' '}

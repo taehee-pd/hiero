@@ -108,6 +108,8 @@ export type Icon = {
   components?: Record<string, SymbolComponent>;
   meta?: {
     externalImport?: IconExternalImportMeta;
+    /** Derivation specs for derived variants (Phase N). */
+    derivedSpecs?: import('./variant-derivation').DerivedVariantSpec[];
   };
 };
 

@@ -71,6 +71,8 @@ export type EditorState = {
   favorites: string[];
   openTabs: EditorTab[];
   activeTabId: string | null;
+  /** Phase N: true while a derived variant is being generated. */
+  isDeriving: boolean;
 };
 
 export type EditorTab = {
@@ -199,6 +201,11 @@ export type EditorActions = {
   resumeHistory(): void;
   commitHistory(label?: string): void;
   applyBoolean(mode: BooleanMode): Promise<void>;
+  /** Phase N: generate a derived variant (fill/slash/circle/square/badge). */
+  applyDerivedVariant(
+    iconId: string,
+    spec: import('@/lib/schema/variant-derivation').DerivedVariantSpec,
+  ): Promise<void>;
 };
 
 export type EditorStore = EditorState & EditorActions;
@@ -290,6 +297,7 @@ const initialState: EditorState = {
   favorites: [],
   openTabs: [],
   activeTabId: null,
+  isDeriving: false,
 };
 
 let currentState: EditorStore;
@@ -3216,6 +3224,39 @@ function createActions(): EditorActions {
       } finally {
         temporalState.resume();
         temporalState.commit(`boolean:${mode}`);
+      }
+    },
+
+    async applyDerivedVariant(iconId, spec) {
+      const snapshot = editorStoreApi.getState();
+      if (!snapshot.project) return;
+      const icon = snapshot.project.icons[iconId];
+      if (!icon) return;
+
+      editorStoreApi.setState({ isDeriving: true });
+      temporalState.pause();
+      try {
+        const { applyDerivedVariant: derive } = await import(
+          '@/lib/schema/variant-derivation'
+        );
+        const derivedIcon = await derive(icon, spec);
+
+        editorStoreApi.setState((s) => {
+          if (!s.project) return s;
+          return {
+            project: {
+              ...s.project,
+              icons: {
+                ...s.project.icons,
+                [iconId]: derivedIcon,
+              },
+            },
+          };
+        });
+      } finally {
+        editorStoreApi.setState({ isDeriving: false });
+        temporalState.resume();
+        temporalState.commit(`derive:${spec.modifier}`);
       }
     },
   };

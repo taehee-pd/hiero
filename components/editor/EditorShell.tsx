@@ -46,6 +46,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { toast } from '@/components/ui/use-toast';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import type {
   Icon,
@@ -364,17 +365,25 @@ function LeftSidebar({
                 Add
               </button>
             </div>
-            {variants.map((variant) => (
-              <button
-                key={variant.id}
-                type="button"
-                data-active={variant.id === currentVariantId ? 'true' : 'false'}
-                className="wire-list-row"
-                onClick={() => onSelectVariant(variant.id)}
-              >
-                <span>{formatVariantLabel(variant)}</span>
-              </button>
-            ))}
+            {variants.map((variant) => {
+              const isDerived = variant.id.includes('.');
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  data-active={variant.id === currentVariantId ? 'true' : 'false'}
+                  className="wire-list-row"
+                  onClick={() => onSelectVariant(variant.id)}
+                >
+                  <span>{formatVariantLabel(variant)}</span>
+                  {isDerived && (
+                    <span className="ml-auto rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
+                      derived
+                    </span>
+                  )}
+                </button>
+              );
+            })}
 
             <div className="wire-section-header">
               <span>States</span>
@@ -966,6 +975,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const viewport = useEditorStore((s) => s.viewport);
   const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
+  const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
+  const isDeriving = useEditorStore((s) => s.isDeriving);
   const currentGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const currentIcon = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId] ?? null) : null,
@@ -1430,6 +1441,30 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
 
         <main className="wire-canvas-shell">
           <div className="wire-canvas-area">
+            {currentIcon?.meta?.derivedSpecs && currentIcon.meta.derivedSpecs.length > 0 &&
+              currentVariantId &&
+              currentIcon.meta.derivedSpecs.some((s) => s.baseVariantId === currentVariantId) && (
+              <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+                <span>This variant has derived variants. Changes may require re-derivation.</span>
+                <button
+                  type="button"
+                  disabled={isDeriving}
+                  className="ml-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    if (!currentIcon || !currentVariantId || isDeriving) return;
+                    const specs = currentIcon.meta?.derivedSpecs?.filter(
+                      (s) => s.baseVariantId === currentVariantId,
+                    ) ?? [];
+                    for (const spec of specs) {
+                      await applyDerivedVariantAction(currentIcon.id, spec);
+                    }
+                    toast({ title: `Re-derived ${specs.length} variant(s)` });
+                  }}
+                >
+                  {isDeriving ? 'Deriving…' : 'Re-derive'}
+                </button>
+              </div>
+            )}
             {currentIcon && currentVariant && currentState ? (
               <Canvas showStatusHud={false} />
             ) : (

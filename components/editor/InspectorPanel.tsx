@@ -57,6 +57,10 @@ import {
 import { selectCurrentState } from '@/lib/editor-store/selectors';
 import { editorStore, VARIANT_SIZE_PRESETS } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
+import {
+  availableModifiers,
+  createDerivedVariantSpec,
+} from '@/lib/schema/variant-derivation';
 import type { GradientStop, Layer, PaintRef, SymbolScale, SymbolWeight, Variant } from '@/lib/schema/types';
 import type { NodeType, PathSegment, SubPath } from '@/lib/editor-core';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from '@/lib/editor-core/parse';
@@ -156,6 +160,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentState);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
+  const isDeriving = useEditorStore((s) => s.isDeriving);
+  const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentStateId = useEditorStore((s) => s.currentStateId);
   const colorTokens = useEditorStore(
@@ -639,6 +645,66 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       );
                     })}
                   </div>
+                </div>
+              </Section>
+              <Separator />
+              <Section title="Derive Variants">
+                <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Generate fill, slash, circle, square, and badge variants from the current variant.
+                  </p>
+                  {currentIcon && currentVariantId ? (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        {availableModifiers(currentIcon, currentVariantId).map((modifier) => (
+                          <Button
+                            key={modifier}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isDeriving}
+                            onClick={async () => {
+                              try {
+                                const spec = createDerivedVariantSpec(currentVariantId, modifier);
+                                await applyDerivedVariantAction(currentIcon.id, spec);
+                                toast({ title: `Derived ${modifier} variant` });
+                              } catch (err) {
+                                console.error('Derivation failed:', err);
+                                toast({ variant: 'destructive', title: 'Derivation failed' });
+                              }
+                            }}
+                          >
+                            {isDeriving ? <LoaderCircle className="size-3 animate-spin" /> : null}
+                            {modifier}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        disabled={isDeriving || availableModifiers(currentIcon, currentVariantId).length === 0}
+                        onClick={async () => {
+                          try {
+                            const modifiers = availableModifiers(currentIcon, currentVariantId);
+                            for (const modifier of modifiers) {
+                              const spec = createDerivedVariantSpec(currentVariantId, modifier);
+                              await applyDerivedVariantAction(currentIcon.id, spec);
+                            }
+                            toast({ title: `Derived ${modifiers.length} variants` });
+                          } catch (err) {
+                            console.error('Batch derivation failed:', err);
+                            toast({ variant: 'destructive', title: 'Derivation failed' });
+                          }
+                        }}
+                      >
+                        {isDeriving ? <LoaderCircle className="size-3 animate-spin mr-1" /> : null}
+                        Derive All
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Select an icon and variant first.</p>
+                  )}
                 </div>
               </Section>
               <Separator />

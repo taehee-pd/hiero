@@ -1,5 +1,5 @@
-import { EditorShell } from '@/components/editor/EditorShell';
+import { EditorShellClient } from '@/components/editor/EditorShellClient';
 
 export default function EditorIndexPage() {
-  return <EditorShell />;
+  return <EditorShellClient />;
 }

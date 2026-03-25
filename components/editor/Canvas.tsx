@@ -18,7 +18,6 @@ import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { Rulers } from './Rulers';
 import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
-import type { SubPath } from '@/lib/editor-core/path-model';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
 import { showNativeContextMenu } from '@/lib/platform/bridge';
@@ -442,22 +441,18 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           pendingPenHandle?.pointKey === pointKey
             ? pendingPenHandle
             : null;
-        // Corner and static points should NOT show bezier handles — they
-        // are sharp corners / line endpoints with no tangent control.
-        // Only smooth/symmetric points show handles. Pending pen-tool
-        // handles are also suppressed for non-curve point types.
-        const hasCurveHandles =
-          point.nodeType === 'smooth' || point.nodeType === 'symmetric';
-        const handleIn =
-          showControls && hasCurveHandles
-            ? pendingHandleForPoint?.handleIn ??
-              getControlHandlePosition(subPath, pointIndex, 'in')
-            : null;
-        const handleOut =
-          showControls && hasCurveHandles
-            ? pendingHandleForPoint?.handleOut ??
-              getControlHandlePosition(subPath, pointIndex, 'out')
-            : null;
+        // Show bezier handles only when actual handle data exists on the
+        // point (from parsed cubic/quadratic curves).  No fabrication —
+        // if the point's handleIn/Out is null the handle is not rendered.
+        // Corner points keep their handles visible (they are real tangent
+        // data, just non-collinear).  Pending pen-tool handles override
+        // when actively drawing.
+        const handleIn = showControls
+          ? pendingHandleForPoint?.handleIn ?? point.handleIn
+          : null;
+        const handleOut = showControls
+          ? pendingHandleForPoint?.handleOut ?? point.handleOut
+          : null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;
@@ -872,34 +867,6 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     </div>
   );
 });
-
-function getControlHandlePosition(
-  subPath: SubPath,
-  pointIndex: number,
-  direction: 'in' | 'out',
-): { x: number; y: number } | null {
-  const point = subPath.points[pointIndex];
-  if (!point) return null;
-
-  if (direction === 'in') {
-    if (point.handleIn) return point.handleIn;
-    const prev = subPath.points[pointIndex - 1];
-    if (!prev) return null;
-    return interpolatePoint(point.position, prev.position, 1 / 3);
-  }
-
-  if (point.handleOut) return point.handleOut;
-  const next = subPath.points[pointIndex + 1];
-  if (!next) return null;
-  return interpolatePoint(point.position, next.position, 1 / 3);
-}
-
-function interpolatePoint(a: { x: number; y: number }, b: { x: number; y: number }, t: number) {
-  return {
-    x: a.x + (b.x - a.x) * t,
-    y: a.y + (b.y - a.y) * t,
-  };
-}
 
 function renderControlHandle(
   svg: SVGSVGElement,

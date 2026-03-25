@@ -448,28 +448,35 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         // where collinear handles always appear on both sides.
         // Corner points show only the handles that actually exist (no
         // mirroring — the two sides are independent).
+        // Pen-tool pending handles always render regardless of nodeType
+        // because the point stays 'static' until pointer-up commits it.
         const isMirrored =
           point.nodeType === 'smooth' || point.nodeType === 'symmetric';
-        const rawIn = pendingHandleForPoint?.handleIn ?? point.handleIn;
-        const rawOut = pendingHandleForPoint?.handleOut ?? point.handleOut;
+        const hasPrev = pointIndex > 0 || subPath.closed;
+        const hasNext =
+          pointIndex < subPath.points.length - 1 || subPath.closed;
+        const rawIn =
+          pendingHandleForPoint?.handleIn ?? point.handleIn;
+        const rawOut =
+          pendingHandleForPoint?.handleOut ?? point.handleOut;
         const handleIn = showControls
           ? rawIn ??
-            (isMirrored && rawOut
+            (isMirrored && rawOut && hasPrev
               ? {
                   x: 2 * point.position.x - rawOut.x,
                   y: 2 * point.position.y - rawOut.y,
                 }
               : null)
-          : null;
+          : pendingHandleForPoint?.handleIn ?? null;
         const handleOut = showControls
           ? rawOut ??
-            (isMirrored && rawIn
+            (isMirrored && rawIn && hasNext
               ? {
                   x: 2 * point.position.x - rawIn.x,
                   y: 2 * point.position.y - rawIn.y,
                 }
               : null)
-          : null;
+          : pendingHandleForPoint?.handleOut ?? null;
 
         const transformX = layer.transform?.x ?? 0;
         const transformY = layer.transform?.y ?? 0;

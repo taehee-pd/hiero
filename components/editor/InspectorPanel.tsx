@@ -40,6 +40,7 @@ import { Switch } from '@/components/kibo-ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorPickerPopover } from './ColorPickerPopover';
+import { WeightCurveEditor } from './WeightCurveEditor';
 import {
   alignLayers,
   computeTopology,
@@ -526,6 +527,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
                 {currentVariant ? (
                   <WeightControlPointsEditor
+                    weightControlPoints={currentVariant.weightControlPoints}
+                    onPatchVariant={handlePatchVariant}
+                  />
+                ) : null}
+
+                {currentVariant ? (
+                  <WeightCurveEditor
                     weightControlPoints={currentVariant.weightControlPoints}
                     onPatchVariant={handlePatchVariant}
                   />

@@ -441,17 +441,34 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           pendingPenHandle?.pointKey === pointKey
             ? pendingPenHandle
             : null;
-        // Show bezier handles only when actual handle data exists on the
-        // point (from parsed cubic/quadratic curves).  No fabrication —
-        // if the point's handleIn/Out is null the handle is not rendered.
-        // Corner points keep their handles visible (they are real tangent
-        // data, just non-collinear).  Pending pen-tool handles override
-        // when actively drawing.
+        // Show bezier handles from real parsed data.  For smooth/symmetric
+        // points that only have a handle on one side (e.g. cubic→arc or
+        // cubic→line transitions), derive the missing handle by mirroring
+        // through the anchor — this is standard vector-editor behavior
+        // where collinear handles always appear on both sides.
+        // Corner points show only the handles that actually exist (no
+        // mirroring — the two sides are independent).
+        const isMirrored =
+          point.nodeType === 'smooth' || point.nodeType === 'symmetric';
+        const rawIn = pendingHandleForPoint?.handleIn ?? point.handleIn;
+        const rawOut = pendingHandleForPoint?.handleOut ?? point.handleOut;
         const handleIn = showControls
-          ? pendingHandleForPoint?.handleIn ?? point.handleIn
+          ? rawIn ??
+            (isMirrored && rawOut
+              ? {
+                  x: 2 * point.position.x - rawOut.x,
+                  y: 2 * point.position.y - rawOut.y,
+                }
+              : null)
           : null;
         const handleOut = showControls
-          ? pendingHandleForPoint?.handleOut ?? point.handleOut
+          ? rawOut ??
+            (isMirrored && rawIn
+              ? {
+                  x: 2 * point.position.x - rawIn.x,
+                  y: 2 * point.position.y - rawIn.y,
+                }
+              : null)
           : null;
 
         const transformX = layer.transform?.x ?? 0;

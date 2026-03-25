@@ -69,6 +69,7 @@ import { cn } from '@/lib/utils';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 import { canonicalizeLayerPath } from '@/lib/runtime-core/path-normalization';
 import { generateAutoGradient } from '@/lib/rendering/auto-gradient';
+import { getPaintFieldMode } from '@/lib/editor-core/paint-field-mode';
 
 const BOOLEAN_ACTIONS: Array<{
   mode: BooleanMode;
@@ -2300,18 +2301,7 @@ function PaintField({
   const [draggingStopIndex, setDraggingStopIndex] = useState<number | null>(null);
   const gradientBarRef = useRef<HTMLDivElement | null>(null);
 
-  const paintMode =
-    paint?.mode === 'linearGradient' || paint?.mode === 'radialGradient'
-      ? paint.mode
-      : paint?.mode === 'fixed' && paint.value === 'none'
-        ? fillModeOptions
-          ? 'currentFill'
-          : 'currentColor'
-      : paint?.mode === 'currentColor'
-        ? fillModeOptions
-          ? 'currentFill'
-          : 'currentColor'
-        : 'solid';
+  const paintMode = getPaintFieldMode(paint, Boolean(fillModeOptions));
   const solidValue =
     !fillModeOptions && paint?.mode === 'currentColor'
       ? 'currentColor'

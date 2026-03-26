@@ -139,7 +139,7 @@ export function ExplorerShell() {
   const [inlineNewProject, setInlineNewProject] = useState(false);
   const [inlineNewProjectValue, setInlineNewProjectValue] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
-  const { projects: recentProjects, isLoading: recentLoading, refresh: refreshRecent, loadProject: loadSavedProject, deleteProject: deleteSavedProject, setCurrentProjectId } = useProjectList();
+  const { projects: recentProjects, isLoading: _recentLoading, refresh: refreshRecent, loadProject: loadSavedProject, deleteProject: deleteSavedProject, setCurrentProjectId } = useProjectList();
 
   useEffect(() => {
     setDesktop(isDesktop());

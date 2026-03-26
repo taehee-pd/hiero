@@ -111,7 +111,6 @@ function SyncTargetCard({
   onPublish: (targetId: string, semver: 'patch' | 'minor' | 'major') => void;
 }) {
   const [tokenInput, setTokenInput] = useState('');
-  const [showToken, setShowToken] = useState(false);
   const isNpm = target.deliveryMode === 'npm-registry' && target.npmRegistry;
 
   return (

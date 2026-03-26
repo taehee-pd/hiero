@@ -11,21 +11,12 @@
 'use client';
 
 import type { Workspace } from '@/lib/schema/types';
-import { isWorkspace } from '@/lib/schema/guards';
 import {
   getRecentProjects,
   saveProject,
   setCurrentProjectPath,
 } from '@/lib/platform/bridge';
 import type { PersistenceAdapter, ProjectMeta, SavedProject } from './adapter';
-
-function countIcons(workspace: Workspace): number {
-  let count = 0;
-  for (const setId of Object.keys(workspace.iconSets)) {
-    count += Object.keys(workspace.iconSets[setId].icons).length;
-  }
-  return count;
-}
 
 export class FileSystemAdapter implements PersistenceAdapter {
   async list(): Promise<ProjectMeta[]> {

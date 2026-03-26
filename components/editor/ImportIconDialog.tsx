@@ -163,6 +163,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     } finally {
       setFigmaImporting(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [figmaFileKey, figmaToken]);
 
   async function runSvgImport(input: { svg: string; name: string; tags?: string[]; provenance?: { adapterId: string; sourceLibrary?: string; sourceVersion?: string; sourceIconId?: string; sourceLicense?: string; importedAt: string } }) {

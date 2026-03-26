@@ -29,6 +29,18 @@ export type SyncTarget = {
     typescript?: boolean;
     /** Output subdirectory inside the target. */
     outputDir?: string;
+    /** [Swift] Minimum iOS version (e.g. "15", "16", "17"). */
+    minIosVersion?: string;
+    /** [Swift] UI framework: "swiftui" or "uikit". */
+    uiFramework?: 'swiftui' | 'uikit';
+    /** [Flutter] Minimum Flutter SDK version (e.g. "3.0.0"). */
+    flutterSdkMin?: string;
+    /** [Flutter] Dart package name. */
+    dartPackageName?: string;
+    /** [Web Component] Custom element prefix (e.g. "coniva"). */
+    customElementPrefix?: string;
+    /** [Web Component] Whether to use Shadow DOM. Default true. */
+    shadowDom?: boolean;
   };
   /** Local-directory connector config. */
   localDirectory?: {

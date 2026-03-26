@@ -145,3 +145,14 @@ export function useProjectList() {
     createNewProject,
   };
 }
+
+/**
+ * Reset the persistence manager's project ID for a fresh workspace.
+ * Call this when creating a new project (e.g. Toolbar "New Project")
+ * to prevent overwriting the previously saved project.
+ */
+export function resetPersistenceForNewProject(): void {
+  const manager = getManager();
+  const id = manager.generateId();
+  manager.setProjectId(id);
+}

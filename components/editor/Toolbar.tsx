@@ -41,6 +41,7 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
+import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
 import {
   Sheet,
   SheetContent,
@@ -128,6 +129,7 @@ export function Toolbar() {
 
   const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
+    resetPersistenceForNewProject();
     editorStore.getState().newProject();
   }, []);
 

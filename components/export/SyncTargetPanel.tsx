@@ -208,8 +208,15 @@ function SyncTargetCard({
                 variant="outline"
                 className="h-7 text-xs"
                 disabled={!tokenInput.trim()}
-                onClick={() => {
-                  // Store the token indicator (actual token stored via keychain on desktop)
+                onClick={async () => {
+                  try {
+                    // Store token in platform keychain (desktop) or skip (web)
+                    const { setNpmToken } = await import('@/lib/platform/keychain');
+                    await setNpmToken(target.id, tokenInput.trim());
+                  } catch {
+                    // Web environment — keychain unavailable. Token will be
+                    // passed via server-side env var for npm publish proxy.
+                  }
                   onUpdate(target.id, {
                     npmRegistry: { ...target.npmRegistry!, tokenStored: true },
                   });
@@ -320,16 +327,16 @@ function AddTargetForm({
 
     // Platform-specific adapter config extensions
     if (platform === 'swift') {
-      (target.adapterConfig as Record<string, unknown>).minIosVersion = minIosVersion;
-      (target.adapterConfig as Record<string, unknown>).uiFramework = swiftUIMode;
+      target.adapterConfig!.minIosVersion = minIosVersion;
+      target.adapterConfig!.uiFramework = swiftUIMode;
     }
     if (platform === 'flutter') {
-      (target.adapterConfig as Record<string, unknown>).flutterSdkMin = flutterSdkMin || undefined;
-      (target.adapterConfig as Record<string, unknown>).dartPackageName = dartPackageName || undefined;
+      target.adapterConfig!.flutterSdkMin = flutterSdkMin || undefined;
+      target.adapterConfig!.dartPackageName = dartPackageName || undefined;
     }
     if (platform === 'web-component') {
-      (target.adapterConfig as Record<string, unknown>).customElementPrefix = customElementPrefix || 'coniva';
-      (target.adapterConfig as Record<string, unknown>).shadowDom = shadowDom;
+      target.adapterConfig!.customElementPrefix = customElementPrefix || 'coniva';
+      target.adapterConfig!.shadowDom = shadowDom;
     }
 
     if (deliveryMode === 'local-directory') {

@@ -1,6 +1,6 @@
 # Coniva — Design Document (Single Source of Truth)
 
-**Last updated:** 2026-03-24
+**Last updated:** 2026-03-26
 **Product:** Coniva — icon authoring tool with SF Symbols-grade animation capabilities
 **gstack design docs:** `~/.gstack/projects/taehee-pd-icon-authoring-tool/`
 
@@ -43,100 +43,20 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 └──────────────────────────────────────────────────────────────┘
 ```
 
-## Engineering Backlog (Priority Order)
+## Engineering Status
 
-Per the 2026-03-23 engineering review: **Q → M → N → P → O**
+All 23 engineering phases (1–8, C–Q) are shipped. See `TASKS.md` for the summary table.
 
-| Phase | Name | Status | PR | Key Deliverable |
-|-------|------|--------|----|-----------------|
-| Q | NPM Registry Distribution | **shipped** | #73 | `npm-registry` delivery mode, auto-publish, keychain tokens |
-| M | Lottie Export | **shipped** | #74 | `exportLottie()`, lottie-web preview, downgrade diagnostics |
-| N | Derived Variant Generation | **shipped** | #75 | fill/slash/circle/square/badge derivation via Paper.js booleans |
-| P | Import Ecosystem | **shipped** | #76 | Heroicons, Phosphor, Material Symbols adapters + batch import |
-| O | Cubic Weight Interpolation | planned | — | Variable font-like weight system |
+**Production readiness gaps** are tracked in `PLAN.md` (7 gaps: G1–G7).
+The gaps are primarily UI wiring and distribution — the core engine is complete.
 
-## Phase Q — NPM Registry Distribution (shipped)
-
-**Problem:** Designers sync icons via git PR, then a developer must manually
-`npm publish`. This handoff breaks the designer→developer workflow.
-
-**Solution:** Add `npm-registry` as a third delivery mode. Designers click Publish
-(or auto-publish on save with 5-min cooldown + cancel). Token lives in OS keychain
-(desktop) or server-side env var (web) — never in project JSON.
-
-**Key decisions:**
-- Auto-publish is the PRIMARY workflow, manual is fallback
-- Auto semver from `diffCompiledIcons()` (add→minor, modify→patch, remove→major)
-- `SyncConnector<TRequest, TResult>` generic interface for all delivery modes
-- Web proxy at `/api/publish-npm` matches GitHub sync security pattern
-
-**Files:** `npm-connector.ts`, `keychain.ts`, `auto-publish.ts`, `route.ts` (publish-npm)
-
-## Phase M — Lottie Export (shipped)
-
-**Problem:** Coniva can only export its runtime JSON format. Mobile platforms
-(Android, iOS, React Native) use Lottie — the de-facto animated icon standard.
-
-**Solution:** `exportLottie(icon, variantId, options?)` converts Coniva icons to
-Lottie 5.x JSON. Includes morph sampling, trim paths, effects, and lottie-web preview.
-
-**Key decisions:**
-- Uses `strictMorph()`/`bestGuessMorph()` directly — no `interpolatePaths()`
-- Frame count always integer: `Math.round(durationMs / 1000 * fr)`
-- `lottie-web` is regular dependency, lazy-loaded with feature flag
-- Downgrade diagnostics in separate `lottie-downgrade.ts` (not `downgrade-rules.ts`)
-- Spring easing approximated as ease-in-out cubic-bezier
-
-**Files:** `export-lottie.ts`, `lottie-downgrade.ts`, `LottieExportPanel.tsx`
-
-## Phase N — Derived Variant Generation (shipped)
-
-**Problem:** SF Symbols supports modifier variants (fill, circle, square, slash, badge)
-generated from a base icon. Coniva had metadata scaffolding but no path boolean engine.
-
-**Solution:** `applyDerivedVariant(icon, spec)` generates derived variants via Paper.js
-boolean ops. Fill derivation is a pure style transform (stroke→fill). Slash/badge use
-`booleanOp('subtract')`, circle/square use `booleanOp('unite')`.
-
-**Key decisions:**
-- `isDeriving` flag in EditorState prevents concurrent Paper.js scope corruption
-- `meta.derivedSpecs` stores derivation history for re-derive support
-- Re-derive warning banner shows above canvas when base variant has derivations
-- Corner points in derived paths don't show bezier handles (UX fix shipped alongside)
-
-**Files:** `variant-derivation.ts` (engine), `store.ts` (isDeriving + action),
-`InspectorPanel.tsx` (Derive Variant panel), `EditorShell.tsx` (re-derive banner +
-derived badge in variant list), `tests/derived-variants.test.ts` (16 tests)
-
-## Phase P — Import Ecosystem (shipped)
-
-**Problem:** Teams with existing icon libraries (Heroicons, Phosphor, Material Symbols)
-couldn't import them into Coniva for animation authoring.
-
-**Solution:** Three new import adapters following the Lucide build-time manifest pattern.
-Each adapter has a source resolver (manifest + icon loading) and an adapter (fetch + search).
-
-**Adapters shipped:**
-- **Heroicons** (@heroicons/react) — outline/solid, SVG extracted from React components
-- **Phosphor** (@phosphor-icons/core) — 6 weights, mapping: thin→ultralight, light→light,
-  regular→regular, bold→bold (fill/duotone skipped as rendering styles)
-- **Material Symbols** (@material-symbols/svg-400) — outlined/rounded/sharp, 2800+ icons
-
-**UX additions:**
-- Capability badges per adapter (Searchable, weight count, license)
-- Batch import (comma-separated names, max 50, progress indicator)
-- P4 (SF Symbols) deleted due to Apple license restrictions
-
-**Files:** 6 adapter files, 3 API routes, `ImportIconDialog.tsx` (updated UI),
-3 test files (32 tests)
-
-## Phase O — Cubic Weight Interpolation (planned)
-
-**Problem:** Variable font-style weight interpolation requires cubic control points
-instead of linear weight stops.
-
-**Key constraints (from eng review):**
-- `WeightControlPoints` type change is breaking — all callers need null-check updates
+| Key shipped phases | Key deliverable |
+|--------------------|-----------------|
+| Q — NPM Registry | `npm-registry` delivery mode, auto-publish, keychain tokens |
+| M — Lottie Export | `exportLottie()`, lottie-web preview, downgrade diagnostics |
+| N — Derived Variants | fill/slash/circle/square/badge derivation via Paper.js booleans |
+| P — Import Ecosystem | Heroicons, Phosphor, Material Symbols adapters + batch import |
+| O — Cubic Weight | Fritsch-Carlson monotone spline, 9-point controls |
 
 ## Security Posture
 
@@ -145,9 +65,18 @@ instead of linear weight stops.
 - **File upload:** Path traversal protection + package.json sanitization (strict allowlist, `--ignore-scripts`).
 - **Auth pattern:** Fail-fast — auth check before request validation in all API routes.
 
-## Design Docs (per-branch, in ~/.gstack/)
+## Canonical Documentation Index
 
-| Branch | Date | Doc |
-|--------|------|-----|
-| claude/eng-review-phases-MQ-8Qm1p | 2026-03-24 | Phase Q design (NPM Registry) |
-| phase-m/lottie-export | 2026-03-24 | Phase M design (Lottie Export) |
+| Document | Purpose |
+|----------|---------|
+| `PLAN.md` | Production readiness plan — gaps, technical specs, full IA |
+| `TASKS.md` | Open items + shipped phase summary table |
+| `ARCHITECTURE.md` | System architecture, module boundaries, data flow |
+| `REPO_MAP.md` | Repository structure and key entry points |
+| `TESTING.md` | Test strategy, runner, coverage expectations |
+| `WORKFLOWS.md` | Development, build, deploy, CI workflows |
+| `STYLEGUIDE.md` | Code conventions, naming, formatting |
+| `IMPORT_ADAPTER_SDK.md` | Import adapter lifecycle and test contract |
+| `SYNC_TROUBLESHOOTING.md` | Sync pipeline error codes and resolution |
+| `UX_AUDIT_PHASE2.md` | Deep code review of UX/a11y issues (reference for G7) |
+| `UX_AUDIT_TASKS.md` | UX flow audit with severity-ranked tasks |

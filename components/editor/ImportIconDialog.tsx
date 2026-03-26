@@ -1,7 +1,9 @@
 'use client';
 
-import { useReducer, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useCallback, useReducer, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Link2, Loader2, Search } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { parseFigmaUrl } from '@/lib/import/adapters/figma-source';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,7 +28,7 @@ type Prepared = {
   iconName: string;
 };
 
-type LibrarySourceId = 'raw-svg' | 'lucide' | 'heroicons' | 'phosphor' | 'material-symbols';
+type LibrarySourceId = 'raw-svg' | 'lucide' | 'heroicons' | 'phosphor' | 'material-symbols' | 'figma';
 
 const LIBRARY_SOURCES: Array<{
   id: LibrarySourceId;
@@ -34,6 +36,7 @@ const LIBRARY_SOURCES: Array<{
   badges?: string[];
 }> = [
   { id: 'raw-svg', label: 'Raw SVG' },
+  { id: 'figma', label: 'Figma', badges: ['Searchable', 'File URL'] },
   { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
   { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
   { id: 'phosphor', label: 'Phosphor', badges: ['Searchable', '4 weights', 'MIT'] },
@@ -49,6 +52,119 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [batchNames, setBatchNames] = useState('');
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Figma-specific state
+  const [figmaUrl, setFigmaUrl] = useState('');
+  const [figmaToken, setFigmaToken] = useState('');
+  const [figmaConnected, setFigmaConnected] = useState(false);
+  const [figmaConnecting, setFigmaConnecting] = useState(false);
+  const [figmaFileKey, setFigmaFileKey] = useState('');
+  const [figmaUserName, setFigmaUserName] = useState('');
+  const [figmaComponents, setFigmaComponents] = useState<Array<{ key: string; name: string; nodeId: string; thumbnailUrl: string; frame: string | null }>>([]);
+  const [figmaComponentTotal, setFigmaComponentTotal] = useState(0);
+  const [figmaSearch, setFigmaSearch] = useState('');
+  const [figmaSearching, setFigmaSearching] = useState(false);
+  const [figmaImporting, setFigmaImporting] = useState<string | null>(null);
+  const [figmaError, setFigmaError] = useState<string | null>(null);
+
+  const connectFigma = useCallback(async () => {
+    setFigmaError(null);
+    const parsed = parseFigmaUrl(figmaUrl);
+    if (!parsed) {
+      setFigmaError('Invalid Figma URL. Use: figma.com/design/:fileKey/...');
+      return;
+    }
+    if (!figmaToken.trim()) {
+      setFigmaError('Personal access token is required.');
+      return;
+    }
+    setFigmaConnecting(true);
+    try {
+      // Validate token
+      const valRes = await fetch('/api/import/figma', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'validate', token: figmaToken.trim() }),
+      });
+      if (!valRes.ok) {
+        setFigmaError('Invalid token. Generate one at figma.com/developers/api#access-tokens');
+        return;
+      }
+      const valData = await valRes.json() as { user: { handle: string } };
+      setFigmaUserName(valData.user.handle);
+
+      // Fetch components
+      const compRes = await fetch('/api/import/figma', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'components', fileKey: parsed.fileKey, token: figmaToken.trim() }),
+      });
+      if (!compRes.ok) {
+        setFigmaError('Could not access file. Check the URL and permissions.');
+        return;
+      }
+      const compData = await compRes.json() as { components: typeof figmaComponents; total: number };
+      setFigmaComponents(compData.components);
+      setFigmaComponentTotal(compData.total);
+      setFigmaFileKey(parsed.fileKey);
+      setFigmaConnected(true);
+    } catch {
+      setFigmaError('Network error connecting to Figma.');
+    } finally {
+      setFigmaConnecting(false);
+    }
+  }, [figmaUrl, figmaToken]);
+
+  const searchFigmaComponents = useCallback(async (query: string) => {
+    if (!figmaFileKey || !figmaToken) return;
+    setFigmaSearching(true);
+    try {
+      const res = await fetch('/api/import/figma', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'components', fileKey: figmaFileKey, token: figmaToken.trim(), query }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { components: typeof figmaComponents; total: number };
+        setFigmaComponents(data.components);
+      }
+    } finally {
+      setFigmaSearching(false);
+    }
+  }, [figmaFileKey, figmaToken]);
+
+  const importFigmaComponent = useCallback(async (nodeId: string, name: string) => {
+    if (!figmaFileKey || !figmaToken) return;
+    setFigmaImporting(nodeId);
+    try {
+      const res = await fetch('/api/import/figma', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'import', fileKey: figmaFileKey, nodeId, token: figmaToken.trim(), name }),
+      });
+      if (!res.ok) {
+        dispatch({ type: 'failed', message: `Failed to import "${name}" from Figma.` });
+        return;
+      }
+      const payload = await res.json() as {
+        svgContent: string;
+        suggestedName: string;
+        suggestedTags?: string[];
+        provenance: { adapterId: string; sourceLibrary?: string; sourceIconId?: string; importedAt: string };
+      };
+      await runSvgImport({
+        svg: payload.svgContent,
+        name: payload.suggestedName,
+        tags: payload.suggestedTags,
+        provenance: payload.provenance,
+      });
+    } catch {
+      dispatch({ type: 'failed', message: `Network error importing "${name}" from Figma.` });
+    } finally {
+      setFigmaImporting(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [figmaFileKey, figmaToken]);
 
   async function runSvgImport(input: { svg: string; name: string; tags?: string[]; provenance?: { adapterId: string; sourceLibrary?: string; sourceVersion?: string; sourceIconId?: string; sourceLicense?: string; importedAt: string } }) {
     dispatch({ type: 'start_validating' });
@@ -164,7 +280,130 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          {sourceId === 'raw-svg' ? (
+          {sourceId === 'figma' ? (
+            <div className="space-y-3">
+              {!figmaConnected ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="figma-url">Figma file URL</Label>
+                    <Input
+                      id="figma-url"
+                      value={figmaUrl}
+                      onChange={(e) => setFigmaUrl(e.target.value)}
+                      placeholder="https://figma.com/design/ABC123/My-Icons"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="figma-token">Personal access token</Label>
+                    <Input
+                      id="figma-token"
+                      type="password"
+                      value={figmaToken}
+                      onChange={(e) => setFigmaToken(e.target.value)}
+                      placeholder="figd_..."
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Generate at figma.com → Settings → Personal access tokens. Token is sent per-request and never stored.
+                    </p>
+                  </div>
+                  {figmaError && (
+                    <p className="text-sm text-destructive">{figmaError}</p>
+                  )}
+                  <Button
+                    disabled={figmaConnecting || !figmaUrl.trim() || !figmaToken.trim()}
+                    onClick={() => void connectFigma()}
+                    className="gap-1.5"
+                  >
+                    {figmaConnecting ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+                    {figmaConnecting ? 'Connecting...' : 'Connect'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="font-medium text-foreground">Connected</span>
+                      <span className="ml-2 text-muted-foreground">as {figmaUserName}</span>
+                      <span className="ml-2 rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {figmaComponentTotal} components
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFigmaConnected(false);
+                        setFigmaComponents([]);
+                        setFigmaFileKey('');
+                        setFigmaSearch('');
+                      }}
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={figmaSearch}
+                      onChange={(e) => {
+                        setFigmaSearch(e.target.value);
+                        void searchFigmaComponents(e.target.value);
+                      }}
+                      placeholder="Search components..."
+                      className="pl-8"
+                    />
+                  </div>
+
+                  <ScrollArea className="h-64 rounded-lg border border-border/70">
+                    {figmaSearching ? (
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 size-4 animate-spin" /> Searching...
+                      </div>
+                    ) : figmaComponents.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">
+                        {figmaSearch ? 'No components match your search.' : 'No components found in this file.'}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1 p-2 sm:grid-cols-3">
+                        {figmaComponents.map((c) => (
+                          <button
+                            key={c.nodeId}
+                            type="button"
+                            disabled={figmaImporting === c.nodeId || busy}
+                            className="flex flex-col items-center gap-1.5 rounded-lg border border-border/50 p-2 text-center transition hover:bg-accent disabled:opacity-50"
+                            onClick={() => void importFigmaComponent(c.nodeId, c.name)}
+                          >
+                            {c.thumbnailUrl ? (
+                              <img
+                                src={c.thumbnailUrl}
+                                alt={c.name}
+                                className="size-10 object-contain"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="flex size-10 items-center justify-center rounded bg-muted text-xs text-muted-foreground">?</div>
+                            )}
+                            <span className="max-w-full truncate text-[11px] font-medium text-foreground">
+                              {c.name}
+                            </span>
+                            {c.frame && (
+                              <span className="max-w-full truncate text-[9px] text-muted-foreground">
+                                {c.frame}
+                              </span>
+                            )}
+                            {figmaImporting === c.nodeId && (
+                              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </>
+              )}
+            </div>
+          ) : sourceId === 'raw-svg' ? (
             <Tabs defaultValue="paste">
               <TabsList>
                 <TabsTrigger value="paste">Paste SVG</TabsTrigger>

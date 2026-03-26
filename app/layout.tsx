@@ -7,6 +7,7 @@ import '@fontsource/work-sans/400.css';
 import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
 import { DesktopCommandBridge } from '@/components/platform/DesktopCommandBridge';
+import { AutoSaveProvider } from '@/components/persistence/AutoSaveProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
@@ -55,6 +56,7 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <DesktopCommandBridge />
+          <AutoSaveProvider />
           {children}
           <Analytics />
         </ThemeProvider>

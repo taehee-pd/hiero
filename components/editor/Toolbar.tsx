@@ -8,6 +8,7 @@ import {
   FolderOpen,
   Save,
   Download,
+  FileJson,
   FilePlus2,
   HelpCircle,
   ZoomIn,
@@ -39,6 +40,14 @@ import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
+import { LottieExportPanel } from '@/components/export/LottieExportPanel';
+import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
 import {
   Dialog,
@@ -79,6 +88,7 @@ export function Toolbar() {
     s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
   );
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [lottieSheetOpen, setLottieSheetOpen] = useState(false);
   const [toolbarError, setToolbarError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -119,6 +129,7 @@ export function Toolbar() {
 
   const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
+    resetPersistenceForNewProject();
     editorStore.getState().newProject();
   }, []);
 
@@ -428,6 +439,11 @@ export function Toolbar() {
                     <Download className="size-4" />
                     Export React Library
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
+                    <FileJson className="size-4" />
+                    Export Lottie JSON
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <TooltipContent side="bottom">More exports</TooltipContent>
@@ -497,6 +513,17 @@ export function Toolbar() {
       )}
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
+      <Sheet open={lottieSheetOpen} onOpenChange={setLottieSheetOpen}>
+        <SheetContent side="right" className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Export Lottie JSON</SheetTitle>
+          </SheetHeader>
+          <div className="px-1 py-4">
+            <LottieExportPanel />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={confirmNewProjectOpen} onOpenChange={setConfirmNewProjectOpen}>
         <AlertDialogContent>

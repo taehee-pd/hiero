@@ -47,6 +47,7 @@ import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { toast } from '@/components/ui/use-toast';
+import { Toolbar } from '@/components/editor/Toolbar';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import type {
   Icon,
@@ -1353,6 +1354,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   return (
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
       {desktop ? <TitleTabBar /> : null}
+      <Toolbar />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/* Mobile/tablet sidebar toggle */}

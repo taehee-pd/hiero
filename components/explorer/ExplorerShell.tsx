@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowUpRight,
   ChevronRight,
+  Clock,
   Ellipsis,
   FolderOpen,
   Grid3X3,
   Import,
   LayoutGrid,
+  Package,
   Pencil,
   Plus,
   Search,
@@ -44,11 +46,13 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
+import { SyncTargetPanel } from '@/components/export/SyncTargetPanel';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { clearCurrentProjectPath, isDesktop, showNativeContextMenu } from '@/lib/platform/bridge';
+import { useProjectList } from '@/lib/persistence/use-persistence';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
@@ -135,6 +139,7 @@ export function ExplorerShell() {
   const [inlineNewProject, setInlineNewProject] = useState(false);
   const [inlineNewProjectValue, setInlineNewProjectValue] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
+  const { projects: recentProjects, isLoading: _recentLoading, refresh: refreshRecent, loadProject: loadSavedProject, deleteProject: deleteSavedProject, setCurrentProjectId } = useProjectList();
 
   useEffect(() => {
     setDesktop(isDesktop());
@@ -142,11 +147,34 @@ export function ExplorerShell() {
 
   useEffect(() => {
     const state = editorStore.getState();
-    if (!state.workspace) {
+    if (state.workspace) return;
+
+    // On web, try loading the most recent project from IndexedDB
+    if (!isDesktop()) {
+      void (async () => {
+        try {
+          const { IndexedDBAdapter } = await import('@/lib/persistence/indexeddb-adapter');
+          const adapter = new IndexedDBAdapter();
+          const list = await adapter.list();
+          if (list.length > 0) {
+            const saved = await adapter.load(list[0].id);
+            if (saved) {
+              setCurrentProjectId(saved.id);
+              state.loadWorkspace(saved.data);
+              return;
+            }
+          }
+        } catch {
+          // IndexedDB unavailable (e.g. incognito) — fall through to sample
+        }
+        clearCurrentProjectPath();
+        state.loadWorkspace(SAMPLE_WORKSPACE);
+      })();
+    } else {
       clearCurrentProjectPath();
       state.loadWorkspace(SAMPLE_WORKSPACE);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
 
@@ -228,7 +256,8 @@ export function ExplorerShell() {
     setQuery('');
     setSelection([]);
     setActiveFilter({ kind: 'all' });
-  }, []);
+    void refreshRecent();
+  }, [refreshRecent]);
 
   const exportIconsToZip = (iconIds: string[], suffix: string) => {
     if (!project || iconIds.length === 0) return;
@@ -452,6 +481,8 @@ export function ExplorerShell() {
           )}
         </nav>
 
+        <PendingPublishBadge />
+
         <div className="flex-1" />
 
         <div className="relative w-56">
@@ -556,6 +587,18 @@ export function ExplorerShell() {
             const target = iconSets.find((iconSet) => iconSet.id === iconSetId) ?? null;
             setDeleteProjectTarget(target);
             setDeleteConfirmValue('');
+          }}
+          recentProjects={desktop ? [] : recentProjects}
+          onLoadRecent={async (id) => {
+            const saved = await loadSavedProject(id);
+            if (saved) {
+              setCurrentProjectId(saved.id);
+              editorStore.getState().loadWorkspace(saved.data);
+              void refreshRecent();
+            }
+          }}
+          onDeleteRecent={async (id) => {
+            await deleteSavedProject(id);
           }}
         />
       ) : (
@@ -713,6 +756,9 @@ function WorkspaceView({
   onInlineNewProjectCancel,
   onRenameProject,
   onDeleteProject,
+  recentProjects,
+  onLoadRecent,
+  onDeleteRecent,
 }: {
   iconSets: WorkspaceIconSet[];
   onEnterProject: (id: string) => void;
@@ -725,6 +771,9 @@ function WorkspaceView({
   onInlineNewProjectCancel: () => void;
   onRenameProject: (id: string) => void;
   onDeleteProject: (id: string) => void;
+  recentProjects?: Array<{ id: string; name: string; updatedAt: number; iconCount: number }>;
+  onLoadRecent?: (id: string) => void;
+  onDeleteRecent?: (id: string) => void;
 }) {
   return (
     <ScrollArea className="workspace-scroll flex-1">
@@ -791,9 +840,113 @@ function WorkspaceView({
             />
           </div>
         )}
+
+        {recentProjects && recentProjects.length > 0 && (
+          <div className="mt-10">
+            <div className="mb-4 flex items-center gap-2.5">
+              <Clock className="size-4 text-muted-foreground" />
+              <h3 className="text-[length:var(--text-body)] font-medium text-foreground">Saved Projects</h3>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-muted-foreground">
+                {recentProjects.length}
+              </span>
+            </div>
+            <div className="space-y-1">
+              {recentProjects.map((rp) => (
+                <div
+                  key={rp.id}
+                  className="group/recent flex items-center justify-between rounded-lg px-3 py-2 transition hover:bg-accent"
+                >
+                  <button
+                    type="button"
+                    className="flex flex-1 items-center gap-3 text-left"
+                    onClick={() => onLoadRecent?.(rp.id)}
+                  >
+                    <FolderOpen className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{rp.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {rp.iconCount} icon{rp.iconCount !== 1 ? 's' : ''} · {formatRelativeTime(rp.updatedAt)}
+                      </p>
+                    </div>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-6 opacity-0 transition-opacity group-hover/recent:opacity-100"
+                    onClick={() => onDeleteRecent?.(rp.id)}
+                    aria-label={`Delete saved project ${rp.name}`}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </ScrollArea>
   );
+}
+
+function PendingPublishBadge() {
+  const pendingPublish = useEditorStore((s) => s.pendingPublish);
+  const { cancelPendingPublish } = useEditorActions();
+  const [remaining, setRemaining] = useState('');
+
+  useEffect(() => {
+    if (!pendingPublish) {
+      setRemaining('');
+      return;
+    }
+
+    const COUNTDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+    const update = () => {
+      const elapsed = Date.now() - pendingPublish.scheduledAt;
+      const left = Math.max(0, COUNTDOWN_MS - elapsed);
+      if (left <= 0) {
+        setRemaining('publishing...');
+        return;
+      }
+      const mins = Math.floor(left / 60000);
+      const secs = Math.floor((left % 60000) / 1000);
+      setRemaining(`${mins}:${secs.toString().padStart(2, '0')}`);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [pendingPublish]);
+
+  if (!pendingPublish) return null;
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+      <Package className="size-3.5" />
+      <span className="font-medium">
+        Publishing {pendingPublish.semver} in {remaining}
+      </span>
+      <button
+        type="button"
+        className="rounded px-1.5 py-0.5 font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/40"
+        onClick={cancelPendingPublish}
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
 }
 
 function ProjectCard({
@@ -1124,6 +1277,10 @@ function ProjectDetailView({
               </Button>
             </section>
           )}
+
+          <section>
+            <SyncTargetPanel />
+          </section>
         </div>
       </aside>
 

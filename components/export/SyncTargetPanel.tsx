@@ -196,7 +196,7 @@ function SyncTargetCard({
               <div className="flex-1 space-y-1">
                 <Label className="text-[10px]">npm token</Label>
                 <Input
-                  type={showToken ? 'text' : 'password'}
+                  type="password"
                   placeholder="npm_..."
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}

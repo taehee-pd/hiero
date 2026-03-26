@@ -60,7 +60,7 @@ export type SyncTarget = {
     /** When to auto-publish. */
     on: 'save' | 'manual';
     /** Semver bump strategy for auto-publish. */
-    semver: 'patch' | 'minor';
+    semver: 'patch' | 'minor' | 'major';
   };
   /** When true, run the full pipeline but skip actual publish. */
   dryRun?: boolean;

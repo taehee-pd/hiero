@@ -11,6 +11,7 @@ import { lucideAdapter } from './lucide-adapter';
 import { heroiconsAdapter } from './heroicons-adapter';
 import { phosphorAdapter } from './phosphor-adapter';
 import { materialSymbolsAdapter } from './material-symbols-adapter';
+import { figmaAdapter } from './figma-adapter';
 
 export function registerBuiltinAdapters(): void {
   const adapters = [
@@ -19,6 +20,7 @@ export function registerBuiltinAdapters(): void {
     heroiconsAdapter,
     phosphorAdapter,
     materialSymbolsAdapter,
+    figmaAdapter,
   ];
   for (const adapter of adapters) {
     if (!adapterRegistry.get(adapter.descriptor.id)) {
@@ -32,3 +34,4 @@ export { lucideAdapter } from './lucide-adapter';
 export { heroiconsAdapter } from './heroicons-adapter';
 export { phosphorAdapter } from './phosphor-adapter';
 export { materialSymbolsAdapter } from './material-symbols-adapter';
+export { figmaAdapter } from './figma-adapter';

@@ -1,0 +1,122 @@
+# Flutter Integration Guide
+
+Use Coniva icons in Flutter apps with full animation and state support.
+
+## Install
+
+```yaml
+# pubspec.yaml
+dependencies:
+  coniva_icons: ^1.0.0
+```
+
+```bash
+flutter pub get
+```
+
+## Basic Usage
+
+```dart
+import 'package:coniva_icons/coniva_icons.dart';
+
+class MyWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ConivaIcon(
+      name: 'home',
+      size: 24,
+    );
+  }
+}
+```
+
+## States & Transitions
+
+```dart
+class InteractiveIcon extends StatefulWidget {
+  @override
+  _InteractiveIconState createState() => _InteractiveIconState();
+}
+
+class _InteractiveIconState extends State<InteractiveIcon> {
+  String _state = 'default';
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() {
+        _state = _state == 'default' ? 'active' : 'default';
+      }),
+      child: ConivaIcon(
+        name: 'home',
+        state: _state,
+        animate: true,
+      ),
+    );
+  }
+}
+```
+
+## Variants
+
+```dart
+ConivaIcon(name: 'home', variant: '32px')
+ConivaIcon(name: 'home', variant: 'filled')
+```
+
+## Effects
+
+```dart
+ConivaIcon(
+  name: 'bell',
+  effect: 'bounce',
+  onEffectComplete: (effectId) => print('$effectId done'),
+)
+```
+
+## Variable Value
+
+```dart
+ConivaIcon(
+  name: 'wifi',
+  variableValue: 0.75, // 0.0 to 1.0
+)
+```
+
+## Accessibility
+
+```dart
+Semantics(
+  label: 'Home',
+  child: ConivaIcon(name: 'home'),
+)
+```
+
+## Reduced Motion
+
+Respects `MediaQuery.of(context).disableAnimations` by default.
+
+```dart
+ConivaIcon(name: 'home', reduceMotion: false) // Force animations
+```
+
+## Controller API
+
+```dart
+final controller = ConivaIconController();
+
+ConivaIcon(
+  name: 'home',
+  controller: controller,
+)
+
+// Programmatic control
+controller.transitionTo('active');
+controller.triggerEffect('bounce');
+controller.cancelAllEffects();
+```
+
+## Requirements
+
+- Flutter 3.0+
+- Dart 2.17+

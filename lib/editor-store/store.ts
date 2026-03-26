@@ -18,6 +18,7 @@ import type {
   Variant,
   RenderingMode,
   GitHubSyncSettings,
+  SyncTarget,
 } from '@/lib/schema/types';
 import {
   createWorkspaceFromProject,
@@ -73,6 +74,12 @@ export type EditorState = {
   activeTabId: string | null;
   /** Phase N: true while a derived variant is being generated. */
   isDeriving: boolean;
+  /** G4: Pending npm publish with countdown. */
+  pendingPublish: {
+    targetId: string;
+    scheduledAt: number;
+    semver: 'patch' | 'minor' | 'major';
+  } | null;
 };
 
 export type EditorTab = {
@@ -182,6 +189,11 @@ export type EditorActions = {
   renameIconSet(iconSetId: string, name: string): void;
   setActiveIconSet(iconSetId: string): void;
   updateIconSetSync(iconSetId: string, sync: GitHubSyncSettings | undefined): void;
+  addSyncTarget(target: SyncTarget): void;
+  updateSyncTarget(id: string, patch: Partial<SyncTarget>): void;
+  removeSyncTarget(id: string): void;
+  schedulePendingPublish(targetId: string, semver: 'patch' | 'minor' | 'major'): void;
+  cancelPendingPublish(): void;
   openIconTab(iconSetId: string, iconId: string, options?: { focus?: boolean }): string | null;
   closeIconTab(tabId: string): void;
   setActiveTab(tabId: string): void;
@@ -298,6 +310,7 @@ const initialState: EditorState = {
   openTabs: [],
   activeTabId: null,
   isDeriving: false,
+  pendingPublish: null,
 };
 
 let currentState: EditorStore;
@@ -2858,6 +2871,66 @@ function createActions(): EditorActions {
           project: s.activeIconSetId === iconSetId ? nextIconSet : s.project,
         };
       });
+    },
+
+    addSyncTarget(target) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const existing = s.project.syncTargets ?? [];
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: [...existing, target],
+          },
+        };
+      });
+    },
+
+    updateSyncTarget(id, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const existing = s.project.syncTargets ?? [];
+        const idx = existing.findIndex((t) => t.id === id);
+        if (idx === -1) return s;
+        const updated = [...existing];
+        updated[idx] = { ...updated[idx], ...patch };
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: updated,
+          },
+        };
+      });
+    },
+
+    removeSyncTarget(id) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const existing = s.project.syncTargets ?? [];
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: existing.filter((t) => t.id !== id),
+          },
+        };
+      });
+    },
+
+    schedulePendingPublish(targetId, semver) {
+      editorStoreApi.setState({
+        pendingPublish: {
+          targetId,
+          scheduledAt: Date.now(),
+          semver,
+        },
+      });
+    },
+
+    cancelPendingPublish() {
+      editorStoreApi.setState({ pendingPublish: null });
     },
 
     openIconTab(iconSetId, iconId, options) {

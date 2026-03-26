@@ -1,0 +1,195 @@
+/**
+ * Contract tests for PersistenceAdapter interface.
+ * Uses an in-memory adapter to verify the behavioral contract
+ * that any implementation (IndexedDB, filesystem) must satisfy.
+ */
+
+import { describe, it, expect, beforeEach } from 'bun:test';
+import type { PersistenceAdapter, ProjectMeta, SavedProject } from '@/lib/persistence/adapter';
+import type { Workspace } from '@/lib/schema/types';
+
+// ---------------------------------------------------------------------------
+// In-memory adapter (test double)
+// ---------------------------------------------------------------------------
+
+class InMemoryAdapter implements PersistenceAdapter {
+  private store = new Map<
+    string,
+    { id: string; name: string; data: Workspace; updatedAt: number; iconCount: number }
+  >();
+
+  async list(): Promise<ProjectMeta[]> {
+    return Array.from(this.store.values())
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        updatedAt: r.updatedAt,
+        iconCount: r.iconCount,
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async load(id: string): Promise<SavedProject | null> {
+    const record = this.store.get(id);
+    if (!record) return null;
+    return { id: record.id, name: record.name, data: record.data, updatedAt: record.updatedAt };
+  }
+
+  async save(id: string, data: Workspace): Promise<void> {
+    let iconCount = 0;
+    for (const setId of Object.keys(data.iconSets)) {
+      iconCount += Object.keys(data.iconSets[setId].icons).length;
+    }
+    this.store.set(id, {
+      id,
+      name: data.meta.name,
+      data,
+      updatedAt: Date.now(),
+      iconCount,
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    this.store.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Test fixture
+// ---------------------------------------------------------------------------
+
+function makeWorkspace(name: string, iconCount = 0): Workspace {
+  const icons: Record<string, unknown> = {};
+  for (let i = 0; i < iconCount; i++) {
+    const id = `icon_${i}`;
+    icons[id] = {
+      id,
+      name: `Icon ${i}`,
+      category: 'test',
+      tags: [],
+      variants: {},
+      components: [],
+    };
+  }
+  return {
+    version: '2.0',
+    meta: {
+      name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    iconSets: {
+      default: {
+        version: '1.0',
+        meta: {
+          name,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        icons,
+      } as Workspace['iconSets'][string],
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Contract tests
+// ---------------------------------------------------------------------------
+
+describe('PersistenceAdapter contract', () => {
+  let adapter: PersistenceAdapter;
+
+  beforeEach(() => {
+    adapter = new InMemoryAdapter();
+  });
+
+  it('list returns empty array when no projects saved', async () => {
+    const list = await adapter.list();
+    expect(list).toEqual([]);
+  });
+
+  it('save + load round-trips a workspace', async () => {
+    const ws = makeWorkspace('Test Project', 3);
+    await adapter.save('p1', ws);
+
+    const loaded = await adapter.load('p1');
+    expect(loaded).not.toBeNull();
+    expect(loaded!.id).toBe('p1');
+    expect(loaded!.name).toBe('Test Project');
+    expect(loaded!.data.version).toBe('2.0');
+    expect(loaded!.data.meta.name).toBe('Test Project');
+  });
+
+  it('save + list returns metadata with icon count', async () => {
+    const ws = makeWorkspace('My Icons', 5);
+    await adapter.save('p1', ws);
+
+    const list = await adapter.list();
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe('p1');
+    expect(list[0].name).toBe('My Icons');
+    expect(list[0].iconCount).toBe(5);
+    expect(typeof list[0].updatedAt).toBe('number');
+  });
+
+  it('list returns projects sorted by most recently updated', async () => {
+    const ws1 = makeWorkspace('First');
+    await adapter.save('p1', ws1);
+
+    // Small delay to ensure different timestamps
+    await new Promise((r) => setTimeout(r, 5));
+
+    const ws2 = makeWorkspace('Second');
+    await adapter.save('p2', ws2);
+
+    const list = await adapter.list();
+    expect(list).toHaveLength(2);
+    expect(list[0].name).toBe('Second');
+    expect(list[1].name).toBe('First');
+  });
+
+  it('save overwrites existing project with same ID', async () => {
+    await adapter.save('p1', makeWorkspace('Version 1', 2));
+    await adapter.save('p1', makeWorkspace('Version 2', 4));
+
+    const list = await adapter.list();
+    expect(list).toHaveLength(1);
+    expect(list[0].name).toBe('Version 2');
+    expect(list[0].iconCount).toBe(4);
+  });
+
+  it('load returns null for non-existent ID', async () => {
+    const loaded = await adapter.load('nonexistent');
+    expect(loaded).toBeNull();
+  });
+
+  it('delete removes a project', async () => {
+    await adapter.save('p1', makeWorkspace('To Delete'));
+    await adapter.delete('p1');
+
+    const loaded = await adapter.load('p1');
+    expect(loaded).toBeNull();
+    const list = await adapter.list();
+    expect(list).toHaveLength(0);
+  });
+
+  it('delete is a no-op for non-existent ID', async () => {
+    await adapter.delete('nonexistent');
+    const list = await adapter.list();
+    expect(list).toEqual([]);
+  });
+
+  it('multiple projects coexist independently', async () => {
+    await adapter.save('p1', makeWorkspace('Project A', 1));
+    await adapter.save('p2', makeWorkspace('Project B', 2));
+    await adapter.save('p3', makeWorkspace('Project C', 3));
+
+    const list = await adapter.list();
+    expect(list).toHaveLength(3);
+
+    await adapter.delete('p2');
+    const updated = await adapter.list();
+    expect(updated).toHaveLength(2);
+    expect(updated.map((p) => p.name).sort()).toEqual(['Project A', 'Project C']);
+  });
+});

@@ -148,10 +148,13 @@ If you need animation between two different icons (e.g., play → pause, bell-of
 
 Cross-icon transitions are embedded in the compiled output. In product code, trigger them the same way as any state transition — the runtime resolves the authored endpoints automatically.
 
-**React:**
+**React (via generated components):**
 ```tsx
+// Import the generated wrapper — it includes the compiled icon payload
+import IcPlay from '@coniva/icons/icons/IcPlay';
+
 // State change triggers the authored cross-icon transition
-<ConivaIcon icon={playPauseIcon} state={isPlaying ? 'pause' : 'play'} animate />
+<IcPlay state={isPlaying ? 'pause' : 'play'} animate />
 ```
 
 **Vanilla JS:**
@@ -187,14 +190,15 @@ For **Next.js App Router**: icon components must render in client components (`'
 
 ## Vanilla JS / Vue / Angular / Svelte
 
-Use `createIcon()` from the runtime-dom package to mount icons in any DOM container.
+Use `createIcon()` from the `@coniva/runtime-dom` package to mount icons in any DOM container. Icon data is the `Icon` schema object — your build pipeline (or the icons package's generated TypeScript) provides it.
 
 ```ts
-import { createIcon } from '@coniva/icons/runtime-dom';
-import bellIcon from '@coniva/icons/icons/bell.compiled.json';
+import { createIcon } from '@coniva/runtime-dom';
 
+// iconData is the Icon schema object, typically embedded in generated components
+// or loaded from your own artifact pipeline
 const container = document.getElementById('bell-icon')!;
-const driver = createIcon(container, bellIcon, {
+const driver = createIcon(container, iconData, {
   initialState: 'default',
   reduceMotion: 'system',
   label: 'Notifications',

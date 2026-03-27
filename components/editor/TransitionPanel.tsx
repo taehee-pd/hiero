@@ -17,6 +17,8 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Icon, Transition, TransitionEndpoint, LayerBinding, Layer, State, TransitionStagger, StateTrigger, Variant } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
+import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
+import { applyTransitionPreview, clearTransitionPreview } from '@/lib/editor-renderer-svg/preview-svg';
 
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
 
@@ -91,6 +93,10 @@ export const TransitionPanel = memo(function TransitionPanel() {
   // UX-F10: Collapsible section state per transition
   const [collapsedSections, setCollapsedSections] = useState<Record<string, Set<string>>>({});
   const schedulerRef = useRef<TransitionScheduler | null>(null);
+  const previewSvgRef = useRef<SVGSVGElement>(null);
+
+  const renderingMode = useEditorStore((s) => s.renderingMode);
+  const tokens = useEditorStore((s) => s.project?.tokenSet?.colors);
 
   // Cross-icon: derived lists for source and target endpoint pickers
   const iconEntries = useMemo(
@@ -223,6 +229,43 @@ export const TransitionPanel = memo(function TransitionPanel() {
     },
     [applyPreviewFrame, handlePlaybackComplete, stopScheduler],
   );
+
+  // Render the mini inline preview SVG whenever activePreview changes.
+  useEffect(() => {
+    const svg = previewSvgRef.current;
+    if (!svg || !currentIcon || !currentVariant) return;
+
+    if (!activePreview) {
+      svg.innerHTML = '';
+      return;
+    }
+
+    const baseState = currentVariant.states[activePreview.baseStateId];
+    const targetState = currentVariant.states[activePreview.targetStateId] ?? null;
+    if (!baseState) return;
+
+    renderSvg(
+      {
+        icon: currentIcon,
+        variantId: currentVariant.id,
+        stateId: activePreview.baseStateId,
+        renderingMode,
+        tokens,
+      },
+      svg,
+    );
+
+    clearTransitionPreview(svg, baseState);
+    applyTransitionPreview(svg, {
+      baseState,
+      targetState,
+      progress: activePreview.progress,
+      resolvedTransition: activePreview.resolved,
+      interpolatedValues: interpolateTransitionValues(activePreview.resolved, activePreview.progress),
+      renderingMode,
+      tokens,
+    });
+  }, [activePreview, currentIcon, currentVariant, renderingMode, tokens]);
 
   const beginPreview = useCallback(
     (transition: Transition) => {
@@ -822,6 +865,17 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
                 {isActive ? (
                   <div className="mt-3 grid gap-2 rounded-xl border border-border/70 bg-muted/15 p-3">
+                    {/* Inline preview viewport */}
+                    <div className="flex items-center justify-center rounded-lg bg-background/60 p-2">
+                      <svg
+                        ref={previewSvgRef}
+                        viewBox={currentVariant ? currentVariant.viewBox.join(' ') : '0 0 24 24'}
+                        width={currentVariant?.viewBox[2] ?? 24}
+                        height={currentVariant?.viewBox[3] ?? 24}
+                        className="h-16 w-16"
+                        aria-hidden
+                      />
+                    </div>
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { Plus, Trash2, FolderOpen, GitBranch, Package } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, GitBranch, Package, Key, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,41 +26,27 @@ function generateId(): string {
 
 export function SyncTargetPanel() {
   const project = useEditorStore((s) => s.project);
-  const _actions = useEditorActions();
+  const { addSyncTarget, removeSyncTarget, updateSyncTarget, schedulePendingPublish } = useEditorActions();
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const targets: SyncTarget[] = useMemo(
-    () => ((project as Record<string, unknown>)?.syncTargets as SyncTarget[] | undefined) ?? [],
-    [project],
-  );
-
-  const updateTargets = useCallback(
-    (next: SyncTarget[]) => {
-      // syncTargets lives on the IconSet; use updateProjectMeta for the meta
-      // but we need to patch the project directly. Since the store's patchable
-      // surface may not include syncTargets yet, we reach through to the
-      // loadProject mechanism. For now, update via a custom approach.
-      // In practice this would be wired into the editor store's project patch.
-      if (project) {
-        (project as Record<string, unknown>).syncTargets = next;
-      }
-    },
+    () => project?.syncTargets ?? [],
     [project],
   );
 
   const handleRemove = useCallback(
     (id: string) => {
-      updateTargets(targets.filter((t) => t.id !== id));
+      removeSyncTarget(id);
     },
-    [targets, updateTargets],
+    [removeSyncTarget],
   );
 
   const handleAdd = useCallback(
     (target: SyncTarget) => {
-      updateTargets([...targets, target]);
+      addSyncTarget(target);
       setIsAddOpen(false);
     },
-    [targets, updateTargets],
+    [addSyncTarget],
   );
 
   return (
@@ -95,7 +81,13 @@ export function SyncTargetPanel() {
       ) : (
         <div className="grid gap-2">
           {targets.map((target) => (
-            <SyncTargetCard key={target.id} target={target} onRemove={handleRemove} />
+            <SyncTargetCard
+              key={target.id}
+              target={target}
+              onRemove={handleRemove}
+              onUpdate={updateSyncTarget}
+              onPublish={schedulePendingPublish}
+            />
           ))}
         </div>
       )}
@@ -110,72 +102,169 @@ export function SyncTargetPanel() {
 function SyncTargetCard({
   target,
   onRemove,
+  onUpdate,
+  onPublish,
 }: {
   target: SyncTarget;
   onRemove: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<SyncTarget>) => void;
+  onPublish: (targetId: string, semver: 'patch' | 'minor' | 'major') => void;
 }) {
+  const [tokenInput, setTokenInput] = useState('');
+  const isNpm = target.deliveryMode === 'npm-registry' && target.npmRegistry;
+
   return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-background/70 p-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          {target.deliveryMode === 'local-directory' ? (
-            <FolderOpen className="size-4 text-muted-foreground" />
-          ) : target.deliveryMode === 'npm-registry' ? (
-            <Package className="size-4 text-muted-foreground" />
-          ) : (
-            <GitBranch className="size-4 text-muted-foreground" />
-          )}
-          <p className="text-sm font-medium text-foreground">{target.name}</p>
-        </div>
-        <div className="mt-1 flex flex-wrap gap-1">
-          <Badge variant="secondary" className="text-[10px]">
-            {target.platform}
-          </Badge>
-          <Badge variant="outline" className="text-[10px]">
-            {target.deliveryMode}
-          </Badge>
-          {target.deliveryMode === 'local-directory' && target.localDirectory ? (
-            <span className="text-[10px] text-muted-foreground">
-              {target.localDirectory.path}
-            </span>
-          ) : null}
-          {target.deliveryMode === 'git-pr' && target.gitPr ? (
-            <span className="text-[10px] text-muted-foreground">
-              {target.gitPr.owner}/{target.gitPr.repo}
-            </span>
-          ) : null}
-          {target.deliveryMode === 'npm-registry' && target.npmRegistry ? (
-            <>
+    <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            {target.deliveryMode === 'local-directory' ? (
+              <FolderOpen className="size-4 text-muted-foreground" />
+            ) : target.deliveryMode === 'npm-registry' ? (
+              <Package className="size-4 text-muted-foreground" />
+            ) : (
+              <GitBranch className="size-4 text-muted-foreground" />
+            )}
+            <p className="text-sm font-medium text-foreground">{target.name}</p>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            <Badge variant="secondary" className="text-[10px]">
+              {target.platform}
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {target.deliveryMode}
+            </Badge>
+            {target.deliveryMode === 'local-directory' && target.localDirectory ? (
               <span className="text-[10px] text-muted-foreground">
-                {target.npmRegistry.packageName}
+                {target.localDirectory.path}
               </span>
-              {target.npmRegistry.lastPublishedVersion ? (
-                <Badge variant="secondary" className="text-[10px]">
-                  v{target.npmRegistry.lastPublishedVersion}
-                </Badge>
-              ) : null}
-              {target.autoPublish?.on === 'save' ? (
-                <Badge variant="outline" className="text-[10px] text-green-600">
-                  auto-publish
-                </Badge>
-              ) : null}
-              {target.dryRun ? (
-                <Badge variant="outline" className="text-[10px] text-amber-600">
-                  dry-run
-                </Badge>
-              ) : null}
-            </>
-          ) : null}
+            ) : null}
+            {target.deliveryMode === 'git-pr' && target.gitPr ? (
+              <span className="text-[10px] text-muted-foreground">
+                {target.gitPr.owner}/{target.gitPr.repo}
+              </span>
+            ) : null}
+            {isNpm ? (
+              <>
+                <span className="text-[10px] text-muted-foreground">
+                  {target.npmRegistry!.packageName}
+                </span>
+                {target.npmRegistry!.lastPublishedVersion ? (
+                  <Badge variant="secondary" className="text-[10px]">
+                    v{target.npmRegistry!.lastPublishedVersion}
+                  </Badge>
+                ) : null}
+                {target.autoPublish?.on === 'save' ? (
+                  <Badge variant="outline" className="text-[10px] text-green-600">
+                    auto-publish
+                  </Badge>
+                ) : null}
+                {target.dryRun ? (
+                  <Badge variant="outline" className="text-[10px] text-amber-600">
+                    dry-run
+                  </Badge>
+                ) : null}
+                {target.npmRegistry!.tokenStored ? (
+                  <Badge variant="outline" className="text-[10px] text-emerald-600">
+                    <Key className="mr-0.5 size-2.5" /> token
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-amber-600">
+                    no token
+                  </Badge>
+                )}
+              </>
+            ) : null}
+          </div>
         </div>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => onRemove(target.id)}
+        >
+          <Trash2 className="size-4" />
+        </Button>
       </div>
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        className="text-muted-foreground hover:text-foreground"
-        onClick={() => onRemove(target.id)}
-      >
-        <Trash2 className="size-4" />
-      </Button>
+
+      {/* npm-registry: version management + token + publish */}
+      {isNpm && (
+        <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
+          {/* Token setup */}
+          {!target.npmRegistry!.tokenStored && (
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <Label className="text-[10px]">npm token</Label>
+                <Input
+                  type="password"
+                  placeholder="npm_..."
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={!tokenInput.trim()}
+                onClick={async () => {
+                  try {
+                    // Store token in platform keychain (desktop) or skip (web)
+                    const { setNpmToken } = await import('@/lib/platform/keychain');
+                    await setNpmToken(target.id, tokenInput.trim());
+                  } catch {
+                    // Web environment — keychain unavailable. Token will be
+                    // passed via server-side env var for npm publish proxy.
+                  }
+                  onUpdate(target.id, {
+                    npmRegistry: { ...target.npmRegistry!, tokenStored: true },
+                  });
+                  setTokenInput('');
+                }}
+              >
+                <Key className="mr-1 size-3" /> Save
+              </Button>
+            </div>
+          )}
+
+          {/* Version bump + publish */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-border/70 p-0.5">
+              {(['patch', 'minor', 'major'] as const).map((bump) => (
+                <button
+                  key={bump}
+                  type="button"
+                  className={`rounded-md px-2 py-0.5 text-[10px] font-medium transition ${
+                    (target.autoPublish?.semver ?? 'patch') === bump
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() =>
+                    onUpdate(target.id, {
+                      autoPublish: { ...target.autoPublish!, semver: bump },
+                    })
+                  }
+                >
+                  {bump}
+                </button>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              disabled={!target.npmRegistry!.tokenStored}
+              onClick={() => onPublish(target.id, (target.autoPublish?.semver as 'patch' | 'minor' | 'major') ?? 'patch')}
+            >
+              <Upload className="size-3" />
+              Publish
+            </Button>
+            {target.dryRun && (
+              <span className="text-[10px] text-amber-600">(dry-run)</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -206,6 +295,14 @@ function AddTargetForm({
   const [scope, setScope] = useState('');
   const [packageName, setPackageName] = useState('');
   const [autoPublishOn, setAutoPublishOn] = useState<'save' | 'manual'>('save');
+  // Platform-specific fields
+  const [typescript, setTypescript] = useState(true);
+  const [minIosVersion, setMinIosVersion] = useState('16');
+  const [swiftUIMode, setSwiftUIMode] = useState<'swiftui' | 'uikit'>('swiftui');
+  const [flutterSdkMin, setFlutterSdkMin] = useState('3.0.0');
+  const [dartPackageName, setDartPackageName] = useState('');
+  const [customElementPrefix, setCustomElementPrefix] = useState('coniva');
+  const [shadowDom, setShadowDom] = useState(true);
 
   const isValid =
     name.trim().length > 0 &&
@@ -223,9 +320,24 @@ function AddTargetForm({
       deliveryMode,
       adapterConfig: {
         runtimePackage: runtimePackage || undefined,
+        typescript: platform === 'react' ? typescript : undefined,
         outputDir: outputDir || undefined,
       },
     };
+
+    // Platform-specific adapter config extensions
+    if (platform === 'swift') {
+      target.adapterConfig!.minIosVersion = minIosVersion;
+      target.adapterConfig!.uiFramework = swiftUIMode;
+    }
+    if (platform === 'flutter') {
+      target.adapterConfig!.flutterSdkMin = flutterSdkMin || undefined;
+      target.adapterConfig!.dartPackageName = dartPackageName || undefined;
+    }
+    if (platform === 'web-component') {
+      target.adapterConfig!.customElementPrefix = customElementPrefix || 'coniva';
+      target.adapterConfig!.shadowDom = shadowDom;
+    }
 
     if (deliveryMode === 'local-directory') {
       target.localDirectory = { path: localPath.trim() };
@@ -394,6 +506,94 @@ function AddTargetForm({
             />
           </div>
         </div>
+
+        {/* Platform-specific fields */}
+        {platform === 'react' && (
+          <div className="grid gap-1.5">
+            <Label className="text-xs">TypeScript</Label>
+            <select
+              value={typescript ? 'yes' : 'no'}
+              onChange={(e) => setTypescript(e.target.value === 'yes')}
+              className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+            >
+              <option value="yes">TypeScript (.tsx)</option>
+              <option value="no">JavaScript (.jsx)</option>
+            </select>
+          </div>
+        )}
+
+        {platform === 'swift' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Min iOS Version</Label>
+              <select
+                value={minIosVersion}
+                onChange={(e) => setMinIosVersion(e.target.value)}
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="15">iOS 15</option>
+                <option value="16">iOS 16</option>
+                <option value="17">iOS 17</option>
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">UI Framework</Label>
+              <select
+                value={swiftUIMode}
+                onChange={(e) => setSwiftUIMode(e.target.value as 'swiftui' | 'uikit')}
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="swiftui">SwiftUI</option>
+                <option value="uikit">UIKit</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {platform === 'flutter' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Min Flutter SDK</Label>
+              <Input
+                placeholder="3.0.0"
+                value={flutterSdkMin}
+                onChange={(e) => setFlutterSdkMin(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Dart Package Name</Label>
+              <Input
+                placeholder="my_icons"
+                value={dartPackageName}
+                onChange={(e) => setDartPackageName(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {platform === 'web-component' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Element Prefix</Label>
+              <Input
+                placeholder="coniva"
+                value={customElementPrefix}
+                onChange={(e) => setCustomElementPrefix(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Shadow DOM</Label>
+              <select
+                value={shadowDom ? 'yes' : 'no'}
+                onChange={(e) => setShadowDom(e.target.value === 'yes')}
+                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              >
+                <option value="yes">Enabled</option>
+                <option value="no">Disabled</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>

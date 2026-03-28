@@ -441,7 +441,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           pendingPenHandle?.pointKey === pointKey
             ? pendingPenHandle
             : null;
-        // Show bezier handles from real parsed data. For smooth/symmetric
+        // Show bezier handles from real parsed data.  For smooth/symmetric
         // points that only have a handle on one side (e.g. cubic→arc or
         // cubic→line transitions), derive the missing handle by mirroring
         // through the anchor — this is standard vector-editor behavior
@@ -891,7 +891,6 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     </div>
   );
 });
-
 
 function renderControlHandle(
   svg: SVGSVGElement,

@@ -42,16 +42,20 @@ Optional:
 The desktop release script is:
 
 ```bash
-bun run desktop/scripts/release.ts --version <semver> --notes "<notes>"
+bun run desktop/scripts/release.ts --stable --version <semver> --notes "<notes>"
 ```
 
 That script:
 
+- validates stable-signing prerequisites before mutating the desktop version
 - bumps `desktop/package.json`
 - rebuilds the web export
 - stages the desktop mainview
-- runs the desktop distribution build
+- runs the stable desktop distribution build
 - validates the generated `latest.json` manifest before writing it
+- fails if no installer artifacts were produced
+
+For an unsigned local smoke-test release flow, omit `--stable`. The script will run the non-stable desktop build path instead of the signed distribution path.
 
 ## Update manifest validation
 

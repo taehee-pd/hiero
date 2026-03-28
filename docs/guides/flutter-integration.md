@@ -2,6 +2,8 @@
 
 Use Coniva icons in Flutter apps with full animation and state support.
 
+This guide assumes you are consuming generated Flutter output from the Coniva export pipeline.
+
 ## Install
 
 ```yaml
@@ -29,6 +31,8 @@ class MyWidget extends StatelessWidget {
   }
 }
 ```
+
+Generated Flutter packages usually ship a widget API plus painter/runtime support files. Prefer the generated widget entrypoints instead of reconstructing icon data manually.
 
 ## States & Transitions
 
@@ -115,6 +119,12 @@ controller.transitionTo('active');
 controller.triggerEffect('bounce');
 controller.cancelAllEffects();
 ```
+
+## Package Integration Tips
+
+- Publish the generated package internally if multiple Flutter apps share the same icon set.
+- Keep generated icons versioned independently from app releases when possible.
+- Treat breaking icon removals or renamed entrypoints as major package changes.
 
 ## Requirements
 

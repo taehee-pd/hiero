@@ -3,6 +3,10 @@
 import { useCallback, useReducer, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Link2, Loader2, Search } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  buildPluginImportEntries,
+  parseConivaPluginPayload,
+} from '@/lib/import/coniva-plugin-payload';
 import { parseFigmaUrl } from '@/lib/import/adapters/figma-source';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,7 +32,14 @@ type Prepared = {
   iconName: string;
 };
 
-type LibrarySourceId = 'raw-svg' | 'lucide' | 'heroicons' | 'phosphor' | 'material-symbols' | 'figma';
+type LibrarySourceId =
+  | 'raw-svg'
+  | 'coniva-plugin'
+  | 'lucide'
+  | 'heroicons'
+  | 'phosphor'
+  | 'material-symbols'
+  | 'figma';
 
 const LIBRARY_SOURCES: Array<{
   id: LibrarySourceId;
@@ -36,6 +47,7 @@ const LIBRARY_SOURCES: Array<{
   badges?: string[];
 }> = [
   { id: 'raw-svg', label: 'Raw SVG' },
+  { id: 'coniva-plugin', label: 'Coniva Plugin', badges: ['Batch', 'Figma export'] },
   { id: 'figma', label: 'Figma', badges: ['Searchable', 'File URL'] },
   { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
   { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
@@ -46,12 +58,20 @@ const LIBRARY_SOURCES: Array<{
 export function ImportIconDialog({ open, onOpenChange }: Props) {
   const [sourceId, setSourceId] = useState<LibrarySourceId>('raw-svg');
   const [rawSvg, setRawSvg] = useState('');
+  const [pluginPayloadText, setPluginPayloadText] = useState('');
   const [libraryIconName, setLibraryIconName] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const pluginFileRef = useRef<HTMLInputElement>(null);
   const [state, dispatch] = useReducer(reduceImportUxState, INITIAL_IMPORT_UX_STATE);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [batchNames, setBatchNames] = useState('');
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [pluginImportSummary, setPluginImportSummary] = useState<{
+    imported: number;
+    total: number;
+    skipped: number;
+    fileName: string;
+  } | null>(null);
 
   // Figma-specific state
   const [figmaUrl, setFigmaUrl] = useState('');
@@ -166,11 +186,21 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [figmaFileKey, figmaToken]);
 
-  async function runSvgImport(input: { svg: string; name: string; tags?: string[]; provenance?: { adapterId: string; sourceLibrary?: string; sourceVersion?: string; sourceIconId?: string; sourceLicense?: string; importedAt: string } }) {
-    dispatch({ type: 'start_validating' });
-    try {
+  const importSingleSvg = useCallback(
+    async (input: {
+      svg: string;
+      name: string;
+      tags?: string[];
+      provenance?: {
+        adapterId: string;
+        sourceLibrary?: string;
+        sourceVersion?: string;
+        sourceIconId?: string;
+        sourceLicense?: string;
+        importedAt: string;
+      };
+    }) => {
       const sanitized = sanitizeSvg(input.svg);
-      dispatch({ type: 'start_importing' });
       const normalized = normalizeSvg(sanitized.svg, {
         name: input.name,
         tags: input.tags,
@@ -181,13 +211,36 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         sourceName: input.name,
         existingIconIds: Object.keys(editorStore.getState().project?.icons ?? {}),
       });
-      setPrepared({ iconId: icon.id, iconName: icon.name });
       editorStore.getState().insertIcon(icon);
+      return { icon, normalized, sanitized };
+    },
+    [],
+  );
+
+  async function runSvgImport(input: {
+    svg: string;
+    name: string;
+    tags?: string[];
+    provenance?: {
+      adapterId: string;
+      sourceLibrary?: string;
+      sourceVersion?: string;
+      sourceIconId?: string;
+      sourceLicense?: string;
+      importedAt: string;
+    };
+  }) {
+    dispatch({ type: 'start_validating' });
+    setPluginImportSummary(null);
+    try {
+      const result = await importSingleSvg(input);
+      setPrepared({ iconId: result.icon.id, iconName: result.icon.name });
+      dispatch({ type: 'start_importing' });
       dispatch({
         type: 'prepared',
-        normalized,
-        previewSvg: sanitized.svg,
-        warnings: normalized.warnings,
+        normalized: result.normalized,
+        previewSvg: result.sanitized.svg,
+        warnings: result.normalized.warnings,
         sourceLabel: input.provenance?.sourceLibrary ?? sourceId,
       });
     } catch (error) {
@@ -197,6 +250,75 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
       });
     }
   }
+
+  const runPluginPayloadImport = useCallback(
+    async (payloadText: string) => {
+      dispatch({ type: 'start_validating' });
+      setPrepared(null);
+      setPluginImportSummary(null);
+      try {
+        const payload = parseConivaPluginPayload(payloadText);
+        const entries = buildPluginImportEntries(payload);
+        dispatch({ type: 'start_importing' });
+
+        let imported = 0;
+        let lastSuccessful:
+          | {
+              iconId: string;
+              iconName: string;
+              previewSvg: string;
+              normalized: ReturnType<typeof normalizeSvg>;
+            }
+          | null = null;
+
+        for (const entry of entries) {
+          try {
+            const result = await importSingleSvg(entry);
+            imported += 1;
+            lastSuccessful = {
+              iconId: result.icon.id,
+              iconName: result.icon.name,
+              previewSvg: result.sanitized.svg,
+              normalized: result.normalized,
+            };
+          } catch {
+            // Skip invalid entries and continue importing the rest.
+          }
+        }
+
+        if (!lastSuccessful) {
+          throw new Error('No icons from the plugin payload could be imported.');
+        }
+
+        setPrepared({
+          iconId: lastSuccessful.iconId,
+          iconName: lastSuccessful.iconName,
+        });
+        setPluginImportSummary({
+          imported,
+          total: payload.icons.length,
+          skipped: payload.icons.length - imported + (payload.skipped?.length ?? 0),
+          fileName: payload.fileName,
+        });
+        dispatch({
+          type: 'prepared',
+          normalized: lastSuccessful.normalized,
+          previewSvg: lastSuccessful.previewSvg,
+          warnings: lastSuccessful.normalized.warnings,
+          sourceLabel: 'Figma Plugin',
+        });
+      } catch (error) {
+        dispatch({
+          type: 'failed',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Plugin payload import failed. Please try again.',
+        });
+      }
+    },
+    [importSingleSvg],
+  );
 
   async function runLibraryImport(adapterId: string, iconName: string) {
     dispatch({ type: 'start_validating' });
@@ -249,11 +371,13 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import icon</DialogTitle>
-          <DialogDescription>Paste SVG, upload an SVG file, or fetch a Lucide icon by name.</DialogDescription>
+          <DialogDescription>
+            Paste SVG, import a Coniva Figma plugin payload, or fetch icons from built-in libraries.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-1">
+          <div className="space-y-1" role="group" aria-label="Import source">
             <Label>Source</Label>
             <div className="flex flex-wrap gap-2">
               {LIBRARY_SOURCES.map((source) => (
@@ -261,7 +385,12 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                   key={source.id}
                   size="sm"
                   variant={sourceId === source.id ? 'default' : 'outline'}
-                  onClick={() => { setSourceId(source.id); setLibraryIconName(''); setBatchNames(''); }}
+                  onClick={() => {
+                    setSourceId(source.id);
+                    setLibraryIconName('');
+                    setBatchNames('');
+                  }}
+                  aria-pressed={sourceId === source.id}
                   className="gap-1.5"
                 >
                   {source.label}
@@ -307,7 +436,9 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                     </p>
                   </div>
                   {figmaError && (
-                    <p className="text-sm text-destructive">{figmaError}</p>
+                    <p className="text-sm text-destructive" role="alert" aria-live="assertive">
+                      {figmaError}
+                    </p>
                   )}
                   <Button
                     disabled={figmaConnecting || !figmaUrl.trim() || !figmaToken.trim()}
@@ -403,9 +534,56 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                 </>
               )}
             </div>
+          ) : sourceId === 'coniva-plugin' ? (
+            <Tabs defaultValue="paste">
+              <TabsList aria-label="Coniva plugin import mode">
+                <TabsTrigger value="paste">Paste JSON</TabsTrigger>
+                <TabsTrigger value="upload">Upload JSON</TabsTrigger>
+              </TabsList>
+              <TabsContent value="paste" className="space-y-2">
+                <Label htmlFor="plugin-payload">Plugin payload JSON</Label>
+                <Textarea
+                  id="plugin-payload"
+                  value={pluginPayloadText}
+                  onChange={(e) => setPluginPayloadText(e.target.value)}
+                  className="min-h-40"
+                  placeholder='{"version":"1","source":"coniva-figma-plugin","icons":[...]}'
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Export from the Figma plugin, then paste the JSON payload here to import one or more icons.
+                </p>
+                <Button
+                  disabled={busy || !pluginPayloadText.trim()}
+                  onClick={() => void runPluginPayloadImport(pluginPayloadText)}
+                >
+                  Import Plugin Payload
+                </Button>
+              </TabsContent>
+              <TabsContent value="upload" className="space-y-2">
+                <Label htmlFor="plugin-payload-file">Plugin payload file</Label>
+                <input
+                  id="plugin-payload-file"
+                  ref={pluginFileRef}
+                  type="file"
+                  accept=".json,application/json"
+                />
+                <Button
+                  disabled={busy}
+                  onClick={async () => {
+                    const file = pluginFileRef.current?.files?.[0];
+                    if (!file) return;
+                    const payloadText = await file.text();
+                    setPluginPayloadText(payloadText);
+                    await runPluginPayloadImport(payloadText);
+                  }}
+                >
+                  Upload & Import
+                </Button>
+              </TabsContent>
+            </Tabs>
           ) : sourceId === 'raw-svg' ? (
             <Tabs defaultValue="paste">
-              <TabsList>
+              <TabsList aria-label="Raw SVG import mode">
                 <TabsTrigger value="paste">Paste SVG</TabsTrigger>
                 <TabsTrigger value="upload">Upload SVG</TabsTrigger>
               </TabsList>
@@ -475,10 +653,15 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
             </div>
           )}
 
-          {busy ? <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />{state.status}</div> : null}
+          {busy ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
+              <Loader2 className="size-4 animate-spin" />
+              {state.status}
+            </div>
+          ) : null}
 
           {state.status === 'failed' ? (
-            <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert" aria-live="assertive">
               <div className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />Import failed</div>
               <p>{state.errorMessage}</p>
               {DEBUG_IMPORT ? <pre className="mt-2 whitespace-pre-wrap text-xs">{JSON.stringify(state, null, 2)}</pre> : null}
@@ -494,6 +677,13 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
               <div className="space-y-2 rounded border p-3 text-sm">
                 <div><span className="text-muted-foreground">Source:</span> {state.sourceLabel}</div>
                 <div><span className="text-muted-foreground">Warnings:</span> {state.warnings.length}</div>
+                {pluginImportSummary ? (
+                  <div role="status" aria-live="polite">
+                    <span className="text-muted-foreground">Batch:</span>{' '}
+                    Imported {pluginImportSummary.imported} of {pluginImportSummary.total} from {pluginImportSummary.fileName}
+                    {pluginImportSummary.skipped > 0 ? `, skipped ${pluginImportSummary.skipped}` : ''}
+                  </div>
+                ) : null}
                 <div>
                   <span className="text-muted-foreground">Unsupported:</span>
                   <ul className="list-disc pl-5">

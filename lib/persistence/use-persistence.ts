@@ -57,11 +57,16 @@ export function useAutoSave(): void {
 
     // Subscribe to store changes — schedule save when workspace changes
     let prevWorkspace = editorStore.getState().workspace;
+    let prevDirty = editorStore.getState().isDirty;
 
     const unsubscribe = editorStore.subscribe(() => {
       const state = editorStore.getState();
-      if (state.workspace && state.workspace !== prevWorkspace) {
-        prevWorkspace = state.workspace;
+      const workspaceChanged = state.workspace !== prevWorkspace;
+      const dirtyBecameTrue = state.isDirty && !prevDirty;
+      prevWorkspace = state.workspace;
+      prevDirty = state.isDirty;
+
+      if (state.workspace && state.isDirty && (workspaceChanged || dirtyBecameTrue)) {
         manager.scheduleSave(state.workspace);
       }
     });

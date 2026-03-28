@@ -45,6 +45,13 @@ Open [http://localhost:3000](http://localhost:3000).
 - `corepack pnpm desktop:build` - build the desktop app bundle
 - `corepack pnpm desktop:dist` - build desktop distribution artifacts
 
+## Integration Guides
+
+- [Framework Integration Playbook](docs/guides/framework-integration-playbook.md) — decision guide for choosing the right integration path, delivery modes, platform capabilities, and CI setup
+- [React Integration Guide](docs/guides/react-integration.md) — full `<ConivaIcon>` API reference (props, imperative handle, gestures, callbacks)
+- [Swift Integration Guide](docs/guides/swift-integration.md) — SwiftUI and UIKit integration
+- [Flutter Integration Guide](docs/guides/flutter-integration.md) — Dart widget integration
+
 ## Desktop Development
 
 The desktop shell lives under `desktop/` and wraps the same app with native menus, file dialogs, and desktop file I/O.

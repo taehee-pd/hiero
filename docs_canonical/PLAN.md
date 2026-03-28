@@ -1,6 +1,6 @@
 # Coniva — Production Readiness Plan
 
-**Last updated:** 2026-03-26
+**Last updated:** 2026-03-28
 **Standard:** "If you are coding for another project, would you recommend your team use this tool?"
 **Focus:** Technical implementation — design deliverables listed in §7 IA for the designer.
 
@@ -18,13 +18,8 @@ React/Swift/Flutter adapters, and npm registry publishing all have working imple
 
 | # | Gap | Why it blocks recommendation |
 |---|-----|------------------------------|
-| G1 | No web persistence | Icons vanish on page refresh — unusable without desktop app |
-| G2 | Export UI not wired | Lottie panel + SyncTargetPanel exist but aren't mounted — users can't export |
-| G3 | No Figma import | Most icon designers work in Figma — can't import from their primary tool |
-| G4 | NPM publish UX incomplete | No version controls, no auto-publish countdown/cancel UI |
-| G5 | Desktop not distributed | Only persistence path is desktop, but no installer is published |
-| G6 | No consumer documentation | A developer installing `@coniva/icons` has no integration guide |
-| G7 | Accessibility debt | UX audit found ~30 issues (no ARIA, inline styles, missing focus rings) |
+| G5 | Desktop distribution not fully operationalized | Release path is hardened, but signed distribution still depends on credentials and release hosting |
+| G7 | Accessibility debt | Import flow and touched surfaces improved, but the broader audit backlog remains |
 
 ### What IS working well (keep as strengths)
 
@@ -91,12 +86,14 @@ Show "Recent Projects" with timestamps, rename, delete actions.
 **Dependencies:** None. Can be implemented independently.
 
 **Tests:**
-- `tests/persistence-indexeddb.test.ts` — mock IndexedDB, verify save/load/list/delete
+- `tests/persistence-adapter.test.ts` — adapter contract and workspace roundtrip coverage
 - `tests/persistence-adapter.test.ts` — contract tests for adapter interface
 
 ---
 
-### G2 — Export UI Wiring (High)
+### G2 — Export UI Wiring (Shipped)
+
+Status: shipped 2026-03-28 — `LottieExportPanel` is mounted from the editor toolbar, `SyncTargetPanel` is mounted in the explorer project view, and export/publish entry points are available in the UI.
 
 **Problem:** `LottieExportPanel.tsx` and `SyncTargetPanel.tsx` are fully built React
 components sitting in `components/export/` but imported nowhere. Users cannot access
@@ -151,7 +148,9 @@ In `components/export/SyncTargetPanel.tsx`:
 
 ---
 
-### G3 — Figma Import (High)
+### G3 — Figma Import (Shipped)
+
+Status: shipped 2026-03-28 — Coniva now supports a local `Export to Coniva` Figma plugin workflow plus the existing Figma proxy route.
 
 **Problem:** No Figma adapter exists. Most icon designers work in Figma, and the
 import dialog offers Lucide/Heroicons/Phosphor/Material but not Figma.
@@ -225,7 +224,9 @@ In `lib/import/adapters/index.ts`: add `figmaAdapter` to `registerBuiltinAdapter
 
 ---
 
-### G4 — NPM Publish UX Completion (Medium)
+### G4 — NPM Publish UX Completion (Shipped)
+
+Status: shipped 2026-03-28 — semver controls, preview publish, immediate manual publish, save-triggered countdown scheduling, cancellation, and published-version tracking are wired in the current UI/store flow.
 
 **Problem:** `npm-connector.ts` works, but the editor has no version management UI
 (Q3) and no auto-publish countdown/cancel UI (Q4).
@@ -277,7 +278,9 @@ Desktop: OS keychain. Web: server-side env var.
 
 ---
 
-### G5 — Desktop Distribution (Medium)
+### G5 — Desktop Distribution (Partially shipped)
+
+Status: partially shipped 2026-03-28 — signing prerequisites, release command ergonomics, and manifest/artifact checks are hardened in-repo, but producing a real signed installer still depends on external credentials and release hosting.
 
 **Problem:** The desktop app builds successfully in dev mode
 (`desktop/build/dev-macos-arm64/Coniva-dev.app`) but no signed, distributable
@@ -321,7 +324,9 @@ pnpm desktop:dist
 
 ---
 
-### G6 — Consumer Documentation (Medium)
+### G6 — Consumer Documentation (Shipped)
+
+Status: shipped 2026-03-28 — React, Swift, Flutter, and Figma plugin workflow guides are now present in `docs/guides/`.
 
 **Problem:** A developer installing the published icon package has no guide for
 integrating `ConivaIcon` into their React/Swift/Flutter app.
@@ -367,7 +372,9 @@ In `lib/export/compile-pipeline.ts`:
 
 ---
 
-### G7 — Accessibility Debt (Low priority, ongoing)
+### G7 — Accessibility Debt (Ongoing)
+
+Status: partially shipped 2026-03-28 — import-flow labels, status regions, alerts, and batch-import messaging were improved in this slice, but the full audit backlog is still open.
 
 **Problem:** UX audit (see `UX_AUDIT_PHASE2.md`) found ~30 accessibility issues:
 no ARIA landmarks on timeline editor, no accessible names on animation controls,
@@ -419,13 +426,8 @@ inline styles bypassing design system, missing focus rings.
 ```
 
 **Recommended order:**
-1. **G1** (persistence) — without this, nothing else matters on web
-2. **G2** (export UI) — unlocks all export features already built
-3. **G3** (Figma import) — parallel with G2, biggest adoption driver
-4. **G4** (npm publish UX) — depends on G2, completes the publish story
-5. **G5** (desktop distro) — parallel, requires Apple account
-6. **G6** (consumer docs) — parallel, no code dependencies
-7. **G7** (accessibility) — ongoing, after G2
+1. **G5** (desktop distro) — finish signed distribution and hosted release path
+2. **G7** (accessibility) — continue the broader audit-driven pass
 
 ---
 
@@ -459,19 +461,15 @@ This section reconciles TASKS.md phase statuses with actual codebase state:
 
 | Phase | TASKS.md Says | Reality | Action |
 |-------|--------------|---------|--------|
-| M (Lottie) | Partially shipped | Engine complete, panel unmounted | → G2 |
+| M (Lottie) | Partially shipped | Engine and mounted export UI complete | None |
 | N (Derived Variants) | Shipped | Fully shipped and wired | None |
-| O (Weight Interp) | Mostly shipped | Engine + 9-point editor done, WeightCurveEditor exists | O5 is the visual polish component — low priority |
-| P (Import Ecosystem) | Shipped with deviations | 4 adapters working, batch import works | → G3 adds Figma |
-| Q (NPM Registry) | Partially shipped | Backend complete, UI incomplete | → G4 |
+| O (Weight Interp) | Shipped | Engine + 9-point editor + WeightCurveEditor are wired | None |
+| P (Import Ecosystem) | Shipped with deviations | 4 adapters working, batch import works, Figma plugin handoff shipped | None |
+| Q (NPM Registry) | Shipped | Backend and current UI flow are complete | None |
 | I–L (Animation/Inspect) | Completed | Fully shipped and wired | None |
 
 **Remaining open tasks from TASKS.md:**
-- M7 (Lottie export UI) → covered by G2
-- M8 (Lottie preview) → covered by G2
-- O5 (Weight curve editor visual) → low priority, keep as backlog
-- Q3 (Version management UI) → covered by G4
-- Q4 (Auto-publish countdown) → covered by G4
+- None. Forward-looking product work is now tracked as G5 and the remaining G7 accessibility backlog.
 
 ---
 

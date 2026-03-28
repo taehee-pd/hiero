@@ -2,6 +2,12 @@
 
 Install your published Coniva icon package and render animated, stateful icons in any React app.
 
+This guide assumes your compiled package exposes:
+
+- compiled icon JSON under `icons/`
+- React bindings under `react/`
+- the shared runtime package expected by the generated components
+
 ## Install
 
 ```bash
@@ -18,6 +24,8 @@ function App() {
   return <ConivaIcon icon={homeIcon} size={24} />;
 }
 ```
+
+If your package generator emits named wrappers instead of raw JSON imports, the generated barrel file is the preferred entrypoint.
 
 ## Accessibility
 
@@ -159,6 +167,15 @@ Respects `prefers-reduced-motion` by default. Override per-icon:
   style={{ opacity: 0.8 }}
 />
 ```
+
+## Recommended Package Shape
+
+For consumer apps, the easiest package structure is:
+
+- `@your-scope/icons/react` for React components and types
+- `@your-scope/icons/icons/*.compiled.json` for raw compiled payloads
+
+That keeps the runtime flexible while still allowing direct low-level access when needed.
 
 ## TypeScript
 

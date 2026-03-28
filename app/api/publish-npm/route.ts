@@ -10,18 +10,21 @@
  */
 
 import { NextResponse } from 'next/server';
+import type { Project, SyncTarget } from '@/lib/schema/types';
+import { compileProject } from '@/lib/export/compile-pipeline';
+import { buildPackageJson } from '@/lib/sync-service/connectors/npm-connector';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type NpmPublishBody = {
-  /** Compiled files to include in the package. */
-  files: Array<{ path: string; contents: string }>;
-  /** Generated package.json contents. */
-  packageJson: Record<string, unknown>;
-  /** Target registry URL. */
-  registry: string;
+  /** Current Coniva project to compile. */
+  project: Project;
+  /** Sync target describing platform + registry config. */
+  target: SyncTarget;
+  /** Version to publish. */
+  version: string;
   /** When true, run npm publish --dry-run. */
   dryRun?: boolean;
 };
@@ -77,9 +80,9 @@ export async function POST(request: Request) {
   // 4. Execute publish
   try {
     const result = await executeNpmPublish({
-      packageJson: req.packageJson,
-      files: req.files,
-      registry: req.registry,
+      project: req.project,
+      target: req.target,
+      version: req.version,
       token,
       dryRun: req.dryRun ?? false,
     });
@@ -125,16 +128,16 @@ function validateNpmPublishRequest(body: unknown): {
 
   const obj = body as Record<string, unknown>;
 
-  if (!Array.isArray(obj.files)) {
-    errors.push('files is required and must be an array.');
+  if (!obj.project || typeof obj.project !== 'object') {
+    errors.push('project is required and must be an object.');
   }
 
-  if (!obj.packageJson || typeof obj.packageJson !== 'object') {
-    errors.push('packageJson is required and must be an object.');
+  if (!obj.target || typeof obj.target !== 'object') {
+    errors.push('target is required and must be an object.');
   }
 
-  if (typeof obj.registry !== 'string' || !obj.registry) {
-    errors.push('registry is required and must be a non-empty string.');
+  if (typeof obj.version !== 'string' || !obj.version) {
+    errors.push('version is required and must be a non-empty string.');
   }
 
   if (errors.length > 0) {
@@ -149,9 +152,9 @@ function validateNpmPublishRequest(body: unknown): {
 // ---------------------------------------------------------------------------
 
 async function executeNpmPublish(opts: {
-  packageJson: Record<string, unknown>;
-  files: Array<{ path: string; contents: string }>;
-  registry: string;
+  project: Project;
+  target: SyncTarget;
+  version: string;
   token: string;
   dryRun: boolean;
 }): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -166,25 +169,44 @@ async function executeNpmPublish(opts: {
   const cwd = await mkdtemp(join(tmpdir(), 'coniva-npm-'));
 
   try {
+    if (!opts.target.npmRegistry?.registry || !opts.target.npmRegistry.packageName) {
+      throw new Error('npm target is missing registry configuration.');
+    }
+
+    const compiled = compileProject(opts.project, {
+      package: {
+        name: opts.target.npmRegistry.packageName,
+        version: opts.version,
+        builtAt: new Date().toISOString(),
+      },
+      generateReact: opts.target.platform === 'react',
+    });
+    const packageJson = buildPackageJson(
+      opts.target.npmRegistry.packageName,
+      opts.version,
+      opts.target.npmRegistry.scope,
+      opts.target.npmRegistry.registry,
+    );
+
     // Build package.json server-side from strict allowlist.
     // Never write client-supplied packageJson directly — it could contain
     // lifecycle scripts (prepublishOnly, prepare, etc.) that execute arbitrary
     // commands during `npm publish`.
-    const safePackageJson = sanitizePackageJson(opts.packageJson);
+    const safePackageJson = sanitizePackageJson(packageJson);
     await writeFile(
       join(cwd, 'package.json'),
       JSON.stringify(safePackageJson, null, 2),
     );
 
     // Write .npmrc with token (scoped to the registry host)
-    const registryHost = new URL(opts.registry).host;
-    const npmrc = `//${registryHost}/:_authToken=${opts.token}\nregistry=${opts.registry}\n`;
+    const registryHost = new URL(opts.target.npmRegistry.registry).host;
+    const npmrc = `//${registryHost}/:_authToken=${opts.token}\nregistry=${opts.target.npmRegistry.registry}\n`;
     await writeFile(join(cwd, '.npmrc'), npmrc);
 
     // Write compiled files with path traversal protection.
     // Reject any path that resolves outside the temp directory.
     const { resolve, relative } = await import('node:path');
-    for (const file of opts.files) {
+    for (const file of compiled.files) {
       const resolvedPath = resolve(cwd, file.path);
       const rel = relative(cwd, resolvedPath);
       if (rel.startsWith('..') || resolve(resolvedPath) !== resolvedPath.replace(/\/+$/, '')) {
@@ -207,7 +229,7 @@ async function executeNpmPublish(opts: {
     const { stdout, stderr } = await execFileAsync('npm', args, {
       cwd,
       timeout: 60_000,
-      env: { ...process.env, npm_config_registry: opts.registry },
+      env: { ...process.env, npm_config_registry: opts.target.npmRegistry.registry },
     });
 
     return { exitCode: 0, stdout, stderr };

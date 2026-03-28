@@ -2,6 +2,8 @@
 
 Integrate Coniva icons into iOS/macOS apps with SwiftUI or UIKit.
 
+This guide assumes you are consuming a generated Swift package produced from the Coniva export pipeline.
+
 ## Install (Swift Package Manager)
 
 Add the package to your `Package.swift` or Xcode project:
@@ -23,6 +25,8 @@ struct ContentView: View {
     }
 }
 ```
+
+The generated package typically includes a strongly named icon API plus a shared renderer layer. Use the generated entrypoints whenever possible rather than reaching into compiled JSON manually.
 
 ## States & Transitions
 
@@ -90,6 +94,12 @@ iconView.setState("active", animated: true)
 iconView.triggerEffect("bounce")
 view.addSubview(iconView)
 ```
+
+## Distribution Notes
+
+- Keep the generated package in source control or publish it through your internal package registry.
+- Match the minimum deployment target in the generated package with your app target.
+- Re-export the icon module from your design-system package if you want app teams to consume one stable entrypoint.
 
 ## Requirements
 

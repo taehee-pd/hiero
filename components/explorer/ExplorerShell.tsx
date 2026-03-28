@@ -889,50 +889,67 @@ function WorkspaceView({
 }
 
 function PendingPublishBadge() {
-  const pendingPublish = useEditorStore((s) => s.pendingPublish);
+  const pendingPublishes = useEditorStore((s) => s.pendingPublishes);
+  const project = useEditorStore((s) => s.project);
   const { cancelPendingPublish } = useEditorActions();
-  const [remaining, setRemaining] = useState('');
+  const [remainingByTarget, setRemainingByTarget] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!pendingPublish) {
-      setRemaining('');
+    if (pendingPublishes.length === 0) {
+      setRemainingByTarget({});
       return;
     }
 
     const COUNTDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
     const update = () => {
-      const elapsed = Date.now() - pendingPublish.scheduledAt;
-      const left = Math.max(0, COUNTDOWN_MS - elapsed);
-      if (left <= 0) {
-        setRemaining('publishing...');
-        return;
+      const nextRemaining: Record<string, string> = {};
+      for (const pending of pendingPublishes) {
+        const elapsed = Date.now() - pending.scheduledAt;
+        const left = Math.max(0, COUNTDOWN_MS - elapsed);
+        if (left <= 0) {
+          nextRemaining[pending.targetId] = 'publishing...';
+          continue;
+        }
+        const mins = Math.floor(left / 60000);
+        const secs = Math.floor((left % 60000) / 1000);
+        nextRemaining[pending.targetId] = `${mins}:${secs.toString().padStart(2, '0')}`;
       }
-      const mins = Math.floor(left / 60000);
-      const secs = Math.floor((left % 60000) / 1000);
-      setRemaining(`${mins}:${secs.toString().padStart(2, '0')}`);
+      setRemainingByTarget(nextRemaining);
     };
 
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [pendingPublish]);
+  }, [pendingPublishes]);
 
-  if (!pendingPublish) return null;
+  if (pendingPublishes.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-      <Package className="size-3.5" />
-      <span className="font-medium">
-        Publishing {pendingPublish.semver} in {remaining}
-      </span>
-      <button
-        type="button"
-        className="rounded px-1.5 py-0.5 font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/40"
-        onClick={cancelPendingPublish}
-      >
-        Cancel
-      </button>
+    <div className="flex flex-wrap items-center gap-2">
+      {pendingPublishes.map((pending) => {
+        const targetName =
+          project?.syncTargets?.find((target) => target.id === pending.targetId)?.name ??
+          pending.targetId;
+        return (
+          <div
+            key={pending.targetId}
+            className="flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+          >
+            <Package className="size-3.5" />
+            <span className="font-medium">
+              {targetName}: {pending.semver} in {remainingByTarget[pending.targetId] ?? '5:00'}
+            </span>
+            <button
+              type="button"
+              className="rounded px-1.5 py-0.5 font-medium text-amber-600 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              onClick={() => cancelPendingPublish(pending.targetId)}
+            >
+              Cancel
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

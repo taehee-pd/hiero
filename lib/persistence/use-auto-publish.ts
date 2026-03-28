@@ -11,87 +11,114 @@
 import { useEffect, useRef } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import { createAutoPublishManager } from '@/lib/sync-service/auto-publish';
+import { getNextPublishVersion, publishNpmTarget } from '@/lib/sync-service/npm-publish-client';
 import { toast } from '@/components/ui/use-toast';
 
 const manager = createAutoPublishManager();
 
 export function useAutoPublish(): void {
-  const prevTargetId = useRef<string | null>(null);
+  const prevLastSavedAt = useRef<number | null>(null);
+  const pendingKeysRef = useRef(new Map<string, string>());
 
   useEffect(() => {
-    const unsubscribe = editorStore.subscribe(() => {
-      const { pendingPublish, project } = editorStore.getState();
+    const pendingKeys = pendingKeysRef.current;
 
-      // Cancelled — clear timer
-      if (!pendingPublish && prevTargetId.current) {
-        manager.cancel(prevTargetId.current);
-        prevTargetId.current = null;
-        return;
+    const unsubscribe = editorStore.subscribe(() => {
+      const state = editorStore.getState();
+
+      if (state.lastSavedAt !== prevLastSavedAt.current) {
+        prevLastSavedAt.current = state.lastSavedAt;
+
+        if (state.lastSavedAt && state.skipNextAutoPublish) {
+          state.clearAutoPublishSkip();
+        } else if (state.lastSavedAt && state.project) {
+          for (const target of state.project.syncTargets ?? []) {
+            if (
+              target.deliveryMode === 'npm-registry' &&
+              target.npmRegistry &&
+              target.autoPublish?.on === 'save'
+            ) {
+              state.schedulePendingPublish(
+                target.id,
+                target.autoPublish.semver ?? 'patch',
+              );
+            }
+          }
+        }
       }
 
-      // New or changed pending publish
-      if (pendingPublish && pendingPublish.targetId !== prevTargetId.current) {
-        prevTargetId.current = pendingPublish.targetId;
+      const pendingById = new Map(
+        state.pendingPublishes.map((pending) => [
+          pending.targetId,
+          `${pending.scheduledAt}:${pending.semver}`,
+        ]),
+      );
 
-        const target = project?.syncTargets?.find((t) => t.id === pendingPublish.targetId);
-        if (!target?.npmRegistry) {
-          editorStore.getState().cancelPendingPublish();
-          return;
+      for (const [targetId] of pendingKeys) {
+        if (!pendingById.has(targetId)) {
+          manager.cancel(targetId);
+          pendingKeys.delete(targetId);
+        }
+      }
+
+      for (const pending of state.pendingPublishes) {
+        const pendingKey = `${pending.scheduledAt}:${pending.semver}`;
+        if (pendingKeys.get(pending.targetId) === pendingKey) {
+          continue;
         }
 
-        manager.schedule(pendingPublish.targetId, async () => {
-          // Clear the pending state
-          editorStore.getState().cancelPendingPublish();
+        const target = state.project?.syncTargets?.find((item) => item.id === pending.targetId);
+        if (!target?.npmRegistry || !state.project) {
+          editorStore.getState().cancelPendingPublish(pending.targetId);
+          continue;
+        }
+
+        pendingKeys.set(pending.targetId, pendingKey);
+        manager.schedule(pending.targetId, async () => {
+          const latestState = editorStore.getState();
+          const currentProject = latestState.project;
+          const currentTarget = currentProject?.syncTargets?.find(
+            (item) => item.id === pending.targetId,
+          );
+
+          latestState.cancelPendingPublish(pending.targetId);
+
+          if (!currentProject || !currentTarget?.npmRegistry) return;
 
           try {
-            const currentProject = editorStore.getState().project;
-            const currentTarget = currentProject?.syncTargets?.find(
-              (t) => t.id === pendingPublish.targetId,
-            );
-            if (!currentProject || !currentTarget?.npmRegistry) return;
-
-            // Determine next version
-            const lastVersion = currentTarget.npmRegistry.lastPublishedVersion ?? '0.0.0';
-            const nextVersion = bumpVersion(lastVersion, pendingPublish.semver);
-
-            // Create a minimal connector (web environment — no filesystem publisher)
-            // On web, we dispatch to the /api/publish-npm route instead
-            const res = await fetch('/api/publish-npm', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                targetId: pendingPublish.targetId,
-                version: nextVersion,
-                dryRun: currentTarget.dryRun ?? false,
-              }),
+            const nextVersion = getNextPublishVersion(currentTarget, pending.semver);
+            const result = await publishNpmTarget({
+              project: currentProject,
+              target: currentTarget,
+              version: nextVersion,
+              dryRun: currentTarget.dryRun ?? false,
             });
 
-            if (res.ok) {
-              // Update the target with the new version
-              editorStore.getState().updateSyncTarget(pendingPublish.targetId, {
-                npmRegistry: {
-                  ...currentTarget.npmRegistry,
-                  lastPublishedVersion: nextVersion,
-                },
-              });
-              toast({
-                title: currentTarget.dryRun ? 'Dry run complete' : 'Published',
-                description: `${currentTarget.npmRegistry.packageName}@${nextVersion}`,
-              });
-            } else {
-              const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+            if (result.kind === 'error') {
               toast({
                 title: 'Publish failed',
-                description: (error as { error?: string }).error ?? 'Unknown error',
+                description: result.message,
                 variant: 'destructive',
               });
+              return;
             }
+
+            if (result.kind === 'success') {
+              editorStore.getState().recordPublishedVersion(pending.targetId, nextVersion);
+            }
+
+            toast({
+              title: result.kind === 'dry-run' ? 'Preview publish complete' : 'Published',
+              description: `${currentTarget.npmRegistry.packageName}@${nextVersion}`,
+            });
           } catch (error) {
             toast({
               title: 'Publish failed',
               description: error instanceof Error ? error.message : 'Unknown error',
               variant: 'destructive',
             });
+          } finally {
+            pendingKeys.delete(pending.targetId);
           }
         });
       }
@@ -100,22 +127,7 @@ export function useAutoPublish(): void {
     return () => {
       unsubscribe();
       manager.cancelAll();
+      pendingKeys.clear();
     };
   }, []);
-}
-
-function bumpVersion(version: string, bump: 'patch' | 'minor' | 'major'): string {
-  const parts = version.split('.').map(Number);
-  const major = parts[0] ?? 0;
-  const minor = parts[1] ?? 0;
-  const patch = parts[2] ?? 0;
-
-  switch (bump) {
-    case 'major':
-      return `${major + 1}.0.0`;
-    case 'minor':
-      return `${major}.${minor + 1}.0`;
-    case 'patch':
-      return `${major}.${minor}.${patch + 1}`;
-  }
 }

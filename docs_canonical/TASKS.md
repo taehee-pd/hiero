@@ -1,6 +1,6 @@
 # Tasks
 
-**Last updated:** 2026-03-26
+**Last updated:** 2026-03-28
 **Canonical product name:** Coniva
 **Forward-looking roadmap:** See `docs_canonical/PLAN.md` for the production readiness plan.
 
@@ -8,37 +8,10 @@
 
 ## Open Items
 
-These are the only remaining incomplete tasks from the engineering phases.
-All other phase tasks are shipped and verified.
+The engineering phase backlog is fully shipped.
+There are no remaining unchecked phase items in this file.
 
-### M7 — Mount Lottie Export UI
-- **Status:** Not started
-- **Covered by:** PLAN.md → G2 (Export UI Wiring)
-- **What:** Mount `LottieExportPanel.tsx` in Editor right sidebar Export tab and Toolbar dropdown
-- **Files:** `EditorShell.tsx`, `Toolbar.tsx`
-
-### M8 — Lottie Preview Canvas
-- **Status:** Not started
-- **Covered by:** PLAN.md → G2
-- **What:** Enable `NEXT_PUBLIC_LOTTIE_PREVIEW_ENABLED=true`, verify lottie-web lazy load
-- **Files:** `.env.local`, `LottieExportPanel.tsx`
-
-### O5 — Visual Weight Curve Editor
-- **Status:** Low priority
-- **What:** `WeightCurveEditor` component exists but is a polish item — renders cubic vs linear comparison
-- **Files:** `components/editor/WeightCurveEditor.tsx`
-
-### Q3 — Version Management UI
-- **Status:** Not started
-- **Covered by:** PLAN.md → G4 (NPM Publish UX)
-- **What:** Bump patch/minor/major selector, changelog from `diffCompiledIcons()`, publish button
-- **Files:** `SyncTargetPanel.tsx`
-
-### Q4 — Auto-Publish Countdown with Cancel
-- **Status:** Not started
-- **Covered by:** PLAN.md → G4
-- **What:** `pendingPublish` store state, countdown badge, cancel mechanism
-- **Files:** `store.ts`, `ExplorerShell.tsx`, `auto-publish.ts`
+Forward-looking work now lives in `docs_canonical/PLAN.md`.
 
 ---
 
@@ -68,11 +41,11 @@ codebase, specs, and commit history.
 | J | Animation Preview & Composition | 2026-03-23 | HybridFrame bridge, cross-icon preview, variable value track | — |
 | K | Advanced Animation Authoring | 2026-03-23 | Magic Replace, auto-gradient mode, auto-strategy, presets | — |
 | L | Inspect Tab Redesign | 2026-03-23 | Variable value indicator, topology, strategy badges, weight editor | — |
-| M | Lottie Export | 2026-03-24 | Core exporter + downgrade diagnostics (UI wiring pending → G2) | #74 |
+| M | Lottie Export | 2026-03-28 | Core exporter, mounted toolbar export UI, preview, downgrade diagnostics | #74 |
 | N | Derived Variant Generation | 2026-03-24 | Boolean-op derivation, inspector actions, re-derive support | #75 |
-| O | Cubic Weight Interpolation | 2026-03-24 | Fritsch-Carlson spline, 9-point controls (visual editor low-pri) | #77 |
+| O | Cubic Weight Interpolation | 2026-03-28 | Fritsch-Carlson spline, 9-point controls, mounted visual curve editor | #77 |
 | P | Import Adapter Ecosystem | 2026-03-24 | Heroicons, Phosphor, Material Symbols, capability badges, batch | #76 |
-| Q | NPM Registry Distribution | 2026-03-24 | Connector, keychain, proxy, dry-run, tests (UI partial → G4) | #73 |
+| Q | NPM Registry Distribution | 2026-03-28 | Connector, keychain, proxy, dry-run, mounted version UI, immediate publish, save-triggered auto-publish | #73 |
 
 ---
 

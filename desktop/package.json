@@ -9,7 +9,8 @@
     "dev:electrobun": "electrobun dev",
     "open-dev": "sh scripts/open-dev-app.sh",
     "build": "electrobun build",
-    "dist": "electrobun build --env=stable"
+    "dist": "electrobun build --env=stable",
+    "release": "bun run scripts/release.ts --stable"
   },
   "dependencies": {
     "electrobun": "1.15.1"

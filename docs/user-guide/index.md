@@ -34,3 +34,4 @@ IconStudio is a browser-based icon editor for:
 
 - [Quick Start](./quick-start.md)
 - [Library and Browsing](./library-and-browsing.md)
+- [Figma Plugin Export Guide](../guides/figma-plugin-export.md)

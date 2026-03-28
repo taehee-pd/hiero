@@ -131,6 +131,8 @@ const editorActions = {
   removeSyncTarget: editorStore.getState().removeSyncTarget,
   schedulePendingPublish: editorStore.getState().schedulePendingPublish,
   cancelPendingPublish: editorStore.getState().cancelPendingPublish,
+  clearAutoPublishSkip: editorStore.getState().clearAutoPublishSkip,
+  recordPublishedVersion: editorStore.getState().recordPublishedVersion,
   openIconTab: editorStore.getState().openIconTab,
   closeIconTab: editorStore.getState().closeIconTab,
   setActiveTab: editorStore.getState().setActiveTab,

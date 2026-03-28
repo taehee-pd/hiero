@@ -74,12 +74,17 @@ export type EditorState = {
   activeTabId: string | null;
   /** Phase N: true while a derived variant is being generated. */
   isDeriving: boolean;
-  /** G4: Pending npm publish with countdown. */
-  pendingPublish: {
+  /** G4: Pending npm publishes with countdown, tracked per target. */
+  pendingPublishes: Array<{
     targetId: string;
     scheduledAt: number;
     semver: 'patch' | 'minor' | 'major';
-  } | null;
+  }>;
+  /**
+   * Internal guard to avoid re-queuing auto-publish when we save publish
+   * metadata such as lastPublishedVersion.
+   */
+  skipNextAutoPublish: boolean;
 };
 
 export type EditorTab = {
@@ -193,7 +198,9 @@ export type EditorActions = {
   updateSyncTarget(id: string, patch: Partial<SyncTarget>): void;
   removeSyncTarget(id: string): void;
   schedulePendingPublish(targetId: string, semver: 'patch' | 'minor' | 'major'): void;
-  cancelPendingPublish(): void;
+  cancelPendingPublish(targetId: string): void;
+  clearAutoPublishSkip(): void;
+  recordPublishedVersion(targetId: string, version: string): void;
   openIconTab(iconSetId: string, iconId: string, options?: { focus?: boolean }): string | null;
   closeIconTab(tabId: string): void;
   setActiveTab(tabId: string): void;
@@ -310,7 +317,8 @@ const initialState: EditorState = {
   openTabs: [],
   activeTabId: null,
   isDeriving: false,
-  pendingPublish: null,
+  pendingPublishes: [],
+  skipNextAutoPublish: false,
 };
 
 let currentState: EditorStore;
@@ -2920,17 +2928,51 @@ function createActions(): EditorActions {
     },
 
     schedulePendingPublish(targetId, semver) {
-      editorStoreApi.setState({
-        pendingPublish: {
-          targetId,
-          scheduledAt: Date.now(),
-          semver,
-        },
-      });
+      editorStoreApi.setState((s) => ({
+        pendingPublishes: [
+          ...s.pendingPublishes.filter((pending) => pending.targetId !== targetId),
+          {
+            targetId,
+            scheduledAt: Date.now(),
+            semver,
+          },
+        ],
+      }));
     },
 
-    cancelPendingPublish() {
-      editorStoreApi.setState({ pendingPublish: null });
+    cancelPendingPublish(targetId) {
+      editorStoreApi.setState((s) => ({
+        pendingPublishes: s.pendingPublishes.filter((pending) => pending.targetId !== targetId),
+      }));
+    },
+
+    clearAutoPublishSkip() {
+      editorStoreApi.setState({ skipNextAutoPublish: false });
+    },
+
+    recordPublishedVersion(targetId, version) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const existing = s.project.syncTargets ?? [];
+        const idx = existing.findIndex((t) => t.id === targetId);
+        if (idx === -1) return s;
+        const updatedTargets = [...existing];
+        const target = updatedTargets[idx];
+        updatedTargets[idx] = {
+          ...target,
+          npmRegistry: target.npmRegistry
+            ? { ...target.npmRegistry, lastPublishedVersion: version }
+            : target.npmRegistry,
+        };
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: updatedTargets,
+          },
+          skipNextAutoPublish: true,
+        };
+      });
     },
 
     openIconTab(iconSetId, iconId, options) {

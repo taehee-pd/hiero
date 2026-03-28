@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Export to Coniva</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #f6f2ea;
+        color: #1f1a14;
+      }
+
+      main {
+        display: grid;
+        gap: 12px;
+      }
+
+      .card {
+        border: 1px solid #d7d1c8;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 12px;
+      }
+
+      h1, h2, p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 16px;
+      }
+
+      p, li {
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 220px;
+        resize: vertical;
+        border-radius: 10px;
+        border: 1px solid #c8c1b6;
+        padding: 10px;
+        font: 12px/1.4 ui-monospace, SFMono-Regular, monospace;
+        box-sizing: border-box;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #1f1a14;
+        color: #fff8ef;
+      }
+
+      .secondary {
+        background: #e9e1d5;
+        color: #1f1a14;
+      }
+
+      .status {
+        min-height: 18px;
+        color: #735f42;
+      }
+
+      .error {
+        color: #a32929;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>Export selection to Coniva</h1>
+        <p>Select one or more vector or component nodes in Figma, then export a JSON payload you can paste into Coniva.</p>
+      </section>
+
+      <section class="card">
+        <div class="actions">
+          <button id="export" class="primary">Export selection</button>
+          <button id="copy" class="secondary" disabled>Copy JSON</button>
+          <button id="download" class="secondary" disabled>Download JSON</button>
+          <button id="close" class="secondary">Close</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card">
+        <h2>Payload</h2>
+        <textarea id="payload" readonly aria-label="Coniva plugin export payload"></textarea>
+      </section>
+    </main>
+
+    <script>
+      const payloadField = document.getElementById('payload');
+      const statusField = document.getElementById('status');
+      const copyButton = document.getElementById('copy');
+      const downloadButton = document.getElementById('download');
+      let latestPayload = '';
+
+      function setStatus(message, isError) {
+        statusField.textContent = message;
+        statusField.className = isError ? 'status error' : 'status';
+      }
+
+      document.getElementById('export').addEventListener('click', () => {
+        setStatus('Exporting selection…', false);
+        parent.postMessage({ pluginMessage: { type: 'export-selection' } }, '*');
+      });
+
+      document.getElementById('copy').addEventListener('click', async () => {
+        if (!latestPayload) return;
+        await navigator.clipboard.writeText(latestPayload);
+        setStatus('Copied payload to clipboard.', false);
+      });
+
+      document.getElementById('download').addEventListener('click', () => {
+        if (!latestPayload) return;
+        const blob = new Blob([latestPayload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'coniva-figma-export.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        setStatus('Downloaded payload JSON.', false);
+      });
+
+      document.getElementById('close').addEventListener('click', () => {
+        parent.postMessage({ pluginMessage: { type: 'close-plugin' } }, '*');
+      });
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) return;
+
+        if (message.type === 'error') {
+          const skippedCount = Array.isArray(message.skipped) ? message.skipped.length : 0;
+          payloadField.value = '';
+          latestPayload = '';
+          copyButton.disabled = true;
+          downloadButton.disabled = true;
+          setStatus(
+            skippedCount
+              ? `${message.message} ${skippedCount} node(s) were skipped.`
+              : message.message,
+            true,
+          );
+        }
+
+        if (message.type === 'export-ready') {
+          latestPayload = JSON.stringify(message.payload, null, 2);
+          payloadField.value = latestPayload;
+          copyButton.disabled = false;
+          downloadButton.disabled = false;
+          const skippedCount = Array.isArray(message.payload.skipped)
+            ? message.payload.skipped.length
+            : 0;
+          setStatus(
+            `Exported ${message.payload.icons.length} item(s)` +
+              (skippedCount ? `, skipped ${skippedCount}.` : '.'),
+            false,
+          );
+        }
+      };
+    </script>
+  </body>
+</html>

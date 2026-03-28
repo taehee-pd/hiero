@@ -15,7 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useEditorStore, useEditorActions } from '@/lib/editor-store/hooks';
-import type { SyncTarget } from '@/lib/schema/types';
+import type { Project, SyncTarget } from '@/lib/schema/types';
+import { toast } from '@/components/ui/use-toast';
+import { getNextPublishVersion, publishNpmTarget, type PublishSemver } from '@/lib/sync-service/npm-publish-client';
+import { isDesktop } from '@/lib/platform/bridge';
 
 const PLATFORMS = ['react', 'swift', 'flutter', 'web-component'] as const;
 const DELIVERY_MODES = ['local-directory', 'git-pr', 'npm-registry'] as const;
@@ -26,7 +29,13 @@ function generateId(): string {
 
 export function SyncTargetPanel() {
   const project = useEditorStore((s) => s.project);
-  const { addSyncTarget, removeSyncTarget, updateSyncTarget, schedulePendingPublish } = useEditorActions();
+  const pendingPublishes = useEditorStore((s) => s.pendingPublishes);
+  const {
+    addSyncTarget,
+    removeSyncTarget,
+    updateSyncTarget,
+    recordPublishedVersion,
+  } = useEditorActions();
   const [isAddOpen, setIsAddOpen] = useState(false);
 
   const targets: SyncTarget[] = useMemo(
@@ -84,9 +93,11 @@ export function SyncTargetPanel() {
             <SyncTargetCard
               key={target.id}
               target={target}
+              project={project}
+              isPending={pendingPublishes.some((pending) => pending.targetId === target.id)}
               onRemove={handleRemove}
               onUpdate={updateSyncTarget}
-              onPublish={schedulePendingPublish}
+              onRecordPublishedVersion={recordPublishedVersion}
             />
           ))}
         </div>
@@ -101,17 +112,67 @@ export function SyncTargetPanel() {
 
 function SyncTargetCard({
   target,
+  project,
+  isPending,
   onRemove,
   onUpdate,
-  onPublish,
+  onRecordPublishedVersion,
 }: {
   target: SyncTarget;
+  project: Project | null;
+  isPending: boolean;
   onRemove: (id: string) => void;
   onUpdate: (id: string, patch: Partial<SyncTarget>) => void;
-  onPublish: (targetId: string, semver: 'patch' | 'minor' | 'major') => void;
+  onRecordPublishedVersion: (targetId: string, version: string) => void;
 }) {
   const [tokenInput, setTokenInput] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
   const isNpm = target.deliveryMode === 'npm-registry' && target.npmRegistry;
+  const bump = (target.autoPublish?.semver ?? 'patch') as PublishSemver;
+  const nextVersion = isNpm ? getNextPublishVersion(target, bump) : null;
+  const requiresDesktopToken = isDesktop();
+  const canPublish = !isPublishing && !isPending && (!requiresDesktopToken || !!target.npmRegistry?.tokenStored);
+
+  const handlePublish = useCallback(
+    async (dryRun: boolean) => {
+      if (!project || !isNpm || !nextVersion) return;
+      setIsPublishing(true);
+      try {
+        const result = await publishNpmTarget({
+          project,
+          target,
+          version: nextVersion,
+          dryRun,
+        });
+        if (result.kind === 'error') {
+          toast({
+            title: dryRun ? 'Preview publish failed' : 'Publish failed',
+            description: result.message,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        if (result.kind === 'success') {
+          onRecordPublishedVersion(target.id, nextVersion);
+        }
+
+        toast({
+          title: result.kind === 'dry-run' ? 'Preview publish complete' : 'Published',
+          description: `${target.npmRegistry!.packageName}@${nextVersion}`,
+        });
+      } catch (error) {
+        toast({
+          title: dryRun ? 'Preview publish failed' : 'Publish failed',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsPublishing(false);
+      }
+    },
+    [isNpm, nextVersion, onRecordPublishedVersion, project, target],
+  );
 
   return (
     <div className="rounded-xl border border-border/70 bg-background/70 p-3">
@@ -154,6 +215,11 @@ function SyncTargetCard({
                     v{target.npmRegistry!.lastPublishedVersion}
                   </Badge>
                 ) : null}
+                {nextVersion ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    next {nextVersion}
+                  </Badge>
+                ) : null}
                 {target.autoPublish?.on === 'save' ? (
                   <Badge variant="outline" className="text-[10px] text-green-600">
                     auto-publish
@@ -170,9 +236,14 @@ function SyncTargetCard({
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="text-[10px] text-amber-600">
-                    no token
+                    {requiresDesktopToken ? 'no token' : 'server token'}
                   </Badge>
                 )}
+                {isPending ? (
+                  <Badge variant="outline" className="text-[10px] text-amber-600">
+                    pending
+                  </Badge>
+                ) : null}
               </>
             ) : null}
           </div>
@@ -191,7 +262,7 @@ function SyncTargetCard({
       {isNpm && (
         <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
           {/* Token setup */}
-          {!target.npmRegistry!.tokenStored && (
+          {!target.npmRegistry!.tokenStored && requiresDesktopToken && (
             <div className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
                 <Label className="text-[10px]">npm token</Label>
@@ -253,16 +324,25 @@ function SyncTargetCard({
             <Button
               size="sm"
               className="h-7 gap-1 text-xs"
-              disabled={!target.npmRegistry!.tokenStored}
-              onClick={() => onPublish(target.id, (target.autoPublish?.semver as 'patch' | 'minor' | 'major') ?? 'patch')}
+              disabled={!canPublish}
+              onClick={() => void handlePublish(false)}
             >
               <Upload className="size-3" />
-              Publish
+              {isPublishing ? 'Publishing...' : 'Publish Now'}
             </Button>
-            {target.dryRun && (
-              <span className="text-[10px] text-amber-600">(dry-run)</span>
-            )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              disabled={isPublishing || isPending}
+              onClick={() => void handlePublish(true)}
+            >
+              Preview Publish
+            </Button>
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            Manual publish runs immediately. Auto-publish only queues after a successful save.
+          </p>
         </div>
       )}
     </div>

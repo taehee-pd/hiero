@@ -78,25 +78,27 @@ Entered by clicking an icon set card.
 - Multi-select mode with bulk action bar
 - Search active within set
 
-### 1C. Explorer Right Panel (Sync & Export)
+### 1C. Explorer Right Panel (Publish & Export)
+
+> **Changed:** Sync targets have been replaced by repo-native distribution.
+> This panel shows the publish status from `coniva.config.ts` and export options.
 
 Appears as a collapsible right panel or sheet.
 
 ```
 ┌─ Distribution ──────────────────────┐
 │                                      │
-│  ┌─ Sync Targets ────────────────┐  │
-│  │  ○ Local Directory            │  │
-│  │    /path/to/output  [Sync]    │  │
+│  ┌─ Repo Publish ────────────────┐  │
+│  │  Config: coniva.config.ts ✓   │  │
 │  │                               │  │
-│  │  ○ GitHub PR                  │  │
-│  │    org/repo  [Create PR]      │  │
+│  │  Host: react                  │  │
+│  │    → src/components/icons/    │  │
+│  │    24 icons (3 changed)       │  │
+│  │    [Publish Changed] [All]    │  │
 │  │                               │  │
-│  │  ○ npm Registry               │  │
-│  │    @scope/pkg  v1.2.3         │  │
-│  │    [patch ▾] [Publish] [Dry]  │  │
-│  │                               │  │
-│  │  [+ Add Target]               │  │
+│  │  Release: npm                 │  │
+│  │    @scope/icons  v1.2.3       │  │
+│  │    [Release] [Dry Run]        │  │
 │  └───────────────────────────────┘  │
 │                                      │
 │  ┌─ Export ──────────────────────┐  │
@@ -174,30 +176,34 @@ The core icon authoring screen.
 ### 2C. Left Sidebar — Variants Tab
 
 ```
-┌─ Variants & States ───────┐
+┌─ Variants ───────────────┐
 │                            │
-│  Sizes                     │
+│  Sizes (intrinsic)         │
 │  [16] [20] [24●] [32] [48]│
 │  ┌──────┐                  │
 │  │ 64   │ [Add]            │
 │  └──────┘                  │
 │                            │
+│  Styles                    │
+│  [outline●] [solid] [duo]  │
+│                            │
 │  Derived                   │
 │  [fill] [slash] [circle]   │
 │                            │
-│  States                    │
-│  [default●] [hover (2)]   │
-│  [pressed (1)] [disabled]  │
-│  ┌────────────┐            │
-│  │ focused    │ [Dup][New] │
-│  └────────────┘            │
+│  Weight (Phase O)          │
+│  9 stops · 4 populated     │
+│  [Edit Control Points]     │
 └────────────────────────────┘
 ```
 
 **States:**
 - Single variant — minimal view
 - Multiple variants with derived badges
-- States with transition count badges
+- Weight control point editor (Phase O)
+
+> **Note:** Per-icon authored states (`default`, `hover`, `pressed`, etc.)
+> have been removed from the product model. Animation is now a runtime
+> icon-to-icon transition concern, not authored per-icon state graphs.
 
 ### 2D. Canvas — Tool Modes
 
@@ -277,26 +283,33 @@ The core icon authoring screen.
 └────────────────────────────┘
 ```
 
-### 2G. Right Sidebar — Animation Tab
+### 2G. Right Sidebar — Animation Tab (Transition Preview)
+
+> **Changed:** Animation is now runtime icon-to-icon transitions, not
+> per-icon authored state graphs. This panel previews how the runtime
+> will transition between two icons.
 
 ```
-┌─ Animation ───────────────┐
+┌─ Transition Preview ─────┐
 │                            │
-│  [Transitions] [Effects]   │
-│  [Variable Value]          │
+│  Source                    │
+│  Icon    [home        ▾]  │
+│  Variant [24px        ▾]  │
 │                            │
-│  ┌─ default → hover ──┐   │
-│  │  ✓ Compatible       │   │
-│  │  ▸ bg: morph  0.94  │   │
-│  │  ▸ chev: trim  open │   │
-│  │  ▸ dot: fade   new  │   │
-│  │  [×]                │   │
-│  └─────────────────────┘   │
+│  Target                    │
+│  Icon    [menu        ▾]  │
+│  Variant [24px        ▾]  │
+│                            │
+│  ┌─ Strategy Analysis ──┐ │
+│  │  Strategy: bestGuess  │ │
+│  │  ● bg:   morph  0.94 │ │
+│  │  ● chev: trim   draw │ │
+│  │  ● dot:  replace fade│ │
+│  └───────────────────────┘ │
 │                            │
 │  ┌─ Timeline ──────────┐  │
 │  │ ▶ ━━━━━━━━━━━ 300ms │  │
 │  │ bg-circle            │  │
-│  │  opacity ◆━━━━━━◆   │  │
 │  │  morph   ◆━━━━━━◆   │  │
 │  │ chevron             │  │
 │  │  trimSt  ◆━━━━━━◆   │  │
@@ -305,17 +318,24 @@ The core icon authoring screen.
 │                            │
 │  ┌─ Preview ───────────┐  │
 │  │  ┌──────────────┐   │  │
-│  │  │              │   │  │
+│  │  │   Source →    │   │  │
+│  │  │   Target     │   │  │
 │  │  │   Preview    │   │  │
-│  │  │   Canvas     │   │  │
-│  │  │              │   │  │
 │  │  └──────────────┘   │  │
 │  │  [▶] ━━━━━━━━ [1×▾] │  │
 │  └─────────────────────┘  │
 │                            │
-│  [+ Add Transition]       │
+│  Strategy: [auto ▾]        │
+│  Duration: [300] ms        │
+│  Easing:   [ease-out ▾]    │
 └────────────────────────────┘
 ```
+
+**Strategies** (runtime-resolved):
+- `strictMorph` — command signatures match exactly (green badge)
+- `bestGuessMorph` — geometry close after normalization (yellow badge)
+- `lineAnimation` — trim/draw reveal (orange badge)
+- `replace` — fallback: crossfade, scale, directional (red badge)
 
 ---
 
@@ -444,30 +464,30 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 
 ## Screen 5: Add Transition Dialog
 
+> **Changed:** Intra-variant state transitions have been removed. Transitions are
+> now exclusively icon-to-icon, driven by the runtime. This dialog sets up a
+> transition pair for preview and optional hint storage.
+
 ```
 ┌─ Add Transition ──────────────────────────────────────────┐
 │                                                            │
-│  Mode                                                      │
-│  [Intra-variant●] [Cross-icon]                             │
-│                                                            │
-│  === Intra-variant ===                                     │
-│  From  [default     ▾]                                     │
-│  To    [hover       ▾]                                     │
-│                                                            │
-│  === Cross-icon ===                                        │
 │  Source                                                     │
 │    Icon    [home        ▾]                                  │
 │    Variant [24px        ▾]                                  │
-│    State   [default     ▾]                                  │
 │  Target                                                     │
-│    Icon    [gear        ▾]                                  │
+│    Icon    [menu        ▾]                                  │
 │    Variant [24px        ▾]                                  │
-│    State   [default     ▾]                                  │
 │                                                            │
-│  Strategy  [Best Guess Morph ▾]                             │
+│  ── Strategy (runtime-resolved) ──                         │
+│  Override  [auto ▾]  (strictMorph / bestGuessMorph /       │
+│                       lineAnimation / replace)             │
 │  Duration  [300] ms                                         │
 │  Easing    [ease-out ▾] [⌒ Edit]                           │
-│  Direction [automatic ▾]                                    │
+│                                                            │
+│  ── Compatibility Check ──                                 │
+│  Source layers: 4    Target layers: 3                       │
+│  Matched: 3  Unmatched: 1                                  │
+│  Predicted strategy: bestGuessMorph                        │
 │                                                            │
 │  [Cancel]                        [Create Transition]       │
 └────────────────────────────────────────────────────────────┘
@@ -551,44 +571,57 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 
 ---
 
-## Screen 9: Sync Target Configuration
+## Screen 9: Install & Publish Configuration
 
-### 9A. Local Directory Target
+> **Changed:** Per-target sync (local / GitHub PR / npm) has been replaced by
+> repo-native distribution configured via `coniva.config.ts` at the repo root.
+> The UI shows the current config status and provides publish actions.
+
+### 9A. Host Targets (Live Dev)
 
 ```
-┌─ Local Directory ─────────────────────────────────────────┐
-│  Path     [/Users/me/output/icons       ] [Browse]        │
-│  Exclude  [*.test.* , *.map             ]                 │
-│  [Sync Now]                                                │
+┌─ Host Targets (from coniva.config.ts) ────────────────────┐
+│                                                            │
+│  Source Dir   src/icons/source                             │
+│  Out Dir      src/icons/generated                          │
+│                                                            │
+│  Host Target: react                                        │
+│  Framework    React                                        │
+│  Output       src/components/icons/                        │
+│  Status       ● Watching  (12 icons, 3 changed)            │
+│                                                            │
+│  [Publish Changed]  [Publish All]  [Dry Run]               │
 └────────────────────────────────────────────────────────────┘
 ```
 
-### 9B. GitHub PR Target
+### 9B. Release Targets
 
 ```
-┌─ GitHub PR ───────────────────────────────────────────────┐
-│  Owner/Repo  [org/icon-library          ]                 │
-│  Branch      [update-icons              ] (optional)      │
-│  [Create PR]  [Dry Run]                                    │
-└────────────────────────────────────────────────────────────┘
-```
-
-### 9C. npm Registry Target
-
-```
-┌─ npm Registry ────────────────────────────────────────────┐
-│  Package    [@scope/icons               ]                 │
+┌─ Release Targets ─────────────────────────────────────────┐
+│                                                            │
+│  npm                                                       │
+│  Package    @scope/icons                                   │
 │  Version    1.2.3                                          │
 │  Bump       [patch ▾]                                      │
-│  Auto-pub   [on/off]  Countdown: 30s                       │
-│                                                            │
-│  Token      [••••••••] (stored in keychain)                │
 │                                                            │
 │  History                                                   │
 │  1.2.3  ·  2h ago  ·  24 icons                             │
 │  1.2.2  ·  3d ago  ·  22 icons                             │
 │                                                            │
-│  [Publish]  [Dry Run]                                      │
+│  [Release]  [Dry Run]                                      │
+└────────────────────────────────────────────────────────────┘
+```
+
+### 9C. Config Status
+
+```
+┌─ Config ──────────────────────────────────────────────────┐
+│                                                            │
+│  Config File   coniva.config.ts  ✓ Found                   │
+│  Source Dir    src/icons/source   ✓ 24 icons                │
+│  Last Publish  2h ago (changed-only, 3 icons)              │
+│                                                            │
+│  [Open Config File]  [Validate Config]                     │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -626,10 +659,9 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 ### 10C. Simple Confirmation
 
 ```
-┌─ Delete State ────────────────────────────────────────────┐
+┌─ Delete Transition ───────────────────────────────────────┐
 │                                                            │
-│  Delete state "hover"? This will also remove 2             │
-│  transitions that reference this state.                    │
+│  Remove transition "home → menu"? This cannot be undone.   │
 │                                                            │
 │  [Cancel]                              [Delete]            │
 └────────────────────────────────────────────────────────────┘
@@ -668,21 +700,18 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 | View topology | 2F | Inspect tab |
 | Add variant size | 2C | Left sidebar |
 | Generate derived variant | 2C | Left sidebar |
-| Add state | 2C | Left sidebar |
-| Rename state | 2E / 2F | Inspect tab |
-| Delete state | 2F → 10C | Inspect tab |
-| Create transition | 2G → 5 | Animation tab |
-| Edit transition bindings | 2G | Animation tab |
-| Edit track properties | 2G | Animation tab |
-| Preview transition | 2G | Animation tab |
-| Edit easing curve | 6 | Transition/track form |
+| Create icon-to-icon transition | 2G → 5 | Animation tab |
+| Preview icon-to-icon transition | 2G | Animation tab |
+| View strategy analysis | 2G | Animation tab |
+| Edit transition timing | 2G | Animation tab |
+| Edit easing curve | 6 | Transition form |
 | Pick color | 7 | Fill/stroke editor |
 | Export SVG | 4 | Export menu |
 | Export Lottie | 4 | Export menu |
 | Export React library | 4 | Export menu |
-| Sync to local dir | 9A | Sync panel |
-| Create GitHub PR | 9B | Sync panel |
-| Publish to npm | 9C | Sync panel |
+| Publish changed icons (host) | 9A | Publish panel |
+| Release to npm | 9B | Publish panel |
+| View config status | 9C | Publish panel |
 | View keyboard shortcuts | 8 | Help menu |
 | Switch between icons (tabs) | 2A | Title tab bar |
 | Undo / redo | 2A | Toolbar / ⌘Z |
@@ -698,7 +727,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 type ScreenId =
   | 'explorer-workspace'      // 1A
   | 'explorer-project'        // 1B
-  | 'explorer-sync'           // 1C
+  | 'explorer-publish'        // 1C
   | 'editor-full'             // 2A
   | 'editor-layers-tab'       // 2B
   | 'editor-variants-tab'     // 2C
@@ -714,7 +743,7 @@ type ScreenId =
   | 'easing-editor'           // 6
   | 'color-picker'            // 7
   | 'shortcuts-dialog'        // 8
-  | 'sync-config'             // 9
+  | 'install-config'          // 9
   | 'confirm-dialog';         // 10
 ```
 

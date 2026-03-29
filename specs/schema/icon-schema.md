@@ -1,13 +1,62 @@
 # Icon Schema
 
-**Status:** Implemented
-**Files:** `lib/schema/types.ts`
+**Status:** Proposed product-model rewrite
+**Primary future files:** `lib/schema/types.ts`
 
 ## Overview
 
-The icon schema defines the canonical data model for icon projects. All geometry is stored as SVG path `d` strings. The schema is organized hierarchically: a `Workspace` contains `IconSet`s, each of which contains `Icon`s. Each icon has variants, transitions, effects, and components. Variants contain states, and states contain layers -- the fundamental visual building blocks.
+This spec defines the reviewed product direction for Coniva's icon schema.
+
+The old model treated a single icon as a container for many authored states. The reviewed direction rejects that model.
+
+The new model is:
+
+- a `Workspace` contains `IconSet`s
+- an `IconSet` contains atomic `Icon`s
+- an `Icon` contains meaningful `Variant`s only, such as size or style families
+- animation happens at runtime as icon-to-icon transitions, not as many authored states inside one icon
+
+This keeps the authoring model closer to the intended SF Symbols-inspired product direction while making React code publishing clearer.
+
+## Goals
+
+- make each icon an atomic authored unit
+- keep only variants that belong to the icon itself
+- remove per-icon multi-state authoring from the product contract
+- keep enough geometry and topology information for runtime transition algorithms
+
+## Non-Goals
+
+- this schema does not treat Figma as an equal source of truth
+- this schema does not encode release targets or repo publish config
+- this schema does not require authored state-to-state transitions inside a single icon
 
 ## Types
+
+### Workspace
+
+```typescript
+type Workspace = {
+  version: '2.0';
+  meta: { name: string; createdAt: string; updatedAt: string };
+  iconSets: Record<string, IconSet>;
+  activeIconSetId?: string;
+};
+```
+
+### IconSet
+
+```typescript
+type IconSet = {
+  version: '1.0';
+  meta: { name: string; createdAt: string; updatedAt: string };
+  icons: Record<string, Icon>;
+  guideMasters?: Record<string, GuideMaster>;
+  tokenSet?: TokenSet;
+  exportProfiles?: ExportProfile[];
+  collections?: Record<string, Collection>;
+};
+```
 
 ### Icon
 
@@ -19,14 +68,19 @@ type Icon = {
   tags?: string[];
   customGuides?: GuideItem[];
   variants: Record<string, Variant>;
-  transitions: Record<string, Transition>;
   effects?: Record<string, Effect>;
   components?: Record<string, SymbolComponent>;
   meta?: {
     externalImport?: IconExternalImportMeta;
+    derivedSpecs?: DerivedVariantSpec[];
   };
 };
 ```
+
+Important rule:
+
+- an `Icon` is not a state machine
+- transitions are resolved between icons at runtime
 
 ### Variant
 
@@ -40,28 +94,29 @@ type Variant = {
   guideMasterId?: string;
   weight?: SymbolWeight;
   scale?: SymbolScale;
-  defaultState: string;
-  states: Record<string, State>;
-};
-```
-
-- `size` is the canonical pixel size (e.g. 24).
-- `viewBox` is `[minX, minY, width, height]`.
-- `defaultState` references the initial state id shown before any transition.
-- `weight` is one of: `'ultralight' | 'thin' | 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'heavy' | 'black'`.
-- `scale` is one of: `'small' | 'medium' | 'large'`.
-
-### State
-
-```typescript
-type State = {
-  id: string;
+  style?: 'outline' | 'fill' | 'slash' | 'circle' | 'square' | 'badge' | string;
   layers: Record<string, Layer>;
   topology?: TopologyContract;
+  variableValue?: number;
+  weightControlPoints?: {
+    ultralight?: string;
+    thin?: string;
+    light?: string;
+    regular?: string;
+    medium?: string;
+    semibold?: string;
+    bold?: string;
+    heavy?: string;
+    black?: string;
+  };
 };
 ```
 
-The `topology` field is an optional locked contract that records the expected path topology for all layers in this state, enabling strict morph validation.
+Important rule:
+
+- variants exist for intrinsic icon families, not interaction states
+- examples: `16`, `20`, `24`, `outline`, `fill`
+- examples that should not exist as authored variants: `hover`, `pressed`, `open`, `closed`
 
 ### Layer
 
@@ -90,11 +145,25 @@ type Layer = {
     scaleX?: number;
     scaleY?: number;
   };
-  isClipMask?: boolean;
-  clipPathLayerId?: string;
   importMeta?: SvgImportLayerMeta;
 };
 ```
+
+### TopologyContract
+
+```typescript
+type TopologyContract = {
+  locked: boolean;
+  layerPairs: Array<{
+    layerId: string;
+    subpathCount: number;
+    commandSignature: string[];
+    closed: boolean[];
+  }>;
+};
+```
+
+This remains important because runtime icon-to-icon morphing depends on geometric compatibility checks.
 
 ### PaintRef
 
@@ -125,51 +194,54 @@ type SymbolComponent = {
 };
 ```
 
-### TopologyContract
-
-```typescript
-type TopologyContract = {
-  locked: boolean;
-  layerPairs: Array<{
-    layerId: string;
-    subpathCount: number;
-    commandSignature: string[];
-    closed: boolean[];
-  }>;
-};
-```
-
 ## Behavior
 
 ### RenderingMode and Layer Roles
 
-Layer roles (`primary`, `secondary`, `tertiary`) interact with `RenderingMode` to determine visual presentation:
-
 | Mode | Role Behavior |
 |------|--------------|
 | `monochrome` | All layers use `currentColor`. Role is ignored. |
-| `hierarchical` | Role determines opacity: primary=1.0, secondary=0.6, tertiary=0.3. All layers use `currentColor`. |
-| `palette` | Each role maps to a distinct user-defined color slot from `TokenSet.colors`. |
-| `multicolor` | Layers use their authored `style.fill`/`style.stroke` values directly. Role is ignored. |
+| `hierarchical` | Role determines opacity: primary=1.0, secondary=0.6, tertiary=0.3. |
+| `palette` | Each role maps to a distinct user-defined color slot. |
+| `multicolor` | Layers use authored paint values directly. |
 
-### Layer Clipping
+### Variant Boundaries
 
-- When `clipPathLayerId` is set on a layer, that layer is clipped by the referenced layer's path.
-- When `isClipMask` is `true`, the layer itself serves as a clip path definition and is not rendered directly.
+Allowed variant families:
 
-### Transform Application Order
+- size
+- weight
+- scale
+- style family, for example fill vs outline
+- deterministic derived forms, for example slash or badge
 
-Layer transforms are applied in order: scale, rotate, then translate (`x`, `y`).
+Disallowed authored variant families:
+
+- hover
+- pressed
+- focused
+- open vs closed interaction states
+
+Those should be modeled as separate icons with runtime transitions between them.
+
+### Runtime Transition Readiness
+
+Even though the schema no longer stores per-icon authored states, it should preserve the information needed for runtime transition quality:
+
+- layer roles
+- path topology
+- guide metadata where useful
+- enough determinism for morph and line animation algorithms
 
 ## Edge Cases
 
-- A layer with no `path` is valid (used for grouping or placeholder purposes).
-- When `visible` is `false` or omitted, the layer defaults to visible.
-- `fillRule` defaults to `'nonzero'` if omitted.
-- Gradient stops must have `offset` in [0, 1] range.
+- a layer with no `path` remains valid for grouping or placeholders
+- `fillRule` defaults to `'nonzero'` when omitted
+- gradient stops must stay in the `[0, 1]` range
+- not every icon pair is morph-compatible, so schema fidelity must support fallback runtime behavior
 
 ## Related Specs
 
-- [Transition Schema](./transition-schema.md) -- transitions between states
-- [Editor Store](../editor/editor-store.md) -- layer manipulation actions
-- [Runtime JSON Format](../export/runtime-json-format.md) -- export format
+- [Transition Schema](./transition-schema.md)
+- [Editor Store](../editor/editor-store.md)
+- [Runtime JSON Format](../export/runtime-json-format.md)

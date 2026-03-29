@@ -1,38 +1,31 @@
 # Runtime JSON Format
 
-**Status:** Implemented
-**Files:** `lib/export/export-runtime-json.ts`
+**Status:** Proposed product-model rewrite
+**Primary future files:** `lib/export/export-runtime-json.ts`
 
 ## Overview
 
-The runtime JSON format is the primary export format for consuming icon animations at runtime. It serializes an icon's variants, states, transitions, effects, and draw annotations into a deterministic JSON structure. The export pipeline resolves paint references, builds layer bindings with track data, and produces a self-contained payload suitable for the runtime player.
+The runtime JSON format is the export boundary between Coniva authoring data and runtime icon behavior in product code.
+
+The old format assumed variants contained states and transitions. The reviewed direction changes that:
+
+- variants contain authored geometry and style families
+- runtime transitions are icon-to-icon concerns
+
+So the runtime export should describe:
+
+- icon metadata
+- authored variants
+- layer geometry and paint data
+- runtime-facing transition payloads when requested
+
+## Goals
+
+- export deterministic icon payloads for React runtime consumption
+- preserve the geometry needed for morphing and line animation
+- stop depending on per-icon authored state machines
 
 ## Types
-
-### RuntimeCoreJson (Legacy)
-
-```typescript
-type RuntimeCoreJson = {
-  id: string;
-  name: string;
-  variants: Record<string, {
-    size: number;
-    viewBox: [number, number, number, number];
-  }>;
-  states: Record<string, RuntimeCoreState>;
-  transitions: Record<string, {
-    from: string;
-    to: string;
-    strategy: Transition['strategy'];
-    durationMs: number;
-    easing?: string | SpringConfig;
-    layerBindings: RuntimeLayerBinding[];
-  }>;
-  tokens?: {
-    colors: Record<string, string>;
-  };
-};
-```
 
 ### RuntimeIconMeta
 
@@ -45,7 +38,7 @@ type RuntimeIconMeta = {
   variants: Record<string, {
     size: number;
     viewBox: [number, number, number, number];
-    defaultState: string;
+    style?: string;
   }>;
 };
 ```
@@ -58,27 +51,28 @@ type RuntimeVariantPayload = {
     id: string;
     size: number;
     viewBox: [number, number, number, number];
-    defaultState: string;
+    style?: string;
   };
-  states: Record<string, RuntimeState>;
-  transitions: Record<string, RuntimeTransition>;
+  layers: Record<string, RuntimeLayer>;
+  topology?: RuntimeTopologyContract;
   effects?: Record<string, RuntimeEffect>;
   draw?: RuntimeDrawAnnotation;
   variableDraw?: RuntimeVariableDraw;
 };
 ```
 
-### RuntimeTransition
+### RuntimeTransitionPayload
 
 ```typescript
-type RuntimeTransition = {
-  from: string;
-  to: string;
-  strategy: 'track' | 'morph' | 'replace';   // Simplified from schema strategies
+type RuntimeTransitionPayload = {
+  fromIconId: string;
+  toIconId: string;
+  fromVariantId: string;
+  toVariantId: string;
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing: string | SpringConfig;
   layerBindings: RuntimeLayerBinding[];
-  magicReplace?: RuntimeMagicReplace;
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
 };
 ```
@@ -94,21 +88,6 @@ type RuntimeLayerBinding = {
   durationMs?: number;
   morph?: { topology: 'strict' | 'bestGuess' };
   compoundTrimMode?: 'simultaneously' | 'individually';
-};
-```
-
-### RuntimeTrack
-
-```typescript
-type RuntimeTrackProperty =
-  | 'opacity' | 'rotate' | 'translateX' | 'translateY' | 'scale'
-  | 'pathLength' | 'fill' | 'stroke' | 'strokeWidth'
-  | 'fillOpacity' | 'strokeOpacity'
-  | 'trimStart' | 'trimEnd' | 'trimOffset';
-
-type RuntimeTrack = {
-  property: RuntimeTrackProperty;
-  keyframes: number[] | string[];
 };
 ```
 
@@ -131,117 +110,52 @@ type RuntimeLayer = {
 };
 ```
 
-### RuntimePaint
-
-```typescript
-type RuntimePaint =
-  | { kind: 'none' }
-  | { kind: 'currentColor' }
-  | { kind: 'solid'; color: string }
-  | { kind: 'linearGradient'; angle: number; stops: GradientStop[] }
-  | { kind: 'radialGradient'; cx: number; cy: number; r: number; stops: GradientStop[] };
-```
-
-### RuntimeDrawAnnotation
-
-```typescript
-type RuntimeDrawAnnotation = {
-  mode: 'byLayer';
-  layers: Record<string, {
-    guidePoints: Array<{ t: number; direction?: 'forward' | 'reverse' }>;
-  }>;
-};
-```
-
-### RuntimeMagicReplace
-
-```typescript
-type RuntimeMagicReplace = {
-  preserveLayerIds?: string[];
-  drawIntegrated?: boolean;
-};
-```
-
-### RuntimeExportDiagnostic
-
-```typescript
-type RuntimeExportDiagnostic = {
-  level: 'warning' | 'error';
-  code: 'missing-token' | 'invalid-transition' | 'invalid-effect'
-      | 'invalid-draw-layer' | 'invalid-guide-master';
-  iconId: string;
-  variantId?: string;
-  transitionId?: string;
-  effectId?: string;
-  message: string;
-};
-```
-
-## Functions
-
-### exportRuntimeJson (Legacy)
-
-```typescript
-function exportRuntimeJson(
-  icon: RuntimeJsonExportIcon,
-  options?: { variants?: string[]; states?: string[] },
-): string
-```
-
-Exports a single icon as a JSON string using the `RuntimeCoreJson` format. Resolves paint tokens to concrete colors. Supports filtering by variant and state IDs.
-
-### exportRuntimeIconVariant
-
-```typescript
-function exportRuntimeIconVariant(
-  project: Project,
-  iconId: string,
-  variantId: string,
-): { meta: RuntimeIconMeta; variant: RuntimeVariantPayload; diagnostics: RuntimeExportDiagnostic[] }
-```
-
-Exports a single variant of an icon with full runtime data including states, transitions, effects, draw annotations, and variable draw configuration. Returns diagnostics for missing tokens, invalid transitions, etc.
-
 ## Behavior
 
-### Strategy Simplification
+### Export Boundary
 
-Schema strategies are simplified for the runtime:
-- `'strictMorph'` and `'bestGuessMorph'` both become `'morph'` in the export.
-- `'track'` and `'replace'` pass through as-is.
+Runtime export should preserve:
 
-### Paint Resolution
+- authored geometry
+- paint resolution
+- topology data needed for transition quality
+- variant identity such as size and style family
 
-Schema `PaintRef` values are resolved to `RuntimePaint`:
-- `{ mode: 'currentColor' }` becomes `{ kind: 'currentColor' }`.
-- `{ mode: 'fixed', value }` becomes `{ kind: 'solid', color: value }`.
-- `{ mode: 'token', token }` resolves via `TokenSet.colors`. If the token is missing, a diagnostic is emitted.
-- Gradient modes pass through with their stops.
-- `undefined` paint becomes `{ kind: 'none' }`.
+### What should disappear
 
-### Deterministic Output
+The new export format should not require:
 
-The JSON output is serialized with consistent key ordering to produce deterministic output across exports. This enables reliable diffing of exported artifacts.
+- `defaultState`
+- `states`
+- transition references between authored states
 
-### Track Property Filtering
+### Determinism
 
-Only properties in the `SUPPORTED_TRACK_PROPERTIES` set are included in the runtime output. Unsupported track properties are silently dropped.
+Output must remain deterministic for:
 
-### Clip Path Resolution
+- diffability
+- code review
+- repeated publish runs
 
-When a layer has `clipPathLayerId`, the referenced clip layer's path is resolved and included as a `RuntimeClipPath` on the layer. The clip layer itself is excluded from the exported `layers` array.
+### Diagnostics
+
+Diagnostics should still exist for:
+
+- invalid paints
+- missing tokens
+- malformed geometry
+- unsupported transition payload requests
 
 ## Edge Cases
 
-- Icons with no variants produce an empty `variants` record.
-- Transitions referencing non-existent states are excluded and produce a diagnostic.
-- Layers without path data emit an empty string for `d`.
-- Token references to missing colors emit a `'missing-token'` diagnostic and fall back to transparent.
-- Effects with unrecognized `kind` values are included but may produce runtime warnings.
+- icons with one variant are valid
+- icons with many size/style variants are valid
+- transition payload generation may be omitted when only icon geometry is needed
+- geometry that is valid for rendering may still be invalid for morphing
 
 ## Related Specs
 
-- [Icon Schema](../schema/icon-schema.md) -- source data model
-- [Transition Schema](../schema/transition-schema.md) -- transition data
-- [Draw Executor](../runtime/draw-executor.md) -- draw annotation consumption
-- [Transition Resolver](../runtime/transition-resolver.md) -- transition resolution
+- [Icon Schema](../schema/icon-schema.md)
+- [Transition Schema](../schema/transition-schema.md)
+- [Transition Resolver](../runtime/transition-resolver.md)
+- [Draw Executor](../runtime/draw-executor.md)

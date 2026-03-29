@@ -1,6 +1,6 @@
 # Inspect Tab
 
-**Status:** Specification (Phase L -- surface runtime state, topology, and advanced authoring in the Inspect panel)
+**Status:** Specification (Phase L -- surface runtime behavior, topology, and advanced authoring in the Inspect panel)
 **Primary file:** `components/editor/InspectorPanel.tsx`
 **Secondary surface:** `components/editor/EditorShell.tsx` (RightSidebar, compact inspect view)
 
@@ -12,7 +12,7 @@ The Inspect tab is the right-sidebar panel that surfaces layer properties,
 variant configuration, topology status, and vector editing controls. It
 currently handles basic authoring (fill, stroke, transform, path editing,
 boolean operations, clipping, alignment, variant management). Phase L extends
-it to surface computed runtime state (variable value opacity, per-subpath
+it to surface computed runtime behavior (variable value opacity, per-subpath
 animation strategy classification, auto-gradient preview) and enable advanced
 authoring controls (topology locking in its natural location, weight control
 point management).
@@ -26,7 +26,7 @@ Two implementations of the inspect surface exist today:
    component tagging, and the TransitionPanel embed.
 
 2. **`EditorShell.tsx` `RightSidebar`** -- a compact "wire-frame" inspect
-   view inside the editor shell. Shows document-level metadata (name, state,
+   view inside the editor shell. Shows document-level metadata (name, variant,
    size, rendering mode, guides) when no layer is selected, or a compact
    layer inspector (role, fill/stroke mode, color pickers, stroke width,
    position/rotation) when a layer is selected.
@@ -46,7 +46,7 @@ EditorShell.tsx
  +-- RightSidebar (compact inspect + animation tabs)
  |    +-- [rightTab === 'inspect']
  |    |    +-- Layer inspector (role, fill, stroke, position, rotation)
- |    |    +-- Document inspector (name, state, size, rendering, guides)
+ |    |    +-- Document inspector (name, variant, size, rendering, guides)
  |    +-- [rightTab === 'animation']
  |         +-- Transition list, draft form, preview controls
  +-- InspectorPanel.tsx (full inspect panel -- standalone component)
@@ -57,7 +57,7 @@ EditorShell.tsx
            +-- Section: Components (badge/slash/enclosure tagging)
            +-- TransitionPanel (embedded)
            +-- Section: Shape Tool (conditional -- when shape tool active)
-           +-- Section: Topology (conditional -- when state has topology)
+           +-- Section: Topology (conditional -- when the current variant has topology)
            +-- Section: Layer (ID, role) -- when layer selected
            +-- Section: Clipping (make/release clip mask)
            +-- Section: Boolean (unite/subtract/intersect/exclude)
@@ -75,12 +75,12 @@ EditorStore (zustand-like singleton)
  |
  +-- useEditorStore(selector) -----> InspectorPanel reads:
  |   - tool, shapeSubTool, shapePolygonSides, shapeStarPoints
- |   - currentIconId, currentVariantId, currentStateId
+ |   - currentIconId, currentVariantId
  |   - currentIcon (derived), currentVariant (derived)
  |   - selection (layerIds, pointIds)
  |   - project.tokenSet.colors
  |
- +-- selectCurrentState(s) --------> currentState (layers, topology)
+ +-- current variant selector -----> current variant payload (layers, topology)
  |
  +-- useSelection() ---------------> selection.layerIds, selection.pointIds
  |
@@ -99,8 +99,8 @@ EditorStore (zustand-like singleton)
 |--------------------------|----------------------------------------------|----------------------|
 | `layer`                  | `currentState.layers[selectedLayerId]`        | Style/Vector/Transform sections |
 | `pointContext`           | `getSelectedPointContext(layer, pointIds)`    | Vector section       |
-| `currentTopology`        | `computeTopology(currentState)` (memoized)   | Topology section     |
-| `isTopologyLocked`       | `currentState.topology?.locked === true`      | Topology section     |
+| `currentTopology`        | `computeTopology(currentVariant)` (memoized) | Topology section     |
+| `isTopologyLocked`       | `currentVariant.topology?.locked === true`   | Topology section     |
 | `multipleLayersSelected` | `selection.layerIds.length > 1`               | Boolean/Align/Clip sections |
 | `hasBooleanableSelection`| All selected layers have `path.d`             | Boolean section      |
 
@@ -112,7 +112,7 @@ EditorStore (zustand-like singleton)
 | Components     | `currentIcon` exists                            |
 | TransitionPanel| `currentIcon` exists                            |
 | Shape Tool     | `tool === 'shape'`                              |
-| Topology       | `currentState && currentTopology` exist          |
+| Topology       | `currentVariant && currentTopology` exist        |
 | Layer          | `layer` is selected                             |
 | Clipping (make)| `multipleLayersSelected` AND 2+ path layers     |
 | Clipping (release)| Single layer is clip mask or has clipPathLayerId |
@@ -131,7 +131,7 @@ the panel shows:
 - Variants section (full variant list with weight/scale/variableValue controls)
 - Components section
 - TransitionPanel
-- Topology section (if state has topology data)
+- Topology section (if the current variant has topology data)
 - Empty state card: "Choose a layer to inspect it"
 
 ### Multiple Layers Selected
@@ -167,7 +167,7 @@ each layer's authored opacity in the Style section.
 **Behavior:**
 1. When a layer is selected AND `currentVariant.variableValue` is defined (not
    `undefined` / not 1.0), compute the variable-value result for the current
-   state's layers.
+   variant's layers.
 2. In the Style section, next to the "Fill Opacity" NumberField, display a
    read-only badge showing the computed effective opacity:
    `authored * variableValue_computed`.
@@ -186,7 +186,7 @@ each layer's authored opacity in the Style section.
 currentVariant.variableValue
          |
          v
-computeVariableValue(currentState.layers, variableValue)
+computeVariableValue(currentVariant.layers, variableValue)
          |
          v
 result[selectedLayerId] --> { opacity, visible }

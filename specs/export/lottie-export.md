@@ -49,7 +49,7 @@ export type LottieExportOptions = {
 
 ### Layer mapping
 
-Each `Layer` in the variant's `defaultState` maps to a Lottie **shape
+Each authored `Layer` in the selected variant maps to a Lottie **shape
 layer** (`ty: 4`):
 
 ```

@@ -1,28 +1,51 @@
-# Cross-Icon Transitions
+# Icon-to-Icon Transition Preview
 
-**Status:** Implemented
-**Files:** `components/editor/TransitionPanel.tsx`
+**Status:** Proposed product-model rewrite
+**Primary future files:** `components/editor/TransitionPanel.tsx`, `components/editor/AnimationStudioPanel.tsx`
 
 ## Overview
 
-The cross-icon transition UI enables authoring transitions that span two different icons. The TransitionPanel provides a mode toggle between intra-variant and cross-icon modes, cascading endpoint pickers for source and target icons/variants/states, direction selection for replace strategies, and visual badges on transition cards indicating cross-icon status.
+This spec describes the editor UI for previewing runtime icon-to-icon transitions.
+
+The old UI mixed:
+
+- intra-variant state-to-state transitions
+- cross-icon transitions as a secondary mode
+
+The reviewed direction removes authored state-to-state transitions from the product.
+
+The new rule:
+
+- transition preview is always icon-to-icon
+- the editor previews runtime behavior
+- the editor does not author a many-states-per-icon workflow
+
+## Goals
+
+- make icon endpoint selection the primary preview flow
+- expose runtime strategy feedback clearly
+- make morphing quality and fallback behavior visible
+- keep the editor as a preview client for runtime behavior
+
+## Non-Goals
+
+- no intra-variant state authoring flow
+- no state picker as a required UI primitive
 
 ## Types
 
 ```typescript
-type TransitionMode = 'intra-variant' | 'cross-icon';
-
 type CompatibilityStatus =
-  | { tone: 'green'; label: 'Compatible' }
+  | { tone: 'green'; label: 'Strict Morph' }
   | { tone: 'yellow'; label: 'Best Guess' }
-  | { tone: 'red'; label: 'Incompatible -- will crossfade' };
+  | { tone: 'orange'; label: 'Line Animation' }
+  | { tone: 'red'; label: 'Replace / Fallback' };
 
 type ActivePreview = {
-  transitionId: string;
-  baseStateId: string;
-  targetStateId: string;
-  originalStateId: string;
-  speed: number;
+  fromIconId: string;
+  toIconId: string;
+  fromVariantId: string;
+  toVariantId: string;
   progress: number;
   playing: boolean;
   resolved: ResolvedTransition;
@@ -31,105 +54,66 @@ type ActivePreview = {
 
 ## UI Flow
 
-### Mode Toggle
+### Endpoint Selection
 
-The "Add Transition" form includes a mode selector:
-- **Intra-Variant** (default): Selects `from` and `to` states from the current variant's state list via dropdown.
-- **Cross-Icon**: Reveals two endpoint picker sections (source and target), each with cascading Icon, Variant, and State selects.
+The user picks:
 
-### Cross-Icon Endpoint Pickers
+1. source icon
+2. source variant
+3. target icon
+4. target variant
 
-Each endpoint (source and target) presents three cascading selects:
+The selection model is icon-centric, not state-centric.
 
-1. **Icon Select** -- Lists all icons in the project (`projectIcons`). Changing the icon resets the variant and state selections.
-2. **Variant Select** -- Lists variants for the selected icon. Changing the variant resets the state selection.
-3. **State Select** -- Lists states for the selected variant.
+### Strategy Feedback
 
-The derived lists are computed via `useMemo` from `projectIcons`:
-```
-iconEntries = Object.values(projectIcons).map(icon => ({ id, name }))
-srcVariants = projectIcons[srcIconId].variants (when srcIconId is set)
-srcStates = Object.keys(projectIcons[srcIconId].variants[srcVariantId].states)
-tgtVariants/tgtStates = analogous for target endpoint
-```
+The UI should show:
 
-### Direction Selector
+- morph readiness
+- line-animation recommendation
+- fallback recommendation when morphing is invalid
 
-Visible for all transitions. Options:
+### Preview Playback
 
-| Value | Label |
-|-------|-------|
-| `'automatic'` | Automatic |
-| `'downUp'` | Down -> Up |
-| `'upUp'` | Up -> Up |
-| `'offUp'` | Off -> Up |
+The preview player should support:
 
-### Strategy Selection
+- scrub
+- play / pause
+- speed changes
 
-Available strategies:
-- `strictMorph`
-- `bestGuessMorph`
-- `track`
-- `replace`
-
-### Compatibility Badge
-
-Each transition card shows a compatibility indicator computed from topology analysis:
-- **Green (Compatible):** `strictMorph` possible, exact command signature match.
-- **Yellow (Best Guess):** `bestGuessMorph` viable, some topology differences.
-- **Red (Incompatible):** Will fall back to crossfade.
-
-### Cross-Icon Badge
-
-Transition cards with `fromEndpoint` or `toEndpoint` set display a cross-icon badge indicating the transition spans multiple icons.
+But these are preview concerns only. They do not define persisted authored states.
 
 ## Behavior
 
-### Creating a Cross-Icon Transition
+### Transition Preview Creation
 
-When submitting in cross-icon mode:
-1. The transition's `from` and `to` are set to the source and target state IDs.
-2. `fromEndpoint` is populated with `{ iconId: srcIconId, variantId: srcVariantId, stateId: srcStateId }`.
-3. `toEndpoint` is populated with `{ iconId: tgtIconId, variantId: tgtVariantId, stateId: tgtStateId }`.
+When a preview starts:
 
-### Preview Integration
+1. the editor resolves the selected source icon and variant
+2. the editor resolves the selected target icon and variant
+3. runtime resolution determines the strategy family
+4. the preview renders the resolved runtime transition
 
-The preview system handles cross-icon transitions by:
-1. Resolving source state from `fromEndpoint.iconId > fromEndpoint.variantId > fromEndpoint.stateId`.
-2. Resolving target state from `toEndpoint.iconId > toEndpoint.variantId > toEndpoint.stateId`.
-3. Passing `CrossIconContext` to `startTransitionPreview` which forwards it to `resolveTransition`.
-4. The `TransitionScheduler` drives playback with configurable speed (0.25x, 0.5x, 1x, 2x).
+### Binding Display
 
-### Transition Card Sections
+The bindings list should explain layer mapping with runtime language:
 
-Each transition card is collapsible and shows:
-- From/To state labels
-- Strategy badge
-- Duration and easing controls
-- Stagger configuration (mode, perLayerMs)
-- Trigger configuration (hover, tap, longPress, focus, auto)
-- Layer bindings (expandable)
-- Direction selector (for replace strategy)
+- `strict morph`
+- `best guess morph`
+- `line animation`
+- `replace`
 
-### Default Values
-
-When opening the "Add Transition" form:
-- `formFrom` defaults to `currentStateId` (if available in the variant) or the first state.
-- `formTo` defaults to the first state that differs from `formFrom`.
-- `formStrategy` defaults to `'bestGuessMorph'`.
-- `formDuration` defaults to `'240'` (ms).
-- `formEasing` defaults to `'ease-in-out'`.
-- `formDirection` defaults to `'automatic'`.
+It should also show why a fallback was chosen when possible.
 
 ## Edge Cases
 
-- If the source and target icons are the same, the transition is still stored with endpoints but the resolver detects `sourceIconId === targetIconId` and falls back to intra-variant matching.
-- Endpoint pickers show empty dropdowns when no icons exist in the project.
-- Changing the source icon clears the source variant and state selections to prevent stale references.
-- Speed multiplier affects only preview playback, not the persisted `durationMs`.
+- identical icon pair should still preview deterministically
+- same icon, different variant is valid
+- same geometry with different style family is valid
+- invalid morph pairs must degrade visibly and predictably
 
 ## Related Specs
 
-- [Transition Schema](../schema/transition-schema.md) -- `TransitionEndpoint` type
-- [Editor Store](./editor-store.md) -- `startTransitionPreview` action
-- [Transition Resolver](../runtime/transition-resolver.md) -- cross-icon layer matching
+- [Transition Schema](../schema/transition-schema.md)
+- [Editor Store](./editor-store.md)
+- [Transition Resolver](../runtime/transition-resolver.md)

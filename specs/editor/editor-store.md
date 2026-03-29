@@ -1,13 +1,41 @@
 # Editor Store
 
-**Status:** Implemented
-**Files:** `lib/editor-store/store.ts`, `lib/editor-store/types.ts`, `lib/editor-store/history.ts`, `lib/editor-store/hooks.ts`, `lib/editor-store/selectors.ts`
+**Status:** Proposed product-model rewrite
+**Primary future files:** `lib/editor-store/store.ts`, `lib/editor-store/types.ts`
 
 ## Overview
 
-The editor store is the central state management layer for the icon authoring tool. Built on Zustand with zundo for undo/redo history, it manages workspace data, current selections, viewport state, tool mode, and transition preview state. The store exposes a comprehensive action API for icon, variant, state, layer, transition, and guide manipulation.
+This spec defines the reviewed editor-store direction after the product-model change.
 
-## Types
+The old store centered heavily on:
+
+- `currentStateId`
+- authored state CRUD inside a variant
+- state-based transition preview
+
+The reviewed direction removes per-icon multi-state authoring from the product contract.
+
+The new store should center on:
+
+- workspace and icon-set management
+- current icon and current variant selection
+- layer editing
+- variant management for size and style families
+- previewing runtime icon-to-icon transitions without making them authored state documents
+
+## Goals
+
+- keep the editor focused on icon authoring
+- remove state-management complexity that no longer belongs in the product
+- preserve transition preview as a runtime-facing capability
+- simplify tab, selection, and mutation logic
+
+## Non-Goals
+
+- the editor store should not own an authored many-states-per-icon workflow
+- the editor store should not preserve old state CRUD purely for compatibility
+
+## Core State
 
 ### EditorState
 
@@ -20,7 +48,6 @@ type EditorState = {
   lastSavedAt: number | null;
   currentIconId: string | null;
   currentVariantId: string | null;
-  currentStateId: string | null;
   selectedIconGuideIndex: number | null;
   selection: SelectionState;
   activeSnapGuides: SnapTarget[];
@@ -37,147 +64,118 @@ type EditorState = {
   pointTransformLabel: PointTransformLabelState | null;
   pendingPenHandle: PendingPenHandleState | null;
   transitionPreview: TransitionPreview | null;
-  selectedTransitionId: string | null;
   favorites: string[];
   openTabs: EditorTab[];
   activeTabId: string | null;
 };
 ```
 
-### Supporting Types
+Important difference:
+
+- `currentStateId` should not remain a first-class product concept
+
+### TransitionPreview
 
 ```typescript
-type Tool = 'select' | 'direct-select' | 'pen' | 'shape' | 'guide';
-type ShapeType = 'rectangle' | 'ellipse' | 'polygon' | 'star' | 'line';
-
-type SelectionState = {
-  layerIds: string[];
-  pointIds: string[];
-  guideIndexes?: number[];
-};
-
-type ViewportState = {
-  zoom: number;
-  panX: number;
-  panY: number;
-};
-
 type TransitionPreview = {
-  transitionId: string;
-  baseStateId: string;
-  targetStateId: string;
-  baseIconId?: string;         // Cross-icon source
-  baseVariantId?: string;      // Cross-icon source variant
-  targetIconId?: string;       // Cross-icon target
-  targetVariantId?: string;    // Cross-icon target variant
+  fromIconId: string;
+  toIconId: string;
+  fromVariantId: string;
+  toVariantId: string;
   progress: number;
   resolvedTransition: ResolvedTransition;
   interpolatedValues: InterpolatedValues;
 };
+```
 
+The preview remains useful, but it previews runtime icon-to-icon transitions.
+
+### EditorTab
+
+```typescript
 type EditorTab = {
   id: string;
   iconSetId: string;
   iconId: string;
   variantId: string | null;
-  stateId: string | null;
 };
 ```
+
+Tabs should focus on icons and variants, not state documents.
 
 ## Key Actions
 
 ### Layer Operations
 
-**`patchLayer(iconId, stateId, layerId, patch)`**
-Shallow-merges `patch` into the specified layer. Used for updating style, transform, path, visibility, role, and clip mask assignments.
+These remain central:
 
-**`renameLayer(iconId, stateId, oldLayerId, newLayerId)`**
-Renames a layer by re-keying it in `state.layers`. Also updates all references:
-- `clipPathLayerId` on other layers pointing to the renamed layer.
-- Layer bindings in all transitions referencing the old ID.
-- Topology contract layer pairs.
-- Guide draw points.
-- Symbol component layer ID lists.
+- patch layer
+- rename layer
+- set visibility
+- assign clip masks
 
-**`setLayerVisibility(iconId, stateId, layerId, visible)`**
-Sets the `visible` flag on a layer.
+### Variant Operations
 
-**`setClipMask(clipLayerId, targetLayerIds)`**
-Marks `clipLayerId` as a clip mask and sets `clipPathLayerId` on all target layers.
+These become more important:
 
-### Transition Operations
+- add variant
+- duplicate variant
+- remove variant
+- derive fill/slash/circle/square/badge variants
 
-**`addTransition(iconId, transition)`**
-Adds a transition to the icon's `transitions` record.
+### Transition Preview Operations
 
-**`patchTransition(iconId, transitionId, patch)`**
-Shallow-merges `patch` into the transition.
+The editor should still support:
 
-**`removeTransition(iconId, transitionId)`**
-Removes a transition from the icon.
+- start transition preview between icons
+- update transition preview progress
+- stop transition preview
 
-**`startTransitionPreview(iconId, transition, variantId, progress?, crossIconContext?)`**
-Resolves the transition against source/target states (including cross-icon context), computes initial interpolated values, and sets `transitionPreview` in state.
+But these previews should resolve runtime transition behavior, not mutate authored state records.
 
-**`updateTransitionPreview(progress)`**
-Updates the progress value and recomputes interpolated values from the resolved transition.
+## Removed Product Concepts
 
-**`stopTransitionPreview()`**
-Clears `transitionPreview` to null.
+The reviewed product direction should remove:
 
-### State Operations
-
-**`addState(iconId, options?)`**
-Creates a new state, optionally duplicating layers from `sourceStateId`. If `blank` is true, creates empty layers.
-
-**`renameState(iconId, stateId, nextStateId)`**
-Renames a state by re-keying in the variant's `states` record. Updates all transition `from`/`to` references.
-
-**`duplicateState(iconId, stateId, nextStateId?)`**
-Deep-clones a state with a new ID.
-
-### Icon/Variant Operations
-
-**`createBlankIcon(options?)`** -- Creates a new icon with a default variant and state.
-**`duplicateIcon(iconId)`** -- Deep-clones an icon with new IDs.
-**`addVariant(iconId, variant)`** -- Adds a variant to the icon.
-**`generateVariantMatrix(iconId, options)`** -- Generates a matrix of variants from size/weight/scale combinations.
+- add state
+- rename state
+- duplicate state
+- current state selection as a core editing primitive
+- state-to-state transition CRUD as a core authoring feature
 
 ## Behavior
 
-### Undo/Redo
-
-History is managed via zundo middleware. Actions can be grouped:
-- `pauseHistory()` -- Suspends history recording.
-- `resumeHistory()` -- Resumes history recording.
-- `commitHistory(label?)` -- Forces a history snapshot with optional label.
-
-### Selection Management
-
-- `setSelection(selection)` -- Replaces the current selection.
-- `clearSelection()` -- Resets to empty selection (`{ layerIds: [], pointIds: [] }`).
-- Selection is orthogonal to tool mode: a `select` tool selects layers, `direct-select` selects points.
-
-### Tab Management
-
-- `openIconTab(iconSetId, iconId, options?)` -- Opens a tab for an icon, optionally focusing it.
-- `closeIconTab(tabId)` -- Removes the tab. Adjusts `activeTabId` if the closed tab was active.
-- `setActiveTab(tabId)` -- Focuses a tab and updates `currentIconId`/`currentVariantId`/`currentStateId` from the tab data.
-
 ### Dirty State
 
-The store tracks `isDirty` which is set to `true` on any data mutation and cleared by `markSaved()`.
+Any mutation to icons, variants, or layers marks the store dirty until saved.
+
+### Undo/Redo
+
+Undo/redo stays important, but should operate over:
+
+- icon edits
+- variant edits
+- layer edits
+
+not over state-machine authoring flows that no longer belong in the product.
+
+### Transition Preview Boundary
+
+Preview is still an editor concern.
+
+Transition definition and strategy choice are runtime concerns.
+
+That means the store should hold preview session state, not the long-term animation model itself.
 
 ## Edge Cases
 
-- `renameLayer` is a complex operation that must update references in transitions, topology contracts, guides, and symbol components atomically within a single state update.
-- `startTransitionPreview` with cross-icon context resolves states from different icons.
-- Loading a workspace resets all UI state (selection, viewport, tool, preview) to defaults.
-- Removing the current icon/variant/state adjusts selection to the next available entity.
+- removing a variant must always leave the icon in a valid state
+- previewing icon-to-icon transitions must work even when morphing is invalid and fallback is chosen
+- loading a workspace should reset preview UI and selection state cleanly
 
 ## Related Specs
 
-- [Icon Schema](../schema/icon-schema.md) -- data model
-- [Transition Schema](../schema/transition-schema.md) -- transition data
-- [Cross-Icon Transitions](./cross-icon-transitions.md) -- UI flow
-- [Transition Resolver](../runtime/transition-resolver.md) -- preview resolution
+- [Icon Schema](../schema/icon-schema.md)
+- [Transition Schema](../schema/transition-schema.md)
+- [Cross-Icon Transitions](./cross-icon-transitions.md)
+- [Transition Resolver](../runtime/transition-resolver.md)

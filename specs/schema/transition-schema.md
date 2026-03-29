@@ -1,44 +1,63 @@
 # Transition Schema
 
-**Status:** Implemented
-**Files:** `lib/schema/types.ts`
+**Status:** Proposed product-model rewrite
+**Primary future files:** `lib/runtime-core/*`, `lib/export/*`
 
 ## Overview
 
-Transitions define animated changes between states within an icon or across different icons. Each transition specifies a strategy (track, morph, or replace), a duration, easing, and layer bindings that control how individual layers animate. The schema supports both intra-variant transitions (between states of the same variant) and cross-icon transitions (between states across different icons).
+This spec defines the reviewed transition model for Coniva.
+
+The old schema mixed:
+
+- state-to-state transitions inside a single icon
+- icon-to-icon transitions across icons
+
+The reviewed direction removes authored state-to-state transitions from the product contract.
+
+The new rule is simple:
+
+- authoring owns icons and their variants
+- runtime owns transitions between icons
+
+This keeps animation central to the product while removing the wrong authoring abstraction.
+
+## Goals
+
+- make icon-to-icon transition the primary transition model
+- keep SF Symbols-inspired animation semantics first-class
+- support line animation, morphing, and fallback replacement behavior
+- keep transition ownership in runtime and export layers
+
+## Non-Goals
+
+- this schema does not require authored multi-state icons
+- this schema does not guarantee that every icon pair can morph
+- this schema does not force one transition algorithm for all icon pairs
 
 ## Types
 
-### Transition
+### RuntimeTransitionIntent
+
+This is the reviewed product-level concept, even if the exact type name changes during implementation.
 
 ```typescript
-type Transition = {
+type RuntimeTransitionIntent = {
   id: string;
-  from: string;                         // State ID within current variant
-  to: string;                           // State ID within current variant
-  fromEndpoint?: TransitionEndpoint;     // Cross-icon source (when set, overrides from)
-  toEndpoint?: TransitionEndpoint;       // Cross-icon target (when set, overrides to)
-  strategy: 'track' | 'strictMorph' | 'bestGuessMorph' | 'replace';
+  fromIconId: string;
+  toIconId: string;
+  fromVariantId: string;
+  toVariantId: string;
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
-  stagger?: TransitionStagger;
-  layerBindings: LayerBinding[];
-  triggers?: StateTrigger[];
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
 };
 ```
 
-### TransitionEndpoint
+The important point is not the final field names. The important point is:
 
-Used for cross-icon transitions to reference a state in a different icon/variant.
-
-```typescript
-type TransitionEndpoint = {
-  iconId: string;
-  variantId: string;
-  stateId: string;
-};
-```
+- transitions reference icon endpoints
+- transitions do not assume authored states inside one icon
 
 ### LayerBinding
 
@@ -51,15 +70,18 @@ type LayerBinding = {
   durationMs?: number;
   morph?: {
     topology: 'strict' | 'bestGuess';
-    mixer?: 'native' | 'flubber';
   };
   compoundTrimMode?: CompoundTrimMode;
 };
 ```
 
-### TimelineTrack
+Layer binding remains useful because runtime needs to express:
 
-A discriminated union over animatable properties:
+- which layers map to each other
+- where line animation is applied
+- where fallback replace behavior is needed
+
+### TimelineTrack
 
 ```typescript
 type TimelineTrack =
@@ -69,24 +91,18 @@ type TimelineTrack =
   | { property: 'translateY'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'scale'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'pathLength'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'fill'; keyframes: string[]; easing?: string | SpringConfig }
-  | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig }
-  | { property: 'strokeWidth'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'fillOpacity'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimStart'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimEnd'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig };
 ```
+
+These remain central for line start / line end style behavior.
 
 ### CompoundTrimMode
 
 ```typescript
 type CompoundTrimMode = 'simultaneously' | 'individually';
 ```
-
-- `'simultaneously'`: All subpaths are treated as one continuous path; the trim range maps across the combined total length. Mirrors After Effects "Trim Multiple Shapes" behavior.
-- `'individually'`: Each subpath is trimmed independently using the same normalized start/end/offset values.
 
 ### SpringConfig
 
@@ -100,65 +116,67 @@ type SpringConfig = {
 };
 ```
 
-### TransitionStagger
+## Strategy Families
 
-```typescript
-type TransitionStagger = {
-  mode: 'linear' | 'from-center' | 'from-edges' | 'random';
-  perLayerMs: number;
-  easing?: string;
-};
-```
+### `strictMorph`
 
-### StateTrigger
+Use when command signatures and topology are strongly compatible.
 
-```typescript
-type StateTrigger = {
-  event: 'hover' | 'tap' | 'longPress' | 'focus' | 'auto';
-};
-```
+### `bestGuessMorph`
 
-### Direction (Replace Strategy)
+Use when geometry is close enough after normalization.
 
-The `direction` field controls the visual motion of replace transitions:
+### `lineAnimation`
 
-| Direction | Behavior |
-|-----------|----------|
-| `'downUp'` | Outgoing slides down, incoming slides up |
-| `'upUp'` | Both outgoing and incoming slide up |
-| `'offUp'` | Outgoing scales out, incoming slides up |
-| `'automatic'` | Determined by state ordering at runtime |
+Use when the important visual behavior is line start/end progression, handwriting-style motion, or trim-based reveal.
 
-## Behavior
+### `replace`
 
-### Strategy Selection
+Use when morphing is invalid or visually wrong.
 
-- `'track'` -- Animate via explicit timeline tracks only. No path morphing. Used for transform-based animations (rotation, translation, opacity).
-- `'strictMorph'` -- Requires exact SVG command signature match between from/to paths. Lerps control point coordinates directly.
-- `'bestGuessMorph'` -- Converts arcs to cubics, pads mismatched subpath counts, then attempts morphing. Falls back to crossfade on failure.
-- `'replace'` -- No morphing. Uses directional slide/fade animation controlled by `direction`.
+This may include:
 
-### Cross-Icon Transitions
+- directional replace
+- crossfade
+- scale/fade hybrids
 
-When `fromEndpoint` and `toEndpoint` are set:
-- The `from`/`to` state IDs still serve as keys within the owning icon.
-- The endpoints specify which icon, variant, and state to source the geometry from.
-- Layer matching switches from ID-based equality to semantic matching (role, name, geometry similarity).
+## Runtime Rules
 
-### Easing
+### Runtime owns transition resolution
 
-Easing can be either a CSS timing function string (e.g. `'ease-in-out'`, `'cubic-bezier(0.4, 0, 0.2, 1)'`) or a `SpringConfig` object for physics-based animation.
+Transition resolution should happen after authoring, not inside the authoring document.
+
+That means runtime is responsible for:
+
+- matching icons and variants
+- choosing the correct strategy family
+- deciding when morphing is invalid
+- choosing the fallback path
+
+### Research is part of the plan
+
+The implementation plan must explicitly include research into major icon transition families, not just code changes.
+
+Research output should classify transitions such as:
+
+- line continuation or line reversal
+- outline to filled form
+- plus to close
+- hamburger to close
+- arrow direction changes
+- geometry-preserving morphs
+- geometry-breaking replacements
 
 ## Edge Cases
 
-- A `LayerBinding` with neither `fromLayerId` nor `toLayerId` is valid but produces no animation.
-- Keyframes arrays with fewer than 2 entries are treated as static values.
-- When `durationMs` on a binding exceeds the parent transition duration, it is clamped.
-- `delayMs` of 0 is distinct from omitting `delayMs` (omitted uses auto-calculated delay).
+- some icon pairs will need line animation, not morphing
+- some icon pairs will need morphing on some layers and replace on others
+- some icon pairs will not have a visually acceptable morph at all
+- fallback behavior must be deterministic, not ad hoc
 
 ## Related Specs
 
-- [Icon Schema](./icon-schema.md) -- parent data model
-- [Transition Resolver](../runtime/transition-resolver.md) -- runtime resolution
-- [Morph Interpolation](../runtime/morph-interpolation.md) -- morph implementation
-- [Draw Executor](../runtime/draw-executor.md) -- trim path execution
+- [Icon Schema](./icon-schema.md)
+- [Morph Interpolation](../runtime/morph-interpolation.md)
+- [Draw Executor](../runtime/draw-executor.md)
+- [Transition Resolver](../runtime/transition-resolver.md)

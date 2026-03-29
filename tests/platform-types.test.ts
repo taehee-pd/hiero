@@ -19,24 +19,18 @@ function makeMockPayload(
       id: 'v24',
       size: 24,
       viewBox: [0, 0, 24, 24] as [number, number, number, number],
-      defaultState: 'default',
     },
-    states: {
-      default: {
-        layers: [
-          {
-            id: 'l1',
-            d: 'M0 0',
-            fill: { kind: 'solid', color: '#000' },
-            stroke: { kind: 'none' },
-            fillOpacity: 1,
-            strokeOpacity: 0,
-            strokeWidth: 0,
-          },
-        ],
+    layers: [
+      {
+        id: 'l1',
+        d: 'M0 0',
+        fill: { kind: 'solid', color: '#000' },
+        stroke: { kind: 'none' },
+        fillOpacity: 1,
+        strokeOpacity: 0,
+        strokeWidth: 0,
       },
-    },
-    transitions: {},
+    ],
     ...overrides,
   };
 }
@@ -98,24 +92,7 @@ describe('FLUTTER_CAPABILITIES', () => {
 // ---------------------------------------------------------------------------
 describe('checkPlatformCapabilities', () => {
   test('React profile + payload with morph → no diagnostics', () => {
-    const payload = makeMockPayload({
-      transitions: {
-        't1': {
-          from: 'default',
-          to: 'active',
-          strategy: 'morph',
-          durationMs: 300,
-          easing: 'ease-in-out',
-          layerBindings: [
-            {
-              fromLayerId: 'l1',
-              toLayerId: 'l2',
-              morph: { topology: 'bestGuess' },
-            },
-          ],
-        },
-      },
-    });
+    const payload = makeMockPayload();
     const diagnostics = checkPlatformCapabilities(
       REACT_CAPABILITIES,
       'icon-1',
@@ -126,24 +103,23 @@ describe('checkPlatformCapabilities', () => {
   });
 
   test('Swift profile + payload with morph transition → emits unsupported-morph', () => {
-    const payload = makeMockPayload({
-      transitions: {
-        't1': {
-          from: 'default',
-          to: 'active',
-          strategy: 'morph',
-          durationMs: 300,
-          easing: 'ease-in-out',
-          layerBindings: [
-            {
-              fromLayerId: 'l1',
-              toLayerId: 'l2',
-              morph: { topology: 'bestGuess' },
-            },
-          ],
-        },
+    const payload = makeMockPayload() as any;
+    payload.transitions = {
+      't1': {
+        from: 'default',
+        to: 'active',
+        strategy: 'morph',
+        durationMs: 300,
+        easing: 'ease-in-out',
+        layerBindings: [
+          {
+            fromLayerId: 'l1',
+            toLayerId: 'l2',
+            morph: { topology: 'bestGuess' },
+          },
+        ],
       },
-    });
+    };
     const diagnostics = checkPlatformCapabilities(
       SWIFT_CAPABILITIES,
       'icon-1',

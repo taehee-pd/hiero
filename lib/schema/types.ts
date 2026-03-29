@@ -1,82 +1,80 @@
 // Coniva Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
-export type GitHubSyncSettings = {
-  owner: string;
-  repo: string;
-  baseBranch: string;
-  packagePath: string;
-  exportFormat: 'react' | 'svg' | 'both';
+// ---------------------------------------------------------------------------
+// Internal runtime adapter — NOT a product concept.
+// Used at the runtime boundary to bridge variant layers to transition resolver.
+// ---------------------------------------------------------------------------
+export type LayerSnapshot = {
+  layers: Record<string, Layer>;
+  topology?: TopologyContract;
 };
 
-/**
- * A sync target describes how generated adapter output is delivered
- * to a consuming repository or directory.
- */
-export type SyncTarget = {
+export type State = {
   id: string;
-  /** Human-readable label (e.g. "Production React Repo"). */
-  name: string;
-  /** The target platform adapter to use. */
-  platform: 'react' | 'swift' | 'flutter' | 'web-component';
-  /** How the output is delivered. */
-  deliveryMode: 'local-directory' | 'git-pr' | 'npm-registry';
-  /** Adapter-specific configuration. */
-  adapterConfig?: {
-    /** Runtime package import path (React adapter). */
-    runtimePackage?: string;
-    /** Emit TypeScript. Default true. */
-    typescript?: boolean;
-    /** Output subdirectory inside the target. */
-    outputDir?: string;
-    /** [Swift] Minimum iOS version (e.g. "15", "16", "17"). */
-    minIosVersion?: string;
-    /** [Swift] UI framework: "swiftui" or "uikit". */
-    uiFramework?: 'swiftui' | 'uikit';
-    /** [Flutter] Minimum Flutter SDK version (e.g. "3.0.0"). */
-    flutterSdkMin?: string;
-    /** [Flutter] Dart package name. */
-    dartPackageName?: string;
-    /** [Web Component] Custom element prefix (e.g. "coniva"). */
-    customElementPrefix?: string;
-    /** [Web Component] Whether to use Shadow DOM. Default true. */
-    shadowDom?: boolean;
-  };
-  /** Local-directory connector config. */
-  localDirectory?: {
-    path: string;
-  };
-  /** Git PR connector config. */
-  gitPr?: {
-    owner: string;
-    repo: string;
-    baseBranch: string;
-    /** Path prefix inside the repo (e.g. "packages/icons"). */
-    packagePath?: string;
-  };
-  /** NPM registry connector config. */
-  npmRegistry?: {
-    /** Registry URL (default: "https://registry.npmjs.org"). */
-    registry: string;
-    /** Optional scope (e.g. "@myorg"). */
-    scope?: string;
-    /** Full package name (e.g. "@myorg/icons"). */
-    packageName: string;
-    /** Whether a token has been stored in the platform keychain. UI hint only. */
-    tokenStored?: boolean;
-    /** Last published version (e.g. "1.2.3"). */
-    lastPublishedVersion?: string;
-  };
-  /** Auto-publish configuration. */
-  autoPublish?: {
-    /** When to auto-publish. */
-    on: 'save' | 'manual';
-    /** Semver bump strategy for auto-publish. */
-    semver: 'patch' | 'minor' | 'major';
-  };
-  /** When true, run the full pipeline but skip actual publish. */
-  dryRun?: boolean;
+  layers: Record<string, Layer>;
+  topology?: TopologyContract;
 };
+
+function buildDefaultLegacyState(v: Variant): State {
+  const fallbackState = Object.values(v.states ?? {})[0];
+  return {
+    id: v.defaultState ?? fallbackState?.id ?? 'default',
+    layers: v.layers ?? fallbackState?.layers ?? {},
+    topology: v.topology ?? fallbackState?.topology,
+  };
+}
+
+export function getVariantDefaultStateId(v: Variant): string {
+  return v.defaultState ?? Object.keys(v.states ?? {})[0] ?? 'default';
+}
+
+export function getVariantState(v: Variant, stateId?: string | null): State {
+  const resolvedStateId = stateId ?? getVariantDefaultStateId(v);
+  const state = v.states?.[resolvedStateId];
+  if (state) {
+    return {
+      ...state,
+      topology: state.topology ?? v.topology,
+    };
+  }
+  return buildDefaultLegacyState(v);
+}
+
+export function withLegacyVariantStateView(v: Variant): Variant {
+  const defaultState = getVariantDefaultStateId(v);
+  const defaultStateView = v.states?.[defaultState];
+  const fallbackState = Object.values(v.states ?? {})[0];
+  const normalizedLayers =
+    v.layers ?? defaultStateView?.layers ?? fallbackState?.layers ?? {};
+  const normalizedTopology =
+    v.topology ?? defaultStateView?.topology ?? fallbackState?.topology;
+  return {
+    ...v,
+    layers: normalizedLayers,
+    topology: normalizedTopology,
+    defaultState,
+    states: {
+      ...(v.states ?? {}),
+      [defaultState]: {
+        ...(defaultStateView ?? {}),
+        id: defaultState,
+        layers: normalizedLayers,
+        topology: normalizedTopology,
+      },
+    },
+  };
+}
+
+/** Convert a flat Variant into a LayerSnapshot for runtime functions. */
+export function variantToSnapshot(v: Variant, stateId?: string | null): LayerSnapshot {
+  const state = getVariantState(v, stateId);
+  return { layers: state.layers, topology: state.topology };
+}
+
+// ---------------------------------------------------------------------------
+// Workspace & Project
+// ---------------------------------------------------------------------------
 
 export type IconSet = {
   version: '1.0';
@@ -86,8 +84,6 @@ export type IconSet = {
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];
   collections?: Record<string, Collection>;
-  sync?: GitHubSyncSettings;
-  syncTargets?: SyncTarget[];
 };
 
 export type Project = IconSet;
@@ -98,6 +94,10 @@ export type Workspace = {
   iconSets: Record<string, IconSet>;
   activeIconSetId?: string;
 };
+
+// ---------------------------------------------------------------------------
+// Icon & Variant
+// ---------------------------------------------------------------------------
 
 export type IconExternalImportMeta = {
   adapterId: string;
@@ -115,7 +115,7 @@ export type Icon = {
   tags?: string[];
   customGuides?: GuideItem[];
   variants: Record<string, Variant>;
-  transitions: Record<string, Transition>;
+  transitions?: Record<string, Transition>;
   effects?: Record<string, Effect>;
   components?: Record<string, SymbolComponent>;
   meta?: {
@@ -134,8 +134,13 @@ export type Variant = {
   guideMasterId?: string;
   weight?: SymbolWeight;
   scale?: SymbolScale;
-  defaultState: string;
-  states: Record<string, State>;
+  style?: 'outline' | 'fill' | 'slash' | 'circle' | 'square' | 'badge' | string;
+  layers: Record<string, Layer>;
+  topology?: TopologyContract;
+  /** Compatibility-only state view for partially migrated modules and tests. */
+  defaultState?: string;
+  /** Compatibility-only state view for partially migrated modules and tests. */
+  states?: Record<string, State>;
   variableValue?: number;  // 0.0-1.0, controls progressive layer fill
   weightControlPoints?: {
     ultralight?: string;  // SVG d string
@@ -150,11 +155,9 @@ export type Variant = {
   };
 };
 
-export type State = {
-  id: string;
-  layers: Record<string, Layer>;
-  topology?: TopologyContract;
-};
+// ---------------------------------------------------------------------------
+// Layer
+// ---------------------------------------------------------------------------
 
 export type Layer = {
   id: string;
@@ -220,6 +223,10 @@ export type SvgUnsupportedFeature = {
   attributes?: Record<string, string>;
 };
 
+// ---------------------------------------------------------------------------
+// Paint
+// ---------------------------------------------------------------------------
+
 export type PaintRef =
   | { mode: 'currentColor' }
   | { mode: 'fixed'; value: string }
@@ -235,29 +242,41 @@ export type PaintRef =
 
 export type GradientStop = { offset: number; color: string; opacity?: number };
 
-export type StateTrigger = {
-  event: 'hover' | 'tap' | 'longPress' | 'focus' | 'auto';
-};
+// ---------------------------------------------------------------------------
+// Transitions — runtime-owned, icon-to-icon
+// ---------------------------------------------------------------------------
 
-export type TransitionEndpoint = {
-  iconId: string;
-  variantId: string;
-  stateId: string;
-};
-
-export type Transition = {
+export type RuntimeTransitionIntent = {
   id: string;
-  from: string;
-  to: string;
-  fromEndpoint?: TransitionEndpoint;  // Cross-icon source (when absent, use from/to within current variant)
-  toEndpoint?: TransitionEndpoint;    // Cross-icon target
-  strategy: 'track' | 'strictMorph' | 'bestGuessMorph' | 'replace';
+  fromIconId: string;
+  toIconId: string;
+  fromVariantId: string;
+  toVariantId: string;
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
+  direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
+};
+
+export type Transition = RuntimeTransitionIntent & {
+  from?: string;
+  to?: string;
+  variantId?: string;
+  layerBindings?: LayerBinding[];
   stagger?: TransitionStagger;
-  layerBindings: LayerBinding[];
-  triggers?: StateTrigger[];
-  direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';  // F5: replace transition direction
+  effects?: string[];
+};
+
+export type LayerBinding = {
+  fromLayerId?: string;
+  toLayerId?: string;
+  tracks?: TimelineTrack[];
+  delayMs?: number;
+  durationMs?: number;
+  morph?: {
+    topology: 'strict' | 'bestGuess';
+  };
+  compoundTrimMode?: CompoundTrimMode;
 };
 
 /**
@@ -273,24 +292,6 @@ export type Transition = {
  */
 export type CompoundTrimMode = 'simultaneously' | 'individually';
 
-export type LayerBinding = {
-  fromLayerId?: string;
-  toLayerId?: string;
-  tracks?: TimelineTrack[];
-  delayMs?: number;
-  durationMs?: number;
-  morph?: {
-    topology: 'strict' | 'bestGuess';
-    mixer?: 'native' | 'flubber';
-  };
-  compoundTrimMode?: CompoundTrimMode;
-  /** Phase I7: Optional strategy override. When set to a non-'auto' value,
-   *  the per-binding animation strategy is forced instead of auto-classified. */
-  strategyOverride?: 'auto' | 'morph' | 'trim' | 'crossfade';
-  /** Phase I10: Indicates this binding's tracks were auto-populated by the system. */
-  autoPopulated?: boolean;
-};
-
 export type TimelineTrack =
   | { property: 'opacity'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'rotate'; keyframes: number[]; easing?: string | SpringConfig }
@@ -298,15 +299,9 @@ export type TimelineTrack =
   | { property: 'translateY'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'scale'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'pathLength'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'fill'; keyframes: string[]; easing?: string | SpringConfig }
-  | { property: 'stroke'; keyframes: string[]; easing?: string | SpringConfig }
-  | { property: 'strokeWidth'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'fillOpacity'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'strokeOpacity'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimStart'; keyframes: number[]; easing?: string | SpringConfig }
   | { property: 'trimEnd'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig }
-  | { property: 'variableValue'; keyframes: number[]; easing?: string | SpringConfig };
+  | { property: 'trimOffset'; keyframes: number[]; easing?: string | SpringConfig };
 
 export type SpringConfig = {
   type: 'spring';
@@ -322,6 +317,10 @@ export type TransitionStagger = {
   easing?: string;
 };
 
+// ---------------------------------------------------------------------------
+// Topology
+// ---------------------------------------------------------------------------
+
 export type TopologyContract = {
   locked: boolean;
   layerPairs: Array<{
@@ -331,6 +330,10 @@ export type TopologyContract = {
     closed: boolean[];
   }>;
 };
+
+// ---------------------------------------------------------------------------
+// Guides
+// ---------------------------------------------------------------------------
 
 export type GuideSet = {
   id: string;
@@ -357,6 +360,9 @@ export type GuideItem =
       direction?: 'forward' | 'reverse';
     };
 
+// ---------------------------------------------------------------------------
+// Collections, Symbols, Tokens
+// ---------------------------------------------------------------------------
 
 export type Collection = {
   id: string;
@@ -400,6 +406,10 @@ export type ExportProfile = {
   options?: Record<string, unknown>;
 };
 
+// ---------------------------------------------------------------------------
+// Effects
+// ---------------------------------------------------------------------------
+
 export type Effect = {
   id: string;
   kind:
@@ -429,5 +439,43 @@ export type RenderingMode =
   | 'monochrome'
   | 'hierarchical'
   | 'palette'
-  | 'multicolor'
-  | 'autoGradient';
+  | 'multicolor';
+
+// ---------------------------------------------------------------------------
+// Sync Targets
+// ---------------------------------------------------------------------------
+
+export type SyncTarget = {
+  id: string;
+  name: string;
+  platform: 'react' | 'swift' | 'flutter' | 'web-component';
+  deliveryMode: 'local-directory' | 'git-pr' | 'npm-registry';
+  adapterConfig?: Record<string, unknown>;
+  localDirectory?: { path: string };
+  gitPr?: {
+    owner: string;
+    repo: string;
+    baseBranch: string;
+    packagePath?: string;
+  };
+  npmRegistry?: {
+    registry: string;
+    scope?: string;
+    packageName: string;
+    lastPublishedVersion?: string;
+    tokenStored?: boolean;
+  };
+  autoPublish?: {
+    on: 'save' | 'manual';
+    semver: 'patch' | 'minor' | 'major';
+  };
+  dryRun?: boolean;
+};
+
+// ---------------------------------------------------------------------------
+// Interaction Triggers (advisory metadata for code generation)
+// ---------------------------------------------------------------------------
+
+export type StateTrigger = {
+  event: 'hover' | 'tap' | 'longPress' | 'focus' | 'auto';
+};

@@ -146,7 +146,12 @@ function diffVariants(previous: CompiledIcon, next: CompiledIcon, changes: IconC
     if (!nextVariantIds.has(variantId)) continue;
     const prevVariant = previous.variants[variantId]!;
     const nextVariant = next.variants[variantId]!;
-    diffStates(prevVariant.size, prevVariant.states, nextVariant.states, changes);
+    // Compiled variants are now flat — compare layers directly instead of
+    // iterating per-state.  Wrap them in a synthetic "default" state for the
+    // existing diffStates helper.
+    const prevStates = { default: { modes: { monochrome: prevVariant.layers } as Record<CompiledRenderingMode, { layers: CompiledLayer[] }> } };
+    const nextStates = { default: { modes: { monochrome: nextVariant.layers } as Record<CompiledRenderingMode, { layers: CompiledLayer[] }> } };
+    diffStates(prevVariant.size, prevStates, nextStates, changes);
   }
 }
 

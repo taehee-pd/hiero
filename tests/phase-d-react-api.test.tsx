@@ -73,6 +73,7 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: {},
         defaultState: 'default',
         states: { default: defaultState, active: activeState, hover: hoverState },
       },
@@ -80,9 +81,13 @@ function makeTestIcon(): Icon {
     transitions: {
       'default-active': {
         id: 'default-active',
+        fromIconId: 'icon-test',
+        toIconId: 'icon-test',
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
-        strategy: 'track',
+        strategy: 'lineAnimation',
         durationMs: 200,
         easing: 'ease-in-out',
         layerBindings: [],

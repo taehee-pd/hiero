@@ -1,9 +1,9 @@
-import type { State, Transition } from '../schema';
-import { resolveTransition } from './transition-resolver';
+import type { LayerSnapshot } from '../schema';
+import { resolveTransition, type TransitionConfig } from './transition-resolver';
 
 export type TransitionInspection = {
-  transitionId: string;
-  strategy: Transition['strategy'];
+  transitionId?: string;
+  strategy: TransitionConfig['strategy'];
   bindings: Array<{
     fromLayerId?: string;
     toLayerId?: string;
@@ -16,11 +16,11 @@ export type TransitionInspection = {
 };
 
 export function inspectTransitionPlan(
-  transition: Transition,
-  fromState: State,
-  toState: State,
+  transition: TransitionConfig,
+  fromSnapshot: LayerSnapshot,
+  toSnapshot: LayerSnapshot,
 ): TransitionInspection {
-  const resolved = resolveTransition(transition, fromState, toState);
+  const resolved = resolveTransition(transition, fromSnapshot, toSnapshot);
   return {
     transitionId: transition.id,
     strategy: transition.strategy,

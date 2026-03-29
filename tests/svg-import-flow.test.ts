@@ -37,11 +37,11 @@ describe('svg import flow', () => {
     expect(state.currentStateId).toBe('default');
     expect(importedIcon?.name).toBe('Media Toggle');
     expect(importedIcon?.variants.v32.viewBox).toEqual([0, 0, 32, 32]);
-    expect(Object.keys(importedIcon?.variants.v32.states.default.layers ?? {})).toEqual([
+    expect(Object.keys(importedIcon?.variants.v32.states!.default.layers ?? {})).toEqual([
       'frame',
       'slash',
     ]);
-    expect(importedIcon?.variants.v32.states.default.layers.frame).toMatchObject({
+    expect(importedIcon?.variants.v32.states!.default.layers.frame).toMatchObject({
       id: 'frame',
       path: {
         d: 'M4 2 L12 2 C13.104569 2 14 2.895431 14 4 L14 8 C14 9.104569 13.104569 10 12 10 L4 10 C2.895431 10 2 9.104569 2 8 L2 4 C2 2.895431 2.895431 2 4 2 Z',
@@ -55,7 +55,7 @@ describe('svg import flow', () => {
       },
       transform: { x: 2, y: 2 },
     });
-    expect(importedIcon?.variants.v32.states.default.layers.slash).toMatchObject({
+    expect(importedIcon?.variants.v32.states!.default.layers.slash).toMatchObject({
       id: 'slash',
       path: {
         d: 'M4 18 L18 26',

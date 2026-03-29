@@ -20,41 +20,34 @@ const ARRANGE_PROJECT: Project = {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
-          defaultState: 'default',
-          states: {
-            default: {
-              id: 'default',
-              layers: {
-                a: {
-                  id: 'a',
-                  path: { d: 'M0 0 H10 V10 H0 Z' },
-                  style: {},
-                  transform: { x: 0, y: 0 },
-                },
-                b: {
-                  id: 'b',
-                  path: { d: 'M0 0 H10 V10 H0 Z' },
-                  style: {},
-                  transform: { x: 20, y: 10 },
-                },
-                c: {
-                  id: 'c',
-                  path: { d: 'M0 0 H10 V10 H0 Z' },
-                  style: {},
-                  transform: { x: 50, y: 20 },
-                },
-                invalid: {
-                  id: 'invalid',
-                  path: { d: 'M not-a-valid-path' },
-                  style: {},
-                  transform: { x: 999, y: 999 },
-                },
-              },
+          layers: {
+            a: {
+              id: 'a',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 0, y: 0 },
+            },
+            b: {
+              id: 'b',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 20, y: 10 },
+            },
+            c: {
+              id: 'c',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 50, y: 20 },
+            },
+            invalid: {
+              id: 'invalid',
+              path: { d: 'M not-a-valid-path' },
+              style: {},
+              transform: { x: 999, y: 999 },
             },
           },
         },
       },
-      transitions: {},
     },
   },
 };
@@ -67,7 +60,7 @@ function bootstrap() {
 
 function layerTransform(layerId: string) {
   return (
-    editorStore.getState().project!.icons.arrange.variants.v24.states.default.layers[layerId]
+    editorStore.getState().project!.icons.arrange.variants.v24.layers[layerId]
       .transform ?? {}
   );
 }

@@ -65,7 +65,7 @@ mock.module('../lib/editor-core/paper-runtime', () => ({
 const variantDerivation = await import('../lib/schema/variant-derivation');
 const { applyDerivedVariant, createDerivedVariantSpec, canDeriveVariant, availableModifiers } =
   variantDerivation;
-import type { Icon, Layer, State, Variant } from '../lib/schema/types';
+import type { Icon, Layer, LayerSnapshot, Variant } from '../lib/schema/types';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -85,17 +85,13 @@ function makeLayer(id: string, d: string, opts?: Partial<Layer>): Layer {
   } as Layer;
 }
 
-function makeState(layers: Record<string, Layer>): State {
-  return { layers } as State;
-}
-
-function makeVariant(id: string, states: Record<string, State>): Variant {
+function makeVariant(id: string, layers: Record<string, Layer>): Variant {
   return {
     id,
     name: id,
     size: 24,
     viewBox: [0, 0, 24, 24] as [number, number, number, number],
-    states,
+    layers,
   } as Variant;
 }
 
@@ -111,11 +107,8 @@ function makeIcon(opts?: {
     id: 'test-icon',
     name: 'Test Icon',
     variants: {
-      '24': makeVariant('24', {
-        default: makeState(layers),
-      }),
+      '24': makeVariant('24', layers),
     },
-    transitions: {},
     components: opts?.components,
   };
 }
@@ -207,7 +200,7 @@ describe('applyDerivedVariant', () => {
     const result = await applyDerivedVariant(icon, spec);
 
     expect(result.variants['24.fill']).toBeDefined();
-    const derivedState = result.variants['24.fill']!.states.default;
+    const derivedState = result.variants['24.fill']!;
     const layer = derivedState.layers['primary-layer'];
     // Fill should now have the stroke's value
     expect(layer.style?.fill).toEqual({ mode: 'fixed', value: '#FF0000' });
@@ -222,7 +215,7 @@ describe('applyDerivedVariant', () => {
     const result = await applyDerivedVariant(icon, spec);
 
     expect(result.variants['24.fill']).toBeDefined();
-    const derivedState = result.variants['24.fill']!.states.default;
+    const derivedState = result.variants['24.fill']!;
     const layer = derivedState.layers['primary-layer'];
     // Layer already has fill (currentColor) — should NOT be converted
     expect(layer.style?.fill).toEqual({ mode: 'currentColor' });
@@ -251,7 +244,7 @@ describe('applyDerivedVariant', () => {
     const result = await applyDerivedVariant(icon, spec);
 
     expect(result.variants['24.slash']).toBeDefined();
-    const derivedState = result.variants['24.slash']!.states.default;
+    const derivedState = result.variants['24.slash']!;
     // Primary layer should have subtracted path
     expect(derivedState.layers['primary-layer'].path?.d).toContain('-');
     // Slash layer should be hidden
@@ -270,7 +263,7 @@ describe('applyDerivedVariant', () => {
     const result = await applyDerivedVariant(icon, spec);
 
     expect(result.variants['24.circle']).toBeDefined();
-    const derivedState = result.variants['24.circle']!.states.default;
+    const derivedState = result.variants['24.circle']!;
     // Primary layer should have united path
     expect(derivedState.layers['primary-layer'].path?.d).toContain('+');
     // Enclosure layer should be hidden
@@ -289,7 +282,7 @@ describe('applyDerivedVariant', () => {
     const result = await applyDerivedVariant(icon, spec);
 
     expect(result.variants['24.badge']).toBeDefined();
-    const derivedState = result.variants['24.badge']!.states.default;
+    const derivedState = result.variants['24.badge']!;
     // Primary layer should have subtracted path
     expect(derivedState.layers['primary-layer'].path?.d).toContain('-');
     // Badge layer should remain visible (not hidden)

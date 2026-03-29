@@ -54,6 +54,7 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: defaultState.layers,
         defaultState: 'default',
         states: { default: defaultState, active: activeState },
       },
@@ -61,9 +62,13 @@ function makeTestIcon(): Icon {
     transitions: {
       'default-active': {
         id: 'default-active',
+        fromIconId: 'icon-test',
+        toIconId: 'icon-test',
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
-        strategy: 'track',
+        strategy: 'lineAnimation',
         durationMs: 200,
         easing: 'ease-in-out',
         layerBindings: [],
@@ -79,7 +84,7 @@ function makeMeta(icon: Icon): RuntimeIconMeta {
     variants: Object.fromEntries(
       Object.entries(icon.variants).map(([k, v]) => [
         k,
-        { size: v.size, viewBox: v.viewBox, defaultState: v.defaultState },
+        { size: v.size, viewBox: v.viewBox },
       ]),
     ),
   };
@@ -91,21 +96,15 @@ function makeMockVariant(): RuntimeVariantPayload {
       id: 'v24',
       size: 24,
       viewBox: [0, 0, 24, 24],
-      defaultState: 'default',
     },
-    states: {
-      default: {
-        layers: [
-          {
-            id: 'l1',
-            d: 'M0 0',
-            fill: { kind: 'solid', color: '#000' },
-            stroke: { kind: 'none' },
-          },
-        ],
+    layers: [
+      {
+        id: 'l1',
+        d: 'M0 0',
+        fill: { kind: 'solid', color: '#000' },
+        stroke: { kind: 'none' },
       },
-    },
-    transitions: {},
+    ],
   };
 }
 

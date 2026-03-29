@@ -17,7 +17,7 @@ function makeIcon(): CompiledIcon {
 describe('runtime svg renderer', () => {
   test('renders layers in array order', () => {
     const icon = makeIcon();
-    const layers = icon.variants['24'].states.default.modes.monochrome.layers;
+    const layers = (icon.variants['24'].layers as any).layers;
     layers.push({
       ...layers[0]!,
       id: 'after',
@@ -47,8 +47,8 @@ describe('runtime svg renderer', () => {
 
   test('state switching resolves and affects output', () => {
     const icon = makeIcon();
-    icon.variants['24'].states.active = structuredClone(icon.variants['24'].states.default);
-    icon.variants['24'].states.active.modes.monochrome.layers[0]!.path.d = 'M0 0 L1 1';
+    (icon.variants['24'] as any).states = { default: structuredClone((icon.variants['24'] as any).layers), active: structuredClone((icon.variants['24'] as any).layers) };
+    (icon.variants['24'] as any).states.active.layers[0]!.path.d = 'M0 0 L1 1';
 
     const svgDefault = renderToStaticMarkup(<RuntimeIconRenderer icon={icon} state="default" />);
     const svgActive = renderToStaticMarkup(<RuntimeIconRenderer icon={icon} state="active" />);

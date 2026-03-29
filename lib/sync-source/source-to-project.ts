@@ -13,7 +13,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { Icon, Layer, Project, State, Variant } from '@/lib/schema/types';
+import type { Icon, Layer, Project, Variant } from '@/lib/schema/types';
 import { isProject } from '@/lib/schema/guards';
 import type {
   IconSourceFile,
@@ -37,20 +37,7 @@ export function iconFromSource(source: IconSourceFile): Icon {
   const variants: Record<string, Variant> = {};
 
   for (const [variantId, sv] of Object.entries(source.variants)) {
-    const states: Record<string, State> = {};
-    for (const [stateId, ss] of Object.entries(sv.states)) {
-      const layers: Record<string, Layer> = {};
-      for (const [layerId, sl] of Object.entries(ss.layers)) {
-        layers[layerId] = layerFromSource(sl);
-      }
-      states[stateId] = {
-        id: ss.id,
-        layers,
-        ...(ss.topology ? { topology: ss.topology } : {}),
-      };
-    }
-
-    variants[variantId] = variantFromSource(sv, states);
+    variants[variantId] = variantFromSource(sv);
   }
 
   return {
@@ -59,17 +46,18 @@ export function iconFromSource(source: IconSourceFile): Icon {
     ...(source.category ? { category: source.category } : {}),
     ...(source.tags && source.tags.length > 0 ? { tags: source.tags } : {}),
     variants,
-    transitions: source.transitions,
     ...(source.effects && Object.keys(source.effects).length > 0
       ? { effects: source.effects }
       : {}),
   };
 }
 
-function variantFromSource(
-  sv: SourceVariant,
-  states: Record<string, State>,
-): Variant {
+function variantFromSource(sv: SourceVariant): Variant {
+  const layers: Record<string, Layer> = {};
+  for (const [layerId, sl] of Object.entries(sv.layers)) {
+    layers[layerId] = layerFromSource(sl);
+  }
+
   return {
     id: sv.id,
     ...(sv.name ? { name: sv.name } : {}),
@@ -78,8 +66,8 @@ function variantFromSource(
     ...(sv.renderingMode ? { renderingMode: sv.renderingMode } : {}),
     ...(sv.weight ? { weight: sv.weight } : {}),
     ...(sv.scale ? { scale: sv.scale } : {}),
-    defaultState: sv.defaultState,
-    states,
+    layers,
+    ...(sv.topology ? { topology: sv.topology } : {}),
   };
 }
 

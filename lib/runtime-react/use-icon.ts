@@ -92,7 +92,7 @@ export function useIcon({
 
   return {
     ...snapshot,
-    availableStates: Object.keys(payload.states).sort((left, right) =>
+    availableStates: Object.keys(payload.states ?? { [payload.variant.id]: { layers: payload.layers } }).sort((left, right) =>
       left.localeCompare(right),
     ),
     availableEffects: Object.keys(payload.effects ?? {}).sort((left, right) =>

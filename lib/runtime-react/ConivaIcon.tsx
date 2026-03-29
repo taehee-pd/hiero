@@ -366,7 +366,7 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     // Render static SVG with layers for SSR. After the driver mounts, it
     // creates its own <path> elements inside the SVG and we stop rendering
     // React-managed paths to avoid duplication and reconciliation conflicts.
-    const resolvedStateDef = resolvedVariant.states[resolvedState];
+    const resolvedStateDef = resolvedVariant.states?.[resolvedState];
     const layers =
       !hydratedRef.current && resolvedStateDef
         ? getRenderableLayers(resolvedStateDef.layers)
@@ -497,17 +497,18 @@ function resolveVariant(
 }
 
 function resolveState(variant: Variant, requestedState?: string): string {
-  if (requestedState && variant.states[requestedState]) {
+  if (requestedState && variant.states?.[requestedState]) {
     return requestedState;
   }
 
-  if (variant.states[variant.defaultState]) {
+  if (variant.defaultState && variant.states?.[variant.defaultState]) {
     return variant.defaultState;
   }
 
-  const fallback = Object.values(variant.states)[0];
+  const fallback = Object.values(variant.states ?? {})[0];
   if (!fallback) {
-    throw new Error(`Variant "${variant.id}" does not define any states.`);
+    // Variant-centric model: no states map — use defaultState or 'default'.
+    return variant.defaultState ?? 'default';
   }
 
   return fallback.id;

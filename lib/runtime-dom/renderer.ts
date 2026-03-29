@@ -83,7 +83,7 @@ export class DomRenderer {
 
     this.svg = svg;
     this.variant = variant;
-    this.setState(variant.defaultState);
+    this.setState(variant.defaultState ?? 'default');
   }
 
   applyFrame(
@@ -194,7 +194,7 @@ export class DomRenderer {
   setState(stateId: string): void {
     this.ensureMounted();
 
-    const state = this.variant!.states[stateId];
+    const state = this.variant!.states?.[stateId];
     if (!state) {
       throw new Error(`State "${stateId}" does not exist in variant "${this.variant!.id}".`);
     }
@@ -305,7 +305,7 @@ export class DomRenderer {
     }
 
     const defs = ensureManagedDefs(this.svg);
-    const targetState = this.variant.states[stateId];
+    const targetState = this.variant.states?.[stateId];
     const targetLayers = getRenderableLayers(targetState?.layers ?? {});
     const targetLayerById = new Map(targetLayers.map((layer) => [layer.id, layer]));
 

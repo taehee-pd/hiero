@@ -67,10 +67,9 @@ describe('convertNormalizedIconToIcon', () => {
     expect(icon.name).toBe('Alert Triangle');
     expect(icon.tags).toEqual(['alerts', 'status']);
     expect(icon.variants.v32).toBeDefined();
-    expect(icon.variants.v32!.defaultState).toBe('default');
     expect(icon.variants.v32!.viewBox).toEqual([0, 0, 32, 32]);
 
-    const layers = icon.variants.v32!.states.default.layers;
+    const layers = icon.variants.v32!.layers;
     expect(Object.keys(layers)).toEqual(['frame', 'line-2']);
 
     expect(layers.frame).toMatchObject({
@@ -122,10 +121,10 @@ describe('convertNormalizedIconToIcon', () => {
     });
 
     editorStore.getState().insertIcon(icon);
-    editorStore.getState().setLayerVisibility(icon.id, 'default', 'frame', false);
+    editorStore.getState().setLayerVisibility(icon.id, 'frame', false);
 
     const saved = editorStore.getState().project?.icons[icon.id];
     expect(saved).toBeDefined();
-    expect(saved?.variants.v32?.states.default.layers.frame?.visible).toBe(false);
+    expect(saved?.variants.v32?.layers.frame?.visible).toBe(false);
   });
 });

@@ -21,7 +21,7 @@ function bootstrap() {
   const state = editorStore.getState();
   state.loadProject(structuredClone(SAMPLE_PROJECT));
   // Replace the complex Lucide path with a simple 3-point polyline for point-editing tests
-  state.patchLayer('icon-home', 'default', 'roof', {
+  state.patchLayer('icon-home', 'roof', {
     path: { d: 'M9.5 7 L14.5 12 L9.5 17' },
   });
 }
@@ -34,19 +34,18 @@ function setupLayerMultiSelection(pointKeys: string[]) {
   const state = editorStore.getState();
   const iconId = state.currentIconId!;
   const variantId = state.currentVariantId!;
-  const stateId = state.currentStateId!;
   const layerId = 'roof';
   state.setSelection({ layerIds: [layerId], pointIds: pointKeys });
-  return { iconId, variantId, stateId, layerId };
+  return { iconId, variantId, layerId };
 }
 
 function getLayerPath(
   iconId: string,
   variantId: string,
-  stateId: string,
+  _stateId: string,
   layerId: string,
 ) {
-  return editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId].layers[layerId]
+  return editorStore.getState().project!.icons[iconId].variants[variantId].layers[layerId]
     .path!.d;
 }
 
@@ -66,22 +65,15 @@ const ARC_HANDLE_PROJECT: Project = {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
-          defaultState: 'default',
-          states: {
-            default: {
-              id: 'default',
-              layers: {
-                curve: {
-                  id: 'curve',
-                  path: { d: 'M2 12 A8 8 0 0 1 18 12' },
-                  style: {},
-                },
-              },
+          layers: {
+            curve: {
+              id: 'curve',
+              path: { d: 'M2 12 A8 8 0 0 1 18 12' },
+              style: {},
             },
           },
         },
       },
-      transitions: {},
     },
   },
 };
@@ -102,22 +94,15 @@ const CUBIC_HANDLE_PROJECT: Project = {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
-          defaultState: 'default',
-          states: {
-            default: {
-              id: 'default',
-              layers: {
-                curve: {
-                  id: 'curve',
-                  path: { d: 'M0 0 C5 5 10 10 15 0' },
-                  style: {},
-                },
-              },
+          layers: {
+            curve: {
+              id: 'curve',
+              path: { d: 'M0 0 C5 5 10 10 15 0' },
+              style: {},
             },
           },
         },
       },
-      transitions: {},
     },
   },
 };
@@ -137,12 +122,12 @@ function bootstrapCubicHandleProject() {
 describe('vector commands', () => {
   test('deletes selected point', () => {
     bootstrap();
-    const { iconId, variantId, stateId, layerId } = setupLayerSelection('0:1');
-    const before = getLayerPath(iconId, variantId, stateId, layerId);
+    const { iconId, variantId, layerId } = setupLayerSelection('0:1');
+    const before = getLayerPath(iconId, variantId, 'default', layerId);
 
     expect(deleteSelectedPoint()).toBeTrue();
 
-    const after = getLayerPath(iconId, variantId, stateId, layerId);
+    const after = getLayerPath(iconId, variantId, 'default', layerId);
     expect(after).not.toBe(before);
     expect(after).toBe('M9.5 7 L9.5 17');
   });
@@ -252,7 +237,7 @@ describe('vector commands', () => {
   test('distributes selected points evenly on an axis', () => {
     bootstrap();
     const state = editorStore.getState();
-    state.patchLayer('icon-home', 'default', 'roof', {
+    state.patchLayer('icon-home', 'roof', {
       path: { d: 'M0 0 L2 0 L15 0 L20 0' },
     });
     setupLayerMultiSelection(['0:0', '0:1', '0:2', '0:3']);
@@ -266,7 +251,7 @@ describe('vector commands', () => {
   test('sets symmetric point type with mirrored handles', () => {
     bootstrap();
     const state = editorStore.getState();
-    state.patchLayer('icon-home', 'default', 'roof', {
+    state.patchLayer('icon-home', 'roof', {
       path: { d: 'M0 0 L10 10 L20 0' },
     });
     setupLayerSelection('0:1');
@@ -327,7 +312,7 @@ describe('vector commands', () => {
     expect(deleteSelectedPoint()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.arc.variants.v24.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.arc.variants.v24.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
@@ -340,7 +325,7 @@ describe('vector commands', () => {
     expect(deleteSelectedPoint()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.arc.variants.v24.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.arc.variants.v24.layers[layerId].path!.d;
     expect(d).toBe('M2 12 L18 12');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
@@ -353,7 +338,7 @@ describe('vector commands', () => {
     expect(deleteSelectedPoints()).toBeTrue();
 
     const next = editorStore.getState();
-    const d = next.project!.icons.cubic.variants.v24.states.default.layers[layerId].path!.d;
+    const d = next.project!.icons.cubic.variants.v24.layers[layerId].path!.d;
     expect(d).toBe('M0 0 L15 0');
     expect(next.selection.pointIds).toEqual(['0:1']);
     expect(parseSvgPath(d).subPaths[0]!.points[1]!.nodeType).toBe('static');
@@ -368,7 +353,7 @@ describe('vector commands', () => {
 
     expect(deleteSelectedPoints()).toBeTrue();
 
-    const d = editorStore.getState().project!.icons.cubic.variants.v24.states.default.layers[layerId]
+    const d = editorStore.getState().project!.icons.cubic.variants.v24.layers[layerId]
       .path!.d;
     expect(d).toBe('M15 0');
     expect(editorStore.getState().selection.pointIds).toEqual([]);

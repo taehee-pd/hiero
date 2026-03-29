@@ -1,37 +1,47 @@
-import type { Icon, State, Transition, Variant } from '../schema';
+import type { Icon, LayerSnapshot, RuntimeTransitionIntent, Variant } from '../schema';
+import { variantToSnapshot } from '../schema/types';
 
-export type StateChangeListener = (state: State, transition: Transition | null) => void;
+export type StateChangeListener = (snapshot: LayerSnapshot, transition: RuntimeTransitionIntent | null) => void;
 
 export class StateMachine {
   private readonly icon: Icon;
-  private readonly variant: Variant;
+  private variant: Variant;
   private readonly listeners = new Set<StateChangeListener>();
-  private state: State;
+  private snapshot: LayerSnapshot;
 
   constructor(icon: Icon, variantId?: string) {
     this.icon = icon;
     this.variant = resolveVariant(icon, variantId);
-    this.state = resolveInitialState(this.variant);
+    this.snapshot = variantToSnapshot(this.variant);
   }
 
-  get currentState(): State {
-    return this.state;
+  get currentSnapshot(): LayerSnapshot {
+    return this.snapshot;
   }
 
-  transitionTo(stateId: string): Transition | null {
-    const nextState = this.variant.states[stateId];
-    if (!nextState) {
-      throw new Error(`State "${stateId}" does not exist in variant "${this.variant.id}".`);
+  /** @deprecated Use currentSnapshot instead */
+  get currentState(): LayerSnapshot {
+    return this.snapshot;
+  }
+
+  transitionTo(variantId: string): RuntimeTransitionIntent | null {
+    const nextVariant = this.icon.variants[variantId];
+    if (!nextVariant) {
+      throw new Error(`Variant "${variantId}" does not exist in icon "${this.icon.id}".`);
     }
 
-    if (nextState.id === this.state.id) {
+    const nextSnapshot = variantToSnapshot(nextVariant);
+
+    // No-op if the target variant is the same
+    if (nextVariant.id === this.variant.id) {
       return null;
     }
 
-    const transition = findTransition(this.icon, this.state.id, nextState.id);
-    this.state = nextState;
-    this.emitChange(transition);
-    return transition;
+    this.variant = nextVariant;
+    this.snapshot = nextSnapshot;
+    // No built-in transitions on the icon — callers manage RuntimeTransitionIntents externally.
+    this.emitChange(null);
+    return null;
   }
 
   onStateChange(callback: StateChangeListener): () => void {
@@ -45,9 +55,9 @@ export class StateMachine {
     this.listeners.clear();
   }
 
-  private emitChange(transition: Transition | null): void {
+  private emitChange(transition: RuntimeTransitionIntent | null): void {
     for (const listener of this.listeners) {
-      listener(this.state, transition);
+      listener(this.snapshot, transition);
     }
   }
 }
@@ -66,22 +76,4 @@ function resolveVariant(icon: Icon, variantId?: string): Variant {
     throw new Error(`Icon "${icon.id}" does not define any variants.`);
   }
   return firstVariant;
-}
-
-function resolveInitialState(variant: Variant): State {
-  const initialState = variant.states[variant.defaultState];
-  if (!initialState) {
-    throw new Error(
-      `Default state "${variant.defaultState}" does not exist in variant "${variant.id}".`,
-    );
-  }
-  return initialState;
-}
-
-function findTransition(icon: Icon, fromStateId: string, toStateId: string): Transition | null {
-  return (
-    Object.values(icon.transitions).find(
-      (transition) => transition.from === fromStateId && transition.to === toStateId,
-    ) ?? null
-  );
 }

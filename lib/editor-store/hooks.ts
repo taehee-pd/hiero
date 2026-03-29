@@ -7,7 +7,7 @@ import {
   selectCurrentLayers,
   selectIconList,
 } from './selectors';
-import type { Icon, Variant, State, Layer } from '@/lib/schema/types';
+import type { Icon, Variant, LayerSnapshot, Layer } from '@/lib/schema/types';
 import type { Tool, SelectionState, ViewportState } from './types';
 
 export function useEditorStore<T>(selector: (s: EditorStore) => T): T {
@@ -28,7 +28,7 @@ export function useCurrentVariant(): Variant | null {
   return useEditorStore(selectCurrentVariant);
 }
 
-export function useCurrentState(): State | null {
+export function useCurrentState(): LayerSnapshot | null {
   return useEditorStore(selectCurrentState);
 }
 
@@ -65,21 +65,13 @@ const editorActions = {
   addVariant: editorStore.getState().addVariant,
   removeVariant: editorStore.getState().removeVariant,
   patchVariant: editorStore.getState().patchVariant,
-  addState: editorStore.getState().addState,
-  renameState: editorStore.getState().renameState,
-  duplicateState: editorStore.getState().duplicateState,
-  removeState: editorStore.getState().removeState,
-  addTransition: editorStore.getState().addTransition,
-  removeTransition: editorStore.getState().removeTransition,
-  patchTransition: editorStore.getState().patchTransition,
   addEffect: editorStore.getState().addEffect,
   removeEffect: editorStore.getState().removeEffect,
   patchEffect: editorStore.getState().patchEffect,
   duplicateLayersToVariant: editorStore.getState().duplicateLayersToVariant,
   setCurrentIcon: editorStore.getState().setCurrentIcon,
   setCurrentVariant: editorStore.getState().setCurrentVariant,
-  setCurrentState: editorStore.getState().setCurrentState,
-  setStateTopology: editorStore.getState().setStateTopology,
+  setTopology: editorStore.getState().setTopology,
   setSelectedIconGuideIndex: editorStore.getState().setSelectedIconGuideIndex,
   patchLayer: editorStore.getState().patchLayer,
   renameLayer: editorStore.getState().renameLayer,
@@ -100,7 +92,6 @@ const editorActions = {
   setPointMarquee: editorStore.getState().setPointMarquee,
   setPointTransformLabel: editorStore.getState().setPointTransformLabel,
   setTransitionPreview: editorStore.getState().setTransitionPreview,
-  startTransitionPreview: editorStore.getState().startTransitionPreview,
   updateTransitionPreview: editorStore.getState().updateTransitionPreview,
   stopTransitionPreview: editorStore.getState().stopTransitionPreview,
   setSelectedTransitionId: editorStore.getState().setSelectedTransitionId,
@@ -125,14 +116,9 @@ const editorActions = {
   removeIconSet: editorStore.getState().removeIconSet,
   renameIconSet: editorStore.getState().renameIconSet,
   setActiveIconSet: editorStore.getState().setActiveIconSet,
-  updateIconSetSync: editorStore.getState().updateIconSetSync,
-  addSyncTarget: editorStore.getState().addSyncTarget,
-  updateSyncTarget: editorStore.getState().updateSyncTarget,
-  removeSyncTarget: editorStore.getState().removeSyncTarget,
   schedulePendingPublish: editorStore.getState().schedulePendingPublish,
   cancelPendingPublish: editorStore.getState().cancelPendingPublish,
   clearAutoPublishSkip: editorStore.getState().clearAutoPublishSkip,
-  recordPublishedVersion: editorStore.getState().recordPublishedVersion,
   openIconTab: editorStore.getState().openIconTab,
   closeIconTab: editorStore.getState().closeIconTab,
   setActiveTab: editorStore.getState().setActiveTab,

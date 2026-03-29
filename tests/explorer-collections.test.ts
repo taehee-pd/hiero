@@ -55,6 +55,6 @@ describe('explorer collections and favorites', () => {
     const variant = icon.variants.v24;
     expect(variant).toBeDefined();
     expect(variant.viewBox).toEqual([0, 0, 24, 24]);
-    expect(Object.keys(variant.states.default.layers).length).toBe(2);
+    expect(Object.keys(variant.layers).length).toBe(2);
   });
 });

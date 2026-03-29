@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import { TransitionScheduler, resolveTransition } from '../lib/runtime-core';
+import type { TransitionConfig } from '../lib/runtime-core/transition-resolver';
 import { isIcon } from '../lib/schema/guards';
-import { HAMBURGER_CLOSE_ICON } from '../lib/schema/sample-icons/hamburger-close';
+import { HAMBURGER_CLOSE_ICON, HAMBURGER_CLOSE_BINDINGS } from '../lib/schema/sample-icons/hamburger-close';
+import { variantToSnapshot } from '../lib/schema/types';
 
 describe('hamburger close sample icon', () => {
   test('icon definition passes the schema icon guard', () => {
@@ -10,16 +12,23 @@ describe('hamburger close sample icon', () => {
   });
 
   test('resolveTransition maps open to closed bindings as expected', () => {
-    const variant = HAMBURGER_CLOSE_ICON.variants['24'];
-    const transition = HAMBURGER_CLOSE_ICON.transitions['open-to-closed'];
+    const openSnapshot = variantToSnapshot(HAMBURGER_CLOSE_ICON.variants['24-open']);
+    const closedSnapshot = variantToSnapshot(HAMBURGER_CLOSE_ICON.variants['24-closed']);
+    const transition: TransitionConfig = {
+      id: 'open-to-closed',
+      strategy: 'lineAnimation',
+      durationMs: 300,
+      easing: 'ease-in-out',
+      layerBindings: HAMBURGER_CLOSE_BINDINGS,
+    };
     const resolved = resolveTransition(
       transition,
-      variant.states.open,
-      variant.states.closed,
+      openSnapshot,
+      closedSnapshot,
     );
 
     expect(resolved).toMatchObject({
-      strategy: 'track',
+      strategy: 'lineAnimation',
       durationMs: 300,
       easing: 'ease-in-out',
     });
@@ -43,11 +52,19 @@ describe('hamburger close sample icon', () => {
   });
 
   test('scheduler completes after the expected duration', () => {
-    const variant = HAMBURGER_CLOSE_ICON.variants['24'];
+    const openSnapshot = variantToSnapshot(HAMBURGER_CLOSE_ICON.variants['24-open']);
+    const closedSnapshot = variantToSnapshot(HAMBURGER_CLOSE_ICON.variants['24-closed']);
+    const transition: TransitionConfig = {
+      id: 'open-to-closed',
+      strategy: 'lineAnimation',
+      durationMs: 300,
+      easing: 'ease-in-out',
+      layerBindings: HAMBURGER_CLOSE_BINDINGS,
+    };
     const resolved = resolveTransition(
-      HAMBURGER_CLOSE_ICON.transitions['open-to-closed'],
-      variant.states.open,
-      variant.states.closed,
+      transition,
+      openSnapshot,
+      closedSnapshot,
     );
 
     let nowValue = 0;

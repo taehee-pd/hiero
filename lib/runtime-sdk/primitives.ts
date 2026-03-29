@@ -91,23 +91,22 @@ export function resolveRequestedState(
   requestedState?: string,
   fallback: IconFallbackBehavior['stateFallback'] = DEFAULT_ICON_FALLBACK_BEHAVIOR.stateFallback,
 ): string {
-  const stateIds = Object.keys(variant.states).sort((a, b) => a.localeCompare(b));
-  if (stateIds.length === 0) {
-    warnDev('No states were found in compiled variant.');
-    return fallback;
-  }
-
   const wanted = requestedState ?? fallback;
-  if (variant.states[wanted]) {
+
+  // Check if the variant has an explicit states map (extended payloads)
+  const variantWithStates = variant as typeof variant & {
+    states?: Record<string, unknown>;
+  };
+  if (variantWithStates.states && variantWithStates.states[wanted]) {
     return wanted;
   }
 
-  const fallbackState = variant.states[fallback]
-    ? fallback
-    : stateIds[0]!;
-
-  warnDev(`State "${wanted}" is not available. Falling back to "${fallbackState}".`);
-  return fallbackState;
+  // Compiled variants are now flat (no states map). If the requested state
+  // doesn't exist in states, fall back to the default.
+  if (wanted !== fallback) {
+    warnDev(`State "${wanted}" is not available in flat compiled variant. Falling back to "${fallback}".`);
+  }
+  return fallback;
 }
 
 export function resolveRequestedRenderingMode(
@@ -200,21 +199,13 @@ function buildIconComponentMeta(icon: CompiledIcon): IconComponentMeta {
     .map((variant) => variant.size)
     .sort((a, b) => a - b);
 
-  const availableStates = Array.from(
-    new Set(
-      Object.values(icon.variants).flatMap((variant) => Object.keys(variant.states)),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
+  // Compiled variants are now flat — no states map. The single implicit state
+  // is "default".
+  const availableStates = ['default'];
 
-  const availableModes = Array.from(
-    new Set(
-      Object.values(icon.variants).flatMap((variant) =>
-        Object.values(variant.states).flatMap((state) =>
-          Object.keys(state.modes) as CompiledRenderingMode[],
-        ),
-      ),
-    ),
-  ).sort((left, right) => modeOrder(left) - modeOrder(right));
+  // Compiled variants no longer have per-state modes. Report monochrome as
+  // the baseline available mode since layers are always present.
+  const availableModes: CompiledRenderingMode[] = ['monochrome'];
 
   return {
     id: icon.id,

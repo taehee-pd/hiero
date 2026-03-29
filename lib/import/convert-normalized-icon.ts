@@ -39,13 +39,7 @@ export function convertNormalizedIconToIcon(
         name: String(size),
         size,
         viewBox: normalized.viewBox,
-        defaultState: 'default',
-        states: {
-          default: {
-            id: 'default',
-            layers,
-          },
-        },
+        layers,
       },
     },
     transitions: {},

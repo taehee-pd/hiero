@@ -28,21 +28,16 @@ describe('phase 1 deterministic checks', () => {
 
   test('layer serialization is deterministic regardless of insertion order', () => {
     const icon = SAMPLE_PROJECT.icons['icon-home'];
-    const state = icon.variants.v24.states.default;
+    const variant = icon.variants.v24;
     const reordered = {
       ...icon,
       variants: {
         ...icon.variants,
         v24: {
-          ...icon.variants.v24,
-          states: {
-            default: {
-              ...state,
-              layers: {
-                roof: state.layers.roof,
-                house: state.layers.house,
-              },
-            },
+          ...variant,
+          layers: {
+            roof: variant.layers.roof,
+            house: variant.layers.house,
           },
         },
       },
@@ -80,7 +75,7 @@ describe('phase 1 deterministic checks', () => {
     expect(isPathDirectlyEditable('M2 2 L10 2 L10 10 L2 10 Z')).toBeTrue();
     expect(
       isPathDirectlyEditable(
-        SAMPLE_PROJECT.icons['icon-search']!.variants.v24.states.default.layers.circle.path!.d,
+        SAMPLE_PROJECT.icons['icon-search']!.variants.v24.layers.circle.path!.d,
       ),
     ).toBeTrue();
   });

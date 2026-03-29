@@ -7,7 +7,6 @@ import type {
   CompiledLayerBinding,
   CompiledLayerSet,
   CompiledRenderingMode,
-  CompiledState,
   CompiledTransition,
   CompiledTrackProperty,
   CompiledVariant,
@@ -61,15 +60,9 @@ const REQUIRED_RENDERING_MODES: CompiledRenderingMode[] = [
   'multicolor',
 ];
 
-/** Modes that MAY be present but are not required for 1.0.0 compat. */
-const OPTIONAL_RENDERING_MODES: CompiledRenderingMode[] = [
-  'autoGradient',
-];
-
-/** All known rendering modes (required + optional). */
+/** All known rendering modes. */
 const RENDERING_MODES: CompiledRenderingMode[] = [
   ...REQUIRED_RENDERING_MODES,
-  ...OPTIONAL_RENDERING_MODES,
 ];
 
 const TRACK_PROPERTIES: CompiledTrackProperty[] = [
@@ -79,15 +72,9 @@ const TRACK_PROPERTIES: CompiledTrackProperty[] = [
   'translateY',
   'scale',
   'pathLength',
-  'fill',
-  'stroke',
-  'strokeWidth',
-  'fillOpacity',
-  'strokeOpacity',
   'trimStart',
   'trimEnd',
   'trimOffset',
-  'variableValue',
 ];
 
 const EFFECT_KINDS: CompiledEffectKind[] = [
@@ -170,28 +157,6 @@ export function isCompiledLayerSet(val: unknown): val is CompiledLayerSet {
   return isObject(val) && Array.isArray(val.layers) && val.layers.every(isCompiledLayer);
 }
 
-export function isCompiledState(val: unknown): val is CompiledState {
-  if (!isObject(val) || !isObject(val.modes)) return false;
-
-  const modes = val.modes as Record<string, unknown>;
-
-  // All 4 original modes are required for schema 1.0.0 compatibility.
-  // Optional modes (e.g. autoGradient) are accepted when present but
-  // not required — this prevents older compiled payloads from failing.
-  if (!REQUIRED_RENDERING_MODES.every((mode) => isCompiledLayerSet(modes[mode]))) {
-    return false;
-  }
-
-  // Validate optional modes if they exist
-  for (const mode of OPTIONAL_RENDERING_MODES) {
-    if (modes[mode] !== undefined && !isCompiledLayerSet(modes[mode])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 export function isCompiledVariant(val: unknown): val is CompiledVariant {
   if (!isObject(val)) return false;
   if (typeof val.size !== 'number') return false;
@@ -202,7 +167,7 @@ export function isCompiledVariant(val: unknown): val is CompiledVariant {
   ) {
     return false;
   }
-  return isRecordOf(val.states, isCompiledState);
+  return isCompiledLayerSet(val.layers);
 }
 
 export function isCompiledLayerBinding(val: unknown): val is CompiledLayerBinding {
@@ -229,7 +194,6 @@ export function isCompiledLayerBinding(val: unknown): val is CompiledLayerBindin
   if (val.morph !== undefined) {
     if (!isObject(val.morph)) return false;
     if (!['strict', 'bestGuess'].includes(val.morph.topology as string)) return false;
-    if (!['native', 'flubber'].includes(val.morph.mixer as string)) return false;
   }
 
   return true;
@@ -309,7 +273,6 @@ export function isIconEntry(val: unknown): val is IconEntry {
   ) {
     return false;
   }
-  if (!isStringArray(val.states)) return false;
   if (typeof val.hasAnimation !== 'boolean') return false;
   if (typeof val.hasMorphTransition !== 'boolean') return false;
   if (typeof val.compiledPath !== 'string') return false;

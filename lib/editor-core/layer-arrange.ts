@@ -1,6 +1,7 @@
 import { commitHistory, pauseHistory, resumeHistory } from '@/lib/editor-store/history';
 import { editorStore } from '@/lib/editor-store/store';
 import type { Layer } from '@/lib/schema/types';
+import { getVariantState } from '@/lib/schema/types';
 
 type AlignMode = 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom';
 type DistributeMode = 'horizontal' | 'vertical';
@@ -45,9 +46,8 @@ function computeLayerBounds(layer: Layer): Bounds | null {
 function collectLayerBounds(layerIds: string[], iconId: string, stateId: string): LayerBounds[] {
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const iconState = state.currentVariantId
-    ? icon?.variants[state.currentVariantId]?.states[stateId]
-    : null;
+  const variant = state.currentVariantId ? icon?.variants[state.currentVariantId] : null;
+  const iconState = variant ? getVariantState(variant, stateId) : null;
   if (!iconState) return [];
 
   const seen = new Set<string>();
@@ -115,7 +115,7 @@ function patchLayerPosition(
   }
 
   const state = editorStore.getState();
-  state.patchLayer(iconId, stateId, layer.id, {
+  state.patchLayer(iconId, layer.id, {
     transform: {
       ...(layer.transform ?? {}),
       x: (layer.transform?.x ?? 0) + deltaX,

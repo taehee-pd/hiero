@@ -37,6 +37,20 @@ function makeIcon(id: string, name: string): Icon {
         id: 'default',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: {
+          line1: {
+            id: 'line1',
+            role: 'primary',
+            path: { d: 'M4 6h16' },
+            style: { fill: { mode: 'currentColor' } },
+          },
+          line2: {
+            id: 'line2',
+            role: 'secondary',
+            path: { d: 'M4 12h16' },
+            style: { fill: { mode: 'currentColor' } },
+          },
+        },
         defaultState: 'idle',
         states: {
           idle: {
@@ -79,6 +93,10 @@ function makeIcon(id: string, name: string): Icon {
     transitions: {
       'idle→active': {
         id: 'idle→active',
+        fromIconId: id,
+        toIconId: id,
+        fromVariantId: 'default',
+        toVariantId: 'default',
         from: 'idle',
         to: 'active',
         strategy: 'replace',
@@ -97,23 +115,14 @@ function makeIcon(id: string, name: string): Icon {
 }
 
 function makeVariantPayload(
-  overrides?: Partial<RuntimeVariantPayload>,
+  overrides?: Record<string, unknown>,
 ): RuntimeVariantPayload {
   return {
-    variant: { id: 'default', size: 24, viewBox: [0, 0, 24, 24], defaultState: 'idle' },
+    variant: { id: 'default', size: 24, viewBox: [0, 0, 24, 24] },
+    layers: [],
     states: {
       idle: { layers: [] },
       active: { layers: [] },
-    },
-    transitions: {
-      'idle→active': {
-        from: 'idle',
-        to: 'active',
-        strategy: 'replace',
-        durationMs: 300,
-        easing: 'linear',
-        layerBindings: [],
-      },
     },
     effects: {
       bounce: {
@@ -131,9 +140,9 @@ function makeMeta(): RuntimeIconMeta {
     id: 'test',
     name: 'test-icon',
     variants: {
-      default: { size: 24, viewBox: [0, 0, 24, 24], defaultState: 'idle' },
+      default: { size: 24, viewBox: [0, 0, 24, 24] },
     },
-  };
+  } as RuntimeIconMeta;
 }
 
 // ---------------------------------------------------------------------------

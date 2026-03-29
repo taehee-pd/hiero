@@ -20,12 +20,12 @@ describe('runtime sdk primitives', () => {
     icon.variants['16'] = {
       size: 16,
       viewBox: [0, 0, 16, 16],
-      states: structuredClone(icon.variants['24'].states),
+      layers: structuredClone(icon.variants['24'].layers),
     };
     icon.variants['32'] = {
       size: 32,
       viewBox: [0, 0, 32, 32],
-      states: structuredClone(icon.variants['24'].states),
+      layers: structuredClone(icon.variants['24'].layers),
     };
 
     const result = resolveRequestedSize(icon, 20, 'nearest');
@@ -41,9 +41,11 @@ describe('runtime sdk primitives', () => {
   });
 
   test('mode fallback resolves to monochrome', () => {
-    const icon = makeIcon() as any;
-    const state = icon.variants['24'].states.default;
-    delete state.modes.palette;
+    const state = {
+      modes: {
+        monochrome: { layers: [] },
+      },
+    };
 
     const resolved = resolveRequestedRenderingMode(state, 'palette', 'monochrome');
     expect(resolved).toBe('monochrome');
@@ -84,10 +86,6 @@ describe('runtime sdk primitives', () => {
     expect(parsed.icon.$schema).toBe('https://coniva.dev/schemas/compiled-icon/1.0.0');
     expect(parsed.meta.availableModes).toEqual([
       'monochrome',
-      'hierarchical',
-      'palette',
-      'multicolor',
-      'autoGradient',
     ]);
 
     expect(() => parseCompiledIconJson({})).toThrow('Invalid compiled icon payload: missing $schema.');

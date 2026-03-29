@@ -3,7 +3,7 @@ import type {
   InterpolatedValues,
   ResolvedTransition,
 } from '@/lib/runtime-core';
-import type { Layer, PaintRef, RenderingMode, State } from '@/lib/schema/types';
+import type { Layer, LayerSnapshot, PaintRef, RenderingMode } from '@/lib/schema/types';
 import { resolveLayerStyleForRendering } from '@/lib/rendering/resolve-layer-style';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -11,8 +11,8 @@ const PREVIEW_DEFS_ATTR = 'data-managed-by';
 const PREVIEW_DEFS_VALUE = 'transition-preview';
 
 export type ApplyTransitionPreviewInput = {
-  baseState: State;
-  targetState?: State | null;
+  baseState: LayerSnapshot;
+  targetState?: LayerSnapshot | null;
   progress: number;
   resolvedTransition: ResolvedTransition;
   interpolatedValues: InterpolatedValues;
@@ -90,7 +90,7 @@ export function applyTransitionPreview(
   }
 }
 
-export function clearTransitionPreview(target: SVGSVGElement, baseState: State): void {
+export function clearTransitionPreview(target: SVGSVGElement, baseState: LayerSnapshot): void {
   target.querySelectorAll<SVGPathElement>('path[data-preview-layer-id]').forEach((element) => {
     element.remove();
   });

@@ -1,5 +1,6 @@
 import type { EditorStore } from './store';
-import type { Icon, Variant, State, Layer, GuideMaster } from '@/lib/schema/types';
+import type { Icon, Variant, Layer, LayerSnapshot, GuideMaster } from '@/lib/schema/types';
+import { variantToSnapshot } from '@/lib/schema/types';
 
 export type LayerPanelRow = {
   layer: Layer;
@@ -19,10 +20,10 @@ export function selectCurrentVariant(s: EditorStore): Variant | null {
   return icon.variants[s.currentVariantId] ?? null;
 }
 
-export function selectCurrentState(s: EditorStore): State | null {
+export function selectCurrentState(s: EditorStore): LayerSnapshot | null {
   const variant = selectCurrentVariant(s);
-  if (!variant || !s.currentStateId) return null;
-  return variant.states[s.currentStateId] ?? null;
+  if (!variant) return null;
+  return variantToSnapshot(variant, s.currentStateId);
 }
 
 export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
@@ -37,34 +38,35 @@ export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
   );
 }
 
-export function selectVariantStateById(
+export function selectVariantSnapshotById(
   icon: Icon | null | undefined,
   variantId: string | null | undefined,
-  stateId: string | null | undefined,
-): State | null {
-  if (!icon || !variantId || !stateId) return null;
-  return icon.variants[variantId]?.states[stateId] ?? null;
+): LayerSnapshot | null {
+  if (!icon || !variantId) return null;
+  const variant = icon.variants[variantId];
+  if (!variant) return null;
+  return variantToSnapshot(variant, null);
 }
 
 export function selectCurrentLayers(s: EditorStore): Layer[] {
-  const state = selectCurrentState(s);
-  if (!state) return [];
-  return Object.values(state.layers);
+  const variant = selectCurrentVariant(s);
+  if (!variant) return [];
+  return Object.values(variant.layers);
 }
 
 export function selectCurrentLayerPanelRows(s: EditorStore): LayerPanelRow[] {
-  const state = selectCurrentState(s);
-  if (!state) return [];
-  return buildLayerPanelRows(Object.values(state.layers));
+  const variant = selectCurrentVariant(s);
+  if (!variant) return [];
+  return buildLayerPanelRows(Object.values(variant.layers));
 }
 
 export function selectLayerById(
   s: EditorStore,
   layerId: string,
 ): Layer | null {
-  const state = selectCurrentState(s);
-  if (!state) return null;
-  return state.layers[layerId] ?? null;
+  const variant = selectCurrentVariant(s);
+  if (!variant) return null;
+  return variant.layers[layerId] ?? null;
 }
 
 export function selectIconList(

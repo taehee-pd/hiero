@@ -93,19 +93,21 @@ export function createIconRuntimeStore(
       options.cancelFrame ?? ((handle) => window.cancelAnimationFrame(handle)),
   };
 
-  const defaultStateId = resolveInitialStateId(payload, options.initialStateId);
-  let settledStateId = defaultStateId;
-  let currentStateId = defaultStateId;
-  let transition: TransitionPlayback | undefined;
+  // Default state ID: prefer the first state key if states are defined, otherwise 'default'
+  const fallbackStateId = payload.states
+    ? (Object.keys(payload.states)[0] ?? 'default')
+    : 'default';
+  const initialStateId = options.initialStateId ?? fallbackStateId;
   let effect: EffectPlayback | undefined;
+  let activeTransition: TransitionPlayback | undefined;
   let frameHandle: number | undefined;
   let destroyed = false;
 
   let snapshot: IconRuntimeStoreSnapshot = {
-    currentStateId,
-    settledStateId,
+    currentStateId: initialStateId,
+    settledStateId: initialStateId,
     isAnimating: false,
-    snapshot: buildStateSnapshot(payload, currentStateId),
+    snapshot: buildStateSnapshot(payload, initialStateId),
   };
 
   function emit() {
@@ -114,42 +116,78 @@ export function createIconRuntimeStore(
     }
   }
 
+  function findTransition(
+    fromStateId: string,
+    toStateId: string,
+  ): { id: string; transition: RuntimeTransition } | undefined {
+    if (!payload.transitions) return undefined;
+    for (const [id, transition] of Object.entries(payload.transitions)) {
+      if (transition.from === fromStateId && transition.to === toStateId) {
+        return { id, transition };
+      }
+    }
+    return undefined;
+  }
+
   function rebuildSnapshot(timeMs: number): void {
-    const transitionElapsedMs = transition ? Math.max(timeMs - transition.startedAt, 0) : 0;
-    const transitionProgress = transition
-      ? resolveRuntimeEasingProgress(
-          transition.transition.easing,
-          transitionElapsedMs,
-          transition.transition.durationMs,
-        )
-      : 1;
     const effectProgress = effect
       ? resolveEffectProgress(effect, timeMs)
       : undefined;
-
-    if (transition && transitionElapsedMs >= Math.max(transition.transition.durationMs, 0)) {
-      settledStateId = transition.toStateId;
-      transition = undefined;
-    }
 
     if (effect && effectProgress?.complete) {
       effect = undefined;
     }
 
-    let runtimeSnapshot = transition
-      ? buildTransitionSnapshot(payload, transition, transitionProgress)
-      : buildStateSnapshot(payload, currentStateId);
+    // Handle active transition
+    if (activeTransition) {
+      const transitionProgress = resolveTransitionProgress(activeTransition, timeMs);
+
+      if (transitionProgress.complete) {
+        // Transition finished — settle into target state
+        activeTransition = undefined;
+        snapshot = {
+          currentStateId: snapshot.currentStateId,
+          settledStateId: snapshot.currentStateId,
+          isAnimating: Boolean(effect),
+          activeEffectId: effect?.id,
+          snapshot: buildStateSnapshot(payload, snapshot.currentStateId),
+        };
+        return;
+      }
+
+      // Build interpolated snapshot
+      let runtimeSnapshot = buildTransitionSnapshot(
+        payload,
+        activeTransition,
+        transitionProgress.progress,
+      );
+
+      if (effect && effectProgress) {
+        runtimeSnapshot = applyEffectToSnapshot(payload, runtimeSnapshot, effect, effectProgress.progress);
+      }
+
+      snapshot = {
+        currentStateId: snapshot.currentStateId,
+        settledStateId: activeTransition.fromStateId,
+        activeTransitionId: activeTransition.id,
+        activeEffectId: effect?.id,
+        isAnimating: true,
+        snapshot: runtimeSnapshot,
+      };
+      return;
+    }
+
+    let runtimeSnapshot = buildStateSnapshot(payload, snapshot.currentStateId);
 
     if (effect && effectProgress) {
       runtimeSnapshot = applyEffectToSnapshot(payload, runtimeSnapshot, effect, effectProgress.progress);
     }
 
     snapshot = {
-      currentStateId,
-      settledStateId,
-      activeTransitionId: transition?.id,
+      currentStateId: snapshot.currentStateId,
+      settledStateId: snapshot.currentStateId,
       activeEffectId: effect?.id,
-      isAnimating: Boolean(transition || effect),
+      isAnimating: Boolean(effect),
       snapshot: runtimeSnapshot,
     };
   }
@@ -159,7 +197,7 @@ export function createIconRuntimeStore(
       return;
     }
 
-    if (!transition && !effect) {
+    if (!effect && !activeTransition) {
       return;
     }
 
@@ -171,57 +209,61 @@ export function createIconRuntimeStore(
     });
   }
 
-  function setState(stateId: string, options?: { immediate?: boolean }) {
-    if (!payload.states[stateId]) {
+  function setState(stateId: string, stateOptions?: { immediate?: boolean }) {
+    if (payload.states && !payload.states[stateId] && stateId !== fallbackStateId) {
       return;
     }
 
-    if (!options?.immediate && stateId === currentStateId) {
+    // If already targeting this state, ignore duplicate
+    if (snapshot.currentStateId === stateId) {
       return;
     }
 
-    const sourceStateId = currentStateId;
-    const now = frame.now();
+    const previousStateId = snapshot.currentStateId;
 
-    if (options?.immediate) {
-      currentStateId = stateId;
-      settledStateId = stateId;
-      transition = undefined;
-      rebuildSnapshot(now);
+    // Look for a transition from current to target
+    const found = findTransition(previousStateId, stateId);
+    if (found && !stateOptions?.immediate) {
+      // Preserve the previous settled state if we're interrupting an in-flight transition
+      const settledState = activeTransition
+        ? snapshot.settledStateId
+        : previousStateId;
+      activeTransition = {
+        id: found.id,
+        transition: found.transition,
+        fromStateId: previousStateId,
+        toStateId: stateId,
+        startedAt: frame.now(),
+      };
+      snapshot = {
+        ...snapshot,
+        currentStateId: stateId,
+        settledStateId: settledState,
+        activeTransitionId: found.id,
+        isAnimating: true,
+        snapshot: buildStateSnapshot(payload, previousStateId),
+      };
       emit();
+      ensureFrame();
       return;
     }
 
-    const transitionEntry = Object.entries(payload.transitions).find(
-      ([, candidate]) => candidate.from === sourceStateId && candidate.to === stateId,
-    );
-
-    currentStateId = stateId;
-
-    if (!transitionEntry) {
-      settledStateId = stateId;
-      transition = undefined;
-      rebuildSnapshot(now);
-      emit();
-      return;
-    }
-
-    const [transitionId, runtimeTransition] = transitionEntry;
-    transition = {
-      id: transitionId,
-      transition: runtimeTransition,
-      fromStateId: sourceStateId,
-      toStateId: stateId,
-      startedAt: now,
+    snapshot = {
+      ...snapshot,
+      currentStateId: stateId,
+      settledStateId: stateId,
+      snapshot: buildStateSnapshot(payload, stateId),
     };
-    rebuildSnapshot(now);
+    const now = frame.now();
+    if (stateOptions?.immediate) {
+      rebuildSnapshot(now);
+    }
     emit();
-    ensureFrame();
   }
 
   function playEffect(
     effectId: string,
-    options?: { repeat?: IconRuntimeEffectRepeat },
+    effectOptions?: { repeat?: IconRuntimeEffectRepeat },
   ) {
     const runtimeEffect = payload.effects?.[effectId];
     if (!runtimeEffect) {
@@ -232,7 +274,7 @@ export function createIconRuntimeStore(
       id: effectId,
       effect: runtimeEffect,
       startedAt: frame.now(),
-      repeat: options?.repeat ?? DEFAULT_REPEAT,
+      repeat: effectOptions?.repeat ?? DEFAULT_REPEAT,
     };
     rebuildSnapshot(frame.now());
     emit();
@@ -270,35 +312,20 @@ export function createIconRuntimeStore(
   };
 }
 
-function resolveInitialStateId(
-  payload: RuntimeVariantPayload,
-  requestedStateId?: string,
-): string {
-  if (requestedStateId && payload.states[requestedStateId]) {
-    return requestedStateId;
+function resolveTransitionProgress(
+  playback: TransitionPlayback,
+  timeMs: number,
+): { progress: number; complete: boolean } {
+  const duration = Math.max(playback.transition.durationMs, 1);
+  const elapsed = Math.max(timeMs - playback.startedAt, 0);
+
+  if (elapsed >= duration) {
+    return { progress: 1, complete: true };
   }
-
-  if (payload.states[payload.variant.defaultState]) {
-    return payload.variant.defaultState;
-  }
-
-  return Object.keys(payload.states).sort((left, right) => left.localeCompare(right))[0] ?? '';
-}
-
-function buildStateSnapshot(
-  payload: RuntimeVariantPayload,
-  stateId: string,
-): RuntimeSnapshot {
-  const state = payload.states[stateId];
 
   return {
-    stateId,
-    viewBox: [...payload.variant.viewBox],
-    layers: (state?.layers ?? []).map((layer) => ({
-      ...layer,
-      key: layer.id,
-      opacity: 1,
-    })),
+    progress: resolveRuntimeEasingProgress(playback.transition.easing, elapsed, duration),
+    complete: false,
   };
 }
 
@@ -307,189 +334,123 @@ function buildTransitionSnapshot(
   playback: TransitionPlayback,
   progress: number,
 ): RuntimeSnapshot {
-  const fromState = payload.states[playback.fromStateId];
-  const toState = payload.states[playback.toStateId];
+  const fromState = payload.states?.[playback.fromStateId];
+  const toState = payload.states?.[playback.toStateId];
+
   if (!fromState || !toState) {
+    // Fallback: just use target state layers
     return buildStateSnapshot(payload, playback.toStateId);
   }
 
-  if (playback.transition.strategy === 'replace' || playback.transition.strategy === 'morph') {
-    const direction = resolveReplaceDirection(
-      playback.transition.direction,
-      playback.fromStateId,
+  // Determine if this is a replace/directional transition
+  const transition = playback.transition;
+  const effectiveDirection = resolveReplaceDirection(
+    transition.direction,
+    playback.fromStateId,
+    playback.toStateId,
+  );
+
+  if (transition.strategy === 'replace' && effectiveDirection) {
+    return buildDirectionalReplaceSnapshot(
       playback.toStateId,
+      payload.variant.viewBox,
+      fromState,
+      toState,
+      progress,
+      effectiveDirection,
+    );
+  }
+
+  // Track-based interpolation
+  const fromLayers = fromState.layers;
+  const toLayers = toState.layers;
+  const bindings = transition.layerBindings ?? [];
+
+  const interpolatedLayers = toLayers.map((toLayer) => {
+    const fromLayer = fromLayers.find((layer) => layer.id === toLayer.id);
+    const binding = bindings.find(
+      (b) => b.toLayerId === toLayer.id || b.fromLayerId === toLayer.id,
     );
 
-    if (direction) {
-      return buildDirectionalReplaceSnapshot(
-        playback.toStateId,
-        payload.variant.viewBox,
-        fromState,
-        toState,
-        progress,
-        direction,
-      );
-    }
-
-    return {
-      stateId: playback.toStateId,
-      viewBox: [...payload.variant.viewBox],
-      layers: [
-        ...fromState.layers.map((layer) => ({
-          ...layer,
-          key: `from:${layer.id}`,
-          opacity: 1 - progress,
-        })),
-        ...toState.layers.map((layer) => ({
-          ...layer,
-          key: `to:${layer.id}`,
-          opacity: progress,
-        })),
-      ],
-    };
-  }
-
-  const layerSnapshots = new Map<string, RuntimeSnapshotLayer>();
-  for (const layer of toState.layers) {
-    layerSnapshots.set(layer.id, {
-      ...layer,
-      key: layer.id,
-      opacity: 1,
-    });
-  }
-
-  const transformState = new Map<
-    string,
-    { translateX: number; translateY: number; rotate: number; scale: number }
-  >();
-  const opacityState = new Map<string, number>();
-  const pathLengthState = new Map<string, number>();
-
-  for (const binding of playback.transition.layerBindings) {
-    const layerId = binding.toLayerId ?? binding.fromLayerId;
-    if (!layerId) {
-      continue;
-    }
-
-    if (!layerSnapshots.has(layerId)) {
-      const fallback =
-        toState.layers.find((layer) => layer.id === layerId) ??
-        fromState.layers.find((layer) => layer.id === layerId);
-      if (!fallback) {
-        continue;
-      }
-      layerSnapshots.set(layerId, {
-        ...fallback,
-        key: layerId,
+    if (!binding || !binding.tracks || binding.tracks.length === 0) {
+      // No animation tracks — snap to target state
+      return {
+        ...toLayer,
+        key: toLayer.id,
         opacity: 1,
-      });
+      };
     }
 
-    const layerTransform =
-      transformState.get(layerId) ?? {
-        translateX: 0,
-        translateY: 0,
-        rotate: 0,
-        scale: 1,
-      };
+    const bindingProgress = resolveBindingProgress(
+      progress,
+      binding.delayMs,
+      binding.durationMs,
+      bindings,
+    );
 
-    for (const track of binding.tracks ?? []) {
-      const localProgress = resolveBindingProgress(
-        progress,
-        binding.delayMs,
-        binding.durationMs,
-        playback.transition.layerBindings,
-      );
-      const value = sampleTrack(track, localProgress);
+    const result: RuntimeSnapshotLayer = {
+      ...toLayer,
+      key: toLayer.id,
+      opacity: 1,
+    };
+
+    for (const track of binding.tracks) {
+      const value = sampleTrack(track, bindingProgress);
       switch (track.property) {
         case 'opacity':
-          if (typeof value === 'number') {
-            opacityState.set(layerId, clamp01(value));
-          }
+          result.opacity = value;
           break;
-        case 'translateX':
-          if (typeof value === 'number') {
-            layerTransform.translateX = value;
-          }
+        case 'translateX': {
+          const existingTransform = result.transform ?? '';
+          result.transform = joinTransforms(
+            existingTransform || undefined,
+            `translate(${value}, 0)`,
+          );
           break;
-        case 'translateY':
-          if (typeof value === 'number') {
-            layerTransform.translateY = value;
-          }
+        }
+        case 'translateY': {
+          const existingTransform = result.transform ?? '';
+          result.transform = joinTransforms(
+            existingTransform || undefined,
+            `translate(0, ${value})`,
+          );
           break;
-        case 'rotate':
-          if (typeof value === 'number') {
-            layerTransform.rotate = value;
-          }
-          break;
-        case 'scale':
-          if (typeof value === 'number') {
-            layerTransform.scale = value;
-          }
-          break;
+        }
         case 'pathLength':
-          if (typeof value === 'number') {
-            pathLengthState.set(layerId, clamp01(value));
-          }
+          result.pathLengthProgress = value;
           break;
-        case 'fill':
-          if (typeof value === 'string') {
-            const snapshot = layerSnapshots.get(layerId);
-            if (snapshot) {
-              snapshot.fill = { kind: 'solid', color: value };
-            }
-          }
-          break;
-        case 'stroke':
-          if (typeof value === 'string') {
-            const snapshot = layerSnapshots.get(layerId);
-            if (snapshot) {
-              snapshot.stroke = { kind: 'solid', color: value };
-            }
-          }
+        default:
           break;
       }
     }
 
-    transformState.set(layerId, layerTransform);
-  }
-
-  for (const [layerId, layer] of layerSnapshots) {
-    const layerOpacity = opacityState.get(layerId);
-    if (layerOpacity !== undefined) {
-      layer.opacity = layerOpacity;
-    }
-
-    const transform = transformState.get(layerId);
-    if (transform) {
-      const extraParts: string[] = [];
-      if (transform.translateX !== 0 || transform.translateY !== 0) {
-        extraParts.push(`translate(${transform.translateX}, ${transform.translateY})`);
-      }
-      if (transform.rotate !== 0) {
-        extraParts.push(`rotate(${transform.rotate})`);
-      }
-      if (transform.scale !== 1) {
-        extraParts.push(`scale(${transform.scale}, ${transform.scale})`);
-      }
-
-      if (extraParts.length > 0) {
-        layer.transform = joinTransforms(layer.transform, extraParts.join(' '));
-      }
-    }
-
-    const pathLength = pathLengthState.get(layerId);
-    if (pathLength !== undefined) {
-      layer.pathLengthProgress = pathLength;
-    }
-  }
+    return result;
+  });
 
   return {
     stateId: playback.toStateId,
     viewBox: [...payload.variant.viewBox],
-    layers: [...layerSnapshots.values()],
+    layers: interpolatedLayers,
   };
 }
+
+function buildStateSnapshot(
+  payload: RuntimeVariantPayload,
+  stateId?: string,
+): RuntimeSnapshot {
+  const resolvedStateId = stateId ?? payload.variant.id;
+  const layers = payload.states?.[resolvedStateId]?.layers ?? payload.layers ?? [];
+  return {
+    stateId: resolvedStateId,
+    viewBox: [...payload.variant.viewBox],
+    layers: layers.map((layer) => ({
+      ...layer,
+      key: layer.id,
+      opacity: 1,
+    })),
+  };
+}
+
 
 function applyEffectToSnapshot(
   payload: RuntimeVariantPayload,
@@ -596,10 +557,7 @@ function resolveEffectProgress(
   };
 }
 
-function sampleTrack(track: RuntimeTrack, progress: number): number | string {
-  if (track.property === 'fill' || track.property === 'stroke') {
-    return sampleStringTrack(track.keyframes as string[], progress);
-  }
+function sampleTrack(track: RuntimeTrack, progress: number): number {
   return sampleNumberTrack(track.keyframes as number[], progress);
 }
 
@@ -617,23 +575,6 @@ function sampleNumberTrack(keyframes: number[], progress: number): number {
   const start = keyframes[startIndex] ?? 0;
   const end = keyframes[endIndex] ?? start;
   return start + (end - start) * localProgress;
-}
-
-function sampleStringTrack(keyframes: string[], progress: number): string {
-  if (keyframes.length === 0) {
-    return '#000000';
-  }
-  if (keyframes.length === 1) {
-    return keyframes[0] ?? '#000000';
-  }
-
-  const scaled = clamp01(progress) * (keyframes.length - 1);
-  const startIndex = Math.floor(scaled);
-  const endIndex = Math.min(startIndex + 1, keyframes.length - 1);
-  const localProgress = scaled - startIndex;
-  const start = keyframes[startIndex] ?? '#000000';
-  const end = keyframes[endIndex] ?? start;
-  return interpolateColor(start, end, localProgress);
 }
 
 function resolveKeyframeSegment(
@@ -662,7 +603,7 @@ function resolveBindingProgress(
   bindings: RuntimeTransition['layerBindings'],
 ): number {
   const totalMs = Math.max(
-    ...bindings.map((binding) => (binding.delayMs ?? 0) + (binding.durationMs ?? 0)),
+    ...bindings.map((binding: RuntimeTransition['layerBindings'][number]) => (binding.delayMs ?? 0) + (binding.durationMs ?? 0)),
     1,
   );
   const elapsed = globalProgress * totalMs;
@@ -787,7 +728,7 @@ function buildDirectionalReplaceSnapshot(
     stateId: toStateId,
     viewBox: [...viewBox],
     layers: [
-      ...fromState.layers.map((layer) => {
+      ...fromState.layers.map((layer: RuntimeLayer) => {
         const extraTransform = buildDirectionalTransform(outY, outScale);
         return {
           ...layer,
@@ -798,7 +739,7 @@ function buildDirectionalReplaceSnapshot(
             : layer.transform,
         };
       }),
-      ...toState.layers.map((layer) => {
+      ...toState.layers.map((layer: RuntimeLayer) => {
         const extraTransform = buildDirectionalTransform(inY, undefined);
         return {
           ...layer,

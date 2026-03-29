@@ -177,6 +177,10 @@ describe('inspection.ts — inspectTransitionPlan', () => {
   it('inspects a simple replace transition', () => {
     const transition: Transition = {
       id: 't1',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'idle',
       to: 'active',
       strategy: 'replace',
@@ -196,6 +200,10 @@ describe('inspection.ts — inspectTransitionPlan', () => {
   it('reports readiness scores for matched layers', () => {
     const transition: Transition = {
       id: 't2',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'a',
       to: 'b',
       strategy: 'replace',
@@ -216,6 +224,10 @@ describe('inspection.ts — inspectTransitionPlan', () => {
   it('handles unmatched layers', () => {
     const transition: Transition = {
       id: 't3',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'a',
       to: 'b',
       strategy: 'replace',

@@ -10,7 +10,6 @@ import { generateAutoGradient } from '@/lib/rendering/auto-gradient';
 export type RenderSvgInput = {
   icon: Icon;
   variantId: string;
-  stateId: string;
   renderingMode?: RenderingMode;
   tokens?: Record<string, string>;
 };
@@ -24,10 +23,9 @@ const MANAGED_DEFS_VALUE = 'render-svg';
  * Handles create/update/remove of child `<path>` elements.
  */
 export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
-  const { icon, variantId, stateId, tokens } = input;
+  const { icon, variantId, tokens } = input;
   const variant = icon.variants[variantId];
-  const state = variant?.states[stateId];
-  if (!variant || !state) return;
+  if (!variant) return;
   const renderingMode = resolveVariantRenderingMode(
     input.renderingMode ?? variant.renderingMode,
   );
@@ -53,9 +51,9 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
     if (id) existingHit.set(id, el);
   });
 
-  const layers = Object.values(state.layers);
+  const layers = Object.values(variant.layers);
   const layerById = new Map(layers.map((layer) => [layer.id, layer]));
-  const variableValues = computeVariableValue(state.layers, variant.variableValue ?? 1);
+  const variableValues = computeVariableValue(variant.layers, variant.variableValue ?? 1);
   const rendered = new Set<string>();
 
   for (const layer of layers) {

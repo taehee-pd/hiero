@@ -3,17 +3,18 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
-import type { TimelineTrack, Transition, Variant, Layer } from '@/lib/schema/types';
+import type { TimelineTrack, Variant, Layer, LayerSnapshot, LayerBinding } from '@/lib/schema/types';
+import { variantToSnapshot } from '@/lib/schema/types';
+import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { EasingPicker, type EasingValue } from './EasingPicker';
-import { ColorPickerPopover } from '@/components/editor/ColorPickerPopover';
 import { cn } from '@/lib/utils';
 
-type NumericTrackProperty = Exclude<TimelineTrack['property'], 'fill' | 'stroke'>;
+type NumericTrackProperty = TimelineTrack['property'];
 
 const TRACKS: NumericTrackProperty[] = [
   'opacity',
@@ -25,25 +26,17 @@ const TRACKS: NumericTrackProperty[] = [
   'trimStart',
   'trimEnd',
   'trimOffset',
-  'strokeWidth',
-  'fillOpacity',
-  'strokeOpacity',
-  // variableValue is excluded from the UI until preview-svg and the runtime
-  // playback store handle it (the track serialises fine but never affects output).
 ];
-
-const COLOR_TRACKS = ['fill', 'stroke'] as const;
-type ColorTrackProperty = (typeof COLOR_TRACKS)[number];
 const PX_PER_MS = 0.35;
 
 // ---------------------------------------------------------------------------
 // I3: Smart track suggestion categories
 // ---------------------------------------------------------------------------
 
-type TrackCategory = 'Transform' | 'Morph' | 'Trim' | 'Style' | 'Color';
+type TrackCategory = 'Transform' | 'Morph' | 'Trim';
 
 type TrackSuggestion = {
-  property: NumericTrackProperty | ColorTrackProperty;
+  property: NumericTrackProperty;
   category: TrackCategory;
   dimmed: boolean;
 };
@@ -85,19 +78,12 @@ function buildTrackSuggestions(layer: Layer | undefined): TrackSuggestion[] {
     { property: 'translateX', category: 'Transform', dimmed: false },
     { property: 'translateY', category: 'Transform', dimmed: false },
     { property: 'scale', category: 'Transform', dimmed: false },
-    // Morph (closed subpaths — dim if only open)
+    // Morph (closed subpaths -- dim if only open)
     { property: 'pathLength', category: 'Morph', dimmed: onlyOpen },
-    // Trim (open subpaths — dim if only closed)
+    // Trim (open subpaths -- dim if only closed)
     { property: 'trimStart', category: 'Trim', dimmed: onlyClosed },
     { property: 'trimEnd', category: 'Trim', dimmed: onlyClosed },
     { property: 'trimOffset', category: 'Trim', dimmed: onlyClosed },
-    // Style (always)
-    { property: 'strokeWidth', category: 'Style', dimmed: false },
-    { property: 'fillOpacity', category: 'Style', dimmed: false },
-    { property: 'strokeOpacity', category: 'Style', dimmed: false },
-    // Color (always)
-    { property: 'fill', category: 'Color', dimmed: false },
-    { property: 'stroke', category: 'Color', dimmed: false },
   ];
   return suggestions;
 }
@@ -198,12 +184,6 @@ type SelectedKeyframe = {
   keyframeIndex: number;
 };
 
-type SelectedColorKeyframe = {
-  bindingIndex: number;
-  property: ColorTrackProperty;
-  keyframeIndex: number;
-};
-
 /** UX-F1: Inline keyframe value editor (replaces window.prompt). */
 type InlineEditState = {
   key: SelectedKeyframe;
@@ -211,29 +191,32 @@ type InlineEditState = {
 };
 
 export function buildTimelineTransitionPreview(
-  transition: Transition,
+  transition: TransitionConfig,
   variant: Variant,
   progress: number,
 ): TransitionPreview | null {
-  const fromState = variant.states[transition.from];
-  const toState = variant.states[transition.to];
-  if (!fromState || !toState) return null;
+  const snapshot = variantToSnapshot(variant);
+  const normalizedTransition: TransitionConfig = {
+    ...transition,
+    strategy:
+      (transition.strategy as string) === 'track'
+        ? 'lineAnimation'
+        : transition.strategy,
+  };
 
   const clampedProgress = Math.max(0, Math.min(1, progress));
-  const resolvedTransition = resolveTransition(transition, fromState, toState);
+  const resolvedTransition = resolveTransition(normalizedTransition, snapshot, snapshot);
 
   return {
-    transitionId: transition.id,
-    baseStateId: transition.from,
-    targetStateId: transition.to,
+    transitionId: transition.id ?? 'timeline',
     progress: clampedProgress,
     resolvedTransition,
     interpolatedValues: interpolateTransitionValues(resolvedTransition, clampedProgress),
   };
 }
 
-export const TimelineEditor = memo(function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: Transition; variant: Variant }) {
-  const { patchTransition, setTransitionPreview } = useEditorActions();
+export const TimelineEditor = memo(function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: TransitionConfig; variant: Variant }) {
+  const { setTransitionPreview } = useEditorActions();
   const preview = useEditorStore((s) => s.transitionPreview);
   const [selected, setSelected] = useState<SelectedKeyframe | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; key: SelectedKeyframe } | null>(null);
@@ -243,7 +226,11 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   const [playing, setPlaying] = useState(false);
   const rafRef = useRef<number | null>(null);
 
-  const duration = Math.max(transition.durationMs, 1);
+  // Local transition state for timeline editing (no server-side persistence)
+  const [localTransition, setLocalTransition] = useState(transition);
+  useEffect(() => { setLocalTransition(transition); }, [transition]);
+
+  const duration = Math.max(localTransition.durationMs, 1);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
@@ -260,15 +247,14 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   const width = Math.max(containerWidth, duration * PX_PER_MS);
 
   useEffect(() => {
-    if (preview?.transitionId === transition.id) {
+    if (preview?.transitionId === (localTransition.id ?? 'timeline')) {
       setPlayhead(preview.progress);
     }
-  }, [preview?.progress, preview?.transitionId, transition.id]);
+  }, [preview?.progress, preview?.transitionId, localTransition.id]);
 
-  const updateTransition = useCallback((updater: (draft: Transition) => Transition) => {
-    const next = updater(transition);
-    patchTransition(iconId, transition.id, next);
-  }, [iconId, patchTransition, transition]);
+  const updateTransition = useCallback((updater: (draft: TransitionConfig) => TransitionConfig) => {
+    setLocalTransition((prev) => updater(prev));
+  }, []);
 
   const scrubTo = useCallback((progress: number) => {
     const p = Math.max(0, Math.min(1, progress));
@@ -301,7 +287,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
 
   const handleAddKeyframe = useCallback((bindingIndex: number, property: NumericTrackProperty, progress: number) => {
     updateTransition((draft) => {
-      const nextBindings = draft.layerBindings.map((binding, idx) => {
+      const nextBindings = (draft.layerBindings ?? []).map((binding, idx) => {
         if (idx !== bindingIndex) return binding;
         const tracks = [...(binding.tracks ?? [])];
         const existingIdx = tracks.findIndex((track) => track.property === property);
@@ -325,7 +311,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   const handleDragKeyframe = (key: SelectedKeyframe, nextProgress: number) => {
     const targetIndex = Math.max(0, Math.min(Math.round(nextProgress * (duration / 100)), 999));
     updateTransition((draft) => {
-      const nextBindings = draft.layerBindings.map((binding, idx) => {
+      const nextBindings = (draft.layerBindings ?? []).map((binding, idx) => {
         if (idx !== key.bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== key.property) return track;
@@ -343,7 +329,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   const deleteSelected = useCallback((key: SelectedKeyframe) => {
     updateTransition((draft) => ({
       ...draft,
-      layerBindings: draft.layerBindings.map((binding, idx) => {
+      layerBindings: (draft.layerBindings ?? []).map((binding, idx) => {
         if (idx !== key.bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== key.property) return track;
@@ -366,7 +352,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
     }
     updateTransition((draft) => ({
       ...draft,
-      layerBindings: draft.layerBindings.map((binding, idx) => {
+      layerBindings: (draft.layerBindings ?? []).map((binding, idx) => {
         if (idx !== inlineEdit.key.bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== inlineEdit.key.property) return track;
@@ -397,7 +383,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   const handleTrackEasingChange = useCallback((bindingIndex: number, property: string, easing: EasingValue) => {
     updateTransition((draft) => ({
       ...draft,
-      layerBindings: draft.layerBindings.map((binding, idx) => {
+      layerBindings: (draft.layerBindings ?? []).map((binding, idx) => {
         if (idx !== bindingIndex) return binding;
         const tracks = (binding.tracks ?? []).map((track) => {
           if (track.property !== property) return track;
@@ -407,85 +393,6 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
       }),
     }));
   }, [updateTransition]);
-
-  // --- I2b: Color track state & handlers ---
-  const [selectedColor, setSelectedColor] = useState<SelectedColorKeyframe | null>(null);
-  const [colorMenu, setColorMenu] = useState<{ x: number; y: number; key: SelectedColorKeyframe } | null>(null);
-  const colorMenuRef = useRef<HTMLDivElement>(null);
-
-  const handleAddColorKeyframe = useCallback((bindingIndex: number, property: ColorTrackProperty, progress: number) => {
-    const defaultColor = '#000000';
-    updateTransition((draft) => {
-      const nextBindings = draft.layerBindings.map((binding, idx) => {
-        if (idx !== bindingIndex) return binding;
-        const tracks = [...(binding.tracks ?? [])];
-        const existingIdx = tracks.findIndex((track) => track.property === property);
-        if (existingIdx >= 0) {
-          const track = tracks[existingIdx]!;
-          if (isNumericTrack(track)) return binding;
-          const nextKeyframes = [...track.keyframes, defaultColor];
-          tracks[existingIdx] = { ...track, keyframes: nextKeyframes };
-        } else {
-          tracks.push({ property, keyframes: [defaultColor, defaultColor] } as TimelineTrack);
-        }
-        return { ...binding, tracks };
-      });
-      return { ...draft, layerBindings: nextBindings };
-    });
-    scrubTo(progress);
-  }, [scrubTo, updateTransition]);
-
-  const handleColorKeyframeChange = useCallback((key: SelectedColorKeyframe, hex: string) => {
-    updateTransition((draft) => ({
-      ...draft,
-      layerBindings: draft.layerBindings.map((binding, idx) => {
-        if (idx !== key.bindingIndex) return binding;
-        const tracks = (binding.tracks ?? []).map((track) => {
-          if (track.property !== key.property) return track;
-          if (isNumericTrack(track)) return track;
-          const nextKeyframes = [...track.keyframes];
-          nextKeyframes[key.keyframeIndex] = hex;
-          return { ...track, keyframes: nextKeyframes };
-        });
-        return { ...binding, tracks };
-      }),
-    }));
-  }, [updateTransition]);
-
-  const deleteColorKeyframe = useCallback((key: SelectedColorKeyframe) => {
-    updateTransition((draft) => ({
-      ...draft,
-      layerBindings: draft.layerBindings.map((binding, idx) => {
-        if (idx !== key.bindingIndex) return binding;
-        const tracks = (binding.tracks ?? []).map((track) => {
-          if (track.property !== key.property) return track;
-          if (isNumericTrack(track)) return track;
-          const nextKeyframes = track.keyframes.filter((_, i) => i !== key.keyframeIndex);
-          return { ...track, keyframes: nextKeyframes };
-        });
-        return { ...binding, tracks };
-      }),
-    }));
-  }, [updateTransition]);
-
-  // Dismiss color context menu on click outside or Escape
-  useEffect(() => {
-    if (!colorMenu) return;
-    const handleClickOutside = (event: MouseEvent) => {
-      if (colorMenuRef.current && !colorMenuRef.current.contains(event.target as Node)) {
-        setColorMenu(null);
-      }
-    };
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setColorMenu(null);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [colorMenu]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -533,40 +440,36 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
     };
   }, [menu]);
 
-  // I3: Resolve layer objects for topology analysis
-  const fromState = variant.states[transition.from];
-  const toState = variant.states[transition.to];
+  // I3: Resolve layer objects for topology analysis using variant.layers directly
+  const variantSnapshot = useMemo(() => variantToSnapshot(variant), [variant]);
+  const fromState = variantSnapshot;
+  const toState = variantSnapshot;
+
+  const bindings = useMemo(
+    () => localTransition.layerBindings ?? [],
+    [localTransition.layerBindings],
+  );
 
   const rows = useMemo(() => {
-    return transition.layerBindings.flatMap((binding, bindingIndex) => {
+    return bindings.flatMap((binding: LayerBinding, bindingIndex: number) => {
       const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
       return TRACKS.map((property) => {
-        const track = (binding.tracks ?? []).find((entry) => entry.property === property);
+        const track = (binding.tracks ?? []).find((entry: TimelineTrack) => entry.property === property);
         return { bindingIndex, layerId, property, track };
       });
     });
-  }, [transition.layerBindings]);
-
-  const colorRows = useMemo(() => {
-    return transition.layerBindings.flatMap((binding, bindingIndex) => {
-      const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
-      return COLOR_TRACKS.map((property) => {
-        const track = (binding.tracks ?? []).find((entry) => entry.property === property);
-        return { bindingIndex, layerId, property, track };
-      });
-    });
-  }, [transition.layerBindings]);
+  }, [bindings]);
 
   // I3: Build per-binding track suggestions keyed by binding index
   const trackSuggestionsByBinding = useMemo(() => {
-    return transition.layerBindings.map((binding) => {
+    return bindings.map((binding: LayerBinding) => {
       const layerId = binding.toLayerId ?? binding.fromLayerId;
       const layer = layerId
         ? toState?.layers[layerId] ?? fromState?.layers[layerId]
         : undefined;
       return buildTrackSuggestions(layer);
     });
-  }, [transition.layerBindings, fromState, toState]);
+  }, [bindings, fromState, toState]);
 
   // I3: State for the add-track dropdown per binding
   const [addTrackOpen, setAddTrackOpen] = useState<number | null>(null);
@@ -595,18 +498,14 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
 
   // I3: Add a track to a binding from the suggestion dropdown
   const handleAddSuggestedTrack = useCallback(
-    (bindingIndex: number, property: NumericTrackProperty | ColorTrackProperty) => {
+    (bindingIndex: number, property: NumericTrackProperty) => {
       updateTransition((draft) => {
-        const nextBindings = draft.layerBindings.map((binding, idx) => {
+        const nextBindings = (draft.layerBindings ?? []).map((binding, idx) => {
           if (idx !== bindingIndex) return binding;
           const tracks = [...(binding.tracks ?? [])];
           // Don't add duplicate tracks
           if (tracks.some((t) => t.property === property)) return binding;
-          if (property === 'fill' || property === 'stroke') {
-            tracks.push({ property, keyframes: ['#000000', '#000000'] });
-          } else {
-            tracks.push({ property, keyframes: [0, 0] });
-          }
+          tracks.push({ property, keyframes: [0, 0] });
           return { ...binding, tracks };
         });
         return { ...draft, layerBindings: nextBindings };
@@ -618,7 +517,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
 
   // I9: Compute current trim values per binding for preview
   const trimPreviewData = useMemo(() => {
-    return transition.layerBindings.map((binding) => {
+    return bindings.map((binding: LayerBinding) => {
       const trimStartTrack = (binding.tracks ?? []).find((t) => t.property === 'trimStart');
       const trimEndTrack = (binding.tracks ?? []).find((t) => t.property === 'trimEnd');
       const trimOffsetTrack = (binding.tracks ?? []).find((t) => t.property === 'trimOffset');
@@ -650,7 +549,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
         pathD,
       };
     });
-  }, [transition.layerBindings, fromState, toState, playhead]);
+  }, [bindings, fromState, toState, playhead]);
 
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-3">
@@ -743,7 +642,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
           })}
 
           {/* I9: Per-binding trim preview */}
-          {transition.layerBindings.map((binding, bindingIndex) => {
+          {bindings.map((binding: LayerBinding, bindingIndex: number) => {
             const preview = trimPreviewData[bindingIndex];
             if (!preview) return null;
             const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
@@ -763,84 +662,17 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
             );
           })}
 
-          {/* I2b: Color track rows */}
-          {colorRows.length > 0 && (
-            <div className="border-t-2 border-border/50 mt-px">
-              {colorRows.map((row, rowIndex) => {
-                const track = row.track;
-                const colorKeyframes: string[] = track && !isNumericTrack(track) ? track.keyframes : [];
-                const trackEasing = track?.easing;
-
-                return (
-                  <div
-                    key={`color-${row.layerId}-${row.property}-${rowIndex}`}
-                    className={cn('relative grid grid-cols-[180px_auto_1fr] border-b border-border/70 text-[length:var(--text-label)]', rowIndex % 2 === 0 ? 'bg-muted/20' : 'bg-transparent')}
-                  >
-                    <div className="truncate px-3 py-2 font-medium text-foreground">
-                      {row.layerId} · <span className="text-primary/80">{row.property}</span>
-                    </div>
-
-                    <div className="flex items-center px-1">
-                      {track ? (
-                        <EasingPicker
-                          value={trackEasing ?? 'linear'}
-                          onSelect={(val) => handleTrackEasingChange(row.bindingIndex, row.property, val)}
-                        />
-                      ) : (
-                        <span className="text-[length:var(--text-caption)] text-muted-foreground/40">—</span>
-                      )}
-                    </div>
-
-                    <div
-                      className="relative h-8 cursor-crosshair"
-                      onClick={(event) => {
-                        const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
-                        const progress = (event.clientX - rect.left) / rect.width;
-                        handleAddColorKeyframe(row.bindingIndex, row.property, progress);
-                      }}
-                    >
-                      {colorKeyframes.map((color, index) => {
-                        const progress = colorKeyframes.length <= 1 ? index : index / (colorKeyframes.length - 1);
-                        const isSelected = selectedColor?.bindingIndex === row.bindingIndex && selectedColor?.property === row.property && selectedColor?.keyframeIndex === index;
-                        return (
-                          <button
-                            key={index}
-                            type="button"
-                            aria-label={`Color keyframe ${index + 1} for ${row.property} (${color}) at ${Math.round(progress * 100)}%`}
-                            className={cn(
-                              'absolute top-1/2 z-30 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow-sm cursor-grab',
-                              isSelected ? 'ring-2 ring-primary ring-offset-1' : '',
-                            )}
-                            style={{ left: `${progress * 100}%`, backgroundColor: color || '#000000' }}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              setSelectedColor({ bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index });
-                            }}
-                            onContextMenu={(event) => {
-                              event.preventDefault();
-                              const key: SelectedColorKeyframe = { bindingIndex: row.bindingIndex, property: row.property, keyframeIndex: index };
-                              setSelectedColor(key);
-                              setColorMenu({ x: event.clientX, y: event.clientY, key });
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Color tracks removed -- fill/stroke/strokeWidth/fillOpacity/strokeOpacity no longer in TimelineTrack */}
         </div>
       </div>
 
       {/* I3: Per-binding "Add Track" dropdown with smart suggestions */}
       <div className="mt-2 flex flex-wrap gap-2">
-        {transition.layerBindings.map((binding, bindingIndex) => {
+        {bindings.map((binding: LayerBinding, bindingIndex: number) => {
           const layerId = binding.toLayerId ?? binding.fromLayerId ?? `binding-${bindingIndex}`;
           const suggestions = trackSuggestionsByBinding[bindingIndex] ?? [];
           const grouped = groupSuggestionsByCategory(suggestions);
-          const existingProps = new Set((binding.tracks ?? []).map((t) => t.property));
+          const existingProps = new Set((binding.tracks ?? []).map((t: TimelineTrack) => t.property));
           const isOpen = addTrackOpen === bindingIndex;
 
           return (
@@ -918,8 +750,8 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
             className="w-full justify-start text-sm"
             onClick={() => {
               // UX-F1: Open inline editor instead of window.prompt()
-              const binding = transition.layerBindings[menu.key.bindingIndex];
-              const track = (binding?.tracks ?? []).find((t) => t.property === menu.key.property);
+              const binding = bindings[menu.key.bindingIndex];
+              const track = (binding?.tracks ?? []).find((t: TimelineTrack) => t.property === menu.key.property);
               const currentValue = track && isNumericTrack(track) ? track.keyframes[menu.key.keyframeIndex] ?? 0 : 0;
               setInlineEdit({ key: menu.key, value: String(currentValue) });
               setMenu(null);
@@ -963,46 +795,13 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
         </div>
       ) : null}
 
-      {/* I2b: Color keyframe context menu with color picker */}
-      {colorMenu ? (
-        <div
-          ref={colorMenuRef}
-          className="fixed z-50 rounded-md border border-border bg-popover p-2 shadow-lg"
-          style={{ left: clampMenuPosition(colorMenu.x, colorMenu.y, 200, 120).x, top: clampMenuPosition(colorMenu.x, colorMenu.y, 200, 120).y }}
-        >
-          <div className="mb-2">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Keyframe color
-            </label>
-            <ColorPickerPopover
-              value={(() => {
-                const binding = transition.layerBindings[colorMenu.key.bindingIndex];
-                const track = (binding?.tracks ?? []).find((t) => t.property === colorMenu.key.property);
-                if (track && !isNumericTrack(track)) {
-                  return track.keyframes[colorMenu.key.keyframeIndex] ?? '#000000';
-                }
-                return '#000000';
-              })()}
-              onChange={(hex) => handleColorKeyframeChange(colorMenu.key, hex)}
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="w-full justify-start text-sm text-destructive hover:text-destructive"
-            onClick={() => { deleteColorKeyframe(colorMenu.key); setColorMenu(null); }}
-          >
-            Delete
-          </Button>
-        </div>
-      ) : null}
     </div>
   );
 });
 
 function isNumericTrack(
   track: TimelineTrack,
-): track is Extract<TimelineTrack, { property: NumericTrackProperty }> {
-  return track.property !== 'fill' && track.property !== 'stroke';
+): track is TimelineTrack {
+  // All tracks are now numeric (fill/stroke tracks removed from TimelineTrack)
+  return true;
 }

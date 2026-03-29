@@ -137,44 +137,6 @@ export function applyDowngradeRules(
   const config = getDowngradeConfig(platform);
   const downgrades: DowngradeRule[] = [];
 
-  // Check morph transitions
-  if (payload.transitions) {
-    for (const [_id, transition] of Object.entries(payload.transitions)) {
-      if (
-        (transition.strategy === 'morph' || transition.strategy === 'replace') &&
-        transition.layerBindings?.some((b) => b.morph)
-      ) {
-        if (config.morph !== 'preserve') {
-          downgrades.push({
-            feature: 'morph',
-            action: config.morph,
-            description: `Morph transition downgraded to ${config.morph} on ${platform}`,
-          });
-        }
-      }
-
-      if (transition.strategy === 'track') {
-        if (config.trackTransition !== 'preserve') {
-          downgrades.push({
-            feature: 'track-transition',
-            action: config.trackTransition,
-            description: `Track transition downgraded to ${config.trackTransition} on ${platform}`,
-          });
-        }
-      }
-
-      if (typeof transition.easing === 'object') {
-        if (config.springEasing !== 'preserve') {
-          downgrades.push({
-            feature: 'spring-easing',
-            action: config.springEasing,
-            description: `Spring easing downgraded to ease-in-out on ${platform}`,
-          });
-        }
-      }
-    }
-  }
-
   // Check variable draw
   if (payload.variableDraw) {
     if (config.variableDraw !== 'preserve') {
@@ -186,19 +148,46 @@ export function applyDowngradeRules(
     }
   }
 
-  // Check clip paths
-  if (payload.states) {
-    for (const state of Object.values(payload.states)) {
-      for (const layer of state.layers) {
-        if (layer.clipPath && config.clipPaths !== 'preserve') {
-          downgrades.push({
-            feature: 'clip-path',
-            action: config.clipPaths,
-            description: `Clip path ${config.clipPaths === 'omit' ? 'omitted' : 'downgraded'} on ${platform}`,
-          });
-          break;
+  // Check transitions for morph bindings and spring easing
+  const transitions = (payload as Record<string, unknown>).transitions as Record<string, Record<string, unknown>> | undefined;
+  if (transitions) {
+    let hasMorph = false;
+    let hasSpring = false;
+    for (const transition of Object.values(transitions)) {
+      if (!hasMorph && Array.isArray(transition?.layerBindings)) {
+        if ((transition.layerBindings as Array<Record<string, unknown>>).some((b) => b?.morph)) {
+          hasMorph = true;
         }
       }
+      if (!hasSpring && transition?.easing && typeof transition.easing === 'object' && (transition.easing as Record<string, unknown>).type === 'spring') {
+        hasSpring = true;
+      }
+    }
+    if (hasMorph && config.morph !== 'preserve') {
+      downgrades.push({
+        feature: 'morph',
+        action: config.morph,
+        description: `Morph transition ${config.morph === 'crossfade' ? 'replaced with crossfade' : 'downgraded'} on ${platform}`,
+      });
+    }
+    if (hasSpring && config.springEasing !== 'preserve') {
+      downgrades.push({
+        feature: 'spring-easing',
+        action: config.springEasing,
+        description: `Spring easing ${config.springEasing === 'ease-fallback' ? 'replaced with ease-in-out' : 'downgraded'} on ${platform}`,
+      });
+    }
+  }
+
+  // Check clip paths
+  for (const layer of payload.layers) {
+    if (layer.clipPath && config.clipPaths !== 'preserve') {
+      downgrades.push({
+        feature: 'clip-path',
+        action: config.clipPaths,
+        description: `Clip path ${config.clipPaths === 'omit' ? 'omitted' : 'downgraded'} on ${platform}`,
+      });
+      break;
     }
   }
 

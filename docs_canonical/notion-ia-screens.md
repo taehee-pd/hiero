@@ -16,14 +16,14 @@ Coniva App
 ├── Explorer (/)                        ← 워크스페이스 & 프로젝트 관리
 │   ├── Workspace View                  ← 아이콘 세트 그리드
 │   ├── Project View                    ← 세트 내 아이콘 그리드
-│   └── Distribution Panel              ← Sync/Export 타겟
+│   └── Publish & Export Panel           ← Repo-native publish + export
 │
 ├── Editor (/editor/[iconId])           ← 핵심 아이콘 편집
 │   ├── Title Tab Bar                   ← 멀티 탭 (아이콘 전환)
 │   ├── Toolbar                         ← 프로젝트명, Undo/Redo, Import/Export
 │   ├── Left Sidebar (220px)
 │   │   ├── Layers Tab                  ← 레이어 트리 + 가시성/잠금
-│   │   └── Variants Tab                ← 사이즈 변형 + 상태 관리
+│   │   └── Variants Tab                ← 사이즈/스타일 변형 (intrinsic only)
 │   ├── Canvas (center)
 │   │   ├── SVG 편집 영역               ← 줌/팬, 가이드, 스냅
 │   │   ├── Canvas Dock                 ← 도구 선택 (Select/Pen/Shape)
@@ -33,18 +33,19 @@ Coniva App
 │       │   ├── Document Inspector      ← 이름, 캔버스 크기, 렌더링 모드
 │       │   └── Layer Inspector         ← Fill, Stroke, Transform, Topology
 │       └── Animation Tab
-│           ├── Transitions             ← 상태 간 전환 정의
+│           ├── Transition Preview      ← 런타임 아이콘→아이콘 전환 미리보기
+│           ├── Strategy Analysis       ← 레이어별 morph/trim/replace 분석
 │           ├── Timeline Editor         ← 트랙별 키프레임 에디터
-│           └── Preview                 ← 실시간 애니메이션 미리보기
+│           └── Preview                 ← 실시간 전환 미리보기
 │
 └── Overlays (modals & popovers)
     ├── Import Dialog                   ← 7개 소스 탭 (SVG/Plugin/Figma/Libraries)
     ├── Export Sheet                    ← SVG/JSON/React/Lottie
-    ├── Add Transition Dialog           ← Intra-variant / Cross-icon
+    ├── Add Transition Dialog           ← 아이콘→아이콘 전환 설정
     ├── Easing Curve Editor             ← 베지어 편집 + 프리셋
     ├── Color Picker                    ← HSB gradient + hex + swatches
     ├── Keyboard Shortcuts              ← 전체 단축키 레퍼런스
-    ├── Sync Target Config              ← Local/GitHub/npm
+    ├── Install & Publish Config        ← coniva.config.ts 기반 host/release
     └── Confirmation Dialogs            ← Delete/Unsaved/Simple
 ```
 
@@ -71,8 +72,8 @@ Coniva App
         → Left Sidebar → Switch Layers ↔ Variants tabs
         → Right Sidebar → Switch Inspect ↔ Animation tabs
         → Fill/Stroke → Color Picker (7)
-        → Topology → Transition strategy
-        → "+ Add Transition" → Add Transition Dialog (5)
+        → Topology → Layer morph compatibility
+        → "+ Add Transition" → Add Transition Dialog (5) [icon-to-icon]
         → Easing "Edit" → Easing Curve Editor (6)
         → Export ▾ → Export Sheet (4)
         → Tab bar → Switch between icons / back to Explorer
@@ -88,7 +89,7 @@ Coniva App
 |---|---|---|---|
 | 1A | Workspace View | 아이콘 세트 카드 그리드 + 최근 프로젝트 | Empty / Normal / Search Active / Context Menu |
 | 1B | Project View | 세트 내 아이콘 그리드 + 필터 사이드바 | Empty / Filtered / Multi-select + Bulk Bar |
-| 1C | Distribution Panel | Sync 타겟 + Export 옵션 (right panel) | Local / GitHub / npm targets |
+| 1C | Publish & Export Panel | Repo-native publish 상태 + Export 옵션 | Host targets / Release targets / Config status |
 
 ### Screen 2: Editor
 
@@ -96,11 +97,11 @@ Coniva App
 |---|---|---|---|
 | 2A | Full Editor Layout | 전체 에디터 조합 (Toolbar + Sidebar + Canvas + Inspector) | Clean / Dirty / Selection Active |
 | 2B | Left Sidebar — Layers | 레이어 트리 (그룹, 중첩, 가시성, 잠금) | Empty / Selected / Multi-select / Drag Reorder |
-| 2C | Left Sidebar — Variants | 사이즈 변형 + Derived + 상태 매트릭스 | Single Variant / Multi / States with Badges |
+| 2C | Left Sidebar — Variants | 사이즈/스타일 변형 + Derived (intrinsic only, no states) | Single Variant / Multi / Derived Badges |
 | 2D | Canvas — Tool Modes | Select / Pen / Shape 도구별 캔버스 상태 | Marquee / Point Edit / Shape Draw / Snap Guides |
 | 2E | Right Sidebar — Inspect (No Selection) | Document-level 속성 (이름, 사이즈, 모드, 가이드) | Default |
 | 2F | Right Sidebar — Inspect (Layer Selected) | Layer 속성 (Fill, Stroke, Transform, Topology) | Single Layer / Multi Layer |
-| 2G | Right Sidebar — Animation | Transitions + Timeline + Preview | Empty / Transitions Listed / Playing |
+| 2G | Right Sidebar — Animation | 아이콘→아이콘 전환 미리보기 + Strategy Analysis + Timeline | Source/Target selected / Analysis / Playing |
 
 ### Screen 3–10: Overlays & Dialogs
 
@@ -112,13 +113,13 @@ Coniva App
 | 3-Figma | Import: Figma Tab | URL + Token → Connect → Component Grid | Pre-connected / Post-connected (grid browse) |
 | 3-Library | Import: Library Tabs | 아이콘 이름 입력 + 배치 임포트 (max 50) | Empty / Results / Batch Progress |
 | 4 | Export Sheet | 포맷 선택 (SVG/JSON/React/Lottie) + Lottie 진단 | Format Selected / Lottie Diagnostics |
-| 5 | Add Transition Dialog | Intra-variant / Cross-icon 모드 전환 | Intra (From/To select) / Cross (Icon/Variant/State×2) |
+| 5 | Add Transition Dialog | 아이콘→아이콘 전환 설정 (runtime-resolved) | Source/Target icon pick / Strategy override / Compatibility check |
 | 6 | Easing Curve Editor | 베지어 핸들 + cubic-bezier 값 + 프리셋 | Custom Edit / Preset Selected |
 | 7 | Color Picker | HSB gradient + Hue/Alpha slider + Hex + Swatches | Default / Alpha Active |
 | 8 | Keyboard Shortcuts | 전체 단축키 그리드 (Tools/Edit/Canvas/Path/File) | Static |
-| 9A | Sync: Local Directory | Path 입력 + Exclude 패턴 + Sync Now | Config / Syncing |
-| 9B | Sync: GitHub PR | Owner/Repo + Branch + Create PR / Dry Run | Config / Creating |
-| 9C | Sync: npm Registry | Package + Version + Bump + History | Config / Publishing |
+| 9A | Host Targets (Live Dev) | coniva.config.ts 기반 host target 상태 + Publish | Watching / Publishing / Idle |
+| 9B | Release Targets | npm 릴리스 설정 + History | Config / Releasing |
+| 9C | Config Status | coniva.config.ts 검증 + source dir 상태 | Found / Missing / Invalid |
 | 10A | Confirm: Delete (exact name) | 이름 입력 필수 삭제 확인 | Empty / Name Matched |
 | 10B | Confirm: Unsaved Changes | Don't Save / Cancel / Save 3버튼 | Static |
 | 10C | Confirm: Simple | Cancel / Delete 2버튼 | Static |
@@ -150,8 +151,8 @@ Coniva App
 | PropertyRow | Label + Control 쌍 (인스펙터의 기본 행) | NumericInput / Select / Switch / Badge |
 | LayerTreeItem | 색상 도트 + 이름 + 가시성 아이콘 | Default / Selected / Hidden / Nested |
 | VariantSizePill | 사이즈 변형 선택 필 | Default / Selected |
-| StatePill | 색상 바 + 상태 이름 | Default / Hover / Active |
-| TransitionRow | From → To + Strategy Badge | Morph / Trim / Crossfade |
+| StrategyBadge | 런타임 전환 전략 표시 | strictMorph / bestGuessMorph / lineAnimation / replace |
+| TransitionRow | Source Icon → Target Icon + Strategy Badge | Morph / Trim / Replace |
 | IconGridItem | 아이콘 썸네일 + 이름 | Default / Selected / Hover |
 | ProjectCard | 아이콘 프리뷰 그리드 + 메타 정보 | Local / Registry |
 
@@ -160,7 +161,7 @@ Coniva App
 | Component | Description | Key Specs |
 |---|---|---|
 | Toolbar | macOS 트래픽 라이트 + 탭 + 도구 세그먼트 + 액션 | 38px height, full width |
-| LayerPanel | Variants + States + Layer Tree sections | 220px sidebar |
+| LayerPanel | Variants (intrinsic) + Layer Tree sections | 220px sidebar |
 | InspectorPanel | Tabs(Inspect/Animate/Export) + Property Rows | 260px sidebar |
 | TransitionPanel | 전환 목록 + Timeline Editor | Bottom panel, full width |
 | Canvas | SVG 편집 영역 + Grid + Dock | Center area |
@@ -187,7 +188,7 @@ Morph Strategy, Trim Strategy, Crossfade Strategy, Locked State, Derived Variant
 
 ---
 
-## User Flow Coverage (48 flows)
+## User Flow Coverage (45 flows)
 
 | # | Flow | Screen(s) | Entry Point |
 |---|---|---|---|
@@ -218,27 +219,24 @@ Morph Strategy, Trim Strategy, Crossfade Strategy, Locked State, Derived Variant
 | 25 | View topology | 2F | Inspect tab |
 | 26 | Add variant size | 2C | Left sidebar |
 | 27 | Generate derived variant | 2C | Left sidebar |
-| 28 | Add state | 2C | Left sidebar |
-| 29 | Rename state | 2E / 2F | Inspect tab |
-| 30 | Delete state | 2F → 10C | Inspect tab |
-| 31 | Create transition | 2G → 5 | Animation tab |
-| 32 | Edit transition bindings | 2G | Animation tab |
-| 33 | Edit track properties | 2G | Animation tab |
-| 34 | Preview transition | 2G | Animation tab |
-| 35 | Edit easing curve | 6 | Transition form |
-| 36 | Pick color | 7 | Fill/stroke editor |
-| 37 | Export SVG | 4 | Export menu |
-| 38 | Export Lottie | 4 | Export menu |
-| 39 | Export React library | 4 | Export menu |
-| 40 | Sync to local dir | 9A | Sync panel |
-| 41 | Create GitHub PR | 9B | Sync panel |
-| 42 | Publish to npm | 9C | Sync panel |
-| 43 | View keyboard shortcuts | 8 | Help menu |
-| 44 | Switch between icons | 2A | Title tab bar |
-| 45 | Undo / redo | 2A | Toolbar / ⌘Z |
-| 46 | Zoom / pan canvas | 2D | Dock / scroll |
-| 47 | Delete icon set | 1A → 10A | Context menu |
-| 48 | Unsaved changes prompt | 10B | Close tab/window |
+| 28 | Create icon-to-icon transition | 2G → 5 | Animation tab |
+| 29 | Preview icon-to-icon transition | 2G | Animation tab |
+| 30 | View strategy analysis | 2G | Animation tab |
+| 31 | Edit transition timing | 2G | Animation tab |
+| 32 | Edit easing curve | 6 | Transition form |
+| 33 | Pick color | 7 | Fill/stroke editor |
+| 34 | Export SVG | 4 | Export menu |
+| 35 | Export Lottie | 4 | Export menu |
+| 36 | Export React library | 4 | Export menu |
+| 37 | Publish changed icons (host) | 9A | Publish panel |
+| 38 | Release to npm | 9B | Publish panel |
+| 39 | View config status | 9C | Publish panel |
+| 40 | View keyboard shortcuts | 8 | Help menu |
+| 41 | Switch between icons | 2A | Title tab bar |
+| 42 | Undo / redo | 2A | Toolbar / ⌘Z |
+| 43 | Zoom / pan canvas | 2D | Dock / scroll |
+| 44 | Delete icon set | 1A → 10A | Context menu |
+| 45 | Unsaved changes prompt | 10B | Close tab/window |
 
 ---
 

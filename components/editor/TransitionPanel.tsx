@@ -812,9 +812,22 @@ function buildDefaultLayerBindings(
   toSnapshot: LayerSnapshot,
   strategy: RuntimeTransitionIntent['strategy'],
 ): LayerBinding[] {
-  const sharedIds = Object.keys(fromSnapshot.layers).filter(
-    (layerId) => Boolean(toSnapshot.layers[layerId]),
-  );
+  const fromIds = Object.keys(fromSnapshot.layers);
+  const toIds = Object.keys(toSnapshot.layers);
+
+  // For cross-icon morphing, layers come from different icons so their IDs
+  // will never match. Pair by position instead (first↔first, second↔second …).
+  if (strategy === 'crossIconMorph') {
+    const count = Math.max(fromIds.length, toIds.length);
+    if (count === 0) return [];
+    return Array.from({ length: count }, (_, i) => ({
+      fromLayerId: fromIds[i] ?? fromIds[fromIds.length - 1]!,
+      toLayerId: toIds[i] ?? toIds[toIds.length - 1]!,
+      morph: { topology: 'bestGuess' as const },
+    }));
+  }
+
+  const sharedIds = fromIds.filter((layerId) => Boolean(toSnapshot.layers[layerId]));
   const pairs = sharedIds.length > 0
     ? sharedIds.map((layerId) => ({ fromLayerId: layerId, toLayerId: layerId }))
     : [];
@@ -824,9 +837,6 @@ function buildDefaultLayerBindings(
       return { fromLayerId, toLayerId, morph: { topology: 'strict' as const } };
     }
     if (strategy === 'bestGuessMorph') {
-      return { fromLayerId, toLayerId, morph: { topology: 'bestGuess' as const } };
-    }
-    if (strategy === 'crossIconMorph') {
       return { fromLayerId, toLayerId, morph: { topology: 'bestGuess' as const } };
     }
     return { fromLayerId, toLayerId };

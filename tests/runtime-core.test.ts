@@ -759,3 +759,114 @@ describe('color interpolation', () => {
     expect(lerpPalette([], 0.5)).toBe('#000000');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression tests for variant-centric model fixes
+// ---------------------------------------------------------------------------
+
+describe('StateMachine — variant-centric model', () => {
+  function makeIconWithTransition(): Icon {
+    return {
+      id: 'icon-with-transition',
+      name: 'Icon with Transition',
+      variants: {
+        idle: { id: 'idle', size: 24, viewBox: [0, 0, 24, 24], layers: idleSnapshot.layers },
+        active: { id: 'active', size: 24, viewBox: [0, 0, 24, 24], layers: activeSnapshot.layers },
+      },
+      transitions: {
+        'idle-active': {
+          id: 'idle-active',
+          fromIconId: 'icon-with-transition',
+          toIconId: 'icon-with-transition',
+          fromVariantId: 'idle',
+          toVariantId: 'active',
+          strategy: 'lineAnimation',
+          durationMs: 200,
+        },
+      },
+    };
+  }
+
+  test('currentVariantId tracks the variant after transitionTo', () => {
+    const icon = makeIconWithTransition();
+    const machine = new StateMachine(icon, 'idle');
+    expect(machine.currentVariantId).toBe('idle');
+    machine.transitionTo('active');
+    expect(machine.currentVariantId).toBe('active');
+    machine.transitionTo('idle');
+    expect(machine.currentVariantId).toBe('idle');
+    machine.dispose();
+  });
+
+  test('transitionTo emits the matching Transition object when one is defined', () => {
+    const icon = makeIconWithTransition();
+    const machine = new StateMachine(icon, 'idle');
+    const emitted: Array<string | null> = [];
+    machine.onStateChange((_snapshot, transition) => {
+      emitted.push(transition?.id ?? null);
+    });
+    machine.transitionTo('active');
+    // idle→active has a defined transition
+    expect(emitted[0]).toBe('idle-active');
+    // active→idle has no reverse transition defined
+    machine.transitionTo('idle');
+    expect(emitted[1]).toBeNull();
+    machine.dispose();
+  });
+
+  test('transitionTo is a no-op and returns null for same variant', () => {
+    const icon = makeIconWithTransition();
+    const machine = new StateMachine(icon, 'idle');
+    let callCount = 0;
+    machine.onStateChange(() => { callCount++; });
+    const result = machine.transitionTo('idle');
+    expect(result).toBeNull();
+    expect(callCount).toBe(0);
+    machine.dispose();
+  });
+
+  test('transitionTo throws for unknown variant ID', () => {
+    const icon = makeIconWithTransition();
+    const machine = new StateMachine(icon, 'idle');
+    expect(() => machine.transitionTo('nonexistent')).toThrow(/nonexistent/);
+    machine.dispose();
+  });
+});
+
+describe('EffectScheduler — setTargetLayerIds', () => {
+  test('setTargetLayerIds updates layer IDs mid-run so subsequent frames target new layers', () => {
+    let capturedLayerIds: string[] | null = null;
+
+    const effect: import('../lib/schema').Effect = {
+      id: 'pulse',
+      kind: 'pulse',
+      durationMs: 100,
+    };
+
+    let frameHandle = 0;
+    const frames: Array<(time: number) => void> = [];
+    const scheduler = new EffectScheduler(effect, {
+      requestFrame: (cb) => { frames.push(cb); return ++frameHandle; },
+      cancelFrame: () => {},
+      targetLayerIds: ['layer-a'],
+      onFrame: (values) => {
+        capturedLayerIds = Object.keys(values);
+      },
+    });
+
+    scheduler.start();
+    // First frame — should target layer-a
+    frames[0]!(0);
+    expect(capturedLayerIds!).toContain('layer-a');
+
+    // Simulate variant transition mid-effect
+    scheduler.setTargetLayerIds(['layer-b', 'layer-c']);
+
+    // Next frame — should target new layers
+    frames[1]!(50);
+    expect(capturedLayerIds!).not.toContain('layer-a');
+    expect(capturedLayerIds!).toContain('layer-b');
+    expect(capturedLayerIds!).toContain('layer-c');
+    scheduler.cancel();
+  });
+});

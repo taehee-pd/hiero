@@ -25,12 +25,12 @@ import type { AnimationEvent } from '../runtime-core/animation-events';
  * Enables parent components to control the icon programmatically:
  * ```tsx
  * const iconRef = useRef<ConivaIconHandle>(null);
- * iconRef.current?.transitionTo('active');
+ * iconRef.current?.transitionTo('active'); // 'active' is a variant ID
  * ```
  */
 export type ConivaIconHandle = {
-  /** Trigger a state transition to the given state ID. */
-  transitionTo: (stateId: string) => void;
+  /** Trigger a transition to the given variant ID. */
+  transitionTo: (variantId: string) => void;
   /** Trigger a named effect. */
   triggerEffect: (effectId: string) => void;
   /** Cancel a specific running effect by ID. */
@@ -164,8 +164,8 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     useImperativeHandle(
       ref,
       () => ({
-        transitionTo(stateId: string) {
-          driverRef.current?.transitionTo(stateId);
+        transitionTo(variantId: string) {
+          driverRef.current?.transitionTo(variantId);
         },
         triggerEffect(effectId: string) {
           driverRef.current?.triggerEffect(effectId);
@@ -367,9 +367,10 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     // creates its own <path> elements inside the SVG and we stop rendering
     // React-managed paths to avoid duplication and reconciliation conflicts.
     const resolvedStateDef = resolvedVariant.states?.[resolvedState];
+    const ssrLayers = resolvedStateDef?.layers ?? resolvedVariant.layers ?? {};
     const layers =
-      !hydratedRef.current && resolvedStateDef
-        ? getRenderableLayers(resolvedStateDef.layers)
+      !hydratedRef.current && Object.keys(ssrLayers).length > 0
+        ? getRenderableLayers(ssrLayers)
         : [];
 
     const a11yProps: Record<string, string> = label

@@ -38,6 +38,19 @@ export function getVariantState(v: Variant, stateId?: string | null): State {
       topology: state.topology ?? v.topology,
     };
   }
+  // Flat-variant model: no states map — use top-level layers.
+  // Emit a dev warning when an explicit non-default stateId was requested but not found,
+  // to surface authoring mistakes (stale stateId after migration).
+  if (
+    resolvedStateId &&
+    resolvedStateId !== 'default' &&
+    v.states &&
+    Object.keys(v.states).length > 0
+  ) {
+    console.warn(
+      `[coniva] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`,
+    );
+  }
   return buildDefaultLegacyState(v);
 }
 

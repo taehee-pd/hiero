@@ -1,4 +1,5 @@
 import type { Icon, Layer, PaintRef, Variant } from '../schema';
+import { getVariantState } from '../schema/types';
 import type {
   AnimatedValue,
   InterpolatedValues,
@@ -194,10 +195,7 @@ export class DomRenderer {
   setState(stateId: string): void {
     this.ensureMounted();
 
-    const state = this.variant!.states?.[stateId];
-    if (!state) {
-      throw new Error(`State "${stateId}" does not exist in variant "${this.variant!.id}".`);
-    }
+    const state = getVariantState(this.variant!, stateId);
 
     const svg = this.svg!;
     const defs = ensureManagedDefs(svg);
@@ -305,8 +303,8 @@ export class DomRenderer {
     }
 
     const defs = ensureManagedDefs(this.svg);
-    const targetState = this.variant.states?.[stateId];
-    const targetLayers = getRenderableLayers(targetState?.layers ?? {});
+    const targetState = getVariantState(this.variant, stateId);
+    const targetLayers = getRenderableLayers(targetState.layers);
     const targetLayerById = new Map(targetLayers.map((layer) => [layer.id, layer]));
 
     transition.layerBindings.forEach((binding, index) => {

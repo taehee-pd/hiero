@@ -184,7 +184,12 @@ export function exportLottie(
   const transitions = Object.values(icon.transitions ?? {}).filter(
     (t) => t.fromVariantId === variantId || t.toVariantId === variantId,
   );
-  const longestMs = transitions.reduce((max, t) => Math.max(max, t.durationMs), 0);
+  const longestTransitionMs = transitions.reduce((max, t) => Math.max(max, t.durationMs), 0);
+  const longestEffectMs = Object.values(icon.effects ?? {}).reduce(
+    (max, e) => Math.max(max, (e.delay ?? 0) + e.durationMs),
+    0,
+  );
+  const longestMs = Math.max(longestTransitionMs, longestEffectMs);
   const op = longestMs > 0 ? Math.round((longestMs / 1000) * fr) : fr;
 
   const viewBox = variant.viewBox;
@@ -195,8 +200,20 @@ export function exportLottie(
   // Apply transition track animations (M3/M5)
   for (const transition of transitions) {
     const durationFrames = Math.round((transition.durationMs / 1000) * fr);
+    // Determine whether the current variant is the morph source or destination.
+    // This governs both which layer IDs to look up and which bezier direction to emit.
+    const isMorphOut = transition.fromVariantId === variantId;
+    const otherVariantId = isMorphOut ? transition.toVariantId : transition.fromVariantId;
+    const otherVariant = icon.variants?.[otherVariantId];
+
     for (const binding of transition.layerBindings ?? []) {
-      const targetLayer = layers.find((l) => l.nm === binding.fromLayerId);
+      if (!binding.fromLayerId) continue;
+
+      // Lottie layer `nm` matches the key from the current variant's layers map.
+      // When morphing-out the current variant is the source → layer ID = fromLayerId.
+      // When morphing-in the current variant is the destination → layer ID = toLayerId.
+      const currentLayerId = isMorphOut ? binding.fromLayerId : (binding.toLayerId ?? binding.fromLayerId);
+      const targetLayer = layers.find((l) => l.nm === currentLayerId);
       if (!targetLayer) continue;
 
       const tracks = binding.tracks ?? [];
@@ -206,6 +223,35 @@ export function exportLottie(
       const nonTrimTracks = tracks.filter(
         (t) => t.property !== 'trimStart' && t.property !== 'trimEnd' && t.property !== 'trimOffset',
       );
+
+      // M4: Apply morph binding (shape-path keyframes)
+      if (binding.morph && binding.toLayerId && otherVariant) {
+        // Resolve source and destination layer defs regardless of which variant is 'current'.
+        const fromVariantLayers = isMorphOut ? variant.layers : otherVariant.layers;
+        const toVariantLayers = isMorphOut ? otherVariant.layers : variant.layers;
+        const fromLayerDef = fromVariantLayers?.[binding.fromLayerId];
+        const toLayerDef = toVariantLayers?.[binding.toLayerId];
+
+        if (fromLayerDef?.path?.d && toLayerDef?.path?.d) {
+          const fromBezier = svgPathToLottieBezier(fromLayerDef.path.d);
+          const toBezier = svgPathToLottieBezier(toLayerDef.path.d);
+          const easingHandles = easingToLottie(transition.easing ?? 'ease-in-out');
+
+          // Find the path shape in the Lottie layer and make it animated.
+          const pathShape = targetLayer.shapes.find(
+            (s): s is LottiePathShape => s.ty === 'sh',
+          );
+          if (pathShape) {
+            pathShape.ks = {
+              a: 1,
+              k: [
+                { t: 0, s: [fromBezier], e: [toBezier], ...easingHandles },
+                { t: durationFrames, s: [toBezier] },
+              ],
+            };
+          }
+        }
+      }
 
       // Apply non-trim track animations
       for (const track of nonTrimTracks) {

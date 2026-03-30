@@ -1,7 +1,17 @@
-import type { Icon, LayerSnapshot, RuntimeTransitionIntent, Variant } from '../schema';
+import type { Icon, LayerSnapshot, RuntimeTransitionIntent, Transition, Variant } from '../schema';
 import { variantToSnapshot } from '../schema/types';
 
 export type StateChangeListener = (snapshot: LayerSnapshot, transition: RuntimeTransitionIntent | null) => void;
+
+/** Find a transition defined on the icon that matches from→to variant IDs. */
+function findTransition(icon: Icon, fromVariantId: string, toVariantId: string): Transition | null {
+  if (!icon.transitions) return null;
+  return (
+    Object.values(icon.transitions).find(
+      (t) => t.fromVariantId === fromVariantId && t.toVariantId === toVariantId,
+    ) ?? null
+  );
+}
 
 export class StateMachine {
   private readonly icon: Icon;
@@ -13,6 +23,10 @@ export class StateMachine {
     this.icon = icon;
     this.variant = resolveVariant(icon, variantId);
     this.snapshot = variantToSnapshot(this.variant);
+  }
+
+  get currentVariantId(): string {
+    return this.variant.id;
   }
 
   get currentSnapshot(): LayerSnapshot {
@@ -37,11 +51,12 @@ export class StateMachine {
       return null;
     }
 
+    const transition = findTransition(this.icon, this.variant.id, nextVariant.id);
+
     this.variant = nextVariant;
     this.snapshot = nextSnapshot;
-    // No built-in transitions on the icon — callers manage RuntimeTransitionIntents externally.
-    this.emitChange(null);
-    return null;
+    this.emitChange(transition);
+    return transition;
   }
 
   onStateChange(callback: StateChangeListener): () => void {

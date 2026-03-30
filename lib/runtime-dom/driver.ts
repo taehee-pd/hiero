@@ -30,7 +30,7 @@ const CSS_FALLBACK_TRACKS = new Set<TimelineTrack['property']>([
 export type IconDriverStateListener = () => void;
 
 export type IconDriver = {
-  transitionTo: (stateId: string) => void;
+  transitionTo: (variantId: string) => void;
   getCurrentState: () => string;
   /** Subscribe to state changes. Returns an unsubscribe function.
    *  Compatible with React's useSyncExternalStore. */
@@ -218,10 +218,23 @@ export function createIconDriver(
   const effectColorOverrides = new Map<string, Record<string, Record<string, string>>>();
 
   const unsubscribe = stateMachine.onStateChange((snapshot, transition) => {
-    // Determine the target variant ID from the transition or keep the current one
-    const targetVariantId = transition?.toVariantId ?? currentVariantId;
+    // Determine the target variant ID. Prefer the transition's explicit toVariantId
+    // (which may differ from the state machine's current ID during rapid switches),
+    // but always fall back to the state machine's current variant rather than the
+    // stale driver-local ID — critical for replace-strategy transitions where no
+    // Transition object is defined.
+    const targetVariantId = transition?.toVariantId ?? stateMachine.currentVariantId;
     currentVariantId = targetVariantId;
     notifyStateListeners();
+
+    // Update targetLayerIds on any running effect schedulers so that subsequent
+    // frames apply to the new variant's layers rather than the stale pre-transition ones.
+    if (activeEffectSchedulers.size > 0) {
+      const newLayerIds = Object.keys(snapshot.layers).sort();
+      for (const scheduler of activeEffectSchedulers.values()) {
+        scheduler.setTargetLayerIds(newLayerIds);
+      }
+    }
 
     const interruptedBlend = activeScheduler?.interrupt(80, {
       onFrame: (_progress, values) => {
@@ -344,8 +357,8 @@ export function createIconDriver(
   });
 
   return {
-    transitionTo(stateId: string) {
-      stateMachine.transitionTo(stateId);
+    transitionTo(variantId: string) {
+      stateMachine.transitionTo(variantId);
     },
     getCurrentState() {
       return currentVariantId;

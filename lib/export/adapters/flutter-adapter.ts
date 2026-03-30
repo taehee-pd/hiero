@@ -138,7 +138,7 @@ function generateFlutterWidget(
 ): string {
   const stateIds = collectStateIds(icon);
   const firstVariant = getFirstVariant(icon);
-  const defaultState = firstVariant.defaultState;
+  const defaultState = firstVariant.defaultState ?? 'default';
   const viewBox = firstVariant.viewBox;
 
   const lines: string[] = [];
@@ -251,7 +251,7 @@ function generateFlutterWidget(
   // State-based path rendering
   lines.push('    switch (state) {');
   for (const stateId of stateIds) {
-    const state = firstVariant.states[stateId];
+    const state = firstVariant.states?.[stateId];
     if (!state) continue;
     lines.push(`      case ${className}State.${toDartEnumCase(stateId)}:`);
     const layers = Object.values(state.layers);
@@ -299,7 +299,7 @@ function getFirstVariant(icon: Icon) {
 function collectStateIds(icon: Icon): string[] {
   const ids = new Set<string>();
   for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states)) {
+    for (const stateId of Object.keys(variant.states ?? {})) {
       ids.add(stateId);
     }
   }

@@ -25,12 +25,12 @@ import type { AnimationEvent } from '../runtime-core/animation-events';
  * Enables parent components to control the icon programmatically:
  * ```tsx
  * const iconRef = useRef<ConivaIconHandle>(null);
- * iconRef.current?.transitionTo('active');
+ * iconRef.current?.transitionTo('active'); // 'active' is a variant ID
  * ```
  */
 export type ConivaIconHandle = {
-  /** Trigger a state transition to the given state ID. */
-  transitionTo: (stateId: string) => void;
+  /** Trigger a transition to the given variant ID. */
+  transitionTo: (variantId: string) => void;
   /** Trigger a named effect. */
   triggerEffect: (effectId: string) => void;
   /** Cancel a specific running effect by ID. */
@@ -164,8 +164,8 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     useImperativeHandle(
       ref,
       () => ({
-        transitionTo(stateId: string) {
-          driverRef.current?.transitionTo(stateId);
+        transitionTo(variantId: string) {
+          driverRef.current?.transitionTo(variantId);
         },
         triggerEffect(effectId: string) {
           driverRef.current?.triggerEffect(effectId);
@@ -366,10 +366,11 @@ export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
     // Render static SVG with layers for SSR. After the driver mounts, it
     // creates its own <path> elements inside the SVG and we stop rendering
     // React-managed paths to avoid duplication and reconciliation conflicts.
-    const resolvedStateDef = resolvedVariant.states[resolvedState];
+    const resolvedStateDef = resolvedVariant.states?.[resolvedState];
+    const ssrLayers = resolvedStateDef?.layers ?? resolvedVariant.layers ?? {};
     const layers =
-      !hydratedRef.current && resolvedStateDef
-        ? getRenderableLayers(resolvedStateDef.layers)
+      !hydratedRef.current && Object.keys(ssrLayers).length > 0
+        ? getRenderableLayers(ssrLayers)
         : [];
 
     const a11yProps: Record<string, string> = label
@@ -497,17 +498,18 @@ function resolveVariant(
 }
 
 function resolveState(variant: Variant, requestedState?: string): string {
-  if (requestedState && variant.states[requestedState]) {
+  if (requestedState && variant.states?.[requestedState]) {
     return requestedState;
   }
 
-  if (variant.states[variant.defaultState]) {
+  if (variant.defaultState && variant.states?.[variant.defaultState]) {
     return variant.defaultState;
   }
 
-  const fallback = Object.values(variant.states)[0];
+  const fallback = Object.values(variant.states ?? {})[0];
   if (!fallback) {
-    throw new Error(`Variant "${variant.id}" does not define any states.`);
+    // Variant-centric model: no states map — use defaultState or 'default'.
+    return variant.defaultState ?? 'default';
   }
 
   return fallback.id;

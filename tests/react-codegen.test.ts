@@ -14,7 +14,7 @@ function makeCompiledIcon(id: string, componentName: string, size: number): Comp
     [`${size}`]: {
       size,
       viewBox: [0, 0, size, size],
-      states: structuredClone(icon.variants['24'].states),
+      layers: structuredClone(icon.variants['24'].layers),
     },
   };
   return icon;
@@ -36,7 +36,7 @@ describe('react code generation', () => {
     icon.variants['16'] = {
       size: 16,
       viewBox: [0, 0, 16, 16],
-      states: structuredClone(icon.variants['24'].states),
+      layers: structuredClone(icon.variants['24'].layers),
     };
     icon.effects = [
       { kind: 'pulse', durationMs: 240, easing: 'linear' },
@@ -48,7 +48,6 @@ describe('react code generation', () => {
       ...manifest.icons['icon-chevron']!,
       supportedSizes: [16, 24],
       supportedModes: ['monochrome', 'palette'],
-      states: ['default', 'active'],
       componentName: 'IcChevronRight',
     };
 
@@ -83,7 +82,7 @@ describe('react code generation', () => {
     icon.variants['48'] = {
       size: 48,
       viewBox: [0, 0, 48, 48],
-      states: structuredClone(icon.variants['24'].states),
+      layers: structuredClone(icon.variants['24'].layers),
     };
 
     const manifest = makeManifest();

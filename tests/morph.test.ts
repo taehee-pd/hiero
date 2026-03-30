@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { Layer, State, Transition } from '../lib/schema';
-import { bestGuessMorph, resolveTransition, strictMorph } from '../lib/runtime-core';
+import type { Layer, LayerSnapshot } from '../lib/schema';
+import { bestGuessMorph, resolveTransition, strictMorph, type TransitionConfig } from '../lib/runtime-core';
 
 function makeLayer(id: string, d: string): Layer {
   return {
@@ -46,22 +46,18 @@ describe('morph helpers', () => {
 
 describe('transition resolver morph integration', () => {
   test('strictMorph bindings receive a morph interpolator', () => {
-    const fromState: State = {
-      id: 'idle',
+    const fromState: LayerSnapshot = {
       layers: {
         shape: makeLayer('shape', 'M0 0 L10 0 L10 10 L0 10 Z'),
       },
     };
-    const toState: State = {
-      id: 'active',
+    const toState: LayerSnapshot = {
       layers: {
         shape: makeLayer('shape', 'M5 0 L10 5 L5 10 L0 5 Z'),
       },
     };
-    const transition: Transition = {
+    const transition: TransitionConfig = {
       id: 'idle-active',
-      from: 'idle',
-      to: 'active',
       strategy: 'strictMorph',
       durationMs: 120,
       layerBindings: [{ fromLayerId: 'shape', toLayerId: 'shape' }],
@@ -73,22 +69,18 @@ describe('transition resolver morph integration', () => {
   });
 
   test('bestGuessMorph bindings fall back to fallback when normalization fails', () => {
-    const fromState: State = {
-      id: 'idle',
+    const fromState: LayerSnapshot = {
       layers: {
         shape: makeLayer('shape', 'M0 0 A10 10 0 0 1 10 10'),
       },
     };
-    const toState: State = {
-      id: 'active',
+    const toState: LayerSnapshot = {
       layers: {
         shape: makeLayer('shape', 'M0 0 L10 0 L10 10 Z'),
       },
     };
-    const transition: Transition = {
+    const transition: TransitionConfig = {
       id: 'idle-active',
-      from: 'idle',
-      to: 'active',
       strategy: 'bestGuessMorph',
       durationMs: 120,
       layerBindings: [{ fromLayerId: 'shape', toLayerId: 'shape' }],

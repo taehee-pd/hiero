@@ -13,45 +13,17 @@ function makeIcon(id: string, name: string): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
-        defaultState: 'default',
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              body: {
-                id: 'body',
-                path: { d: 'M2 2 L22 2 L22 22 Z' },
-                style: {
-                  fill: { mode: 'currentColor' },
-                  stroke: { mode: 'currentColor' },
-                  strokeWidth: 2,
-                },
-              },
-            },
-          },
-          active: {
-            id: 'active',
-            layers: {
-              body: {
-                id: 'body',
-                path: { d: 'M3 3 L21 3 L21 21 Z' },
-                style: {
-                  fill: { mode: 'currentColor' },
-                },
-              },
+        layers: {
+          body: {
+            id: 'body',
+            path: { d: 'M2 2 L22 2 L22 22 Z' },
+            style: {
+              fill: { mode: 'currentColor' },
+              stroke: { mode: 'currentColor' },
+              strokeWidth: 2,
             },
           },
         },
-      },
-    },
-    transitions: {
-      t1: {
-        id: 't1',
-        from: 'default',
-        to: 'active',
-        strategy: 'track',
-        durationMs: 200,
-        layerBindings: [],
       },
     },
   };
@@ -91,7 +63,6 @@ describe('export react codegen', () => {
     expect(code).toContain('color?: string;');
     expect(code).toContain('className?: string;');
     expect(code).toContain('style?: CSSProperties;');
-    expect(code).toContain("state?: \"active\" | \"default\";");
     expect(code).toContain("animate?: boolean;");
     expect(code).toMatch(/variant\?: \"(24|v24)\" \| \"(24|v24)\" \| number;/);
     expect(code).toContain("import { ConivaIcon } from '@/lib/runtime-react';");

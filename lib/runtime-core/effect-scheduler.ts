@@ -61,7 +61,7 @@ export class EffectScheduler {
   private readonly cancelFrame: (handle: FrameHandle) => void;
   private readonly onFrameCallback: EffectFrameCallback;
   private readonly drawAnnotation?: DrawAnnotation;
-  private readonly targetLayerIds: string[];
+  private targetLayerIds: string[];
   private readonly completeListeners = new Set<EffectCompleteCallback>();
   private readonly progressAtElapsed: (elapsedMs: number) => number;
   private readonly effectiveDurationMs: number;
@@ -114,6 +114,15 @@ export class EffectScheduler {
   onComplete(callback: EffectCompleteCallback): () => void {
     this.completeListeners.add(callback);
     return () => this.completeListeners.delete(callback);
+  }
+
+  /**
+   * Update the target layer IDs mid-run.
+   * Called by the driver when a variant transition fires while an effect is active,
+   * so that subsequent frames target the new variant's layers rather than the stale ones.
+   */
+  setTargetLayerIds(ids: string[]): void {
+    this.targetLayerIds = [...ids];
   }
 
   private scheduleNextFrame(): void {

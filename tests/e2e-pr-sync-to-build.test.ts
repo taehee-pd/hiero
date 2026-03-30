@@ -282,7 +282,7 @@ describe('E2E: PR sync to release pipeline', () => {
       const modified = makeProject();
 
       // Change the chevron path data
-      modified.icons['icon-chevron']!.variants['v24']!.states['default']!.layers['path-main']!.path = {
+      modified.icons['icon-chevron']!.variants['v24']!.layers['path-main']!.path = {
         d: 'M9 6l6 6-6 6',
       };
 
@@ -305,15 +305,17 @@ describe('E2E: PR sync to release pipeline', () => {
       const base = makeProject();
       const modified = makeProject();
 
-      // Add a "hover" state to the chevron
-      modified.icons['icon-chevron']!.variants['v24']!.states['hover'] = {
-        id: 'hover',
+      // Add a new variant size to the chevron (simulating structural change)
+      modified.icons['icon-chevron']!.variants['v48'] = {
+        id: 'v48',
+        size: 48,
+        viewBox: [0, 0, 48, 48] as [number, number, number, number],
         layers: {
           'path-main': {
             id: 'path-main',
             role: 'primary',
             visible: true,
-            path: { d: 'M7 4l9 8-9 8' },
+            path: { d: 'M14 8l18 16-18 16' },
             style: {
               fill: { mode: 'fixed', value: 'none' },
               stroke: { mode: 'token', token: 'accent' },
@@ -338,7 +340,7 @@ describe('E2E: PR sync to release pipeline', () => {
       const base = makeProject();
       const modified = makeProject();
 
-      modified.icons['icon-star']!.variants['v24']!.states['default']!.layers['outline']!.style.strokeWidth = 3;
+      modified.icons['icon-star']!.variants['v24']!.layers['outline']!.style.strokeWidth = 3;
 
       const { diff, syncResult, build } = await runGoldenPath(base, modified);
 
@@ -370,26 +372,20 @@ describe('E2E: PR sync to release pipeline', () => {
             id: 'v24',
             size: 24,
             viewBox: [0, 0, 24, 24] as [number, number, number, number],
-            defaultState: 'default',
-            states: {
-              default: {
-                id: 'default',
-                layers: {
-                  heart: {
-                    id: 'heart',
-                    role: 'primary',
-                    visible: true,
-                    path: {
-                      d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z',
-                    },
-                    style: {
-                      fill: { mode: 'fixed', value: 'none' },
-                      stroke: { mode: 'token', token: 'accent' },
-                      strokeWidth: 2,
-                      lineCap: 'round',
-                      lineJoin: 'round',
-                    },
-                  },
+            layers: {
+              heart: {
+                id: 'heart',
+                role: 'primary',
+                visible: true,
+                path: {
+                  d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z',
+                },
+                style: {
+                  fill: { mode: 'fixed', value: 'none' },
+                  stroke: { mode: 'token', token: 'accent' },
+                  strokeWidth: 2,
+                  lineCap: 'round',
+                  lineJoin: 'round',
                 },
               },
             },
@@ -582,24 +578,18 @@ describe('E2E: PR sync to release pipeline', () => {
             id: 'v24',
             size: 24,
             viewBox: [0, 0, 24, 24] as [number, number, number, number],
-            defaultState: 'default',
-            states: {
-              default: {
-                id: 'default',
-                layers: {
-                  cross: {
-                    id: 'cross',
-                    role: 'primary',
-                    visible: true,
-                    path: { d: 'M12 5v14M5 12h14' },
-                    style: {
-                      fill: { mode: 'fixed', value: 'none' },
-                      stroke: { mode: 'token', token: 'accent' },
-                      strokeWidth: 2,
-                      lineCap: 'round',
-                      lineJoin: 'round',
-                    },
-                  },
+            layers: {
+              cross: {
+                id: 'cross',
+                role: 'primary',
+                visible: true,
+                path: { d: 'M12 5v14M5 12h14' },
+                style: {
+                  fill: { mode: 'fixed', value: 'none' },
+                  stroke: { mode: 'token', token: 'accent' },
+                  strokeWidth: 2,
+                  lineCap: 'round',
+                  lineJoin: 'round',
                 },
               },
             },
@@ -717,26 +707,20 @@ describe('E2E: PR sync to release pipeline', () => {
             id: 'v24',
             size: 24,
             viewBox: [0, 0, 24, 24] as [number, number, number, number],
-            defaultState: 'default',
-            states: {
-              default: {
-                id: 'default',
-                layers: {
-                  heart: {
-                    id: 'heart',
-                    role: 'primary',
-                    visible: true,
-                    path: {
-                      d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z',
-                    },
-                    style: {
-                      fill: { mode: 'fixed', value: 'none' },
-                      stroke: { mode: 'token', token: 'accent' },
-                      strokeWidth: 2,
-                      lineCap: 'round',
-                      lineJoin: 'round',
-                    },
-                  },
+            layers: {
+              heart: {
+                id: 'heart',
+                role: 'primary',
+                visible: true,
+                path: {
+                  d: 'M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z',
+                },
+                style: {
+                  fill: { mode: 'fixed', value: 'none' },
+                  stroke: { mode: 'token', token: 'accent' },
+                  strokeWidth: 2,
+                  lineCap: 'round',
+                  lineJoin: 'round',
                 },
               },
             },

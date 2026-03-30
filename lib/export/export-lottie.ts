@@ -8,11 +8,8 @@
  *
  * Architecture:
  *
- *   Icon → Variant → State(layers) → Lottie shape layers (M2)
- *                   → Transitions  → Lottie animated properties (M3)
- *                   → Morph bindings → Lottie shape keyframes (M4)
- *                   → Trim tracks  → Lottie trim shapes (M5)
- *                   → Effects      → Lottie effect animations (M6)
+ *   Icon → Variant → Layers → Lottie shape layers (M2)
+ *                   → Effects → Lottie effect animations (M6)
  *
  * @module
  */
@@ -20,16 +17,13 @@
 import type {
   Icon,
   Variant,
-  State,
   Layer,
-  Transition,
   TimelineTrack,
   Effect,
   PaintRef,
   GradientStop,
   SpringConfig,
 } from '@/lib/schema/types';
-import { strictMorph, bestGuessMorph } from '@/lib/runtime-core/morph';
 
 // ---------------------------------------------------------------------------
 // Lottie JSON types (subset of Lottie 5.x schema)
@@ -169,13 +163,6 @@ export type LottieExportOptions = {
   morphQuality?: 'low' | 'medium' | 'high' | 'max';
 };
 
-const MORPH_STEPS: Record<string, number> = {
-  low: 5,
-  medium: 10,
-  high: 30,
-  max: 60,
-};
-
 // ---------------------------------------------------------------------------
 // M1 — Core exporter entry point
 // ---------------------------------------------------------------------------
@@ -186,7 +173,6 @@ export function exportLottie(
   options?: LottieExportOptions,
 ): LottieJson {
   const fr = options?.fps ?? 60;
-  const morphSteps = MORPH_STEPS[options?.morphQuality ?? 'medium'] ?? 10;
 
   // Resolve variant
   const variant = icon.variants?.[variantId];
@@ -194,34 +180,97 @@ export function exportLottie(
     throw new Error(`Variant "${variantId}" not found on icon "${icon.id}".`);
   }
 
-  // Resolve default state
-  const defaultState = variant.states?.[variant.defaultState];
-  if (!defaultState) {
-    throw new Error(`Default state "${variant.defaultState}" not found on variant "${variantId}".`);
-  }
-
-  // Calculate total duration from longest transition
+  // Calculate op from longest transition duration, defaulting to 1 second
   const transitions = Object.values(icon.transitions ?? {}).filter(
-    (t) =>
-      Object.keys(variant.states ?? {}).includes(t.from) &&
-      Object.keys(variant.states ?? {}).includes(t.to),
+    (t) => t.fromVariantId === variantId || t.toVariantId === variantId,
   );
-  const longestDurationMs = transitions.length > 0
-    ? Math.max(...transitions.map((t) => t.durationMs))
-    : 0;
-
-  const op = longestDurationMs > 0
-    ? Math.round((longestDurationMs / 1000) * fr)
-    : fr; // Default 1 second if no transitions
+  const longestTransitionMs = transitions.reduce((max, t) => Math.max(max, t.durationMs), 0);
+  const longestEffectMs = Object.values(icon.effects ?? {}).reduce(
+    (max, e) => Math.max(max, (e.delay ?? 0) + e.durationMs),
+    0,
+  );
+  const longestMs = Math.max(longestTransitionMs, longestEffectMs);
+  const op = longestMs > 0 ? Math.round((longestMs / 1000) * fr) : fr;
 
   const viewBox = variant.viewBox;
 
-  // Build layers from default state (M2)
-  const layers = buildShapeLayers(defaultState, fr, op);
+  // Build layers from variant layers (M2)
+  const layers = buildShapeLayers(variant, fr, op);
 
-  // Apply transition animations (M3, M4, M5)
+  // Apply transition track animations (M3/M5)
   for (const transition of transitions) {
-    applyTransitionAnimations(layers, transition, variant, fr, morphSteps);
+    const durationFrames = Math.round((transition.durationMs / 1000) * fr);
+    // Determine whether the current variant is the morph source or destination.
+    // This governs both which layer IDs to look up and which bezier direction to emit.
+    const isMorphOut = transition.fromVariantId === variantId;
+    const otherVariantId = isMorphOut ? transition.toVariantId : transition.fromVariantId;
+    const otherVariant = icon.variants?.[otherVariantId];
+
+    for (const binding of transition.layerBindings ?? []) {
+      if (!binding.fromLayerId) continue;
+
+      // Lottie layer `nm` matches the key from the current variant's layers map.
+      // When morphing-out the current variant is the source → layer ID = fromLayerId.
+      // When morphing-in the current variant is the destination → layer ID = toLayerId.
+      const currentLayerId = isMorphOut ? binding.fromLayerId : (binding.toLayerId ?? binding.fromLayerId);
+      const targetLayer = layers.find((l) => l.nm === currentLayerId);
+      if (!targetLayer) continue;
+
+      const tracks = binding.tracks ?? [];
+      const trimTracks = tracks.filter(
+        (t) => t.property === 'trimStart' || t.property === 'trimEnd' || t.property === 'trimOffset',
+      );
+      const nonTrimTracks = tracks.filter(
+        (t) => t.property !== 'trimStart' && t.property !== 'trimEnd' && t.property !== 'trimOffset',
+      );
+
+      // M4: Apply morph binding (shape-path keyframes)
+      if (binding.morph && binding.toLayerId && otherVariant) {
+        // Resolve source and destination layer defs regardless of which variant is 'current'.
+        const fromVariantLayers = isMorphOut ? variant.layers : otherVariant.layers;
+        const toVariantLayers = isMorphOut ? otherVariant.layers : variant.layers;
+        const fromLayerDef = fromVariantLayers?.[binding.fromLayerId];
+        const toLayerDef = toVariantLayers?.[binding.toLayerId];
+
+        if (fromLayerDef?.path?.d && toLayerDef?.path?.d) {
+          const fromBezier = svgPathToLottieBezier(fromLayerDef.path.d);
+          const toBezier = svgPathToLottieBezier(toLayerDef.path.d);
+          const easingHandles = easingToLottie(transition.easing ?? 'ease-in-out');
+
+          // Find the path shape in the Lottie layer and make it animated.
+          const pathShape = targetLayer.shapes.find(
+            (s): s is LottiePathShape => s.ty === 'sh',
+          );
+          if (pathShape) {
+            pathShape.ks = {
+              a: 1,
+              k: [
+                { t: 0, s: [fromBezier], e: [toBezier], ...easingHandles },
+                { t: durationFrames, s: [toBezier] },
+              ],
+            };
+          }
+        }
+      }
+
+      // Apply non-trim track animations
+      for (const track of nonTrimTracks) {
+        applyTrackToLayer(targetLayer, track, 0, durationFrames, fr, transition.easing ?? 'ease-in-out');
+      }
+
+      // Apply trim tracks
+      if (trimTracks.length > 0) {
+        applyTrimShape(
+          targetLayer,
+          trimTracks,
+          binding.compoundTrimMode ?? 'simultaneously',
+          0,
+          durationFrames,
+          fr,
+          transition.easing ?? 'ease-in-out',
+        );
+      }
+    }
   }
 
   // Apply effects (M6)
@@ -248,11 +297,11 @@ export function exportLottie(
 // ---------------------------------------------------------------------------
 
 function buildShapeLayers(
-  state: State,
+  variant: Variant,
   fr: number,
   op: number,
 ): LottieLayer[] {
-  const layerEntries = Object.entries(state.layers ?? {});
+  const layerEntries = Object.entries(variant.layers ?? {});
   return layerEntries.map(([layerId, layer], index) => {
     const shapes: LottieShape[] = [];
 
@@ -460,67 +509,6 @@ function buildStrokeShape(layer: Layer): LottieStrokeShape | null {
 // M3 — TimelineTrack → Lottie animated properties
 // ---------------------------------------------------------------------------
 
-function applyTransitionAnimations(
-  layers: LottieLayer[],
-  transition: Transition,
-  variant: Variant,
-  fr: number,
-  morphSteps: number,
-): void {
-  for (const binding of transition.layerBindings ?? []) {
-    const targetLayerId = binding.toLayerId ?? binding.fromLayerId;
-    const layer = layers.find((l) => l.nm === targetLayerId);
-    if (!layer) continue;
-
-    const delayFrames = Math.round(((binding.delayMs ?? 0) / 1000) * fr);
-    const durationMs = binding.durationMs ?? transition.durationMs;
-    const durationFrames = Math.round((durationMs / 1000) * fr);
-    const easing = binding.tracks?.[0]?.easing ?? transition.easing ?? 'ease-in-out';
-
-    // Apply track animations (M3)
-    for (const track of binding.tracks ?? []) {
-      applyTrackToLayer(layer, track, delayFrames, durationFrames, fr, easing);
-    }
-
-    // Apply morph keyframes (M4)
-    if (binding.morph && binding.fromLayerId && binding.toLayerId) {
-      const fromState = variant.states?.[transition.from];
-      const toState = variant.states?.[transition.to];
-      const fromLayer = fromState?.layers?.[binding.fromLayerId];
-      const toLayer = toState?.layers?.[binding.toLayerId];
-
-      if (fromLayer?.path?.d && toLayer?.path?.d) {
-        applyMorphKeyframes(
-          layer,
-          fromLayer.path.d,
-          toLayer.path.d,
-          binding.morph.topology,
-          delayFrames,
-          durationFrames,
-          morphSteps,
-          easing,
-        );
-      }
-    }
-
-    // Apply trim shapes (M5)
-    const trimTracks = (binding.tracks ?? []).filter(
-      (t) => t.property === 'trimStart' || t.property === 'trimEnd' || t.property === 'trimOffset',
-    );
-    if (trimTracks.length > 0) {
-      applyTrimShape(
-        layer,
-        trimTracks,
-        binding.compoundTrimMode ?? 'simultaneously',
-        delayFrames,
-        durationFrames,
-        fr,
-        easing,
-      );
-    }
-  }
-}
-
 function applyTrackToLayer(
   layer: LottieLayer,
   track: TimelineTrack,
@@ -601,57 +589,6 @@ function applyTrackToLayer(
 // ---------------------------------------------------------------------------
 // M4 — Morph keyframes → Lottie shape-path animation
 // ---------------------------------------------------------------------------
-
-function applyMorphKeyframes(
-  layer: LottieLayer,
-  fromD: string,
-  toD: string,
-  topology: 'strict' | 'bestGuess',
-  delayFrames: number,
-  durationFrames: number,
-  steps: number,
-  easing: string | SpringConfig,
-): void {
-  // Get interpolator — strictMorph or bestGuessMorph
-  const interpolator =
-    topology === 'strict'
-      ? strictMorph(fromD, toD)
-      : bestGuessMorph(fromD, toD);
-
-  if (!interpolator) return; // bestGuessMorph can return null
-
-  const clampedSteps = Math.max(3, Math.min(60, steps));
-  const easingHandles = easingToLottie(easing);
-  const frameStep = durationFrames / clampedSteps;
-
-  // Find the path shape on this layer
-  const pathShape = layer.shapes.find(
-    (s): s is LottiePathShape => s.ty === 'sh',
-  );
-  if (!pathShape) return;
-
-  // Generate keyframes by sampling the interpolator
-  const shapeKeyframes: LottieShapeKeyframe[] = [];
-  for (let i = 0; i <= clampedSteps; i++) {
-    const t = i / clampedSteps;
-    const d = interpolator(t);
-    const bezier = svgPathToLottieBezier(d);
-
-    shapeKeyframes.push({
-      t: delayFrames + Math.round(i * frameStep),
-      s: [bezier],
-      ...(i < clampedSteps
-        ? (() => {
-            const nextD = interpolator((i + 1) / clampedSteps);
-            return { e: [svgPathToLottieBezier(nextD)] };
-          })()
-        : {}),
-      ...easingHandles,
-    });
-  }
-
-  pathShape.ks = { a: 1, k: shapeKeyframes };
-}
 
 // ---------------------------------------------------------------------------
 // M5 — Trim path tracks → Lottie trim shape

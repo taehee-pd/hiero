@@ -55,13 +55,7 @@ export function createImportedIcon(
         name: String(size),
         size,
         viewBox,
-        defaultState: 'default',
-        states: {
-          default: {
-            id: 'default',
-            layers,
-          },
-        },
+        layers,
       },
     },
     transitions: {},

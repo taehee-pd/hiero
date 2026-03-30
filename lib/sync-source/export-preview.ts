@@ -1,7 +1,7 @@
 /**
  * Generates a preview SVG for each icon.
  *
- * Uses the first variant's default state as the preview representation.
+ * Uses the first variant's layers as the preview representation.
  * Delegates to the existing `exportSvgString` function to avoid duplicating
  * SVG rendering logic.
  */
@@ -11,7 +11,7 @@ import { exportSvgString } from '@/lib/export/export-svg';
 
 /**
  * Returns a preview SVG string for the given icon, or `null` if the icon
- * has no variants or the default state produces an empty SVG.
+ * has no variants or the layers produce an empty SVG.
  */
 export function generatePreviewSvg(
   icon: Icon,
@@ -23,8 +23,7 @@ export function generatePreviewSvg(
   if (!variantId) return null;
 
   const variant = icon.variants[variantId]!;
-  const stateId = variant.defaultState;
 
-  const svg = exportSvgString(icon, variantId, stateId, tokens, variant.renderingMode);
+  const svg = exportSvgString(icon, variantId, '', tokens, variant.renderingMode);
   return svg || null;
 }

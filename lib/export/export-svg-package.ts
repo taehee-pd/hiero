@@ -1,5 +1,6 @@
 import { exportSvgString } from '@/lib/export/export-svg';
 import type { Project, RenderingMode } from '@/lib/schema/types';
+import { getVariantDefaultStateId } from '@/lib/schema/types';
 
 export type FileMap = Record<string, string>;
 
@@ -26,8 +27,7 @@ export function exportSvgPackage(
       const variant = icon.variants[variantId];
       if (!variant) continue;
 
-      const stateId = variant.defaultState;
-      if (!variant.states[stateId]) continue;
+      const stateId = getVariantDefaultStateId(variant);
 
       if (modes.length === 0) {
         files[`${iconDir}/${variant.size}.svg`] = exportSvgString(

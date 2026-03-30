@@ -145,40 +145,38 @@ function generateSwiftUIComponent(
   _downgraded: DowngradedPayload[],
   _minimumTarget: string,
 ): string {
-  const stateIds = collectStateIds(icon);
   const firstVariant = getFirstVariant(icon);
-  const defaultState = firstVariant.defaultState;
   const viewBox = firstVariant.viewBox;
+
+  const stateIds = collectStateIds(icon);
 
   const lines: string[] = [];
   lines.push('import SwiftUI');
   lines.push('');
   lines.push(`// Generated from icon "${icon.name || icon.id}"`);
-  lines.push(`// States: ${stateIds.join(', ')}`);
   lines.push('');
 
   // State enum
-  lines.push(`public enum ${name}State: String, CaseIterable, Sendable {`);
-  for (const stateId of stateIds) {
-    lines.push(`    case ${toSwiftCase(stateId)} = ${JSON.stringify(stateId)}`);
+  if (stateIds.length > 0) {
+    lines.push(`public enum ${name}State: String, CaseIterable {`);
+    for (const stateId of stateIds) {
+      lines.push(`    case ${toSwiftCase(stateId)}`);
+    }
+    lines.push('}');
+    lines.push('');
   }
-  lines.push('}');
-  lines.push('');
 
   // View struct
   lines.push(`public struct _${name}View: View {`);
-  lines.push(`    public var state: ${name}State`);
   lines.push('    public var size: CGFloat');
   lines.push('    public var color: Color');
   lines.push('    public var animate: Bool');
   lines.push('');
   lines.push(`    public init(`);
-  lines.push(`        state: ${name}State = .${toSwiftCase(defaultState)},`);
   lines.push(`        size: CGFloat = ${firstVariant.size},`);
   lines.push(`        color: Color = .primary,`);
   lines.push(`        animate: Bool = true`);
   lines.push(`    ) {`);
-  lines.push(`        self.state = state`);
   lines.push(`        self.size = size`);
   lines.push(`        self.color = color`);
   lines.push(`        self.animate = animate`);
@@ -193,29 +191,21 @@ function generateSwiftUIComponent(
   lines.push('        )');
   lines.push('');
 
-  // Generate state-based layer rendering
+  // Render variant layers directly
   lines.push('        ZStack {');
-  lines.push('            switch state {');
-  for (const stateId of stateIds) {
-    const state = firstVariant.states[stateId];
-    if (!state) continue;
-    lines.push(`            case .${toSwiftCase(stateId)}:`);
-    const layers = Object.values(state.layers);
-    for (const layer of layers) {
-      if (layer.path?.d) {
-        lines.push(`                Path { path in`);
-        lines.push(`                    // Layer "${layer.id}"`);
-        lines.push(`                    path.addSVGPath(${JSON.stringify(layer.path.d)})`);
-        lines.push(`                }`);
-        const fill = resolveFillSwift(layer);
-        lines.push(`                .fill(${fill})`);
-      }
+  const layers = Object.values(firstVariant.layers);
+  for (const layer of layers) {
+    if (layer.path?.d) {
+      lines.push(`            Path { path in`);
+      lines.push(`                // Layer "${layer.id}"`);
+      lines.push(`                path.addSVGPath(${JSON.stringify(layer.path.d)})`);
+      lines.push(`            }`);
+      const fill = resolveFillSwift(layer);
+      lines.push(`            .fill(${fill})`);
     }
   }
-  lines.push('            }');
   lines.push('        }');
   lines.push('        .frame(width: size, height: size)');
-  lines.push('        .animation(animate ? .easeInOut(duration: 0.3) : nil, value: state)');
   lines.push('    }');
   lines.push('}');
   lines.push('');
@@ -300,17 +290,14 @@ function generateUIKitComponent(
   _downgraded: DowngradedPayload[],
   _minimumTarget: string,
 ): string {
-  const stateIds = collectStateIds(icon);
   const firstVariant = getFirstVariant(icon);
 
   return [
     'import UIKit',
     '',
     `// Generated UIKit view for "${icon.name || icon.id}"`,
-    `// States: ${stateIds.join(', ')}`,
     '',
     `public class ${name}View: UIView {`,
-    `    public var iconState: String = ${JSON.stringify(firstVariant.defaultState)}`,
     `    public var iconSize: CGFloat = ${firstVariant.size}`,
     `    public var iconColor: UIColor = .label`,
     '',
@@ -365,7 +352,7 @@ function getFirstVariant(icon: Icon) {
 function collectStateIds(icon: Icon): string[] {
   const ids = new Set<string>();
   for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states)) {
+    for (const stateId of Object.keys(variant.states ?? {})) {
       ids.add(stateId);
     }
   }

@@ -11,8 +11,7 @@ export type CompiledRenderingMode =
   | 'monochrome'
   | 'hierarchical'
   | 'palette'
-  | 'multicolor'
-  | 'autoGradient';
+  | 'multicolor';
 
 export type CompiledTransitionStrategy =
   | 'track'
@@ -27,15 +26,9 @@ export type CompiledTrackProperty =
   | 'translateY'
   | 'scale'
   | 'pathLength'
-  | 'fill'
-  | 'stroke'
-  | 'strokeWidth'
-  | 'fillOpacity'
-  | 'strokeOpacity'
   | 'trimStart'
   | 'trimEnd'
-  | 'trimOffset'
-  | 'variableValue';
+  | 'trimOffset';
 
 export type CompiledEffectKind =
   | 'bounce'
@@ -69,11 +62,7 @@ export type CompiledIcon = {
 export type CompiledVariant = {
   size: number;
   viewBox: [number, number, number, number];
-  states: Record<string, CompiledState>;
-};
-
-export type CompiledState = {
-  modes: Record<CompiledRenderingMode, CompiledLayerSet>;
+  layers: CompiledLayerSet;
 };
 
 export type CompiledLayerSet = {
@@ -123,7 +112,6 @@ export type CompiledLayerBinding = {
   }>;
   morph?: {
     topology: 'strict' | 'bestGuess';
-    mixer: 'native' | 'flubber';
   };
 };
 
@@ -160,7 +148,6 @@ export type IconEntry = {
   contentHash: string;
   supportedSizes: number[];
   supportedModes: CompiledRenderingMode[];
-  states: string[];
   hasAnimation: boolean;
   hasMorphTransition: boolean;
   compiledPath: string;

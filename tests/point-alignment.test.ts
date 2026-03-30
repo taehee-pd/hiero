@@ -9,7 +9,7 @@ import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
 
 function bootstrap(pathD: string) {
   editorStore.getState().loadProject(structuredClone(SAMPLE_PROJECT));
-  editorStore.getState().patchLayer('icon-home', 'default', 'roof', {
+  editorStore.getState().patchLayer('icon-home', 'roof', {
     path: { d: pathD },
   });
   editorStore.getState().setSelection({
@@ -20,7 +20,7 @@ function bootstrap(pathD: string) {
 
 function getPointPositions() {
   return parseSvgPath(
-    editorStore.getState().project!.icons['icon-home'].variants.v24.states.default.layers.roof
+    editorStore.getState().project!.icons['icon-home'].variants.v24.states!.default.layers.roof
       .path!.d,
   ).subPaths[0]!.points.map((point) => point.position);
 }

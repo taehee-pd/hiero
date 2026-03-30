@@ -94,19 +94,19 @@ describe('topology', () => {
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
-    const current = state.project!.icons[iconId].variants[variantId].states[stateId]!;
+    const current = state.project!.icons[iconId].variants[variantId].states![stateId]!;
     const before = current.layers.roof.path!.d;
 
     state.setStateTopology(iconId, stateId, lockTopology(current));
 
     expect(() =>
-      state.patchLayer(iconId, stateId, 'roof', {
+      state.patchLayer(iconId, 'roof', {
         path: { d: 'M9.5 7 C12 9 13 15 9.5 17' },
       }),
     ).toThrow('Topology is locked');
 
     const after =
-      editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId]!.layers.roof
+      editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]!.layers.roof
         .path!.d;
     expect(after).toBe(before);
   });

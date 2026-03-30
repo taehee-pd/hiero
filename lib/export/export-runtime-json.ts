@@ -4,16 +4,12 @@ import type {
   GuideItem,
   Icon,
   Layer,
-  LayerBinding,
   PaintRef,
   Project,
   TimelineTrack,
   SpringConfig,
-  State,
-  Transition,
   Variant,
 } from '@/lib/schema/types';
-import { resolveTransition } from '@/lib/runtime-core/transition-resolver';
 
 export type RuntimeCoreLayer = {
   d: string;
@@ -24,10 +20,6 @@ export type RuntimeCoreLayer = {
   transform?: string;
 };
 
-export type RuntimeCoreState = {
-  layers: Record<string, RuntimeCoreLayer>;
-};
-
 export type RuntimeCoreJson = {
   id: string;
   name: string;
@@ -36,18 +28,7 @@ export type RuntimeCoreJson = {
     {
       size: number;
       viewBox: [number, number, number, number];
-    }
-  >;
-  states: Record<string, RuntimeCoreState>;
-  transitions: Record<
-    string,
-    {
-      from: string;
-      to: string;
-      strategy: Transition['strategy'];
-      durationMs: number;
-      easing?: string | SpringConfig;
-      layerBindings: RuntimeLayerBinding[];
+      layers: Record<string, RuntimeCoreLayer>;
     }
   >;
   tokens?: {
@@ -63,12 +44,9 @@ type RuntimeJsonExportIcon = Icon & {
 
 export function exportRuntimeJson(
   icon: RuntimeJsonExportIcon,
-  options?: { variants?: string[]; states?: string[] },
+  options?: { variants?: string[] },
 ): string {
   const variantIds = resolveFilteredVariantIds(icon, options?.variants);
-  const primaryVariantId = variantIds[0] ?? null;
-  const primaryVariant = primaryVariantId ? icon.variants[primaryVariantId] ?? null : null;
-  const stateIds = resolveFilteredStateIds(primaryVariant, options?.states);
   const colors = getRuntimeJsonColors(icon);
 
   const payload: RuntimeCoreJson = {
@@ -79,19 +57,10 @@ export function exportRuntimeJson(
       acc[variantId] = {
         size: variant.size,
         viewBox: [...variant.viewBox],
+        layers: buildRuntimeJsonLayers(variant, colors),
       };
       return acc;
     }, {}),
-    states: primaryVariant
-      ? stateIds.reduce<RuntimeCoreJson['states']>((acc, stateId) => {
-          const state = primaryVariant.states[stateId]!;
-          acc[stateId] = {
-            layers: buildRuntimeJsonLayers(state, colors),
-          };
-          return acc;
-        }, {})
-      : {},
-    transitions: buildRuntimeJsonTransitions(icon, stateIds),
   };
 
   if (colors && Object.keys(colors).length > 0) {
@@ -169,15 +138,9 @@ export type RuntimeTrackProperty =
   | 'translateY'
   | 'scale'
   | 'pathLength'
-  | 'fill'
-  | 'stroke'
-  | 'strokeWidth'
-  | 'fillOpacity'
-  | 'strokeOpacity'
   | 'trimStart'
   | 'trimEnd'
-  | 'trimOffset'
-  | 'variableValue';
+  | 'trimOffset';
 
 export type RuntimeTrack = {
   property: RuntimeTrackProperty;
@@ -202,7 +165,7 @@ export type RuntimeMagicReplace = {
 export type RuntimeTransition = {
   from: string;
   to: string;
-  strategy: 'track' | 'morph' | 'replace';
+  strategy: 'track' | 'morph' | 'replace' | 'lineAnimation';
   durationMs: number;
   easing: string | SpringConfig;
   layerBindings: RuntimeLayerBinding[];
@@ -248,7 +211,6 @@ export type RuntimeIconMeta = {
     {
       size: number;
       viewBox: [number, number, number, number];
-      defaultState: string;
     }
   >;
 };
@@ -258,10 +220,10 @@ export type RuntimeVariantPayload = {
     id: string;
     size: number;
     viewBox: [number, number, number, number];
-    defaultState: string;
   };
-  states: Record<string, RuntimeState>;
-  transitions: Record<string, RuntimeTransition>;
+  layers: RuntimeLayer[];
+  states?: Record<string, RuntimeState>;
+  transitions?: Record<string, RuntimeTransition>;
   effects?: Record<string, RuntimeEffect>;
   draw?: RuntimeDrawAnnotation;
   variableDraw?: RuntimeVariableDraw;
@@ -298,26 +260,28 @@ export function exportRuntimeIconVariant(
 
   const diagnostics: RuntimeExportDiagnostic[] = [];
   const meta = buildIconMeta(icon);
-  const runtimeStates = buildRuntimeStates(
+  const runtimeLayers = buildRuntimeLayers(
     project,
     icon,
     variant,
     diagnostics,
   );
-  const draw = buildDrawAnnotation(project, icon, variant, runtimeStates, diagnostics);
+  const draw = buildDrawAnnotation(project, icon, variant, runtimeLayers, diagnostics);
   const drawLayerIds = new Set(
     draw ? Object.keys(draw.layers) : [],
-  );
-  const transitions = buildRuntimeTransitions(
-    icon,
-    variant,
-    runtimeStates,
-    drawLayerIds,
-    diagnostics,
   );
   const effects = buildRuntimeEffects(
     icon,
     variantId,
+    drawLayerIds,
+    diagnostics,
+  );
+
+  const transitions = buildRuntimeTransitions(
+    icon,
+    variantId,
+    variant,
+    runtimeLayers,
     drawLayerIds,
     diagnostics,
   );
@@ -327,12 +291,13 @@ export function exportRuntimeIconVariant(
       id: variant.id,
       size: variant.size,
       viewBox: variant.viewBox,
-      defaultState: variant.defaultState,
     },
-    states: runtimeStates,
-    transitions,
+    layers: runtimeLayers,
   };
 
+  if (transitions && Object.keys(transitions).length > 0) {
+    payload.transitions = transitions;
+  }
   if (effects && Object.keys(effects).length > 0) {
     payload.effects = effects;
   }
@@ -418,25 +383,14 @@ function resolveFilteredVariantIds(icon: Icon, variants?: string[]): string[] {
     .filter((variantId) => (allowed ? allowed.has(variantId) : true));
 }
 
-function resolveFilteredStateIds(
-  variant: Variant | null,
-  states?: string[],
-): string[] {
-  if (!variant) return [];
-  const allowed = states ? new Set(states) : null;
-  return Object.keys(variant.states)
-    .sort((a, b) => a.localeCompare(b))
-    .filter((stateId) => (allowed ? allowed.has(stateId) : true));
-}
-
 function buildRuntimeJsonLayers(
-  state: State,
+  variant: Variant,
   colors?: Record<string, string>,
-): RuntimeCoreState['layers'] {
-  return Object.keys(state.layers)
+): Record<string, RuntimeCoreLayer> {
+  return Object.keys(variant.layers)
     .sort((a, b) => a.localeCompare(b))
-    .reduce<RuntimeCoreState['layers']>((acc, layerId) => {
-      const layer = state.layers[layerId]!;
+    .reduce<Record<string, RuntimeCoreLayer>>((acc, layerId) => {
+      const layer = variant.layers[layerId]!;
       if (layer.visible === false || !layer.path?.d || layer.isClipMask) {
         return acc;
       }
@@ -462,52 +416,6 @@ function buildRuntimeJsonLayers(
       }
 
       acc[layerId] = runtimeLayer;
-      return acc;
-    }, {});
-}
-
-function buildRuntimeJsonTransitions(
-  icon: Icon,
-  stateIds: string[],
-): RuntimeCoreJson['transitions'] {
-  if (stateIds.length === 0) {
-    return {};
-  }
-  const allowedStates = new Set(stateIds);
-  return Object.keys(icon.transitions)
-    .sort((a, b) => a.localeCompare(b))
-    .reduce<RuntimeCoreJson['transitions']>((acc, transitionId) => {
-      const transition = icon.transitions[transitionId]!;
-      if (
-        allowedStates.size > 0 &&
-        (!allowedStates.has(transition.from) || !allowedStates.has(transition.to))
-      ) {
-        return acc;
-      }
-
-      acc[transitionId] = {
-        from: transition.from,
-        to: transition.to,
-        strategy: transition.strategy,
-        durationMs: transition.durationMs,
-        easing: transition.easing,
-        layerBindings: transition.layerBindings.map((binding) => ({
-          fromLayerId: binding.fromLayerId,
-          toLayerId: binding.toLayerId,
-          delayMs: binding.delayMs,
-          durationMs: binding.durationMs,
-          tracks: binding.tracks
-            ? binding.tracks.map(cloneRuntimeTrack)
-            : undefined,
-          morph: binding.morph
-            ? {
-                topology: binding.morph.topology,
-                mixer: binding.morph.mixer,
-              }
-            : undefined,
-          compoundTrimMode: binding.compoundTrimMode,
-        })),
-      };
       return acc;
     }, {});
 }
@@ -571,7 +479,6 @@ function buildIconMeta(icon: Icon): RuntimeIconMeta {
       acc[variantId] = {
         size: variant.size,
         viewBox: variant.viewBox,
-        defaultState: variant.defaultState,
       };
       return acc;
     }, {});
@@ -585,39 +492,33 @@ function buildIconMeta(icon: Icon): RuntimeIconMeta {
   };
 }
 
-function buildRuntimeStates(
+function buildRuntimeLayers(
   project: Project,
   icon: Icon,
   variant: Variant,
   diagnostics: RuntimeExportDiagnostic[],
-): Record<string, RuntimeState> {
-  return Object.keys(variant.states)
-    .sort((a, b) => a.localeCompare(b))
-    .reduce<Record<string, RuntimeState>>((acc, stateId) => {
-      const state = variant.states[stateId]!;
-      const layerIds = Object.keys(state.layers).sort((a, b) => a.localeCompare(b));
-      const layerById = new Map(layerIds.map((layerId) => [layerId, state.layers[layerId]!]));
-      const layers: RuntimeLayer[] = [];
+): RuntimeLayer[] {
+  const layerIds = Object.keys(variant.layers).sort((a, b) => a.localeCompare(b));
+  const layerById = new Map(layerIds.map((layerId) => [layerId, variant.layers[layerId]!]));
+  const layers: RuntimeLayer[] = [];
 
-      for (const layerId of layerIds) {
-        const layer = state.layers[layerId]!;
-        const runtimeLayer = buildRuntimeLayer(
-          project,
-          icon.id,
-          variant.id,
-          layer,
-          layerById,
-          diagnostics,
-        );
+  for (const layerId of layerIds) {
+    const layer = variant.layers[layerId]!;
+    const runtimeLayer = buildRuntimeLayer(
+      project,
+      icon.id,
+      variant.id,
+      layer,
+      layerById,
+      diagnostics,
+    );
 
-        if (runtimeLayer) {
-          layers.push(runtimeLayer);
-        }
-      }
+    if (runtimeLayer) {
+      layers.push(runtimeLayer);
+    }
+  }
 
-      acc[stateId] = { layers };
-      return acc;
-    }, {});
+  return layers;
 }
 
 function buildRuntimeLayer(
@@ -748,14 +649,12 @@ function buildDrawAnnotation(
   project: Project,
   icon: Icon,
   variant: Variant,
-  states: Record<string, RuntimeState>,
+  runtimeLayers: RuntimeLayer[],
   diagnostics: RuntimeExportDiagnostic[],
 ): RuntimeDrawAnnotation | undefined {
   const renderedLayerIds = new Set<string>();
-  for (const state of Object.values(states)) {
-    for (const layer of state.layers) {
-      renderedLayerIds.add(layer.id);
-    }
+  for (const layer of runtimeLayers) {
+    renderedLayerIds.add(layer.id);
   }
 
   const drawItems = collectDrawGuideItems(project, icon, variant);
@@ -847,279 +746,6 @@ function collectDrawGuideItems(
     });
 }
 
-function buildRuntimeTransitions(
-  icon: Icon,
-  variant: Variant,
-  states: Record<string, RuntimeState>,
-  drawLayerIds: Set<string>,
-  diagnostics: RuntimeExportDiagnostic[],
-): Record<string, RuntimeTransition> {
-  return Object.keys(icon.transitions)
-    .sort((a, b) => a.localeCompare(b))
-    .reduce<Record<string, RuntimeTransition>>((acc, transitionId) => {
-      const transition = icon.transitions[transitionId]!;
-      const runtimeTransition = toRuntimeTransition(
-        icon,
-        variant,
-        states,
-        transitionId,
-        transition,
-        drawLayerIds,
-        diagnostics,
-      );
-
-      if (runtimeTransition) {
-        acc[transitionId] = runtimeTransition;
-      }
-
-      return acc;
-    }, {});
-}
-
-function toRuntimeTransition(
-  icon: Icon,
-  variant: Variant,
-  states: Record<string, RuntimeState>,
-  transitionId: string,
-  transition: Transition,
-  drawLayerIds: Set<string>,
-  diagnostics: RuntimeExportDiagnostic[],
-): RuntimeTransition | null {
-  const fromState = variant.states[transition.from];
-  const toState = variant.states[transition.to];
-
-  if (!fromState || !toState) {
-    diagnostics.push({
-      level: 'warning',
-      code: 'invalid-transition',
-      iconId: icon.id,
-      variantId: variant.id,
-      transitionId,
-      message: `Transition "${transitionId}" references states that do not exist in variant "${variant.id}".`,
-    });
-    return null;
-  }
-
-  const resolvedTransition = resolveTransition(transition, fromState, toState);
-
-  const runtimeBindings: RuntimeLayerBinding[] = [];
-  for (const [index, binding] of transition.layerBindings.entries()) {
-    const runtimeBinding = toRuntimeLayerBinding(
-      icon,
-      variant,
-      transitionId,
-      transition,
-      binding,
-      diagnostics,
-    );
-    if (!runtimeBinding) {
-      return null;
-    }
-    const resolvedBinding = resolvedTransition.layerBindings[index];
-    if (runtimeBinding.delayMs === undefined && resolvedBinding?.delayMs !== undefined) {
-      runtimeBinding.delayMs = resolvedBinding.delayMs;
-    }
-    if (runtimeBinding.durationMs === undefined && resolvedBinding?.durationMs !== undefined) {
-      runtimeBinding.durationMs = resolvedBinding.durationMs;
-    }
-    runtimeBindings.push(runtimeBinding);
-  }
-
-  if (transition.strategy === 'track' && runtimeBindings.length === 0) {
-    diagnostics.push({
-      level: 'warning',
-      code: 'invalid-transition',
-      iconId: icon.id,
-      variantId: variant.id,
-      transitionId,
-      message: `Track transition "${transitionId}" must contain at least one valid layer binding.`,
-    });
-    return null;
-  }
-
-  const runtimeTransition: RuntimeTransition = {
-    from: transition.from,
-    to: transition.to,
-    strategy:
-      transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph'
-        ? 'morph'
-        : transition.strategy,
-    durationMs: transition.durationMs,
-    easing: transition.easing ?? 'linear',
-    layerBindings: runtimeBindings,
-  };
-
-  if (transition.direction) {
-    runtimeTransition.direction = transition.direction;
-  }
-
-  const preserveLayerIds = getPreservedLayerIds(
-    states[transition.from]!,
-    states[transition.to]!,
-  );
-  const drawIntegrated =
-    preserveLayerIds.some((layerId) => drawLayerIds.has(layerId)) ||
-    runtimeBindings.some(
-      (binding) =>
-        (binding.fromLayerId && drawLayerIds.has(binding.fromLayerId)) ||
-        (binding.toLayerId && drawLayerIds.has(binding.toLayerId)),
-    );
-
-  if (preserveLayerIds.length > 0 || drawIntegrated) {
-    runtimeTransition.magicReplace = {};
-    if (preserveLayerIds.length > 0) {
-      runtimeTransition.magicReplace.preserveLayerIds = preserveLayerIds;
-    }
-    if (drawIntegrated) {
-      runtimeTransition.magicReplace.drawIntegrated = true;
-    }
-  }
-
-  return runtimeTransition;
-}
-
-function toRuntimeLayerBinding(
-  icon: Icon,
-  variant: Variant,
-  transitionId: string,
-  transition: Transition,
-  binding: LayerBinding,
-  diagnostics: RuntimeExportDiagnostic[],
-): RuntimeLayerBinding | null {
-  const fromState = variant.states[transition.from]!;
-  const toState = variant.states[transition.to]!;
-
-  if (binding.fromLayerId && !fromState.layers[binding.fromLayerId]) {
-    diagnostics.push({
-      level: 'warning',
-      code: 'invalid-transition',
-      iconId: icon.id,
-      variantId: variant.id,
-      transitionId,
-      message: `Transition "${transitionId}" references missing from-layer "${binding.fromLayerId}".`,
-    });
-    return null;
-  }
-
-  if (binding.toLayerId && !toState.layers[binding.toLayerId]) {
-    diagnostics.push({
-      level: 'warning',
-      code: 'invalid-transition',
-      iconId: icon.id,
-      variantId: variant.id,
-      transitionId,
-      message: `Transition "${transitionId}" references missing to-layer "${binding.toLayerId}".`,
-    });
-    return null;
-  }
-
-  const runtimeBinding: RuntimeLayerBinding = {};
-  if (binding.fromLayerId) runtimeBinding.fromLayerId = binding.fromLayerId;
-  if (binding.toLayerId) runtimeBinding.toLayerId = binding.toLayerId;
-
-  if (binding.tracks) {
-    const tracks: RuntimeTrack[] = [];
-
-    for (const track of binding.tracks) {
-      if (!SUPPORTED_TRACK_PROPERTIES.has(track.property)) {
-        diagnostics.push({
-          level: 'warning',
-          code: 'invalid-transition',
-          iconId: icon.id,
-          variantId: variant.id,
-          transitionId,
-          message: `Transition "${transitionId}" uses unsupported track property "${track.property}".`,
-        });
-        return null;
-      }
-
-      tracks.push(cloneRuntimeTrack(track));
-    }
-
-    runtimeBinding.tracks = tracks;
-  }
-  if (binding.delayMs !== undefined) {
-    runtimeBinding.delayMs = binding.delayMs;
-  }
-  if (binding.durationMs !== undefined) {
-    runtimeBinding.durationMs = binding.durationMs;
-  }
-  if (binding.compoundTrimMode !== undefined) {
-    runtimeBinding.compoundTrimMode = binding.compoundTrimMode;
-  }
-
-  if (transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph') {
-    if (!binding.fromLayerId || !binding.toLayerId) {
-      diagnostics.push({
-        level: 'warning',
-        code: 'invalid-transition',
-        iconId: icon.id,
-        variantId: variant.id,
-        transitionId,
-        message: `Morph transition "${transitionId}" requires both from-layer and to-layer bindings.`,
-      });
-      return null;
-    }
-
-    const fromLayer = fromState.layers[binding.fromLayerId];
-    const toLayer = toState.layers[binding.toLayerId];
-    if (!fromLayer?.path?.d || !toLayer?.path?.d) {
-      diagnostics.push({
-        level: 'warning',
-        code: 'invalid-transition',
-        iconId: icon.id,
-        variantId: variant.id,
-        transitionId,
-        message: `Morph transition "${transitionId}" requires path geometry on both bound layers.`,
-      });
-      return null;
-    }
-
-    if (
-      transition.strategy === 'strictMorph' &&
-      !hasStrictMorphCompatibility(fromState, toState, binding.fromLayerId, binding.toLayerId)
-    ) {
-      diagnostics.push({
-        level: 'warning',
-        code: 'invalid-transition',
-        iconId: icon.id,
-        variantId: variant.id,
-        transitionId,
-        message: `Strict morph transition "${transitionId}" does not satisfy topology compatibility for "${binding.fromLayerId}" -> "${binding.toLayerId}".`,
-      });
-      return null;
-    }
-
-    runtimeBinding.morph = {
-      topology: transition.strategy === 'strictMorph' ? 'strict' : 'bestGuess',
-    };
-  }
-
-  return runtimeBinding;
-}
-
-function hasStrictMorphCompatibility(
-  fromState: State,
-  toState: State,
-  fromLayerId: string,
-  toLayerId: string,
-): boolean {
-  const fromPair = fromState.topology?.layerPairs.find(
-    (pair) => pair.layerId === fromLayerId,
-  );
-  const toPair = toState.topology?.layerPairs.find((pair) => pair.layerId === toLayerId);
-
-  if (!fromPair || !toPair) {
-    return false;
-  }
-
-  return (
-    fromPair.subpathCount === toPair.subpathCount &&
-    arrayEquals(fromPair.commandSignature, toPair.commandSignature) &&
-    arrayEquals(fromPair.closed, toPair.closed)
-  );
-}
-
 function buildRuntimeEffects(
   icon: Icon,
   variantId: string,
@@ -1172,24 +798,6 @@ function toRuntimeEffect(
   };
 }
 
-function getPreservedLayerIds(
-  fromState: RuntimeState,
-  toState: RuntimeState,
-): string[] {
-  const toLayerById = new Map(toState.layers.map((layer) => [layer.id, layer]));
-  const preserved: string[] = [];
-
-  for (const fromLayer of fromState.layers) {
-    const toLayer = toLayerById.get(fromLayer.id);
-    if (!toLayer) continue;
-    if (serializeRuntimeJson(fromLayer) === serializeRuntimeJson(toLayer)) {
-      preserved.push(fromLayer.id);
-    }
-  }
-
-  return preserved.sort((a, b) => a.localeCompare(b));
-}
-
 function resolveRuntimeClipPath(
   layer: Layer,
   layerById: Map<string, Layer>,
@@ -1227,6 +835,148 @@ function buildTransformString(layer: Layer): string | undefined {
   return parts.length > 0 ? parts.join(' ') : undefined;
 }
 
+function buildRuntimeTransitions(
+  icon: Icon,
+  variantId: string,
+  variant: Variant,
+  runtimeLayers: RuntimeLayer[],
+  drawLayerIds: Set<string>,
+  diagnostics: RuntimeExportDiagnostic[],
+): Record<string, RuntimeTransition> | undefined {
+  if (!icon.transitions) return undefined;
+
+  const renderedLayerIds = new Set(runtimeLayers.map((layer) => layer.id));
+  const validStateIds = new Set<string>(['default']);
+  if (variant.states) {
+    for (const stateId of Object.keys(variant.states)) {
+      validStateIds.add(stateId);
+    }
+  }
+
+  const result: Record<string, RuntimeTransition> = {};
+
+  for (const transitionId of Object.keys(icon.transitions).sort((a, b) => a.localeCompare(b))) {
+    const transition = icon.transitions[transitionId]!;
+
+    // Filter: only transitions for this variant
+    if (transition.fromVariantId !== variantId && transition.toVariantId !== variantId) {
+      continue;
+    }
+
+    // Filter: both from/to states must exist
+    const fromState = transition.from ?? 'default';
+    const toState = transition.to ?? 'default';
+    if (!validStateIds.has(fromState) || !validStateIds.has(toState)) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'invalid-transition',
+        iconId: icon.id,
+        variantId,
+        transitionId,
+        message: `Transition "${transitionId}" references unknown state(s). from="${fromState}" to="${toState}".`,
+      });
+      continue;
+    }
+
+    // Filter: strictMorph requires a topology contract on the variant
+    if (transition.strategy === 'strictMorph') {
+      if (!variant.topology) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'invalid-transition',
+          iconId: icon.id,
+          variantId,
+          transitionId,
+          message: `Transition "${transitionId}" uses strictMorph but variant has no topology contract.`,
+        });
+        continue;
+      }
+    }
+
+    // Map strategy to runtime strategy
+    let runtimeStrategy: RuntimeTransition['strategy'] = 'track';
+    if (transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph') {
+      runtimeStrategy = 'morph';
+    } else if (transition.strategy === 'replace') {
+      runtimeStrategy = 'replace';
+    } else if (transition.strategy === 'lineAnimation') {
+      runtimeStrategy = 'lineAnimation';
+    }
+
+    // Build layer bindings with stagger timing
+    const totalBindings = transition.layerBindings?.length ?? 0;
+    const layerBindings: RuntimeLayerBinding[] = (transition.layerBindings ?? []).map(
+      (binding, index) => {
+        const runtimeBinding: RuntimeLayerBinding = {};
+        if (binding.fromLayerId) runtimeBinding.fromLayerId = binding.fromLayerId;
+        if (binding.toLayerId) runtimeBinding.toLayerId = binding.toLayerId;
+        if (binding.tracks) {
+          runtimeBinding.tracks = binding.tracks
+            .filter((track) => SUPPORTED_TRACK_PROPERTIES.has(track.property as RuntimeTrackProperty))
+            .map((track) => ({
+              property: track.property as RuntimeTrackProperty,
+              keyframes: [...track.keyframes],
+            }));
+        }
+        if (binding.morph) {
+          runtimeBinding.morph = { topology: binding.morph.topology };
+        }
+        if (binding.compoundTrimMode) {
+          runtimeBinding.compoundTrimMode = binding.compoundTrimMode;
+        }
+
+        // Resolve stagger timing
+        if (transition.stagger && transition.stagger.perLayerMs > 0) {
+          const delayMs = index * transition.stagger.perLayerMs;
+          runtimeBinding.delayMs = delayMs;
+          runtimeBinding.durationMs = Math.max(transition.durationMs - delayMs, 0);
+        }
+
+        return runtimeBinding;
+      },
+    );
+
+    // Build magic replace for lineAnimation strategy
+    let magicReplace: RuntimeMagicReplace | undefined;
+    if (transition.strategy === 'lineAnimation') {
+      const boundLayerIds = new Set<string>();
+      for (const binding of transition.layerBindings ?? []) {
+        if (binding.fromLayerId) boundLayerIds.add(binding.fromLayerId);
+        if (binding.toLayerId) boundLayerIds.add(binding.toLayerId);
+      }
+      const preserveLayerIds = [...renderedLayerIds]
+        .filter((layerId) => !boundLayerIds.has(layerId))
+        .sort((a, b) => a.localeCompare(b));
+
+      magicReplace = {
+        preserveLayerIds: preserveLayerIds.length > 0 ? preserveLayerIds : undefined,
+        drawIntegrated: drawLayerIds.size > 0 ? true : undefined,
+      };
+    }
+
+    const runtimeTransition: RuntimeTransition = {
+      from: fromState,
+      to: toState,
+      strategy: runtimeStrategy,
+      durationMs: transition.durationMs,
+      easing: transition.easing ?? 'linear',
+      layerBindings,
+    };
+
+    if (magicReplace) {
+      runtimeTransition.magicReplace = magicReplace;
+    }
+
+    if (transition.direction) {
+      runtimeTransition.direction = transition.direction;
+    }
+
+    result[transitionId] = runtimeTransition;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 function sortJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortJsonValue);
@@ -1244,34 +994,14 @@ function sortJsonValue(value: unknown): unknown {
   return value;
 }
 
-function arrayEquals<T>(left: T[], right: T[]): boolean {
-  if (left.length !== right.length) return false;
-  return left.every((value, index) => value === right[index]);
-}
-
 const SUPPORTED_TRACK_PROPERTIES = new Set<RuntimeTrackProperty>([
   'opacity',
   'rotate',
   'translateX',
   'translateY',
   'scale',
-  'variableValue',
   'pathLength',
-  'fill',
-  'stroke',
-  'strokeWidth',
-  'fillOpacity',
-  'strokeOpacity',
   'trimStart',
   'trimEnd',
   'trimOffset',
 ]);
-
-function cloneRuntimeTrack(
-  track: TimelineTrack,
-): RuntimeTrack {
-  return {
-    property: track.property,
-    keyframes: [...track.keyframes] as RuntimeTrack['keyframes'],
-  };
-}

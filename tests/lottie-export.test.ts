@@ -22,6 +22,15 @@ function createMinimalIcon(overrides: Partial<Icon> = {}): Icon {
         id: '16',
         size: 16,
         viewBox: [0, 0, 16, 16] as [number, number, number, number],
+        layers: {
+          'layer-1': {
+            id: 'layer-1',
+            path: { d: 'M 0 0 C 5 0 10 5 10 10 Z' },
+            style: {
+              fill: { mode: 'fixed' as const, value: '#FF0000' },
+            },
+          },
+        },
         defaultState: 'default',
         states: {
           default: {
@@ -52,6 +61,13 @@ function createAnimatedIcon(): Icon {
         id: '16',
         size: 16,
         viewBox: [0, 0, 16, 16] as [number, number, number, number],
+        layers: {
+          'layer-1': {
+            id: 'layer-1',
+            path: { d: 'M 0 0 C 5 0 10 5 10 10 Z' },
+            style: { fill: { mode: 'fixed' as const, value: '#000000' } },
+          },
+        },
         defaultState: 'default',
         states: {
           default: {
@@ -80,9 +96,13 @@ function createAnimatedIcon(): Icon {
     transitions: {
       't1': {
         id: 't1',
+        fromIconId: 'test-icon',
+        toIconId: 'test-icon',
+        fromVariantId: '16',
+        toVariantId: '16',
         from: 'default',
         to: 'active',
-        strategy: 'track' as const,
+        strategy: 'lineAnimation' as const,
         durationMs: 500,
         easing: 'ease-in-out',
         layerBindings: [
@@ -238,6 +258,10 @@ describe('Morph keyframes (M4)', () => {
       transitions: {
         't1': {
           id: 't1',
+          fromIconId: 'test-icon',
+          toIconId: 'test-icon',
+          fromVariantId: '16',
+          toVariantId: '16',
           from: 'default',
           to: 'default',
           strategy: 'strictMorph' as const,
@@ -269,9 +293,13 @@ describe('Trim path (M5)', () => {
       transitions: {
         't1': {
           id: 't1',
+          fromIconId: 'test-icon',
+          toIconId: 'test-icon',
+          fromVariantId: '16',
+          toVariantId: '16',
           from: 'default',
           to: 'default',
-          strategy: 'track' as const,
+          strategy: 'lineAnimation' as const,
           durationMs: 500,
           layerBindings: [
             {
@@ -405,9 +433,13 @@ describe('collectLottieDowngrades (M10)', () => {
       transitions: {
         't1': {
           id: 't1',
+          fromIconId: 'test-icon',
+          toIconId: 'test-icon',
+          fromVariantId: '16',
+          toVariantId: '16',
           from: 'default',
           to: 'default',
-          strategy: 'track' as const,
+          strategy: 'lineAnimation' as const,
           durationMs: 500,
           easing: { type: 'spring' as const, stiffness: 100, damping: 10 },
           layerBindings: [],
@@ -439,6 +471,13 @@ describe('collectLottieDowngrades (M10)', () => {
           id: '16',
           size: 16,
           viewBox: [0, 0, 16, 16] as [number, number, number, number],
+          layers: {
+            'l1': {
+              id: 'l1',
+              path: { d: 'M 0 0 C 5 0 10 5 10 10 Z' },
+              style: { fill: { mode: 'fixed' as const, value: '#000' } },
+            },
+          },
           defaultState: 'default',
           states: {
             default: {
@@ -467,6 +506,10 @@ describe('collectLottieDowngrades (M10)', () => {
       transitions: {
         't1': {
           id: 't1',
+          fromIconId: 'test-icon',
+          toIconId: 'test-icon',
+          fromVariantId: '16',
+          toVariantId: '16',
           from: 'default',
           to: 'active',
           strategy: 'bestGuessMorph' as const,

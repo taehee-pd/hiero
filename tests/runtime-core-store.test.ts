@@ -11,8 +11,15 @@ const SPRING_PAYLOAD: RuntimeVariantPayload = {
     id: 'v24',
     size: 24,
     viewBox: [0, 0, 24, 24],
-    defaultState: 'default',
   },
+  layers: [
+    {
+      id: 'line',
+      d: 'M0 0L10 10',
+      fill: { kind: 'none' },
+      stroke: { kind: 'solid', color: '#000000' },
+    },
+  ],
   states: {
     default: {
       layers: [
@@ -41,14 +48,24 @@ const SPRING_PAYLOAD: RuntimeVariantPayload = {
       to: 'active',
       strategy: 'track',
       durationMs: 400,
-      easing: { type: 'spring', stiffness: 170, damping: 12, mass: 1 },
+      easing: { type: 'spring', stiffness: 130, damping: 10 },
       layerBindings: [
         {
           fromLayerId: 'line',
           toLayerId: 'line',
-          tracks: [{ property: 'translateX', keyframes: [0, 10] }],
+          tracks: [
+            { property: 'translateX', keyframes: [0, 10] },
+          ],
         },
       ],
+    },
+    reset: {
+      from: 'active',
+      to: 'default',
+      strategy: 'replace',
+      durationMs: 180,
+      easing: 'ease-out',
+      layerBindings: [],
     },
   },
 };

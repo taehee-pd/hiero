@@ -1,4 +1,4 @@
-import type { Project, Icon, Transition, TopologyContract, Workspace } from './types';
+import type { Project, Icon, RuntimeTransitionIntent, TopologyContract, Workspace } from './types';
 
 function isObject(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -35,19 +35,19 @@ export function isIcon(val: unknown): val is Icon {
   if (typeof val.id !== 'string') return false;
   if (typeof val.name !== 'string') return false;
   if (!isObject(val.variants)) return false;
-  if (!isObject(val.transitions)) return false;
   return true;
 }
 
-export function isTransition(val: unknown): val is Transition {
+export function isTransition(val: unknown): val is RuntimeTransitionIntent {
   if (!isObject(val)) return false;
   if (typeof val.id !== 'string') return false;
-  if (typeof val.from !== 'string') return false;
-  if (typeof val.to !== 'string') return false;
-  const validStrategies = ['track', 'strictMorph', 'bestGuessMorph', 'replace'];
+  if (typeof val.fromIconId !== 'string') return false;
+  if (typeof val.toIconId !== 'string') return false;
+  if (typeof val.fromVariantId !== 'string') return false;
+  if (typeof val.toVariantId !== 'string') return false;
+  const validStrategies = ['strictMorph', 'bestGuessMorph', 'lineAnimation', 'replace'];
   if (!validStrategies.includes(val.strategy as string)) return false;
   if (typeof val.durationMs !== 'number') return false;
-  if (!Array.isArray(val.layerBindings)) return false;
   return true;
 }
 

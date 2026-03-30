@@ -27,6 +27,26 @@ const ALIGN_SHORTCUT_PROJECT: Project = {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
+          layers: {
+            a: {
+              id: 'a',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 0, y: 0 },
+            },
+            b: {
+              id: 'b',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 20, y: 10 },
+            },
+            c: {
+              id: 'c',
+              path: { d: 'M0 0 H10 V10 H0 Z' },
+              style: {},
+              transform: { x: 50, y: 20 },
+            },
+          },
           defaultState: 'default',
           states: {
             default: {
@@ -81,7 +101,7 @@ function bootstrapAlignShortcutSelection() {
 }
 
 function getArrangeLayerTransform(layerId: 'a' | 'b' | 'c') {
-  return editorStore.getState().project!.icons.arrange.variants.v24.states.default.layers[layerId]
+  return editorStore.getState().project!.icons.arrange.variants.v24.states!.default.layers[layerId]
     .transform!;
 }
 
@@ -91,7 +111,7 @@ function getCurrentLayer(
   stateId: string,
   layerId: string,
 ) {
-  return editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId].layers[layerId];
+  return editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId].layers[layerId];
 }
 
 describe('keyboard shortcuts', () => {
@@ -128,7 +148,7 @@ describe('keyboard shortcuts', () => {
     const variantId = state.currentVariantId!;
     const stateId = state.currentStateId!;
 
-    state.setLayerVisibility(iconId, stateId, 'roof', false);
+    state.setLayerVisibility(iconId, 'roof', false);
     undo();
     expect(canRedo()).toBeTrue();
 

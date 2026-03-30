@@ -38,7 +38,7 @@ export function generateSyncSourceManifest(
       ...(source.tags && source.tags.length > 0 ? { tags: source.tags } : {}),
       variantCount: Object.keys(source.variants).length,
       sizes: uniqueSizes,
-      hasTransitions: Object.keys(source.transitions).length > 0,
+      hasTransitions: Boolean(source.transitions && Object.keys(source.transitions).length > 0),
       hasEffects: Boolean(source.effects && Object.keys(source.effects).length > 0),
       sourcePath: entry.sourcePath,
       previewPath: entry.previewPath,

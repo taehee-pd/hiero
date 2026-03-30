@@ -35,9 +35,9 @@ describe('runtime-json export', () => {
   test('preserves gradients, token resolution, transforms, and clip paths in runtime layers', () => {
     const project = structuredClone(SAMPLE_PROJECT);
     const icon = project.icons['icon-home']!;
-    const state = icon.variants.v24.states.default;
+    const variant = icon.variants.v24;
 
-    state.layers.roof.style.fill = {
+    variant.layers.roof.style.fill = {
       mode: 'linearGradient',
       angle: 90,
       stops: [
@@ -45,20 +45,19 @@ describe('runtime-json export', () => {
         { offset: 1, color: '#eeeeee', opacity: 0.4 },
       ],
     };
-    state.layers.roof.style.stroke = { mode: 'token', token: 'accent' };
-    state.layers.roof.transform = { x: 3, y: 4, rotate: 15, scaleX: 2, scaleY: 1.5 };
-    state.layers.mask = {
+    variant.layers.roof.style.stroke = { mode: 'token', token: 'accent' };
+    variant.layers.roof.transform = { x: 3, y: 4, rotate: 15, scaleX: 2, scaleY: 1.5 };
+    variant.layers.mask = {
       id: 'mask',
       isClipMask: true,
       path: { d: 'M2 2 H22 V22 H2 Z', fillRule: 'evenodd' },
       style: {},
       transform: { x: 1, y: 2 },
     };
-    state.layers.roof.clipPathLayerId = 'mask';
+    variant.layers.roof.clipPathLayerId = 'mask';
 
     const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
-    const runtimeState = exported.variant.states.default!;
-    const roofLayer = runtimeState.layers.find((layer) => layer.id === 'roof');
+    const roofLayer = exported.variant.layers.find((layer) => layer.id === 'roof');
 
     expect(roofLayer).toMatchObject({
       id: 'roof',
@@ -81,23 +80,27 @@ describe('runtime-json export', () => {
         { offset: 1, color: '#eeeeee', opacity: 0.4 },
       ],
     });
-    expect(runtimeState.layers.some((layer) => layer.id === 'mask')).toBeFalse();
+    expect(exported.variant.layers.some((layer) => layer.id === 'mask')).toBeFalse();
   });
 
   test('exports draw metadata, continuity metadata, and filters invalid transitions', () => {
     const project = structuredClone(SAMPLE_PROJECT);
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
-    const defaultState = variant.states.default;
 
-    variant.states.active = {
-      ...structuredClone(defaultState),
-      id: 'active',
-      layers: {
-        ...structuredClone(defaultState.layers),
-        roof: {
-          ...structuredClone(defaultState.layers.roof),
-          path: { d: 'M7 5l7 7-7 7' },
+    variant.states = {
+      default: {
+        id: 'default',
+        layers: structuredClone(variant.layers),
+      },
+      active: {
+        id: 'active',
+        layers: {
+          ...structuredClone(variant.layers),
+          roof: {
+            ...structuredClone(variant.layers.roof),
+            path: { d: 'M7 5l7 7-7 7' },
+          },
         },
       },
     };
@@ -113,9 +116,13 @@ describe('runtime-json export', () => {
     icon.transitions = {
       validTrack: {
         id: 'validTrack',
+        fromIconId: icon.id,
+        toIconId: icon.id,
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
-        strategy: 'track',
+        strategy: 'lineAnimation',
         durationMs: 220,
         easing: 'ease-in-out',
         layerBindings: [
@@ -131,6 +138,10 @@ describe('runtime-json export', () => {
       },
       missingState: {
         id: 'missingState',
+        fromIconId: icon.id,
+        toIconId: icon.id,
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'missing',
         strategy: 'replace',
@@ -140,6 +151,10 @@ describe('runtime-json export', () => {
       },
       strictMorphMissingTopology: {
         id: 'strictMorphMissingTopology',
+        fromIconId: icon.id,
+        toIconId: icon.id,
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
         strategy: 'strictMorph',
@@ -186,9 +201,9 @@ describe('runtime-json export', () => {
     expect(exported.variant.variableDraw).toEqual({
       participatingLayerIds: ['house', 'roof'],
     });
-    expect(Object.keys(exported.variant.transitions)).toEqual(['validTrack']);
-    expect(exported.variant.transitions.validTrack).toMatchObject({
-      strategy: 'track',
+    expect(Object.keys((exported.variant as any).transitions)).toEqual(['validTrack']);
+    expect((exported.variant as any).transitions.validTrack).toMatchObject({
+      strategy: 'lineAnimation',
       easing: 'ease-in-out',
       magicReplace: {
         preserveLayerIds: ['house'],
@@ -255,20 +270,24 @@ describe('runtime-json export', () => {
     const project = structuredClone(SAMPLE_PROJECT);
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
-    const defaultState = variant.states.default;
 
-    variant.states.active = {
-      ...structuredClone(defaultState),
-      id: 'active',
-      layers: {
-        ...structuredClone(defaultState.layers),
-        roof: {
-          ...structuredClone(defaultState.layers.roof),
-          transform: { x: 2 },
-        },
-        house: {
-          ...structuredClone(defaultState.layers.house),
-          transform: { y: -2 },
+    variant.states = {
+      default: {
+        id: 'default',
+        layers: structuredClone(variant.layers),
+      },
+      active: {
+        id: 'active',
+        layers: {
+          ...structuredClone(variant.layers),
+          roof: {
+            ...structuredClone(variant.layers.roof),
+            transform: { x: 2 },
+          },
+          house: {
+            ...structuredClone(variant.layers.house),
+            transform: { y: -2 },
+          },
         },
       },
     };
@@ -276,9 +295,13 @@ describe('runtime-json export', () => {
     icon.transitions = {
       staggered: {
         id: 'staggered',
+        fromIconId: icon.id,
+        toIconId: icon.id,
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
-        strategy: 'track',
+        strategy: 'lineAnimation',
         durationMs: 240,
         easing: 'linear',
         stagger: { mode: 'linear', perLayerMs: 40 },
@@ -298,7 +321,7 @@ describe('runtime-json export', () => {
     };
 
     const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
-    const runtimeTransition = exported.variant.transitions.staggered;
+    const runtimeTransition = (exported.variant as any).transitions.staggered;
 
     expect(runtimeTransition).toBeDefined();
     expect(runtimeTransition?.layerBindings[0]).toMatchObject({
@@ -315,20 +338,28 @@ describe('runtime-json export', () => {
     const project = structuredClone(SAMPLE_PROJECT);
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
-    const defaultState = variant.states.default;
 
-    variant.states.active = {
-      ...structuredClone(defaultState),
-      id: 'active',
-      layers: structuredClone(defaultState.layers),
+    variant.states = {
+      default: {
+        id: 'default',
+        layers: structuredClone(variant.layers),
+      },
+      active: {
+        id: 'active',
+        layers: structuredClone(variant.layers),
+      },
     };
 
     icon.transitions = {
       trimMode: {
         id: 'trimMode',
+        fromIconId: icon.id,
+        toIconId: icon.id,
+        fromVariantId: 'v24',
+        toVariantId: 'v24',
         from: 'default',
         to: 'active',
-        strategy: 'track',
+        strategy: 'lineAnimation',
         durationMs: 200,
         easing: 'linear',
         layerBindings: [
@@ -343,7 +374,7 @@ describe('runtime-json export', () => {
     };
 
     const exported = exportRuntimeIconVariant(project, icon.id, 'v24');
-    const runtimeTransition = exported.variant.transitions.trimMode;
+    const runtimeTransition = (exported.variant as any).transitions.trimMode;
 
     expect(runtimeTransition?.layerBindings[0]).toMatchObject({
       fromLayerId: 'roof',

@@ -4,6 +4,7 @@ import {
   selectCurrentVariant,
   selectCurrentState,
 } from '@/lib/editor-store/selectors';
+import type { LayerSnapshot } from '@/lib/schema/types';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
 import {
   commitHistory,
@@ -98,13 +99,14 @@ const BBOX_HIT_PADDING_PX = 12;
 const POINT_HIT_RADIUS_PX = 22;
 const MARQUEE_DRAG_THRESHOLD_PX = 4;
 
-function getActiveVariantState(
+function getActiveVariantSnapshot(
   state: ReturnType<typeof editorStore.getState>,
   iconId: string | null | undefined,
-  stateId: string | null | undefined,
-) {
-  if (!iconId || !state.currentVariantId || !stateId) return null;
-  return state.project?.icons[iconId]?.variants[state.currentVariantId]?.states[stateId] ?? null;
+): LayerSnapshot | null {
+  if (!iconId || !state.currentVariantId) return null;
+  const variant = state.project?.icons[iconId]?.variants[state.currentVariantId];
+  if (!variant) return null;
+  return { layers: variant.layers, topology: variant.topology };
 }
 
 /**
@@ -328,10 +330,9 @@ export class PathEditor {
     if (!selectedLayerId) return null;
 
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return null;
+    if (!iconId) return null;
 
-    const selectedPath = getActiveVariantState(state, iconId, stateId)?.layers[selectedLayerId]?.path?.d;
+    const selectedPath = getActiveVariantSnapshot(state, iconId)?.layers[selectedLayerId]?.path?.d;
     if (!selectedPath || !isPathDirectlyEditable(selectedPath)) return null;
 
     return selectedLayerId;
@@ -340,15 +341,14 @@ export class PathEditor {
   private createNewPenLayerAt(clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId || !state.project || !state.currentVariantId) return null;
+    if (!iconId || !state.project || !state.currentVariantId) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
     const snappedPoint = this.computeSnappedPoint(svgPoint);
 
     const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantState(state, iconId, stateId);
+    const currentState = getActiveVariantSnapshot(state, iconId);
     if (!icon || !currentState) return null;
 
     const ids = Object.keys(currentState.layers);
@@ -362,9 +362,10 @@ export class PathEditor {
     editorStore.setState((s) => {
       if (!s.project || !s.currentVariantId) return s;
       const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantState(s, iconId, stateId);
+      const currentIconState = getActiveVariantSnapshot(s, iconId);
       if (!currentIcon || !currentIconState) return s;
 
+      const currentVariant = currentIcon.variants[s.currentVariantId];
       return {
         project: {
           ...s.project,
@@ -375,26 +376,20 @@ export class PathEditor {
               variants: {
                 ...currentIcon.variants,
                 [s.currentVariantId]: {
-                  ...currentIcon.variants[s.currentVariantId],
-                  states: {
-                    ...currentIcon.variants[s.currentVariantId].states,
-                    [stateId]: {
-                      ...currentIconState,
-                      layers: {
-                        ...currentIconState.layers,
-                        [nextLayerId]: {
-                          id: nextLayerId,
-                          role: 'primary',
-                          visible: true,
-                          path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
-                          style: {
-                            fill: { mode: 'fixed', value: 'none' },
-                            stroke: { mode: 'currentColor' },
-                            strokeWidth: 2,
-                            lineCap: 'round',
-                            lineJoin: 'round',
-                          },
-                        },
+                  ...currentVariant,
+                  layers: {
+                    ...currentVariant.layers,
+                    [nextLayerId]: {
+                      id: nextLayerId,
+                      role: 'primary',
+                      visible: true,
+                      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
+                      style: {
+                        fill: { mode: 'fixed', value: 'none' },
+                        stroke: { mode: 'currentColor' },
+                        strokeWidth: 2,
+                        lineCap: 'round',
+                        lineJoin: 'round',
                       },
                     },
                   },
@@ -418,10 +413,9 @@ export class PathEditor {
   ): PenPlacement | 'closed' | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return null;
+    if (!iconId) return null;
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[layerId];
     if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
@@ -441,7 +435,7 @@ export class PathEditor {
       if (dx * dx + dy * dy <= PEN_CLOSE_DIST_SQ) {
         subPath.closed = true;
         this.clearPendingPenHandle();
-        state.patchLayer(iconId, stateId, layerId, {
+        state.patchLayer(iconId,layerId, {
           path: { ...layer.path, d: serializePath(editable) },
         });
         return 'closed';
@@ -459,7 +453,7 @@ export class PathEditor {
     });
 
     const basePathD = serializePath(editable);
-    state.patchLayer(iconId, stateId, layerId, {
+    state.patchLayer(iconId,layerId, {
       path: { ...layer.path, d: basePathD },
     });
 
@@ -611,11 +605,10 @@ export class PathEditor {
   private beginLayerBoundsResize(e: PointerEvent, handle: BBoxHandle): boolean {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
     const layerId = state.selection.layerIds[0] ?? null;
-    if (!iconId || !stateId || !layerId) return false;
+    if (!iconId || !layerId) return false;
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[layerId];
     const pathD = layer?.path?.d;
     if (!pathD) return false;
 
@@ -669,7 +662,7 @@ export class PathEditor {
     };
 
     if (layerTransformX !== 0 || layerTransformY !== 0) {
-      state.patchLayer(iconId, stateId, layerId, {
+      state.patchLayer(iconId,layerId, {
         path: { ...(layer?.path ?? { d: '' }), d: normalizedBasePathD },
         transform: {
           ...(layer?.transform ?? {}),
@@ -796,8 +789,7 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) {
+    if (!iconId) {
       discardHistory();
       state.setPointTransformLabel(null);
       this.resetDrag();
@@ -806,8 +798,8 @@ export class PathEditor {
 
     const { scaleX, scaleY, tx, ty } = this.computeLayerResizeTransform(p, dx, dy);
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId];
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[this.dragLayerId];
+    state.patchLayer(iconId,this.dragLayerId, {
       transform: {
         ...(layer?.transform ?? {}),
         x: tx,
@@ -872,9 +864,8 @@ export class PathEditor {
   private beginSelectionBoundsDrag(e: PointerEvent): boolean {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
     const layerId = state.selection.layerIds[0] ?? null;
-    if (!iconId || !stateId || !layerId) return false;
+    if (!iconId || !layerId) return false;
 
     const bbox = getSelectedPointsBoundingBox();
     if (!bbox) return false;
@@ -884,7 +875,7 @@ export class PathEditor {
     const hit = this.hitTestSelectionBounds(svgPoint, bbox);
     if (!hit) return false;
 
-    const pathD = getActiveVariantState(state, iconId, stateId)?.layers[layerId]?.path?.d;
+    const pathD = getActiveVariantSnapshot(state, iconId)?.layers[layerId]?.path?.d;
     if (!pathD || !isPathDirectlyEditable(pathD)) return false;
 
     this.dragMode = hit.type === 'move' ? 'selection-move' : 'selection-resize';
@@ -955,13 +946,12 @@ export class PathEditor {
   private resolveMarqueeLayerId(clickLayerId: string | null): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return null;
+    if (!iconId) return null;
 
     const candidates = [clickLayerId, state.selection.layerIds[0] ?? null];
     for (const candidate of candidates) {
       if (!candidate) continue;
-      const d = getActiveVariantState(state, iconId, stateId)?.layers[candidate]?.path?.d;
+      const d = getActiveVariantSnapshot(state, iconId)?.layers[candidate]?.path?.d;
       if (d && isPathDirectlyEditable(d)) return candidate;
     }
 
@@ -1034,13 +1024,12 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
     const preview = this.buildSelectionTransformPreview(e);
     if (!preview) return;
 
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
+    state.patchLayer(iconId,this.dragLayerId, {
       path: { d: preview.d },
     });
     state.setPointTransformLabel(preview.label);
@@ -1049,8 +1038,7 @@ export class PathEditor {
   private beginShapePlacement(e: PointerEvent): ShapePlacement | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId || !state.project) return null;
+    if (!iconId || !state.project) return null;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return null;
@@ -1079,10 +1067,9 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
-    state.patchLayer(iconId, stateId, this.shapePlacement.layerId, {
+    state.patchLayer(iconId,this.shapePlacement.layerId, {
       path: { d: preview.d },
     });
   }
@@ -1403,10 +1390,9 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[this.penPlacement.layerId];
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[this.penPlacement.layerId];
     if (!layer?.path) return;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
@@ -1433,7 +1419,7 @@ export class PathEditor {
       prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
     }
 
-    state.patchLayer(iconId, stateId, this.penPlacement.layerId, {
+    state.patchLayer(iconId,this.penPlacement.layerId, {
       path: { ...layer.path, d: serializePath(editable) },
     });
     this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
@@ -1453,10 +1439,9 @@ export class PathEditor {
     if (Math.abs(dx) <= 0.01 && Math.abs(dy) <= 0.01) return;
 
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId];
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[this.dragLayerId];
     if (!layer?.path?.d) return;
 
     if (isPathDirectlyEditable(layer.path.d)) {
@@ -1468,7 +1453,7 @@ export class PathEditor {
         });
       });
 
-      state.patchLayer(iconId, stateId, this.dragLayerId, {
+      state.patchLayer(iconId,this.dragLayerId, {
         path: {
           ...layer.path,
           d: serializePath(editable),
@@ -1481,7 +1466,7 @@ export class PathEditor {
       });
     } else {
       // For non-editable paths (circles, complex shapes), persist the move via transform
-      state.patchLayer(iconId, stateId, this.dragLayerId, {
+      state.patchLayer(iconId,this.dragLayerId, {
         transform: {
           ...(layer.transform ?? {}),
           x: (layer.transform?.x ?? 0) + dx,
@@ -1495,8 +1480,7 @@ export class PathEditor {
     if (!this.dragLayerId || !this.dragPointKey || !this.originalPathD) return;
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
@@ -1526,9 +1510,9 @@ export class PathEditor {
       this.translatePoint(context.subPath, context.pointIdx, dx, dy);
     }
 
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
+    state.patchLayer(iconId,this.dragLayerId, {
       path: {
-        ...(getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId]
+        ...(getActiveVariantSnapshot(state, iconId)?.layers[this.dragLayerId]
           .path ?? { d: '' }),
         d: serializePath(editable),
       },
@@ -1542,8 +1526,7 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return;
+    if (!iconId) return;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
@@ -1566,9 +1549,9 @@ export class PathEditor {
     );
     if (!controlPosition) return;
 
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
+    state.patchLayer(iconId,this.dragLayerId, {
       path: {
-        ...(getActiveVariantState(state, iconId, stateId)?.layers[this.dragLayerId].path ?? {
+        ...(getActiveVariantSnapshot(state, iconId)?.layers[this.dragLayerId].path ?? {
           d: '',
         }),
         d: serializePath(editable),
@@ -1579,10 +1562,9 @@ export class PathEditor {
   private findNearestPointKey(layerId: string, clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return null;
+    if (!iconId) return null;
 
-    const d = getActiveVariantState(state, iconId, stateId)?.layers[layerId]?.path?.d;
+    const d = getActiveVariantSnapshot(state, iconId)?.layers[layerId]?.path?.d;
     if (!d || !isPathDirectlyEditable(d)) return null;
 
     const pointer = this.clientToSvg(clientX, clientY);
@@ -1614,10 +1596,9 @@ export class PathEditor {
   ): string[] {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return [];
+    if (!iconId) return [];
 
-    const d = getActiveVariantState(state, iconId, stateId)?.layers[layerId]?.path?.d;
+    const d = getActiveVariantSnapshot(state, iconId)?.layers[layerId]?.path?.d;
     if (!d || !isPathDirectlyEditable(d)) return [];
 
     const editable = parseSvgPath(d);
@@ -1696,10 +1677,9 @@ export class PathEditor {
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) return null;
+    if (!iconId) return null;
 
-    const layer = getActiveVariantState(state, iconId, stateId)?.layers[layerId];
+    const layer = getActiveVariantSnapshot(state, iconId)?.layers[layerId];
     if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
@@ -1719,7 +1699,7 @@ export class PathEditor {
       segment: { type: 'line' },
     });
 
-    state.patchLayer(iconId, stateId, layerId, {
+    state.patchLayer(iconId,layerId, {
       path: { ...layer.path, d: serializePath(editable) },
     });
 
@@ -2098,11 +2078,10 @@ export class PathEditor {
   private createShapeLayer(start: { x: number; y: number }): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId || !state.project || !state.currentVariantId) return null;
+    if (!iconId || !state.project || !state.currentVariantId) return null;
 
     const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantState(state, iconId, stateId);
+    const currentState = getActiveVariantSnapshot(state, iconId);
     if (!icon || !currentState) return null;
 
     const ids = Object.keys(currentState.layers);
@@ -2127,9 +2106,10 @@ export class PathEditor {
     editorStore.setState((s) => {
       if (!s.project || !s.currentVariantId) return s;
       const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantState(s, iconId, stateId);
+      const currentIconState = getActiveVariantSnapshot(s, iconId);
       if (!currentIcon || !currentIconState) return s;
 
+      const currentVariant = currentIcon.variants[s.currentVariantId];
       return {
         project: {
           ...s.project,
@@ -2140,26 +2120,20 @@ export class PathEditor {
               variants: {
                 ...currentIcon.variants,
                 [s.currentVariantId]: {
-                  ...currentIcon.variants[s.currentVariantId],
-                  states: {
-                    ...currentIcon.variants[s.currentVariantId].states,
-                    [stateId]: {
-                      ...currentIconState,
-                      layers: {
-                        ...currentIconState.layers,
-                        [nextLayerId]: {
-                          id: nextLayerId,
-                          role: 'primary',
-                          visible: true,
-                          path: { d: initialPath },
-                          style: {
-                            fill: { mode: 'fixed', value: 'none' },
-                            stroke: { mode: 'currentColor' },
-                            strokeWidth: 2,
-                            lineCap: 'round',
-                            lineJoin: 'round',
-                          },
-                        },
+                  ...currentVariant,
+                  layers: {
+                    ...currentVariant.layers,
+                    [nextLayerId]: {
+                      id: nextLayerId,
+                      role: 'primary',
+                      visible: true,
+                      path: { d: initialPath },
+                      style: {
+                        fill: { mode: 'fixed', value: 'none' },
+                        stroke: { mode: 'currentColor' },
+                        strokeWidth: 2,
+                        lineCap: 'round',
+                        lineJoin: 'round',
                       },
                     },
                   },
@@ -2203,13 +2177,12 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) {
+    if (!iconId) {
       this.cancelShapePlacement();
       return;
     }
 
-    state.patchLayer(iconId, stateId, this.shapePlacement.layerId, {
+    state.patchLayer(iconId,this.shapePlacement.layerId, {
       path: { d: preview.d },
     });
 
@@ -2242,15 +2215,14 @@ export class PathEditor {
 
     const state = editorStore.getState();
     const iconId = state.currentIconId;
-    const stateId = state.currentStateId;
-    if (!iconId || !stateId) {
+    if (!iconId) {
       discardHistory();
       state.setPointTransformLabel(null);
       this.resetDrag();
       return;
     }
 
-    state.patchLayer(iconId, stateId, this.dragLayerId, {
+    state.patchLayer(iconId,this.dragLayerId, {
       path: { d: preview.d },
     });
     state.setPointTransformLabel(null);

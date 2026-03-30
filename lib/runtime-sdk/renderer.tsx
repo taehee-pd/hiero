@@ -170,15 +170,16 @@ export const RuntimeIconRenderer = forwardRef<SVGSVGElement, RuntimeIconRenderer
       state,
       fallback.stateFallback,
     );
-    const compiledState = variant.states[resolvedStateId]!;
-    const resolvedMode = resolveRequestedRenderingMode(
-      compiledState,
-      renderingMode,
-      fallback.modeFallback,
-    );
-
+    // Compiled variants are now flat — layers live directly on the variant.
+    // However, if states are present (e.g. from tests or extended payloads),
+    // resolve the state's layers.
+    const resolvedMode: CompiledRenderingMode = renderingMode ?? fallback.modeFallback;
     const resolvedPalette = resolvePaletteColors(resolvedMode, paletteColors);
-    const layerSet = compiledState.modes[resolvedMode]!;
+    const variantWithStates = variant as typeof variant & {
+      states?: Record<string, typeof variant.layers>;
+    };
+    const layerSet =
+      variantWithStates.states?.[resolvedStateId] ?? variant.layers;
 
     const previousStateRef = useRef(resolvedStateId);
     const transitionPlan = useMemo(

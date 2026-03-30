@@ -74,9 +74,13 @@ describe('C3 — Per-track easing in TimelineTrack', () => {
     };
     const transition: Transition = {
       id: 'a-to-b',
+      fromIconId: 'icon-test',
+      toIconId: 'icon-test',
+      fromVariantId: 'v24',
+      toVariantId: 'v24',
       from: 'a',
       to: 'b',
-      strategy: 'track',
+      strategy: 'lineAnimation',
       durationMs: 300,
       easing: 'linear',
       layerBindings: [
@@ -120,9 +124,13 @@ describe('C4 — Stagger controls in schema', () => {
   test('Transition accepts stagger config', () => {
     const transition: Transition = {
       id: 'test',
+      fromIconId: 'icon-test',
+      toIconId: 'icon-test',
+      fromVariantId: 'v24',
+      toVariantId: 'v24',
       from: 'idle',
       to: 'active',
-      strategy: 'track',
+      strategy: 'lineAnimation',
       durationMs: 300,
       layerBindings: [],
       stagger: { mode: 'linear', perLayerMs: 30 },
@@ -133,9 +141,13 @@ describe('C4 — Stagger controls in schema', () => {
   test('LayerBinding accepts explicit delayMs and durationMs', () => {
     const transition: Transition = {
       id: 'test',
+      fromIconId: 'icon-test',
+      toIconId: 'icon-test',
+      fromVariantId: 'v24',
+      toVariantId: 'v24',
       from: 'idle',
       to: 'active',
-      strategy: 'track',
+      strategy: 'lineAnimation',
       durationMs: 500,
       layerBindings: [
         {
@@ -147,8 +159,8 @@ describe('C4 — Stagger controls in schema', () => {
         },
       ],
     };
-    expect(transition.layerBindings[0]!.delayMs).toBe(100);
-    expect(transition.layerBindings[0]!.durationMs).toBe(200);
+    expect(transition.layerBindings![0]!.delayMs).toBe(100);
+    expect(transition.layerBindings![0]!.durationMs).toBe(200);
   });
 });
 
@@ -231,11 +243,15 @@ describe('C6 — StateTrigger schema', () => {
   });
 
   test('Transition accepts triggers array', () => {
-    const transition: Transition = {
+    const transition = {
       id: 'hover-transition',
+      fromIconId: 'icon-test',
+      toIconId: 'icon-test',
+      fromVariantId: 'v24',
+      toVariantId: 'v24',
       from: 'idle',
       to: 'active',
-      strategy: 'track',
+      strategy: 'lineAnimation' as const,
       durationMs: 200,
       layerBindings: [],
       triggers: [{ event: 'hover' }],
@@ -245,14 +261,18 @@ describe('C6 — StateTrigger schema', () => {
   });
 
   test('Transition without triggers defaults to undefined', () => {
-    const transition: Transition = {
+    const transition = {
       id: 'test',
+      fromIconId: 'icon-test',
+      toIconId: 'icon-test',
+      fromVariantId: 'v24',
+      toVariantId: 'v24',
       from: 'a',
       to: 'b',
-      strategy: 'track',
+      strategy: 'lineAnimation' as const,
       durationMs: 200,
       layerBindings: [],
     };
-    expect(transition.triggers).toBeUndefined();
+    expect((transition as any).triggers).toBeUndefined();
   });
 });

@@ -13,7 +13,7 @@ describe('diffCompiledIcons', () => {
   test('detects pure geometry update', () => {
     const previous = makeBase();
     const next = makeBase();
-    next.variants['24'].states.default.modes.monochrome.layers[0].path.d = 'M9 5l7 7-7 7';
+    next.variants['24'].layers.layers[0].path.d = 'M9 5l7 7-7 7';
 
     const record = diffCompiledIcons(previous, next, {
       publishedAt: '2026-03-10T00:00:00.000Z',
@@ -28,7 +28,7 @@ describe('diffCompiledIcons', () => {
   test('detects pure style update', () => {
     const previous = makeBase();
     const next = makeBase();
-    next.variants['24'].states.default.modes.monochrome.layers[0].style.strokeWidth = 2;
+    next.variants['24'].layers.layers[0].style.strokeWidth = 2;
 
     const record = diffCompiledIcons(previous, next, {
       publishedAt: '2026-03-10T00:00:00.000Z',
@@ -39,20 +39,16 @@ describe('diffCompiledIcons', () => {
     expect(record.bump).toBe('patch');
   });
 
-  test('detects additive state/variant/mode/effect changes', () => {
+  test('detects additive variant/effect changes', () => {
     const previous = makeBase();
     previous.transitions = [];
     previous.effects = [];
-    delete (previous.variants['24'].states.default.modes as any).palette;
 
     const next = makeBase();
-    next.variants['24'].states.active = structuredClone(next.variants['24'].states.default);
     next.variants['32'] = {
       size: 32,
       viewBox: [0, 0, 32, 32],
-      states: {
-        default: structuredClone(next.variants['24'].states.default),
-      },
+      layers: structuredClone(next.variants['24'].layers),
     };
     next.effects = [
       {
@@ -66,35 +62,27 @@ describe('diffCompiledIcons', () => {
       publishedAt: '2026-03-10T00:00:00.000Z',
     });
 
-    expect(record.changes.some((change) => change.kind === 'state-added')).toBeTrue();
     expect(record.changes.some((change) => change.kind === 'variant-added')).toBeTrue();
-    expect(record.changes.some((change) => change.kind === 'mode-added')).toBeTrue();
     expect(record.changes.some((change) => change.kind === 'effect-added')).toBeTrue();
     expect(record.changes.some((change) => change.kind === 'animation-added')).toBeTrue();
     expect(record.bump).toBe('minor');
   });
 
-  test('detects removed state/variant/mode as breaking', () => {
+  test('detects removed variant as breaking', () => {
     const previous = makeBase();
-    previous.variants['24'].states.active = structuredClone(previous.variants['24'].states.default);
     previous.variants['32'] = {
       size: 32,
       viewBox: [0, 0, 32, 32],
-      states: {
-        default: structuredClone(previous.variants['24'].states.default),
-      },
+      layers: structuredClone(previous.variants['24'].layers),
     };
 
     const next = makeBase();
-    delete (next.variants['24'].states.default.modes as any).palette;
 
     const record = diffCompiledIcons(previous, next, {
       publishedAt: '2026-03-10T00:00:00.000Z',
     });
 
-    expect(record.changes.some((change) => change.kind === 'state-removed')).toBeTrue();
     expect(record.changes.some((change) => change.kind === 'variant-removed')).toBeTrue();
-    expect(record.changes.some((change) => change.kind === 'mode-removed')).toBeTrue();
     expect(record.isBreaking).toBeTrue();
     expect(record.bump).toBe('major');
   });
@@ -163,9 +151,11 @@ describe('diffCompiledIcons', () => {
     });
 
     const majorPrev = structuredClone(base);
-    majorPrev.variants['24'].states.active = structuredClone(
-      majorPrev.variants['24'].states.default,
-    );
+    majorPrev.variants['32'] = {
+      size: 32,
+      viewBox: [0, 0, 32, 32],
+      layers: structuredClone(majorPrev.variants['24'].layers),
+    };
     const majorRecord = diffCompiledIcons(majorPrev, structuredClone(base), {
       publishedAt: '2026-03-10T00:00:00.000Z',
     });

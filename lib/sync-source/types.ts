@@ -12,7 +12,6 @@ import type {
   RenderingMode,
   SymbolWeight,
   SymbolScale,
-  Transition,
   TopologyContract,
 } from '@/lib/schema/types';
 
@@ -56,12 +55,6 @@ export type SourceLayer = {
   };
 };
 
-export type SourceState = {
-  id: string;
-  layers: Record<string, SourceLayer>;
-  topology?: TopologyContract;
-};
-
 export type SourceVariant = {
   id: string;
   name?: string;
@@ -70,12 +63,13 @@ export type SourceVariant = {
   renderingMode?: RenderingMode;
   weight?: SymbolWeight;
   scale?: SymbolScale;
-  defaultState: string;
-  states: Record<string, SourceState>;
+  layers: Record<string, SourceLayer>;
+  topology?: TopologyContract;
 };
 
-export type SourceTransition = Transition;
 export type SourceEffect = Effect;
+
+export type SourceTransition = import('@/lib/schema/types').Transition;
 
 export type IconSourceFile = {
   schemaVersion: string;
@@ -84,7 +78,7 @@ export type IconSourceFile = {
   category?: string;
   tags?: string[];
   variants: Record<string, SourceVariant>;
-  transitions: Record<string, SourceTransition>;
+  transitions?: Record<string, SourceTransition>;
   effects?: Record<string, SourceEffect>;
 };
 

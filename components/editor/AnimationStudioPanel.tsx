@@ -8,7 +8,8 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
-import type { Effect, Transition } from '@/lib/schema/types';
+import type { Effect } from '@/lib/schema/types';
+import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { TimelineEditor } from './TimelineEditor';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorPickerPopover } from './ColorPickerPopover';
@@ -39,7 +40,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null));
   const variant = useEditorStore((s) => (s.currentIconId && s.currentVariantId ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null : null));
   const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
-  const { patchTransition, setSelectedTransitionId } = useEditorActions();
+  const { setSelectedTransitionId } = useEditorActions();
   const currentEffect = useRef<Effect | null>(null);
   const playerRef = useRef<EffectPlayer | null>(null);
   const canvasRafCleanupRef = useRef<(() => void) | null>(null);
@@ -48,11 +49,10 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   const [loop, setLoop] = useState(false);
   const [previewLabel, setPreviewLabel] = useState<string | null>(null);
 
-  const transitions = useMemo(() => Object.values(icon?.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id)), [icon?.transitions]);
-  const selectedTransition = useMemo<Transition | null>(() => {
-    if (selectedTransitionId && icon?.transitions[selectedTransitionId]) return icon.transitions[selectedTransitionId];
-    return transitions[0] ?? null;
-  }, [icon?.transitions, selectedTransitionId, transitions]);
+  // Transitions are now runtime-resolved; no authored transitions on Icon.
+  const transitions: TransitionConfig[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const selectedTransition = null as TransitionConfig | null;
 
   const savedEffects = useMemo(() => {
     if (!icon?.effects) return [];
@@ -178,9 +178,8 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
             </p>
             <div className="flex items-center gap-2">
               {selectedTransition ? (
-                <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={(value) => {
-                  if (!iconId || !selectedTransition) return;
-                  patchTransition(iconId, selectedTransition.id, { easing: value });
+                <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={() => {
+                  // Transitions are runtime-resolved; easing is not directly editable
                 }} />
               ) : null}
               <Button size="sm" variant="outline" onClick={onOpenTransitionEditor}>
@@ -196,7 +195,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
               </SelectTrigger>
               <SelectContent>
                 {transitions.map((transition) => (
-                  <SelectItem key={transition.id} value={transition.id}>{transition.id}: {transition.from} → {transition.to}</SelectItem>
+                  <SelectItem key={transition.id ?? 'unknown'} value={transition.id ?? 'unknown'}>{transition.id ?? 'transition'}: {transition.strategy}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

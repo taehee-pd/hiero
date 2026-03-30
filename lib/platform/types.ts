@@ -139,56 +139,6 @@ export function checkPlatformCapabilities(
   const diagnostics: PlatformDiagnostic[] = [];
   const { capabilities, platform } = profile;
 
-  // Check transitions for morph and track-transition usage
-  if (payload.transitions) {
-    for (const [transitionId, transition] of Object.entries(payload.transitions)) {
-      if (
-        (transition.strategy === 'morph' || transition.strategy === 'replace') &&
-        transition.layerBindings?.some((b) => b.morph)
-      ) {
-        if (!capabilities.has('morph')) {
-          diagnostics.push({
-            level: 'warning',
-            code: 'unsupported-morph',
-            platform,
-            iconId,
-            variantId,
-            feature: 'morph',
-            message: `Transition "${transitionId}" uses morph which is not supported on ${platform}. Falling back to crossfade.`,
-            downgradeAction: 'snap',
-          });
-        }
-      }
-
-      if (transition.strategy === 'track' && !capabilities.has('track-transitions')) {
-        diagnostics.push({
-          level: 'warning',
-          code: 'unsupported-track-transition',
-          platform,
-          iconId,
-          variantId,
-          feature: 'track-transitions',
-          message: `Transition "${transitionId}" uses track strategy which is not supported on ${platform}.`,
-          downgradeAction: 'snap',
-        });
-      }
-
-      // Check easing for spring config
-      if (typeof transition.easing === 'object' && !capabilities.has('spring-easing')) {
-        diagnostics.push({
-          level: 'info',
-          code: 'unsupported-spring-easing',
-          platform,
-          iconId,
-          variantId,
-          feature: 'spring-easing',
-          message: `Transition "${transitionId}" uses spring easing which is not supported on ${platform}. Using linear fallback.`,
-          downgradeAction: 'snap',
-        });
-      }
-    }
-  }
-
   // Check effects
   if (payload.effects && !capabilities.has('effects')) {
     for (const effectId of Object.keys(payload.effects)) {
@@ -233,24 +183,50 @@ export function checkPlatformCapabilities(
     });
   }
 
-  // Check states for gradient fills and clip paths
-  if (payload.states) {
-    for (const [stateId, state] of Object.entries(payload.states)) {
-      for (const layer of state.layers) {
-        if (layer.clipPath && !capabilities.has('clip-paths')) {
-          diagnostics.push({
-            level: 'warning',
-            code: 'unsupported-clip-path',
-            platform,
-            iconId,
-            variantId: `${variantId}/${stateId}`,
-            feature: 'clip-paths',
-            message: `Layer "${layer.id}" uses a clip path which is not supported on ${platform}.`,
-            downgradeAction: 'omit',
-          });
-          break; // One diagnostic per state is enough
-        }
+  // Check transitions for morph bindings
+  const payloadRecord = payload as unknown as Record<string, unknown>;
+  if (payloadRecord.transitions && !capabilities.has('morph')) {
+    const transitions = payloadRecord.transitions as Record<string, Record<string, unknown>>;
+    for (const [transitionId, transition] of Object.entries(transitions)) {
+      const bindings = transition?.layerBindings;
+      if (Array.isArray(bindings) && (bindings as Array<Record<string, unknown>>).some((b) => b?.morph)) {
+        diagnostics.push({
+          level: 'warning',
+          code: 'unsupported-morph',
+          platform,
+          iconId,
+          variantId,
+          feature: 'morph',
+          message: `Transition "${transitionId}" uses morph which is not supported on ${platform}.`,
+          downgradeAction: 'omit',
+        });
+        break;
       }
+    }
+  }
+
+  // Check layers for clip paths (both top-level and in states)
+  const allLayers: Array<Record<string, unknown>> = [...(payload.layers as Array<Record<string, unknown>>)];
+  if (payload.states) {
+    for (const state of Object.values(payload.states)) {
+      if (Array.isArray((state as Record<string, unknown>).layers)) {
+        allLayers.push(...((state as Record<string, unknown>).layers as Array<Record<string, unknown>>));
+      }
+    }
+  }
+  for (const layer of allLayers) {
+    if (layer.clipPath && !capabilities.has('clip-paths')) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'unsupported-clip-path',
+        platform,
+        iconId,
+        variantId,
+        feature: 'clip-paths',
+        message: `Layer "${layer.id}" uses a clip path which is not supported on ${platform}.`,
+        downgradeAction: 'omit',
+      });
+      break;
     }
   }
 

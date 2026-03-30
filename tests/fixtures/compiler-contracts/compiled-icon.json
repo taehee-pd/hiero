@@ -14,103 +14,33 @@
     "24": {
       "size": 24,
       "viewBox": [0, 0, 24, 24],
-      "states": {
-        "default": {
-          "modes": {
-            "monochrome": {
-              "layers": [
-                {
-                  "id": "chevron",
-                  "role": "primary",
-                  "path": {
-                    "d": "M8 5l8 7-8 7",
-                    "fillRule": "nonzero"
-                  },
-                  "style": {
-                    "fill": "currentColor",
-                    "fillOpacity": 1,
-                    "stroke": "none",
-                    "strokeOpacity": 1,
-                    "strokeWidth": 0,
-                    "lineCap": "round",
-                    "lineJoin": "round"
-                  },
-                  "transform": {
-                    "x": 0,
-                    "y": 0,
-                    "rotate": 0,
-                    "scaleX": 1,
-                    "scaleY": 1
-                  }
-                }
-              ]
+      "layers": {
+        "layers": [
+          {
+            "id": "chevron",
+            "role": "primary",
+            "path": {
+              "d": "M8 5l8 7-8 7",
+              "fillRule": "nonzero"
             },
-            "hierarchical": {
-              "layers": [
-                {
-                  "id": "chevron",
-                  "role": "primary",
-                  "path": { "d": "M8 5l8 7-8 7" },
-                  "style": {
-                    "fill": "#111111",
-                    "fillOpacity": 1,
-                    "stroke": "none",
-                    "strokeOpacity": 1,
-                    "strokeWidth": 0
-                  }
-                }
-              ]
+            "style": {
+              "fill": "currentColor",
+              "fillOpacity": 1,
+              "stroke": "none",
+              "strokeOpacity": 1,
+              "strokeWidth": 0,
+              "lineCap": "round",
+              "lineJoin": "round"
             },
-            "palette": {
-              "layers": [
-                {
-                  "id": "chevron",
-                  "role": "primary",
-                  "path": { "d": "M8 5l8 7-8 7" },
-                  "style": {
-                    "fill": "#0f172a",
-                    "fillOpacity": 1,
-                    "stroke": "none",
-                    "strokeOpacity": 1,
-                    "strokeWidth": 0
-                  }
-                }
-              ]
-            },
-            "multicolor": {
-              "layers": [
-                {
-                  "id": "chevron",
-                  "role": "primary",
-                  "path": { "d": "M8 5l8 7-8 7" },
-                  "style": {
-                    "fill": "#2563eb",
-                    "fillOpacity": 1,
-                    "stroke": "none",
-                    "strokeOpacity": 1,
-                    "strokeWidth": 0
-                  }
-                }
-              ]
-            },
-            "autoGradient": {
-              "layers": [
-                {
-                  "id": "chevron",
-                  "role": "primary",
-                  "path": { "d": "M8 5l8 7-8 7" },
-                  "style": {
-                    "fill": "#2563eb",
-                    "fillOpacity": 1,
-                    "stroke": "none",
-                    "strokeOpacity": 1,
-                    "strokeWidth": 0
-                  }
-                }
-              ]
+            "transform": {
+              "x": 0,
+              "y": 0,
+              "rotate": 0,
+              "scaleX": 1,
+              "scaleY": 1
             }
           }
-        }
+        ]
       }
     }
   },

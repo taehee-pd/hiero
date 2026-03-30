@@ -38,36 +38,16 @@ export function SyncPrPanel({
   const iconSet = useEditorStore((s) =>
     resolvedIconSetId ? s.workspace?.iconSets[resolvedIconSetId] ?? null : null,
   );
-  const { updateIconSetSync } = useEditorActions();
   const { state, connect, previewChanges, createPullRequest, retry, dismiss } = useSyncPr();
 
   const [open, setOpen] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
 
-  // Hydrate settings from icon set on mount / change
-  useEffect(() => {
-    if (iconSet?.sync) {
-      connect({
-        owner: iconSet.sync.owner,
-        repo: iconSet.sync.repo,
-        baseBranch: iconSet.sync.baseBranch,
-        packagePath: iconSet.sync.packagePath,
-      });
-    }
-  }, [iconSet?.sync, connect]);
-
-  // Local form state (before saving to store)
-  const [owner, setOwner] = useState(iconSet?.sync?.owner ?? '');
-  const [repo, setRepo] = useState(iconSet?.sync?.repo ?? '');
-  const [baseBranch, setBaseBranch] = useState(iconSet?.sync?.baseBranch ?? 'main');
-  const [packagePath, setPackagePath] = useState(iconSet?.sync?.packagePath ?? '');
-
-  useEffect(() => {
-    setOwner(iconSet?.sync?.owner ?? '');
-    setRepo(iconSet?.sync?.repo ?? '');
-    setBaseBranch(iconSet?.sync?.baseBranch ?? 'main');
-    setPackagePath(iconSet?.sync?.packagePath ?? '');
-  }, [iconSet?.sync]);
+  // Local form state
+  const [owner, setOwner] = useState('');
+  const [repo, setRepo] = useState('');
+  const [baseBranch, setBaseBranch] = useState('main');
+  const [packagePath, setPackagePath] = useState('');
 
   const settingsComplete = useMemo(
     () => Boolean(owner && repo && baseBranch),
@@ -75,16 +55,6 @@ export function SyncPrPanel({
   );
 
   const saveSettings = () => {
-    const settings = {
-      owner,
-      repo,
-      baseBranch,
-      packagePath,
-      exportFormat: iconSet?.sync?.exportFormat ?? ('both' as const),
-    };
-    if (resolvedIconSetId) {
-      updateIconSetSync(resolvedIconSetId, settings);
-    }
     connect({ owner, repo, baseBranch, packagePath });
   };
 

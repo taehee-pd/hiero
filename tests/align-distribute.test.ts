@@ -19,35 +19,28 @@ const PROJECT: Project = {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
-          defaultState: 'default',
-          states: {
-            default: {
-              id: 'default',
-              layers: {
-                a: {
-                  id: 'a',
-                  path: { d: 'M0 0 H4 V4 H0 Z' },
-                  style: {},
-                  transform: { x: 0, y: 0 },
-                },
-                b: {
-                  id: 'b',
-                  path: { d: 'M0 0 H8 V2 H0 Z' },
-                  style: {},
-                  transform: { x: 10, y: 12 },
-                },
-                c: {
-                  id: 'c',
-                  path: { d: 'M0 0 H6 V6 H0 Z' },
-                  style: {},
-                  transform: { x: 30, y: 30 },
-                },
-              },
+          layers: {
+            a: {
+              id: 'a',
+              path: { d: 'M0 0 H4 V4 H0 Z' },
+              style: {},
+              transform: { x: 0, y: 0 },
+            },
+            b: {
+              id: 'b',
+              path: { d: 'M0 0 H8 V2 H0 Z' },
+              style: {},
+              transform: { x: 10, y: 12 },
+            },
+            c: {
+              id: 'c',
+              path: { d: 'M0 0 H6 V6 H0 Z' },
+              style: {},
+              transform: { x: 30, y: 30 },
             },
           },
         },
       },
-      transitions: {},
     },
   },
 };
@@ -58,7 +51,7 @@ function bootstrap() {
 }
 
 function getTransform(layerId: 'a' | 'b' | 'c') {
-  return editorStore.getState().project!.icons.align.variants.v24.states.default.layers[layerId]
+  return editorStore.getState().project!.icons.align.variants.v24.layers[layerId]
     .transform!;
 }
 

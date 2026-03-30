@@ -10,7 +10,7 @@ function bootstrap() {
 }
 
 function getVariantState(icon = structuredClone(SAMPLE_PROJECT.icons['icon-home'])) {
-  return icon.variants.v24.states.default;
+  return icon.variants.v24;
 }
 
 describe('safety net checks', () => {
@@ -125,14 +125,14 @@ describe('safety net checks', () => {
 
     state.setClipMask('house', ['roof']);
 
-    let layers = editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId]
+    let layers = editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]
       .layers;
     expect(layers.house!.isClipMask).toBeTrue();
     expect(layers.roof!.clipPathLayerId).toBe('house');
 
     state.releaseClipMask('house');
 
-    layers = editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId]
+    layers = editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]
       .layers;
     expect(layers.house!.isClipMask).toBeFalse();
     expect(layers.roof!.clipPathLayerId).toBeUndefined();

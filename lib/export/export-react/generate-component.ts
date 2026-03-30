@@ -1,4 +1,4 @@
-import type { Icon, State, Variant } from '@/lib/schema/types';
+import type { Icon, Variant } from '@/lib/schema/types';
 
 export function generateIconComponent(
   icon: Icon,
@@ -7,12 +7,10 @@ export function generateIconComponent(
   const typescript = options?.typescript !== false;
   const variant = getFirstVariant(icon);
   const componentName = toPascal(icon.name || icon.id);
-  const defaultState = getDefaultState(variant);
   const defaultSize = variant.size;
   const defaultVariantId = variant.id;
 
   const variantIds = Object.keys(icon.variants).sort((a, b) => a.localeCompare(b));
-  const stateIds = collectStateIds(icon);
   const effectIds = Object.keys(icon.effects ?? {}).sort((a, b) => a.localeCompare(b));
 
   const lines: string[] = [];
@@ -35,7 +33,6 @@ export function generateIconComponent(
     lines.push('  label?: string;');
     lines.push("  reduceMotion?: boolean | 'system';");
     lines.push(`  variant?: ${stringUnion([...variantIds, ...iconSizeLiteralValues(icon)])} | number;`);
-    lines.push(`  state?: ${stringUnion(stateIds)};`);
     if (effectIds.length > 0) {
       lines.push(`  effect?: ${stringUnion(effectIds)} | null;`);
     } else {
@@ -65,7 +62,6 @@ export function generateIconComponent(
   lines.push('  label,');
   lines.push("  reduceMotion = 'system',");
   lines.push(`  variant = ${JSON.stringify(defaultVariantId)},`);
-  lines.push(`  state = ${JSON.stringify(defaultState.id)},`);
   if (effectIds.length > 0) {
     lines.push('  effect = null,');
   }
@@ -82,7 +78,6 @@ export function generateIconComponent(
   lines.push('      label={label}');
   lines.push('      reduceMotion={reduceMotion}');
   lines.push('      variant={variant}');
-  lines.push('      state={state}');
   lines.push('      animate={animate}');
   if (effectIds.length > 0) {
     lines.push('      effect={effect}');
@@ -100,24 +95,6 @@ function getFirstVariant(icon: Icon): Variant {
     throw new Error(`Icon "${icon.id}" has no variants.`);
   }
   return icon.variants[key]!;
-}
-
-function getDefaultState(variant: Variant): State {
-  return variant.states[variant.defaultState] ?? Object.values(variant.states)[0] ?? failNoState(variant.id);
-}
-
-function failNoState(variantId: string): never {
-  throw new Error(`Variant "${variantId}" has no states.`);
-}
-
-function collectStateIds(icon: Icon): string[] {
-  const ids = new Set<string>();
-  for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states)) {
-      ids.add(stateId);
-    }
-  }
-  return [...ids].sort((a, b) => a.localeCompare(b));
 }
 
 function iconSizeLiteralValues(icon: Icon): string[] {

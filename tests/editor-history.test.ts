@@ -18,8 +18,8 @@ function bootstrap() {
   clearHistory();
 }
 
-function getLayer(iconId: string, variantId: string, stateId: string, layerId: string) {
-  return editorStore.getState().project!.icons[iconId].variants[variantId].states[stateId].layers[layerId];
+function getLayer(iconId: string, variantId: string, layerId: string) {
+  return editorStore.getState().project!.icons[iconId].variants[variantId].layers[layerId];
 }
 
 describe('editor history', () => {
@@ -28,21 +28,20 @@ describe('editor history', () => {
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
-    const stateId = state.currentStateId!;
     const layerId = 'roof';
 
-    const before = getLayer(iconId, variantId, stateId, layerId).visible;
+    const before = getLayer(iconId, variantId, layerId).visible;
 
-    state.setLayerVisibility(iconId, stateId, layerId, false);
+    state.setLayerVisibility(iconId, layerId, false);
     expect(canUndo()).toBeTrue();
 
     undo();
-    const afterUndo = getLayer(iconId, variantId, stateId, layerId).visible;
+    const afterUndo = getLayer(iconId, variantId, layerId).visible;
     expect(afterUndo).toBe(before);
     expect(canRedo()).toBeTrue();
 
     redo();
-    const afterRedo = getLayer(iconId, variantId, stateId, layerId).visible;
+    const afterRedo = getLayer(iconId, variantId, layerId).visible;
     expect(afterRedo).toBe(false);
   });
 
@@ -51,16 +50,15 @@ describe('editor history', () => {
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
-    const stateId = state.currentStateId!;
     const layerId = 'roof';
 
-    const startPath = getLayer(iconId, variantId, stateId, layerId).path!.d;
+    const startPath = getLayer(iconId, variantId, layerId).path!.d;
 
     pauseHistory();
-    state.patchLayer(iconId, stateId, layerId, {
+    state.patchLayer(iconId, layerId, {
       path: { d: 'M0 0 L1 1', fillRule: 'nonzero' },
     });
-    state.patchLayer(iconId, stateId, layerId, {
+    state.patchLayer(iconId, layerId, {
       path: { d: 'M0 0 L2 2', fillRule: 'nonzero' },
     });
 
@@ -71,11 +69,11 @@ describe('editor history', () => {
     expect(canUndo()).toBeTrue();
 
     undo();
-    const afterUndo = getLayer(iconId, variantId, stateId, layerId).path!.d;
+    const afterUndo = getLayer(iconId, variantId, layerId).path!.d;
     expect(afterUndo).toBe(startPath);
 
     redo();
-    const afterRedo = getLayer(iconId, variantId, stateId, layerId).path!.d;
+    const afterRedo = getLayer(iconId, variantId, layerId).path!.d;
     expect(afterRedo).toBe('M0 0 L2 2');
   });
 });

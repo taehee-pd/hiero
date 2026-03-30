@@ -6,7 +6,6 @@ const NUDGE_STEP = 0.5;
 
 type SelectionTarget = {
   iconId: string;
-  stateId: string;
   layerId: string;
   pointKey: string;
   handleDirection: 'in' | 'out' | null;
@@ -14,7 +13,6 @@ type SelectionTarget = {
 };
 type MultiSelectionTarget = {
   iconId: string;
-  stateId: string;
   layerId: string;
   rawPointKeys: string[];
   pointKeys: string[];
@@ -25,18 +23,17 @@ function getSelectionTarget(): SelectionTarget | null {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
   const variantId = state.currentVariantId;
-  const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
   const rawPointKey = state.selection.pointIds[0];
 
-  if (!iconId || !variantId || !stateId || !layerId || !rawPointKey) return null;
+  if (!iconId || !variantId || !layerId || !rawPointKey) return null;
 
   const { pointKey, handleDirection } = parseSelectionPointKey(rawPointKey);
 
-  const pathD = state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
+  const pathD = state.project?.icons[iconId]?.variants[variantId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
-  return { iconId, stateId, layerId, pointKey, handleDirection, pathD };
+  return { iconId, layerId, pointKey, handleDirection, pathD };
 }
 
 function parseSelectionPointKey(rawPointKey: string): {
@@ -54,19 +51,18 @@ function getMultiSelectionTarget(minPoints = 1): MultiSelectionTarget | null {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
   const variantId = state.currentVariantId;
-  const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
   const rawPointKeys = Array.from(new Set(state.selection.pointIds));
   const pointKeys = Array.from(
     new Set(rawPointKeys.map((rawPointKey) => parseSelectionPointKey(rawPointKey).pointKey)),
   );
 
-  if (!iconId || !variantId || !stateId || !layerId || pointKeys.length < minPoints) return null;
+  if (!iconId || !variantId || !layerId || pointKeys.length < minPoints) return null;
 
-  const pathD = state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
+  const pathD = state.project?.icons[iconId]?.variants[variantId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return null;
 
-  return { iconId, stateId, layerId, rawPointKeys, pointKeys, pathD };
+  return { iconId, layerId, rawPointKeys, pointKeys, pathD };
 }
 
 function resolvePoint(pathD: string, pointKey: string) {
@@ -93,15 +89,15 @@ function resolvePointInEditable(editable: ReturnType<typeof parseSvgPath>, point
   };
 }
 
-function patchPath(iconId: string, stateId: string, layerId: string, nextD: string) {
+function patchPath(iconId: string, layerId: string, nextD: string) {
   const state = editorStore.getState();
   const layer =
     state.currentVariantId
-      ? state.project?.icons[iconId]?.variants[state.currentVariantId]?.states[stateId]?.layers[layerId]
+      ? state.project?.icons[iconId]?.variants[state.currentVariantId]?.layers[layerId]
       : null;
   if (!layer?.path) return;
 
-  state.patchLayer(iconId, stateId, layerId, {
+  state.patchLayer(iconId, layerId, {
     path: {
       ...layer.path,
       d: nextD,
@@ -112,7 +108,7 @@ function patchPath(iconId: string, stateId: string, layerId: string, nextD: stri
 export function deleteSelectedPoint(): boolean {
   const target = getSelectionTarget();
   if (!target) return false;
-  return deleteSelectionEntries(target.iconId, target.stateId, target.layerId, target.pathD, [
+  return deleteSelectionEntries(target.iconId, target.layerId, target.pathD, [
     {
       rawPointKey: target.handleDirection
         ? `${target.pointKey}@${target.handleDirection}`
@@ -128,7 +124,6 @@ export function deleteSelectedPoints(): boolean {
   if (!target) return false;
   return deleteSelectionEntries(
     target.iconId,
-    target.stateId,
     target.layerId,
     target.pathD,
     target.rawPointKeys.map((rawPointKey) => ({
@@ -151,7 +146,7 @@ export function toggleSelectedPointType(): boolean {
       : 'smooth';
   applyPointNodeType(resolved.subPath, resolved.pointIdx, nextType);
 
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  patchPath(target.iconId, target.layerId, serializePath(editable));
   return true;
 }
 
@@ -169,7 +164,7 @@ export function setSelectedPointType(nodeType: NodeType): boolean {
     applyPointNodeType(resolved.subPath, resolved.pointIdx, nodeType);
   }
 
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  patchPath(target.iconId, target.layerId, serializePath(editable));
   return true;
 }
 
@@ -223,7 +218,7 @@ export function insertPointAfterSelection(): boolean {
     const insertAt = nextPointIdx <= pointIdx ? subPath.points.length : pointIdx + 1;
     subPath.points.splice(insertAt, 0, inserted);
 
-    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+    patchPath(target.iconId, target.layerId, serializePath(editable));
 
     editorStore.getState().setSelection({
       layerIds: [target.layerId],
@@ -245,7 +240,7 @@ export function insertPointAfterSelection(): boolean {
 
     const insertAt = nextPointIdx <= pointIdx ? subPath.points.length : pointIdx + 1;
     subPath.points.splice(insertAt, 0, inserted);
-    patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+    patchPath(target.iconId, target.layerId, serializePath(editable));
 
     editorStore.getState().setSelection({
       layerIds: [target.layerId],
@@ -273,11 +268,10 @@ export function splitSegmentAtPoint(
   const state = editorStore.getState();
   const iconId = state.currentIconId;
   const variantId = state.currentVariantId;
-  const stateId = state.currentStateId;
-  if (!iconId || !variantId || !stateId) return false;
+  if (!iconId || !variantId) return false;
 
   const pathD =
-    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
+    state.project?.icons[iconId]?.variants[variantId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return false;
 
   const editable = parseSvgPath(pathD);
@@ -355,7 +349,7 @@ export function splitSegmentAtPoint(
     const insertAt = toIdx <= bestHit.pointIdx ? subPath.points.length : bestHit.pointIdx + 1;
     subPath.points.splice(insertAt, 0, inserted);
 
-    patchPath(iconId, stateId, layerId, serializePath(editable));
+    patchPath(iconId, layerId, serializePath(editable));
     state.setSelection({
       layerIds: [layerId],
       pointIds: [`${bestHit.subPathIdx}:${insertAt}`],
@@ -374,7 +368,7 @@ export function splitSegmentAtPoint(
     const insertAt = toIdx <= bestHit.pointIdx ? subPath.points.length : bestHit.pointIdx + 1;
     subPath.points.splice(insertAt, 0, inserted);
 
-    patchPath(iconId, stateId, layerId, serializePath(editable));
+    patchPath(iconId, layerId, serializePath(editable));
     state.setSelection({
       layerIds: [layerId],
       pointIds: [`${bestHit.subPathIdx}:${insertAt}`],
@@ -467,12 +461,11 @@ export function toggleSelectedPathClosed(): boolean {
   const state = editorStore.getState();
   const iconId = state.currentIconId;
   const variantId = state.currentVariantId;
-  const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
-  if (!iconId || !variantId || !stateId || !layerId) return false;
+  if (!iconId || !variantId || !layerId) return false;
 
   const pathD =
-    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId]?.path?.d;
+    state.project?.icons[iconId]?.variants[variantId]?.layers[layerId]?.path?.d;
   if (!pathD || !isPathDirectlyEditable(pathD)) return false;
 
   const editable = parseSvgPath(pathD);
@@ -480,7 +473,7 @@ export function toggleSelectedPathClosed(): boolean {
   if (!subPath) return false;
 
   subPath.closed = !subPath.closed;
-  patchPath(iconId, stateId, layerId, serializePath(editable));
+  patchPath(iconId, layerId, serializePath(editable));
   return true;
 }
 
@@ -505,7 +498,7 @@ export function nudgeSelectedPointByArrow(key: string, shiftKey = false): boolea
   if (resolvedPoints.length === 0) return false;
 
   resolvedPoints.forEach(({ point }) => translatePoint(point, delta.x, delta.y));
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  patchPath(target.iconId, target.layerId, serializePath(editable));
   return true;
 }
 
@@ -517,12 +510,11 @@ export function nudgeSelectedLayerByArrow(key: string, shiftKey = false): boolea
   const state = editorStore.getState();
   const iconId = state.currentIconId;
   const variantId = state.currentVariantId;
-  const stateId = state.currentStateId;
   const layerId = state.selection.layerIds[0];
-  if (!iconId || !variantId || !stateId || !layerId) return false;
+  if (!iconId || !variantId || !layerId) return false;
 
   const layer =
-    state.project?.icons[iconId]?.variants[variantId]?.states[stateId]?.layers[layerId];
+    state.project?.icons[iconId]?.variants[variantId]?.layers[layerId];
   if (!layer?.path?.d) return false;
 
   const step = shiftKey ? NUDGE_STEP * 10 : NUDGE_STEP;
@@ -534,7 +526,7 @@ export function nudgeSelectedLayerByArrow(key: string, shiftKey = false): boolea
   }[key];
   if (!delta) return false;
 
-  state.patchLayer(iconId, stateId, layerId, {
+  state.patchLayer(iconId, layerId, {
     transform: {
       ...(layer.transform ?? {}),
       x: (layer.transform?.x ?? 0) + delta.x,
@@ -568,7 +560,7 @@ export function alignSelectedPoints(
     translatePoint(point, axis === 'x' ? nextValue - point.position.x : 0, axis === 'y' ? nextValue - point.position.y : 0);
   }
 
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  patchPath(target.iconId, target.layerId, serializePath(editable));
   return true;
 }
 
@@ -600,7 +592,7 @@ export function distributeSelectedPoints(axis: 'x' | 'y'): boolean {
     );
   });
 
-  patchPath(target.iconId, target.stateId, target.layerId, serializePath(editable));
+  patchPath(target.iconId, target.layerId, serializePath(editable));
   return true;
 }
 
@@ -692,7 +684,6 @@ function applyPointNodeType(
 
 function deleteSelectionEntries(
   iconId: string,
-  stateId: string,
   layerId: string,
   pathD: string,
   selections: Array<{
@@ -757,7 +748,7 @@ function deleteSelectionEntries(
 
   if (!changed) return false;
 
-  patchPath(iconId, stateId, layerId, serializePath(editable));
+  patchPath(iconId, layerId, serializePath(editable));
   editorStore.getState().setSelection({
     layerIds: [layerId],
     pointIds: pointDeletes.size > 0 ? [] : [...handleOnlySelections],

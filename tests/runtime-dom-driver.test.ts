@@ -8,7 +8,7 @@ import {
 
 function makeResolvedTransition(): ResolvedTransition {
   return {
-    strategy: 'track',
+    strategy: 'lineAnimation',
     durationMs: 240,
     easing: 'ease-in-out',
     diagnostics: [],

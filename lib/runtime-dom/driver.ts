@@ -1,4 +1,5 @@
 import type { Icon, TimelineTrack } from '../schema';
+import { variantToSnapshot } from '../schema/types';
 import {
   BlendScheduler,
   StateMachine,
@@ -29,7 +30,7 @@ const CSS_FALLBACK_TRACKS = new Set<TimelineTrack['property']>([
 export type IconDriverStateListener = () => void;
 
 export type IconDriver = {
-  transitionTo: (stateId: string) => void;
+  transitionTo: (variantId: string) => void;
   getCurrentState: () => string;
   /** Subscribe to state changes. Returns an unsubscribe function.
    *  Compatible with React's useSyncExternalStore. */
@@ -121,10 +122,12 @@ export function createIconDriver(
     existingSvg: options.existingSvg,
   });
 
-  if (options.initialState && options.initialState !== stateMachine.currentState.id) {
+  let currentVariantId = variantId;
+  if (options.initialState && options.initialState !== variantId) {
     stateMachine.transitionTo(options.initialState);
+    currentVariantId = options.initialState;
   }
-  renderer.setState(stateMachine.currentState.id);
+  renderer.setState(currentVariantId);
 
   let activeScheduler: TransitionScheduler | null = null;
   let activeBlendScheduler: BlendScheduler | null = null;
@@ -182,7 +185,7 @@ export function createIconDriver(
    * See {@link composeValues} for per-property stacking rules.
    */
   function renderComposed() {
-    const stateId = latestTransitionStateId ?? stateMachine.currentState.id;
+    const stateId = latestTransitionStateId ?? currentVariantId;
     const composed = composeValues(latestTransitionValues, ...Array.from(effectLatestValues.values()));
     // Merge all color overrides from effects
     const mergedColors: Record<string, Record<string, string>> = {};
@@ -214,13 +217,29 @@ export function createIconDriver(
   const effectLatestValues = new Map<string, InterpolatedValues>();
   const effectColorOverrides = new Map<string, Record<string, Record<string, string>>>();
 
-  const unsubscribe = stateMachine.onStateChange((state, transition) => {
+  const unsubscribe = stateMachine.onStateChange((snapshot, transition) => {
+    // Determine the target variant ID. Prefer the transition's explicit toVariantId
+    // (which may differ from the state machine's current ID during rapid switches),
+    // but always fall back to the state machine's current variant rather than the
+    // stale driver-local ID — critical for replace-strategy transitions where no
+    // Transition object is defined.
+    const targetVariantId = transition?.toVariantId ?? stateMachine.currentVariantId;
+    currentVariantId = targetVariantId;
     notifyStateListeners();
+
+    // Update targetLayerIds on any running effect schedulers so that subsequent
+    // frames apply to the new variant's layers rather than the stale pre-transition ones.
+    if (activeEffectSchedulers.size > 0) {
+      const newLayerIds = Object.keys(snapshot.layers).sort();
+      for (const scheduler of activeEffectSchedulers.values()) {
+        scheduler.setTargetLayerIds(newLayerIds);
+      }
+    }
 
     const interruptedBlend = activeScheduler?.interrupt(80, {
       onFrame: (_progress, values) => {
         activeBlendValues = values;
-        renderAnimatedFrame(state.id, 0);
+        renderAnimatedFrame(targetVariantId, 0);
       },
     });
     const interruptedCssValues =
@@ -238,7 +257,7 @@ export function createIconDriver(
         ? new BlendScheduler(interruptedCssValues, 80, {
             onFrame: (_progress, values) => {
               activeBlendValues = values;
-              renderAnimatedFrame(state.id, 0);
+              renderAnimatedFrame(targetVariantId, 0);
             },
           })
         : null);
@@ -261,37 +280,39 @@ export function createIconDriver(
 
     if (!transition || shouldReduceMotion(reduceMotionSetting)) {
       cancelActiveTransitions();
-      renderer.setState(state.id);
+      renderer.setState(targetVariantId);
       return;
     }
 
     emitEvent({
       type: 'transitionStart',
-      fromState: transition.from,
-      toState: transition.to,
+      fromState: transition.fromVariantId,
+      toState: transition.toVariantId,
       timestamp: Date.now(),
     });
 
-    const variant = icon.variants[variantId];
-    const fromState = variant.states[transition.from];
-    const toState = variant.states[transition.to];
-    if (!fromState || !toState) {
+    const fromVariant = icon.variants[transition.fromVariantId];
+    const toVariant = icon.variants[transition.toVariantId];
+    if (!fromVariant || !toVariant) {
       cancelActiveTransitions();
-      renderer.setState(state.id);
+      renderer.setState(targetVariantId);
       return;
     }
 
-    const resolved = resolveTransition(transition, fromState, toState, {
+    const fromSnapshot = variantToSnapshot(fromVariant);
+    const toSnapshot = variantToSnapshot(toVariant);
+
+    const resolved = resolveTransition(transition, fromSnapshot, toSnapshot, {
       preserveLayerIds: options.preserveLayerIds,
     });
     latestTransitionResolved = resolved;
-    latestTransitionStateId = state.id;
+    latestTransitionStateId = targetVariantId;
 
     const cssPlan = planCssTrackTransition(resolved);
     if (cssPlan && !forceJsScheduler && !options.preferJsScheduler) {
       activeCssFallbackPlan = cssPlan;
       activeCssFallbackStartedAt = defaultNow();
-      renderer.applyCssTrackTransition(state.id, cssPlan);
+      renderer.applyCssTrackTransition(targetVariantId, cssPlan);
       activeCssFallbackTimer = setTimeout(() => {
         renderer.clearCssTrackTransitions();
         activeCssFallbackPlan = null;
@@ -309,7 +330,7 @@ export function createIconDriver(
         if (activeEffectSchedulers.size > 0) {
           renderComposed();
         } else {
-          renderAnimatedFrame(state.id, progress, resolved);
+          renderAnimatedFrame(targetVariantId, progress, resolved);
         }
       },
     });
@@ -322,11 +343,11 @@ export function createIconDriver(
         latestTransitionStateId = undefined;
       }
       activeTransitionValues = {};
-      renderer.setState(state.id);
+      renderer.setState(targetVariantId);
       emitEvent({
         type: 'transitionComplete',
-        fromState: transition.from,
-        toState: transition.to,
+        fromState: transition.fromVariantId,
+        toState: transition.toVariantId,
         timestamp: Date.now(),
       });
     });
@@ -336,11 +357,11 @@ export function createIconDriver(
   });
 
   return {
-    transitionTo(stateId: string) {
-      stateMachine.transitionTo(stateId);
+    transitionTo(variantId: string) {
+      stateMachine.transitionTo(variantId);
     },
     getCurrentState() {
-      return stateMachine.currentState.id;
+      return currentVariantId;
     },
     subscribe(listener: IconDriverStateListener) {
       stateListeners.add(listener);
@@ -364,8 +385,8 @@ export function createIconDriver(
         timestamp: Date.now(),
       });
 
-      const currentState = stateMachine.currentState;
-      const layerIds = Object.keys(currentState.layers).sort();
+      const currentSnapshot = stateMachine.currentSnapshot;
+      const layerIds = Object.keys(currentSnapshot.layers).sort();
 
       const scheduler = new EffectScheduler(effect, {
         onFrame: (values, colorOverrides) => {
@@ -384,7 +405,7 @@ export function createIconDriver(
               }
             }
             const hasColors = Object.keys(mergedColors).length > 0;
-            renderer.applyFrame(currentState.id, 0, composed, undefined, hasColors ? mergedColors : undefined);
+            renderer.applyFrame(currentVariantId, 0, composed, undefined, hasColors ? mergedColors : undefined);
           }
         },
         drawAnnotation: options.drawAnnotation,
@@ -425,7 +446,7 @@ export function createIconDriver(
     setVariableDrawProgress(progress: number) {
       if (!options.variableDraw) return;
       const values = computeVariableDrawValues(options.variableDraw, progress);
-      renderer.applyFrame(stateMachine.currentState.id, 0, values);
+      renderer.applyFrame(currentVariantId, 0, values);
     },
     destroy() {
       cancelActiveTransitions();

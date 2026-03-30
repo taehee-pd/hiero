@@ -19,7 +19,6 @@ import type {
   PaintRef,
   Project,
   TimelineTrack,
-  Transition,
 } from '@/lib/schema/types';
 
 export function exportCompiledIcon(project: Project, iconId: string): CompiledIcon {
@@ -41,7 +40,7 @@ export function exportCompiledIcon(project: Project, iconId: string): CompiledIc
       contentHash: '',
     },
     variants: buildCompiledVariants(project, icon),
-    transitions: buildCompiledTransitions(icon),
+    transitions: [],
     effects: buildCompiledEffects(icon),
   };
 
@@ -85,27 +84,12 @@ function buildCompiledVariants(project: Project, icon: Icon): CompiledIcon['vari
     .sort((a, b) => a.localeCompare(b))
     .reduce<CompiledIcon['variants']>((acc, variantId) => {
       const variant = icon.variants[variantId]!;
-      const states = Object.keys(variant.states)
-        .sort((a, b) => a.localeCompare(b))
-        .reduce<CompiledIcon['variants'][string]['states']>((stateAcc, stateId) => {
-          const state = variant.states[stateId]!;
-          const modeLayers = buildResolvedLayers(project, state.layers);
-          stateAcc[stateId] = {
-            modes: {
-              monochrome: { layers: modeLayers.monochrome },
-              hierarchical: { layers: modeLayers.hierarchical },
-              palette: { layers: modeLayers.palette },
-              multicolor: { layers: modeLayers.multicolor },
-              autoGradient: { layers: modeLayers.autoGradient },
-            },
-          };
-          return stateAcc;
-        }, {});
+      const modeLayers = buildResolvedLayers(project, variant.layers);
 
       acc[variantId] = {
         size: variant.size,
         viewBox: [...variant.viewBox],
-        states,
+        layers: { layers: modeLayers.monochrome },
       };
       return acc;
     }, {});
@@ -125,7 +109,6 @@ function buildResolvedLayers(
     hierarchical: ordered.map((layer) => toCompiledLayer(layer, project, 'hierarchical')),
     palette: ordered.map((layer) => toCompiledLayer(layer, project, 'palette')),
     multicolor: ordered.map((layer) => toCompiledLayer(layer, project, 'multicolor')),
-    autoGradient: ordered.map((layer) => toCompiledLayer(layer, project, 'autoGradient')),
   };
 }
 
@@ -195,33 +178,6 @@ function toCompiledTransform(layer: Layer): CompiledLayer['transform'] | undefin
   }
 
   return { x, y, rotate, scaleX, scaleY };
-}
-
-function buildCompiledTransitions(icon: Icon): CompiledTransition[] {
-  return Object.keys(icon.transitions)
-    .sort((a, b) => a.localeCompare(b))
-    .map((transitionId) => toCompiledTransition(icon.transitions[transitionId]!));
-}
-
-function toCompiledTransition(transition: Transition): CompiledTransition {
-  return {
-    from: transition.from,
-    to: transition.to,
-    durationMs: transition.durationMs,
-    easing: transition.easing ?? 'linear',
-    strategy: transition.strategy,
-    bindings: transition.layerBindings.map<CompiledLayerBinding>((binding) => ({
-      fromLayerId: binding.fromLayerId,
-      toLayerId: binding.toLayerId,
-      tracks: binding.tracks?.map(cloneCompiledTrack),
-      morph: binding.morph
-        ? {
-            topology: binding.morph.topology,
-            mixer: binding.morph.mixer ?? 'native',
-          }
-        : undefined,
-    })),
-  };
 }
 
 function buildCompiledEffects(icon: Icon): CompiledEffect[] {

@@ -116,13 +116,12 @@ function toIconEntry(compiled: CompiledIcon, compiledPath: string): IconEntry {
   for (const variant of Object.values(compiled.variants)) {
     sizes.add(variant.size);
 
-    for (const [stateId, state] of Object.entries(variant.states)) {
-      states.add(stateId);
-      for (const mode of Object.keys(state.modes)) {
-        if (RENDERING_MODE_ORDER.includes(mode as CompiledRenderingMode)) {
-          modes.add(mode as CompiledRenderingMode);
-        }
-      }
+    // Compiled variants are now flat — a single implicit "default" state
+    // with layers directly on the variant.
+    states.add('default');
+    // All four rendering modes are compiled into each variant.
+    for (const mode of RENDERING_MODE_ORDER) {
+      modes.add(mode);
     }
   }
 
@@ -144,10 +143,6 @@ function toIconEntry(compiled: CompiledIcon, compiledPath: string): IconEntry {
     contentHash: compiled.meta.contentHash,
     supportedSizes: [...sizes].sort((a, b) => a - b),
     supportedModes: RENDERING_MODE_ORDER.filter((mode) => modes.has(mode)),
-    states: [
-      'default',
-      ...[...states].filter((stateId) => stateId !== 'default').sort((a, b) => a.localeCompare(b)),
-    ],
     hasAnimation: compiled.transitions.length > 0 || compiled.effects.length > 0,
     hasMorphTransition,
     compiledPath: toRelativePackagePath(compiledPath),

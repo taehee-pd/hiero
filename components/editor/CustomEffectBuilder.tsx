@@ -262,11 +262,7 @@ function CustomTracksEditor({
             </Label>
             <Input
               type="text"
-              value={
-                track.property !== 'fill' && track.property !== 'stroke'
-                  ? (track.keyframes as number[]).join(', ')
-                  : ''
-              }
+              value={(track.keyframes as number[]).join(', ')}
               className="h-6 text-[length:var(--text-label)]"
               onChange={(e) => {
                 const values = e.target.value

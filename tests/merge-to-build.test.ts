@@ -64,7 +64,6 @@ describe('iconFromSource roundtrip', () => {
     expect(restored.category).toBe(icon.category);
     expect(restored.tags).toEqual(icon.tags?.sort());
     expect(Object.keys(restored.variants)).toEqual(Object.keys(icon.variants).sort());
-    expect(Object.keys(restored.transitions)).toEqual(Object.keys(icon.transitions));
   });
 
   test('preserves variant structure through roundtrip', () => {
@@ -79,9 +78,8 @@ describe('iconFromSource roundtrip', () => {
 
       expect(roundtripped.size).toBe(original.size);
       expect(roundtripped.viewBox).toEqual(original.viewBox);
-      expect(roundtripped.defaultState).toBe(original.defaultState);
-      expect(Object.keys(roundtripped.states).sort()).toEqual(
-        Object.keys(original.states).sort(),
+      expect(Object.keys(roundtripped.layers).sort()).toEqual(
+        Object.keys(original.layers).sort(),
       );
     }
   });
@@ -92,8 +90,8 @@ describe('iconFromSource roundtrip', () => {
     const source = exportIconSource(icon);
     const restored = iconFromSource(source);
 
-    const originalLayer = icon.variants['v24']!.states['default']!.layers['chev']!;
-    const restoredLayer = restored.variants['v24']!.states['default']!.layers['chev']!;
+    const originalLayer = icon.variants['v24']!.layers['chev']!;
+    const restoredLayer = restored.variants['v24']!.layers['chev']!;
 
     expect(restoredLayer.path?.d).toBe(originalLayer.path?.d);
     expect(restoredLayer.style).toEqual(originalLayer.style);
@@ -105,8 +103,7 @@ describe('iconFromSource roundtrip', () => {
     const icon = structuredClone(project.icons['icon-chev']!) as Icon;
     // Add editor-only metadata
     const firstVariant = Object.values(icon.variants)[0]!;
-    const firstState = Object.values(firstVariant.states)[0]!;
-    const firstLayer = Object.values(firstState.layers)[0]!;
+    const firstLayer = Object.values(firstVariant.layers)[0]!;
     firstLayer.importMeta = { sourceTag: 'path', sourceNodeId: 'n1' };
     firstLayer.isClipMask = false;
     firstLayer.groupId = 'group-1';
@@ -118,7 +115,7 @@ describe('iconFromSource roundtrip', () => {
     const restored = iconFromSource(source);
 
     const restoredLayer = Object.values(
-      Object.values(Object.values(restored.variants)[0]!.states)[0]!.layers,
+      Object.values(restored.variants)[0]!.layers,
     )[0]!;
 
     expect(restoredLayer.importMeta).toBeUndefined();
@@ -380,8 +377,8 @@ describe('schema and version compatibility', () => {
     // Compile and verify token-resolved fills
     const result = compileProject(restored, COMPILE_OPTIONS);
     const compiled = result.compiledIcons[0]!;
-    const firstState = Object.values(compiled.variants)[0]!.states['default']!;
-    const strokeColor = firstState.modes.monochrome.layers[0]?.style.stroke;
+    const firstVariantCompiled = Object.values(compiled.variants)[0]!;
+    const strokeColor = firstVariantCompiled.layers.layers[0]?.style.stroke;
     expect(strokeColor).toBe('#ff0000');
   });
 });
@@ -466,25 +463,18 @@ describe('multi-icon roundtrip', () => {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24] as [number, number, number, number],
-          defaultState: 'default',
-          states: {
-            default: {
-              id: 'default',
-              layers: {
-                star: {
-                  id: 'star',
-                  role: 'primary' as const,
-                  path: { d: 'M12 2l3 7h7l-6 4 3 7-7-4-7 4 3-7-6-4h7z' },
-                  style: {
-                    fill: { mode: 'token' as const, token: 'accent' },
-                  },
-                },
+          layers: {
+            star: {
+              id: 'star',
+              role: 'primary' as const,
+              path: { d: 'M12 2l3 7h7l-6 4 3 7-7-4-7 4 3-7-6-4h7z' },
+              style: {
+                fill: { mode: 'token' as const, token: 'accent' },
               },
             },
           },
         },
       },
-      transitions: {},
     };
 
     const payload = exportSourcePayload(project, {

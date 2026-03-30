@@ -441,7 +441,7 @@ async function exportCurrentIconSvg() {
   const svg = exportSvgString(
     current.icon,
     current.variant.id,
-    current.stateId,
+    current.variantId,
     state.project?.tokenSet?.colors,
   );
   await exportSvg(svg, `${slugify(current.icon.name)}.svg`);
@@ -457,10 +457,9 @@ async function exportExplorerIconSvg(payload?: Record<string, unknown>) {
 
   const variantId = Object.keys(icon.variants)[0];
   const variant = variantId ? icon.variants[variantId] : null;
-  const stateId = variant ? Object.keys(variant.states)[0] : null;
-  if (!variant || !stateId) return;
+  if (!variant) return;
 
-  const svg = exportSvgString(icon, variant.id, stateId, project.tokenSet?.colors);
+  const svg = exportSvgString(icon, variant.id, variant.id, project.tokenSet?.colors);
   await exportSvg(svg, `${slugify(icon.name)}.svg`);
 }
 
@@ -474,16 +473,15 @@ async function buildCompiledFileMap(generateReact: boolean) {
 function getCurrentIconContext() {
   const state = editorStore.getState();
   const project = state.project;
-  if (!project || !state.currentIconId || !state.currentVariantId || !state.currentStateId) {
+  if (!project || !state.currentIconId || !state.currentVariantId) {
     return null;
   }
 
   const icon = project.icons[state.currentIconId];
   const variant = icon?.variants[state.currentVariantId];
-  const currentState = variant?.states[state.currentStateId];
-  if (!icon || !variant || !currentState) return null;
+  if (!icon || !variant) return null;
 
-  return { icon, variant, stateId: currentState.id };
+  return { icon, variant, variantId: variant.id };
 }
 
 function renameLayer(payload?: Record<string, unknown>) {
@@ -650,18 +648,17 @@ function mutateCurrentStateLayers(
     !state.workspace ||
     !state.activeIconSetId ||
     !state.currentIconId ||
-    !state.currentVariantId ||
-    !state.currentStateId
+    !state.currentVariantId
   ) {
     return;
   }
 
   const nextProject = structuredClone(project);
-  const currentState =
-    nextProject.icons[state.currentIconId]?.variants[state.currentVariantId]?.states[state.currentStateId];
-  if (!currentState) return;
+  const currentVariant =
+    nextProject.icons[state.currentIconId]?.variants[state.currentVariantId];
+  if (!currentVariant) return;
 
-  currentState.layers = mutate(currentState.layers);
+  currentVariant.layers = mutate(currentVariant.layers);
   const nextWorkspace = replaceWorkspaceIconSet(state.workspace, state.activeIconSetId, nextProject);
   if (!nextWorkspace) return;
   state.loadWorkspace(nextWorkspace, { resetHistory: false, markDirty: true, keepTabs: true });
@@ -670,7 +667,6 @@ function mutateCurrentStateLayers(
   const nextState = editorStore.getState();
   nextState.setCurrentIcon(state.currentIconId);
   nextState.setCurrentVariant(state.currentVariantId);
-  nextState.setCurrentState(state.currentStateId);
   if (nextSelectedLayerId) {
     nextState.setSelection({ layerIds: [nextSelectedLayerId], pointIds: [] });
   }

@@ -32,7 +32,7 @@ export const LayerPanel = memo(function LayerPanel() {
     }
     return map;
   });
-  const currentStateId = useEditorStore((s) => s.currentStateId);
+  const _currentStateId = useEditorStore((s) => s.currentStateId);
   const currentVariant = useEditorStore(selectCurrentVariant);
   const { setSelection, setLayerVisibility, renameLayer, removeSelectedLayers } = useEditorActions();
 
@@ -87,12 +87,12 @@ export const LayerPanel = memo(function LayerPanel() {
   const commitRename = useCallback(
     (layerId: string) => {
       const trimmed = renameValue.trim();
-      if (trimmed && trimmed !== layerId && currentIconId && currentStateId) {
-        renameLayer(currentIconId, currentStateId, layerId, trimmed);
+      if (trimmed && trimmed !== layerId && currentIconId) {
+        renameLayer(currentIconId, layerId, trimmed);
       }
       setRenamingLayerId(null);
     },
-    [currentIconId, currentStateId, renameLayer, renameValue],
+    [currentIconId, renameLayer, renameValue],
   );
 
   return (
@@ -277,8 +277,8 @@ export const LayerPanel = memo(function LayerPanel() {
                   className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (currentIconId && currentStateId) {
-                      setLayerVisibility(currentIconId, currentStateId, layer.id, !isVisible);
+                    if (currentIconId) {
+                      setLayerVisibility(currentIconId, layer.id, !isVisible);
                     }
                   }}
                   aria-label={isVisible ? 'Hide layer' : 'Show layer'}

@@ -40,7 +40,7 @@ describe('package manifest generation', () => {
     compiled.variants.v16 = {
       size: 16,
       viewBox: [0, 0, 16, 16],
-      states: structuredClone(compiled.variants.v24.states),
+      layers: structuredClone(compiled.variants.v24.layers),
     };
 
     const manifest = generatePackageManifest(
@@ -57,14 +57,11 @@ describe('package manifest generation', () => {
     expect(manifest.icons['icon-home']?.supportedSizes).toEqual([16, 24]);
   });
 
-  test('aggregates supportedModes across all states', () => {
+  test('aggregates supportedModes across all variants', () => {
     const [first] = buildCompiledOutputs();
-    const compiled = structuredClone(first.compiled) as any;
-    compiled.variants.v24.states.default.modes = {
-      monochrome: compiled.variants.v24.states.default.modes.monochrome,
-      multicolor: compiled.variants.v24.states.default.modes.multicolor,
-    };
+    const compiled = structuredClone(first.compiled);
 
+    // Flat compiled variants always report all four rendering modes.
     const manifest = generatePackageManifest(
       [{ path: first.path, compiled }],
       {
@@ -78,6 +75,8 @@ describe('package manifest generation', () => {
 
     expect(manifest.icons['icon-home']?.supportedModes).toEqual([
       'monochrome',
+      'hierarchical',
+      'palette',
       'multicolor',
     ]);
   });
@@ -138,8 +137,7 @@ describe('package manifest generation', () => {
             fromLayerId: 'a',
             toLayerId: 'b',
             morph: {
-              topology: 'bestGuess',
-              mixer: 'flubber',
+              topology: 'bestGuess' as const,
             },
           },
         ],

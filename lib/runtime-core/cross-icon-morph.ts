@@ -651,17 +651,105 @@ export function createCentroidCollapsedSubPath(
 // ---------------------------------------------------------------------------
 
 /**
+ * Sample N arc-length-uniform points from a closed sub-path.
+ * Uses the GL12-based LUT already built by buildArcLengthLut.
+ */
+function sampleSubPathNPoints(sub: CubicSubPath, N: number): Point[] {
+  if (sub.segments.length === 0) {
+    return Array.from({ length: N }, () => ({ ...sub.start }));
+  }
+  const { lut, total } = buildArcLengthLut(sub);
+  if (total < 1e-10) {
+    return Array.from({ length: N }, () => ({ ...sub.start }));
+  }
+  return Array.from({ length: N }, (_, i) =>
+    sampleSubPathAtFraction(sub, lut, total, i / N),
+  );
+}
+
+/**
+ * Reconstruct a closed smooth cubic bezier path from N uniformly-distributed
+ * points using Catmull-Rom → Bezier conversion (tension = 1/6).
+ *
+ * This avoids all control-handle interpolation artifacts: handles are derived
+ * from neighboring point positions, so they are always proportional to local
+ * segment length and never create mid-morph "blobs".
+ */
+function catmullRomToClosedBezier(pts: Point[]): CubicSubPath {
+  const n = pts.length;
+  if (n < 2) return { start: pts[0] ?? { x: 0, y: 0 }, segments: [], closed: true };
+
+  // Standard Catmull-Rom → cubic Bezier conversion:
+  //   c1 = p[i]   + (p[i+1] - p[i-1]) / 6
+  //   c2 = p[i+1] - (p[i+2] - p[i])   / 6
+  const TENSION = 1 / 6;
+  const segments: CubicSegment[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const prev = pts[(i - 1 + n) % n]!;
+    const curr = pts[i]!;
+    const next = pts[(i + 1) % n]!;
+    const nextNext = pts[(i + 2) % n]!;
+
+    segments.push({
+      c1: {
+        x: curr.x + (next.x - prev.x) * TENSION,
+        y: curr.y + (next.y - prev.y) * TENSION,
+      },
+      c2: {
+        x: next.x - (nextNext.x - curr.x) * TENSION,
+        y: next.y - (nextNext.y - curr.y) * TENSION,
+      },
+      end: next,
+    });
+  }
+
+  return { start: pts[0]!, segments, closed: true };
+}
+
+/**
+ * Find the cyclic rotation offset (in sample space) that minimises total
+ * point displacement between two sets of N arc-length-uniform samples.
+ * Returns a rotated copy of `toPts`.
+ */
+function alignSampledPoints(fromPts: Point[], toPts: Point[]): Point[] {
+  const N = fromPts.length;
+  let bestOffset = 0;
+  let bestCost = Infinity;
+  for (let offset = 0; offset < N; offset++) {
+    let cost = 0;
+    for (let i = 0; i < N; i++) {
+      cost += pointDistSq(fromPts[i]!, toPts[(i + offset) % N]!);
+    }
+    if (cost < bestCost) {
+      bestCost = cost;
+      bestOffset = offset;
+    }
+  }
+  if (bestOffset === 0) return toPts;
+  return [...toPts.slice(bestOffset), ...toPts.slice(0, bestOffset)];
+}
+
+/**
  * Produce a morph interpolator between two different icons (cross-icon morph).
  *
- * Pipeline:
+ * Algorithm (Flubber / Sederberg '93):
  * 1. Match sub-paths by centroid/bbox similarity
- * 2. Equalize segment counts via De Casteljau subdivision
- * 3. Find optimal shape index per matched pair
+ * 2. Sample N arc-length-uniform points from each matched pair
+ * 3. Find optimal cyclic rotation via O(N²) search on sample space
  * 4. Handle unmatched sub-paths via centroid collapse
- * 5. Build interpolator
+ * 5. Lerp sampled points at each t, reconstruct smooth path with Catmull-Rom
+ *
+ * This approach avoids all control-handle interpolation artifacts (blobs,
+ * kinks) that occur when bezier handles from very different shapes are
+ * directly interpolated.
  */
 export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolator | null {
   if (from.length === 0 && to.length === 0) return null;
+
+  // Number of arc-length-uniform samples used for interpolation.
+  // 64 gives smooth curves on any icon size with negligible reconstruction error.
+  const N = 64;
 
   // Step 0: Normalize winding order to clockwise for consistent morphing
   const normalizedFrom = from.map(ensureClockwise);
@@ -672,90 +760,76 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
   const matchedFrom = new Set(matches.map((m) => m.fromIndex));
   const matchedTo = new Set(matches.map((m) => m.toIndex));
 
-  // Build aligned path pairs
-  const alignedFrom: CubicPath = [];
-  const alignedTo: CubicPath = [];
+  type Pair = {
+    fromPts: Point[];
+    toPts: Point[];
+    disappearing: boolean;
+    appearing: boolean;
+  };
+  const pairs: Pair[] = [];
 
-  // Add matched pairs
+  // Step 2: Sample & align matched pairs
   for (const match of matches) {
-    let fromSub = cloneSubPath(normalizedFrom[match.fromIndex]!);
-    let toSub = cloneSubPath(normalizedTo[match.toIndex]!);
+    const fromSub = cloneSubPath(normalizedFrom[match.fromIndex]!);
+    const toSub = cloneSubPath(normalizedTo[match.toIndex]!);
 
-    // Step 2: Equalize segment counts
-    const targetSegments = Math.max(fromSub.segments.length, toSub.segments.length);
-    if (fromSub.segments.length < targetSegments) {
-      fromSub = {
-        ...fromSub,
-        segments: subdivideCubicSegments(fromSub.segments, targetSegments, fromSub.start),
-      };
-    }
-    if (toSub.segments.length < targetSegments) {
-      toSub = {
-        ...toSub,
-        segments: subdivideCubicSegments(toSub.segments, targetSegments, toSub.start),
-      };
-    }
+    const fromPts = sampleSubPathNPoints(fromSub, N);
+    const rawToPts = sampleSubPathNPoints(toSub, N);
 
-    // Step 3: Optimize shape index for closed paths using arc-length uniform
-    // sampling (Sederberg '93 / Flubber algorithm). This correctly handles
-    // shapes with uneven point distributions (e.g. heart → star) where the
-    // old endpoint-based search would pick a perceptually wrong rotation.
-    if (fromSub.closed && toSub.closed) {
-      const offset = findOptimalShapeIndexArcLength(fromSub, toSub);
-      if (offset > 0) {
-        toSub = rotateSubPathSegments(toSub, offset);
-      }
-    }
+    // Find optimal cyclic rotation in sample space (closed paths only)
+    const toPts = (fromSub.closed && toSub.closed)
+      ? alignSampledPoints(fromPts, rawToPts)
+      : rawToPts;
 
-    alignedFrom.push(fromSub);
-    alignedTo.push(toSub);
+    pairs.push({ fromPts, toPts, disappearing: false, appearing: false });
   }
 
-  // Step 4: Handle unmatched sub-paths with coordinated timing
-  const unmatchedFromIndices: number[] = [];
-  const unmatchedToIndices: number[] = [];
+  // Step 3: Unmatched sub-paths — collapse to / expand from centroid
   for (let i = 0; i < normalizedFrom.length; i++) {
     if (!matchedFrom.has(i)) {
       const fromSub = cloneSubPath(normalizedFrom[i]!);
-      const collapsed = createCentroidCollapsedSubPath(fromSub);
-      alignedFrom.push(fromSub);
-      alignedTo.push(collapsed);
-      unmatchedFromIndices.push(alignedFrom.length - 1);
+      const centroid = computeSubPathCentroid(fromSub);
+      pairs.push({
+        fromPts: sampleSubPathNPoints(fromSub, N),
+        toPts: Array.from({ length: N }, () => ({ ...centroid })),
+        disappearing: true,
+        appearing: false,
+      });
     }
   }
   for (let i = 0; i < normalizedTo.length; i++) {
     if (!matchedTo.has(i)) {
       const toSub = cloneSubPath(normalizedTo[i]!);
-      const collapsed = createCentroidCollapsedSubPath(toSub);
-      alignedFrom.push(collapsed);
-      alignedTo.push(toSub);
-      unmatchedToIndices.push(alignedFrom.length - 1);
+      const centroid = computeSubPathCentroid(toSub);
+      pairs.push({
+        fromPts: Array.from({ length: N }, () => ({ ...centroid })),
+        toPts: sampleSubPathNPoints(toSub, N),
+        disappearing: false,
+        appearing: true,
+      });
     }
   }
 
-  // Track which aligned indices are unmatched for eased interpolation
-  const disappearingSet = new Set(unmatchedFromIndices);
-  const appearingSet = new Set(unmatchedToIndices);
-
-  // Step 5: Build interpolator with coordinated timing for unmatched paths
+  // Step 4: Build interpolator
   return (t: number): string => {
     if (t <= 0) return serializePath(normalizedFrom);
     if (t >= 1) return serializePath(normalizedTo);
 
     const result: CubicSubPath[] = [];
-    for (let i = 0; i < alignedFrom.length; i++) {
-      const fromSub = alignedFrom[i]!;
-      const toSub = alignedTo[i]!;
+    for (const pair of pairs) {
       // Apply eased timing for unmatched (disappearing/appearing) sub-paths
       let effectiveT = t;
-      if (disappearingSet.has(i)) {
-        // from→collapsed: easeInCubic for natural collapse
-        effectiveT = easeInCubic(t);
-      } else if (appearingSet.has(i)) {
-        // collapsed→to: easeOutCubic for natural expansion
-        effectiveT = easeOutCubic(t);
+      if (pair.disappearing) {
+        effectiveT = easeInCubic(t);   // from → centroid: accelerate collapse
+      } else if (pair.appearing) {
+        effectiveT = easeOutCubic(t);  // centroid → to: decelerate expansion
       }
-      result.push(interpolateSubPath(fromSub, toSub, effectiveT));
+
+      // Lerp each sample point, then reconstruct a smooth closed bezier
+      const pts: Point[] = pair.fromPts.map((fp, i) =>
+        lerpPoint(fp, pair.toPts[i]!, effectiveT),
+      );
+      result.push(catmullRomToClosedBezier(pts));
     }
     return serializePath(result);
   };

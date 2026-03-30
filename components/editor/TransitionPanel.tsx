@@ -8,7 +8,16 @@ import { Label } from '@/components/kibo-ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Slider } from '@/components/kibo-ui/slider';
 import { toast } from '@/components/ui/use-toast';
-import { interpolateTransitionValues, resolveTransition, TransitionScheduler, computeReadiness, canonicalizeLayerPath, classifySubPathStrategies } from '@/lib/runtime-core';
+import {
+  interpolateTransitionValues,
+  resolveTransition,
+  TransitionScheduler,
+  computeReadiness,
+  canonicalizeLayerPath,
+  classifySubPathStrategies,
+  strictMorph,
+  bestGuessMorph,
+} from '@/lib/runtime-core';
 import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
 import type { SubPathStrategyResult } from '@/lib/runtime-core/topology-detection';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
@@ -18,22 +27,57 @@ import { variantToSnapshot } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
 
 const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random', 'individually'];
 
-const DIRECTION_OPTIONS: Array<{ value: RuntimeTransitionIntent['direction']; label: string }> = [
+const DIRECTION_OPTIONS: Array<{ value: NonNullable<RuntimeTransitionIntent['direction']>; label: string }> = [
   { value: 'automatic', label: 'Automatic' },
-  { value: 'downUp', label: 'Down -> Up' },
-  { value: 'upUp', label: 'Up -> Up' },
-  { value: 'offUp', label: 'Off -> Up' },
+  { value: 'downUp', label: 'Down → Up' },
+  { value: 'upUp', label: 'Up → Up' },
+  { value: 'offUp', label: 'Off → Up' },
 ];
 
-type CompatibilityStatus =
-  | { tone: 'green'; label: 'Compatible' }
-  | { tone: 'yellow'; label: 'Best Guess' }
-  | { tone: 'yellow'; label: 'Location-based morph' }
-  | { tone: 'red'; label: 'Incompatible -- will crossfade' };
+/** Human-readable display labels for each strategy. */
+const STRATEGY_LABELS: Record<RuntimeTransitionIntent['strategy'], string> = {
+  strictMorph: 'Strict Morph',
+  bestGuessMorph: 'Best Guess',
+  crossIconMorph: 'Cross-Icon Morph',
+  lineAnimation: 'Line Animation',
+  replace: 'Replace',
+};
+
+/** Short descriptions shown below the strategy selector. */
+const STRATEGY_HINTS: Record<RuntimeTransitionIntent['strategy'], string> = {
+  strictMorph: 'Requires identical path topology.',
+  bestGuessMorph: 'Fuzzy topology matching with readiness scoring.',
+  crossIconMorph: 'Arc-length uniform sampling — works across any shapes.',
+  lineAnimation: 'Trim / path-length keyframe tracks.',
+  replace: 'Instant swap with directional crossfade.',
+};
+
+const STRATEGY_OPTIONS: RuntimeTransitionIntent['strategy'][] = [
+  'strictMorph',
+  'bestGuessMorph',
+  'crossIconMorph',
+  'lineAnimation',
+  'replace',
+];
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type CompatibilityTone = 'green' | 'yellow' | 'orange' | 'red';
+
+type CompatibilityStatus = {
+  tone: CompatibilityTone;
+  label: string;
+};
 
 type ActivePreview = {
   intentId: string;
@@ -45,12 +89,16 @@ type ActivePreview = {
   resolved: ReturnType<typeof resolveTransition>;
 };
 
+// ---------------------------------------------------------------------------
+// TransitionPanel — main exported component
+// ---------------------------------------------------------------------------
+
 /**
- * TransitionPanel -- read-only morph readiness and runtime-resolved preview.
+ * TransitionPanel — runtime-resolved icon-to-icon transition preview.
  *
- * Transitions are no longer authored per-icon; they are runtime-resolved
- * icon-to-icon intents. This panel lets the user pick source/target
- * icon+variant and preview the resolved transition.
+ * The user selects source and target icon+variant, chooses a strategy,
+ * and previews the resolved transition. Layer binding readiness and
+ * per-subpath strategy breakdowns are shown read-only.
  */
 export const TransitionPanel = memo(function TransitionPanel() {
   const currentIcon = useEditorStore((s) =>
@@ -64,16 +112,22 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const { setTransitionPreview, setSelectedTransitionId } = useEditorActions();
   const projectIcons = useEditorStore((s) => s.project?.icons ?? null);
 
-  // Cross-icon endpoint state for preview
-  const [srcIconId, setSrcIconId] = useState('');
+  // --- Endpoint state ---
+  // Source icon is always the currently-open icon (not changeable).
+  const currentIconId = useEditorStore((s) => s.currentIconId ?? '');
+  const currentVariantId = useEditorStore((s) => s.currentVariantId ?? '');
+  const srcIconId = currentIconId;
   const [srcVariantId, setSrcVariantId] = useState('');
   const [tgtIconId, setTgtIconId] = useState('');
   const [tgtVariantId, setTgtVariantId] = useState('');
+
+  // --- Form state ---
   const [formStrategy, setFormStrategy] = useState<RuntimeTransitionIntent['strategy']>('bestGuessMorph');
   const [formDuration, setFormDuration] = useState('240');
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
 
+  // --- Preview state ---
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
   const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const schedulerRef = useRef<TransitionScheduler | null>(null);
@@ -81,7 +135,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const tokens = useEditorStore((s) => s.project?.tokenSet?.colors);
 
-  // Derived lists for endpoint pickers
+  // --- Derived lists ---
   const iconEntries = useMemo(
     () => Object.values(projectIcons ?? {}).map((icon) => ({ id: icon.id, name: icon.name })),
     [projectIcons],
@@ -95,17 +149,19 @@ export const TransitionPanel = memo(function TransitionPanel() {
     [projectIcons, tgtIconId],
   );
 
-  // Initialize source to current icon/variant
+  // Auto-sync source variant to the editor's current variant
   useEffect(() => {
-    if (currentIcon && !srcIconId) {
-      setSrcIconId(currentIcon.id);
+    if (currentVariantId && !srcVariantId) {
+      setSrcVariantId(currentVariantId);
     }
-    if (currentVariant && !srcVariantId && srcIconId === currentIcon?.id) {
-      setSrcVariantId(currentVariant.id);
-    }
-  }, [currentIcon, currentVariant, srcIconId, srcVariantId]);
+  }, [currentVariantId, srcVariantId]);
 
-  // Resolve snapshots for preview
+  // When the current icon changes, reset the source variant
+  useEffect(() => {
+    setSrcVariantId(currentVariantId);
+  }, [currentIconId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- Snapshots ---
   const sourceSnapshot = useMemo((): LayerSnapshot | null => {
     if (!srcIconId || !srcVariantId) return null;
     const variant = projectIcons?.[srcIconId]?.variants[srcVariantId];
@@ -118,12 +174,13 @@ export const TransitionPanel = memo(function TransitionPanel() {
     return variant ? variantToSnapshot(variant) : null;
   }, [projectIcons, tgtIconId, tgtVariantId]);
 
-  // Compatibility check
+  // --- Compatibility ---
   const compatibility = useMemo((): CompatibilityStatus | null => {
     if (!sourceSnapshot || !targetSnapshot) return null;
     return getCompatibilityStatus(sourceSnapshot, targetSnapshot, formStrategy);
   }, [sourceSnapshot, targetSnapshot, formStrategy]);
 
+  // --- Scheduler lifecycle ---
   const stopScheduler = useCallback(() => {
     schedulerRef.current?.cancel();
     schedulerRef.current = null;
@@ -195,11 +252,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
     [applyPreviewFrame, handlePlaybackComplete, stopScheduler],
   );
 
+  // --- Actions ---
   const beginPreview = useCallback(() => {
     if (!sourceSnapshot || !targetSnapshot) {
       toast({
         title: 'Preview unavailable',
-        description: 'Select both source and target icon/variant.',
+        description: 'Select both source and target icon + variant.',
       });
       return;
     }
@@ -326,30 +384,30 @@ export const TransitionPanel = memo(function TransitionPanel() {
     });
   }, []);
 
+  // --- Guard ---
   if (!currentIcon || !currentVariant) {
     return null;
   }
 
   const isPreviewable = sourceSnapshot !== null && targetSnapshot !== null;
   const isBindingsExpanded = expandedBindings.has('preview');
+  const showDirection = formStrategy === 'replace' || formStrategy === 'lineAnimation';
 
   return (
     <section className="grid gap-3">
+      {/* Header */}
       <div>
-        <p className="text-sm font-semibold text-foreground">Transitions</p>
+        <p className="text-sm font-semibold text-foreground">Transition Preview</p>
         <p className="text-xs text-muted-foreground">
-          Preview runtime-resolved transitions between icons. Transitions are no
-          longer authored -- they are resolved at runtime from icon-to-icon intents.
+          Preview how icons transition at runtime. Select source and target,
+          choose a strategy, and inspect layer bindings.
         </p>
       </div>
 
-      {/* Source / Target endpoint pickers */}
+      {/* Endpoint pickers + strategy form */}
       <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-        <CrossIconEndpointPicker
-          label="Source"
-          iconEntries={iconEntries}
-          selectedIconId={srcIconId}
-          onIconChange={(id) => { setSrcIconId(id); setSrcVariantId(''); }}
+        <LockedSourceEndpoint
+          iconName={currentIcon.name}
           variants={srcVariants}
           selectedVariantId={srcVariantId}
           onVariantChange={setSrcVariantId}
@@ -364,12 +422,11 @@ export const TransitionPanel = memo(function TransitionPanel() {
           onVariantChange={setTgtVariantId}
         />
 
+        {/* Strategy + Easing */}
         <div className="grid grid-cols-2 gap-2">
-          <FieldSelect
-            label="Strategy"
+          <StrategySelect
             value={formStrategy}
-            onChange={(value) => setFormStrategy(value as RuntimeTransitionIntent['strategy'])}
-            options={['strictMorph', 'bestGuessMorph', 'crossIconMorph', 'lineAnimation', 'replace']}
+            onChange={setFormStrategy}
           />
           <div className="grid gap-1.5">
             <Label className="text-xs uppercase text-muted-foreground">Easing</Label>
@@ -377,16 +434,34 @@ export const TransitionPanel = memo(function TransitionPanel() {
           </div>
         </div>
 
-        {/* Direction selector -- only for replace strategy */}
-        {formStrategy === 'replace' && (
-          <FieldSelect
-            label="Direction"
-            value={formDirection ?? 'automatic'}
-            onChange={(value) => setFormDirection(value as RuntimeTransitionIntent['direction'])}
-            options={DIRECTION_OPTIONS.map((d) => d.value!)}
-          />
+        {/* Strategy hint */}
+        <p className="text-[10px] leading-snug text-muted-foreground/70">
+          {STRATEGY_HINTS[formStrategy]}
+        </p>
+
+        {/* Direction — applicable to replace and lineAnimation */}
+        {showDirection && (
+          <div className="grid gap-1.5">
+            <Label className="text-xs uppercase text-muted-foreground">Direction</Label>
+            <Select
+              value={formDirection ?? 'automatic'}
+              onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
+            >
+              <SelectTrigger className="h-9 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DIRECTION_OPTIONS.map((d) => (
+                  <SelectItem key={d.value} value={d.value}>
+                    {d.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
 
+        {/* Duration */}
         <div className="grid gap-1.5">
           <Label className="text-xs uppercase text-muted-foreground">Duration (ms)</Label>
           <Input
@@ -398,8 +473,10 @@ export const TransitionPanel = memo(function TransitionPanel() {
           />
         </div>
 
+        {/* Compatibility badge */}
         {compatibility ? <CompatibilityBadge status={compatibility} /> : null}
 
+        {/* Preview button */}
         <Button
           type="button"
           size="sm"
@@ -411,10 +488,10 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </Button>
       </div>
 
-      {/* Layer bindings readiness info (read-only) */}
+      {/* Layer bindings (read-only) */}
       {sourceSnapshot && targetSnapshot && (
         <CollapsibleSection
-          title={`Layer Bindings (${Object.keys(sourceSnapshot.layers).length} source layers)`}
+          title={`Layer Bindings (${Object.keys(sourceSnapshot.layers).length} source → ${Object.keys(targetSnapshot.layers).length} target)`}
           collapsed={!isBindingsExpanded}
           onToggle={() => toggleBindingExpand('preview')}
         >
@@ -426,61 +503,96 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </CollapsibleSection>
       )}
 
-      {/* Active preview controls */}
+      {/* Playback controls */}
       {activePreview ? (
-        <div className="grid gap-2 rounded-xl border border-border/70 bg-muted/15 p-3">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              className="rounded-xl"
-              onClick={handleTogglePlayback}
-            >
-              {activePreview.playing ? <Pause className="size-4" /> : <Play className="size-4" />}
-            </Button>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="outline"
-              className="rounded-xl"
-              onClick={handleRestart}
-            >
-              <RotateCcw className="size-4" />
-            </Button>
-            <div className="min-w-0 flex-1">
-              <Slider
-                min={0}
-                max={100}
-                step={1}
-                value={[Math.round((activePreview.progress ?? 0) * 100)]}
-                onValueChange={([v]) => handleScrub(v / 100)}
-                className="w-full"
-              />
-            </div>
-            <Select value={String(activePreview.speed ?? 1)} onValueChange={(v) => handleSpeedChange(Number.parseFloat(v))}>
-              <SelectTrigger className="h-9 w-20 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SPEED_OPTIONS.map((speed) => (
-                  <SelectItem key={speed} value={String(speed)}>
-                    {speed}x
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-[length:var(--text-label)] text-muted-foreground">
-            {Math.round((activePreview.progress ?? 0) * 100)}%
-          </p>
-        </div>
+        <PreviewPlaybackControls
+          preview={activePreview}
+          onTogglePlayback={handleTogglePlayback}
+          onRestart={handleRestart}
+          onScrub={handleScrub}
+          onSpeedChange={handleSpeedChange}
+        />
       ) : null}
     </section>
   );
 });
 
-// --- Collapsible section ---
+// ---------------------------------------------------------------------------
+// PreviewPlaybackControls
+// ---------------------------------------------------------------------------
+
+function PreviewPlaybackControls({
+  preview,
+  onTogglePlayback,
+  onRestart,
+  onScrub,
+  onSpeedChange,
+}: {
+  preview: ActivePreview;
+  onTogglePlayback: () => void;
+  onRestart: () => void;
+  onScrub: (progress: number) => void;
+  onSpeedChange: (speed: number) => void;
+}) {
+  const pct = Math.round((preview.progress ?? 0) * 100);
+
+  return (
+    <div className="grid gap-2 rounded-xl border border-border/70 bg-muted/15 p-3">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="rounded-xl"
+          onClick={onTogglePlayback}
+        >
+          {preview.playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+        </Button>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="outline"
+          className="rounded-xl"
+          onClick={onRestart}
+        >
+          <RotateCcw className="size-4" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={[pct]}
+            onValueChange={([v]) => onScrub(v / 100)}
+            className="w-full"
+          />
+        </div>
+        <Select
+          value={String(preview.speed ?? 1)}
+          onValueChange={(v) => onSpeedChange(Number.parseFloat(v))}
+        >
+          <SelectTrigger className="h-9 w-20 rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SPEED_OPTIONS.map((speed) => (
+              <SelectItem key={speed} value={String(speed)}>
+                {speed}×
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <p className="text-[length:var(--text-label)] tabular-nums text-muted-foreground">
+        {pct}%
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CollapsibleSection
+// ---------------------------------------------------------------------------
 
 function CollapsibleSection({
   title,
@@ -520,7 +632,9 @@ function CollapsibleSection({
   );
 }
 
-// --- Phase I: Per-binding strategy display (read-only) ---
+// ---------------------------------------------------------------------------
+// Per-binding strategy analysis (read-only)
+// ---------------------------------------------------------------------------
 
 type BindingStrategyOverall = 'morph' | 'trim' | 'crossfade' | 'preserved';
 
@@ -681,7 +795,9 @@ function BindingStrategyDisplay({
   );
 }
 
-// --- Read-only Layer Binding List ---
+// ---------------------------------------------------------------------------
+// ReadOnlyLayerBindingList
+// ---------------------------------------------------------------------------
 
 function ReadOnlyLayerBindingList({
   sourceSnapshot,
@@ -700,7 +816,7 @@ function ReadOnlyLayerBindingList({
   if (bindings.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        No shared layers between source and target.
+        No layer bindings could be generated.
       </p>
     );
   }
@@ -714,22 +830,45 @@ function ReadOnlyLayerBindingList({
           binding.fromLayerId === binding.toLayerId,
         ) && strategy === 'replace';
 
+        const isAdded = !binding.fromLayerId && binding.toLayerId;
+        const isRemoved = binding.fromLayerId && !binding.toLayerId;
+
         return (
           <div
             key={`${binding.fromLayerId}-${binding.toLayerId}-${index}`}
             className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2"
           >
             <div className="flex items-center gap-1.5 text-[length:var(--text-label)]">
-              <span className="font-medium text-foreground">{binding.fromLayerId ?? '(none)'}</span>
-              <span className="text-muted-foreground">-&gt;</span>
-              <span className="font-medium text-foreground">{binding.toLayerId ?? '(none)'}</span>
+              {isAdded ? (
+                <>
+                  <span className="font-medium text-foreground">{binding.toLayerId}</span>
+                  <span className="inline-flex rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-emerald-600">
+                    new
+                  </span>
+                </>
+              ) : isRemoved ? (
+                <>
+                  <span className="font-medium text-foreground">{binding.fromLayerId}</span>
+                  <span className="inline-flex rounded-full bg-red-500/15 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-red-600">
+                    removed
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-foreground">{binding.fromLayerId ?? '(none)'}</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="font-medium text-foreground">{binding.toLayerId ?? '(none)'}</span>
+                </>
+              )}
             </div>
-            <BindingStrategyDisplay
-              binding={binding}
-              fromSnapshot={sourceSnapshot}
-              toSnapshot={targetSnapshot}
-              isPreserved={isPreserved}
-            />
+            {!isAdded && !isRemoved && (
+              <BindingStrategyDisplay
+                binding={binding}
+                fromSnapshot={sourceSnapshot}
+                toSnapshot={targetSnapshot}
+                isPreserved={isPreserved}
+              />
+            )}
           </div>
         );
       })}
@@ -737,7 +876,9 @@ function ReadOnlyLayerBindingList({
   );
 }
 
-// --- Helpers ---
+// ---------------------------------------------------------------------------
+// Helpers — compatibility & bindings
+// ---------------------------------------------------------------------------
 
 function getCompatibilityStatus(
   fromSnapshot: LayerSnapshot,
@@ -746,7 +887,7 @@ function getCompatibilityStatus(
 ): CompatibilityStatus {
   const bindings = buildDefaultLayerBindings(fromSnapshot, toSnapshot, strategy);
   if (bindings.length === 0) {
-    return { tone: 'red', label: 'Incompatible -- will crossfade' };
+    return { tone: 'red', label: 'Replace / Fallback' };
   }
 
   if (strategy === 'strictMorph') {
@@ -755,8 +896,6 @@ function getCompatibilityStatus(
       const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
       if (!fromD || !toD) return false;
       try {
-        // Rely on strict morph import from runtime-core
-        const { strictMorph } = require('@/lib/runtime-core');
         strictMorph(fromD, toD);
         return true;
       } catch {
@@ -764,8 +903,8 @@ function getCompatibilityStatus(
       }
     });
     return allStrict
-      ? { tone: 'green', label: 'Compatible' }
-      : { tone: 'red', label: 'Incompatible -- will crossfade' };
+      ? { tone: 'green', label: 'Strict Morph' }
+      : { tone: 'red', label: 'Replace / Fallback' };
   }
 
   if (strategy === 'bestGuessMorph') {
@@ -774,37 +913,35 @@ function getCompatibilityStatus(
       const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
       const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
       if (!fromD || !toD) {
-        return { tone: 'red', label: 'Incompatible -- will crossfade' };
+        return { tone: 'red', label: 'Replace / Fallback' };
       }
       try {
-        const { strictMorph: sm, bestGuessMorph: bgm } = require('@/lib/runtime-core');
-        try {
-          sm(fromD, toD);
-          continue;
-        } catch {
-          const morph = bgm(fromD, toD);
-          if (!morph) {
-            return { tone: 'red', label: 'Incompatible -- will crossfade' };
-          }
-          sawBestGuess = true;
-        }
+        strictMorph(fromD, toD);
+        continue;
       } catch {
-        return { tone: 'red', label: 'Incompatible -- will crossfade' };
+        const morph = bestGuessMorph(fromD, toD);
+        if (!morph) {
+          return { tone: 'red', label: 'Replace / Fallback' };
+        }
+        sawBestGuess = true;
       }
     }
 
     return sawBestGuess
       ? { tone: 'yellow', label: 'Best Guess' }
-      : { tone: 'green', label: 'Compatible' };
+      : { tone: 'green', label: 'Strict Morph' };
   }
 
   if (strategy === 'crossIconMorph') {
-    // Arc-length uniform sampling handles any sub-path topology —
-    // always at least partially compatible. Show as blue/info tone.
-    return { tone: 'yellow', label: 'Location-based morph' };
+    return { tone: 'yellow', label: 'Cross-Icon Morph' };
   }
 
-  return { tone: 'green', label: 'Compatible' };
+  if (strategy === 'lineAnimation') {
+    return { tone: 'orange', label: 'Line Animation' };
+  }
+
+  // replace — always works
+  return { tone: 'green', label: 'Replace' };
 }
 
 function buildDefaultLayerBindings(
@@ -815,18 +952,32 @@ function buildDefaultLayerBindings(
   const fromIds = Object.keys(fromSnapshot.layers);
   const toIds = Object.keys(toSnapshot.layers);
 
-  // For cross-icon morphing, layers come from different icons so their IDs
-  // will never match. Pair by position instead (first↔first, second↔second …).
+  // Cross-icon: layers from different icons — pair positionally, then
+  // add unmatched as added / removed.
   if (strategy === 'crossIconMorph') {
-    const count = Math.max(fromIds.length, toIds.length);
-    if (count === 0) return [];
-    return Array.from({ length: count }, (_, i) => ({
-      fromLayerId: fromIds[i] ?? fromIds[fromIds.length - 1]!,
-      toLayerId: toIds[i] ?? toIds[toIds.length - 1]!,
-      morph: { topology: 'bestGuess' as const },
-    }));
+    const count = Math.min(fromIds.length, toIds.length);
+    const bindings: LayerBinding[] = [];
+
+    for (let i = 0; i < count; i++) {
+      bindings.push({
+        fromLayerId: fromIds[i]!,
+        toLayerId: toIds[i]!,
+        morph: { topology: 'bestGuess' as const },
+      });
+    }
+    // Unmatched source → removed
+    for (let i = count; i < fromIds.length; i++) {
+      bindings.push({ fromLayerId: fromIds[i]!, toLayerId: undefined });
+    }
+    // Unmatched target → added
+    for (let i = count; i < toIds.length; i++) {
+      bindings.push({ fromLayerId: undefined, toLayerId: toIds[i]! });
+    }
+
+    return bindings;
   }
 
+  // Same-icon or shared-layer strategies: match by layer ID
   const sharedIds = fromIds.filter((layerId) => Boolean(toSnapshot.layers[layerId]));
   const pairs = sharedIds.length > 0
     ? sharedIds.map((layerId) => ({ fromLayerId: layerId, toLayerId: layerId }))
@@ -843,6 +994,10 @@ function buildDefaultLayerBindings(
   });
 }
 
+// ---------------------------------------------------------------------------
+// CompatibilityBadge
+// ---------------------------------------------------------------------------
+
 function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
   return (
     <span
@@ -850,6 +1005,7 @@ function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
         'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-[0.16em]',
         status.tone === 'green' && 'bg-emerald-500/10 text-emerald-600',
         status.tone === 'yellow' && 'bg-amber-500/10 text-amber-700',
+        status.tone === 'orange' && 'bg-orange-500/10 text-orange-600',
         status.tone === 'red' && 'bg-red-500/10 text-red-600',
       )}
     >
@@ -858,28 +1014,30 @@ function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
   );
 }
 
-function FieldSelect({
-  label,
+// ---------------------------------------------------------------------------
+// StrategySelect — human-readable labels with descriptions
+// ---------------------------------------------------------------------------
+
+function StrategySelect({
   value,
   onChange,
-  options,
 }: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
+  value: RuntimeTransitionIntent['strategy'];
+  onChange: (value: RuntimeTransitionIntent['strategy']) => void;
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-xs uppercase text-muted-foreground">{label}</Label>
-      <Select value={value} onValueChange={onChange}>
+      <Label className="text-xs uppercase text-muted-foreground">Strategy</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as RuntimeTransitionIntent['strategy'])}>
         <SelectTrigger className="h-9 rounded-xl">
-          <SelectValue />
+          <SelectValue>
+            {STRATEGY_LABELS[value]}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
+          {STRATEGY_OPTIONS.map((option) => (
             <SelectItem key={option} value={option}>
-              {option}
+              {STRATEGY_LABELS[option]}
             </SelectItem>
           ))}
         </SelectContent>
@@ -888,7 +1046,53 @@ function FieldSelect({
   );
 }
 
-// --- Cross-Icon Endpoint Picker (no state selector) ---
+// ---------------------------------------------------------------------------
+// CrossIconEndpointPicker
+// ---------------------------------------------------------------------------
+
+function LockedSourceEndpoint({
+  iconName,
+  variants,
+  selectedVariantId,
+  onVariantChange,
+}: {
+  iconName: string;
+  variants: Array<{ id: string; name?: string }>;
+  selectedVariantId: string;
+  onVariantChange: (id: string) => void;
+}) {
+  return (
+    <fieldset className="grid gap-2 rounded-lg border border-border/40 p-2.5">
+      <legend className="px-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Source
+      </legend>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-1.5">
+          <Label className="text-xs uppercase text-muted-foreground">Icon</Label>
+          <div className="flex h-9 items-center rounded-xl border border-input bg-muted/30 px-3 text-sm text-foreground">
+            {iconName}
+          </div>
+        </div>
+        <div className="grid gap-1.5">
+          <Label className="text-xs uppercase text-muted-foreground">Variant</Label>
+          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
+            <SelectTrigger className="h-9 rounded-xl">
+              <SelectValue placeholder="Select variant..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select variant...</SelectItem>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name || v.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </fieldset>
+  );
+}
 
 function CrossIconEndpointPicker({
   label,

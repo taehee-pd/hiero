@@ -32,6 +32,7 @@ const DIRECTION_OPTIONS: Array<{ value: RuntimeTransitionIntent['direction']; la
 type CompatibilityStatus =
   | { tone: 'green'; label: 'Compatible' }
   | { tone: 'yellow'; label: 'Best Guess' }
+  | { tone: 'yellow'; label: 'Location-based morph' }
   | { tone: 'red'; label: 'Incompatible -- will crossfade' };
 
 type ActivePreview = {
@@ -368,7 +369,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
             label="Strategy"
             value={formStrategy}
             onChange={(value) => setFormStrategy(value as RuntimeTransitionIntent['strategy'])}
-            options={['strictMorph', 'bestGuessMorph', 'lineAnimation', 'replace']}
+            options={['strictMorph', 'bestGuessMorph', 'crossIconMorph', 'lineAnimation', 'replace']}
           />
           <div className="grid gap-1.5">
             <Label className="text-xs uppercase text-muted-foreground">Easing</Label>
@@ -797,6 +798,12 @@ function getCompatibilityStatus(
       : { tone: 'green', label: 'Compatible' };
   }
 
+  if (strategy === 'crossIconMorph') {
+    // Arc-length uniform sampling handles any sub-path topology —
+    // always at least partially compatible. Show as blue/info tone.
+    return { tone: 'yellow', label: 'Location-based morph' };
+  }
+
   return { tone: 'green', label: 'Compatible' };
 }
 
@@ -817,6 +824,9 @@ function buildDefaultLayerBindings(
       return { fromLayerId, toLayerId, morph: { topology: 'strict' as const } };
     }
     if (strategy === 'bestGuessMorph') {
+      return { fromLayerId, toLayerId, morph: { topology: 'bestGuess' as const } };
+    }
+    if (strategy === 'crossIconMorph') {
       return { fromLayerId, toLayerId, morph: { topology: 'bestGuess' as const } };
     }
     return { fromLayerId, toLayerId };

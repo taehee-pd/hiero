@@ -265,7 +265,7 @@ export type RuntimeTransitionIntent = {
   toIconId: string;
   fromVariantId: string;
   toVariantId: string;
-  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';

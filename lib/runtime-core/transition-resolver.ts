@@ -16,7 +16,7 @@ import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-
  */
 export type TransitionConfig = {
   id?: string;
-  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
@@ -465,6 +465,11 @@ function decideRuntimeStrategy(
       return 'crossIconMorph';
     }
     return 'fallback';
+  }
+  // When crossIconMorph is explicitly declared, always use it —
+  // no readiness gate. The pipeline handles any sub-path topology.
+  if (declared === 'crossIconMorph') {
+    return 'crossIconMorph';
   }
   return declared;
 }

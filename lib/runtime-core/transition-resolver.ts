@@ -659,29 +659,37 @@ function computeStaggerOrder(
   mode: TransitionStagger['mode'] | undefined = 'linear',
 ): number[] {
   const baseOrder = bindings.map((_, index) => index);
-  switch (mode) {
-    case 'from-center':
-      return [...baseOrder].sort((left, right) => {
-        const center = (bindings.length - 1) / 2;
-        return Math.abs(left - center) - Math.abs(right - center) || left - right;
-      });
-    case 'from-edges':
-      return [...baseOrder].sort((left, right) => {
-        const edgeDistanceLeft = Math.min(left, bindings.length - 1 - left);
-        const edgeDistanceRight = Math.min(right, bindings.length - 1 - right);
-        return edgeDistanceLeft - edgeDistanceRight || left - right;
-      });
-    case 'random':
-      return [...baseOrder].sort((left, right) => {
-        const leftId = bindings[left]?.toLayer?.id ?? bindings[left]?.fromLayer?.id ?? String(left);
-        const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
-        return hashString(leftId) - hashString(rightId);
-      });
-    case 'individually':
-    case 'linear':
-    default:
-      return baseOrder;
-  }
+  const sequence = (() => {
+    switch (mode) {
+      case 'from-center':
+        return [...baseOrder].sort((left, right) => {
+          const center = (bindings.length - 1) / 2;
+          return Math.abs(left - center) - Math.abs(right - center) || left - right;
+        });
+      case 'from-edges':
+        return [...baseOrder].sort((left, right) => {
+          const edgeDistanceLeft = Math.min(left, bindings.length - 1 - left);
+          const edgeDistanceRight = Math.min(right, bindings.length - 1 - right);
+          return edgeDistanceLeft - edgeDistanceRight || left - right;
+        });
+      case 'random':
+        return [...baseOrder].sort((left, right) => {
+          const leftId = bindings[left]?.toLayer?.id ?? bindings[left]?.fromLayer?.id ?? String(left);
+          const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
+          return hashString(leftId) - hashString(rightId);
+        });
+      case 'individually':
+      case 'linear':
+      default:
+        return baseOrder;
+    }
+  })();
+
+  const orderByBindingIndex = new Array(bindings.length).fill(0);
+  sequence.forEach((bindingIndex, order) => {
+    orderByBindingIndex[bindingIndex] = order;
+  });
+  return orderByBindingIndex;
 }
 
 function hashString(value: string): number {

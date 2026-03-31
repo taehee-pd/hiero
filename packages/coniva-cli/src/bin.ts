@@ -49,8 +49,20 @@ function parseFlags(argv: string[]): Record<string, string | boolean> {
 // Parse all args: flags can appear anywhere (e.g. `coniva --version`, `coniva dev --port 4401`)
 const allArgs = process.argv.slice(2);
 const flags = parseFlags(allArgs);
-// First non-flag positional argument is the command
-const command = allArgs.find((a) => !a.startsWith('--'));
+// Find the first positional arg that is not a flag key or flag value.
+// This handles `coniva --config coniva.config.ts build` → command = "build".
+const command = (() => {
+  for (let i = 0; i < allArgs.length; i++) {
+    const a = allArgs[i]!;
+    if (a.startsWith('--')) {
+      const next = allArgs[i + 1];
+      if (next !== undefined && !next.startsWith('--')) i++; // skip value
+    } else {
+      return a;
+    }
+  }
+  return undefined;
+})();
 
 async function main(): Promise<void> {
   if (flags['help'] || flags['h']) {

@@ -17,7 +17,7 @@ var __toESM = (mod, isNodeMode, target) => {
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 
-// packages/coniva-cli/package.json
+// package.json
 var require_package = __commonJS((exports, module) => {
   module.exports = {
     name: "@coniva/cli",
@@ -48,7 +48,7 @@ var require_package = __commonJS((exports, module) => {
   };
 });
 
-// packages/coniva-cli/src/commands/init.ts
+// src/commands/init.ts
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -132,11 +132,11 @@ function log(action, file) {
   console.log(`  ${action}  ${file}`);
 }
 
-// packages/coniva-cli/src/commands/dev.ts
+// src/commands/dev.ts
 import path8 from "node:path";
 import { existsSync as existsSync2 } from "node:fs";
 
-// lib/install-config/validate-config.ts
+// ../../lib/install-config/validate-config.ts
 var ALLOWED_HOST_KINDS = new Set(["react-app", "reference-app"]);
 var ALLOWED_RUNTIME_MODES = new Set(["in-memory", "cache-dir", "vendored"]);
 var ALLOWED_RELEASE_KINDS = new Set(["local-directory", "git-pr", "npm-registry"]);
@@ -317,7 +317,7 @@ var path2 = {
 function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-// lib/install-config/load-config.ts
+// ../../lib/install-config/load-config.ts
 function loadConfig(raw, configPath) {
   const label = configPath ?? "coniva.config.ts";
   if (raw === null || raw === undefined) {
@@ -346,15 +346,15 @@ function normalizeConfig(config) {
     releaseTargets: config.releaseTargets ?? []
   };
 }
-// lib/live-sync/dev-server.ts
+// ../../lib/live-sync/dev-server.ts
 import { createServer } from "node:http";
 import { mkdir as mkdir3, writeFile as writeFile3 } from "node:fs/promises";
 import path7 from "node:path";
 
-// lib/live-sync/incremental-rebuild.ts
+// ../../lib/live-sync/incremental-rebuild.ts
 import path5 from "node:path";
 
-// lib/schema/guards.ts
+// ../../lib/schema/guards.ts
 function isObject2(val) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
@@ -387,11 +387,11 @@ function isIcon(val) {
   return true;
 }
 
-// lib/sync-source/types.ts
+// ../../lib/sync-source/types.ts
 var ICON_SOURCE_SCHEMA_VERSION = "1.0.0";
 var SYNC_SOURCE_MANIFEST_SCHEMA_VERSION = "1.0.0";
 
-// lib/sync-source/export-icon-source.ts
+// ../../lib/sync-source/export-icon-source.ts
 function exportIconSource(icon) {
   const variants = {};
   for (const [variantId, variant] of sortedEntries(icon.variants)) {
@@ -439,7 +439,7 @@ function sortedEntries(record) {
   return Object.entries(record).sort(([a], [b]) => a.localeCompare(b));
 }
 
-// lib/sync-source/export-manifest.ts
+// ../../lib/sync-source/export-manifest.ts
 function generateSyncSourceManifest(entries, generatedAt) {
   const sorted = [...entries].sort((a, b) => a.source.id.localeCompare(b.source.id));
   const icons = {};
@@ -468,7 +468,7 @@ function generateSyncSourceManifest(entries, generatedAt) {
   };
 }
 
-// lib/schema/types.ts
+// ../../lib/schema/types.ts
 function buildDefaultLegacyState(v) {
   const fallbackState = Object.values(v.states ?? {})[0];
   return {
@@ -495,7 +495,7 @@ function getVariantState(v, stateId) {
   return buildDefaultLegacyState(v);
 }
 
-// lib/rendering/resolve-layer-style.ts
+// ../../lib/rendering/resolve-layer-style.ts
 var DEFAULT_RENDERING_MODE = "multicolor";
 var ROLE_OPACITY = {
   primary: 1,
@@ -568,7 +568,7 @@ function hasVisiblePaint(paint) {
   return !(paint.mode === "fixed" && paint.value === "none");
 }
 
-// lib/runtime-core/variable-value.ts
+// ../../lib/runtime-core/variable-value.ts
 var ROLE_THRESHOLDS = {
   primary: [0, 0.33],
   secondary: [0.33, 0.66],
@@ -596,7 +596,7 @@ function computeVariableValue(layers, variableValue) {
   return result;
 }
 
-// lib/export/export-svg.ts
+// ../../lib/export/export-svg.ts
 function exportSvgString(icon, variantId, stateId, tokens, renderingMode) {
   const variant = icon.variants[variantId];
   if (!variant)
@@ -779,7 +779,7 @@ function formatNumber(value) {
   return Object.is(rounded, -0) ? "0" : String(rounded);
 }
 
-// lib/sync-source/export-preview.ts
+// ../../lib/sync-source/export-preview.ts
 function generatePreviewSvg(icon, tokens) {
   const variantIds = Object.keys(icon.variants).sort((a, b) => a.localeCompare(b));
   const variantId = variantIds[0];
@@ -790,7 +790,7 @@ function generatePreviewSvg(icon, tokens) {
   return svg || null;
 }
 
-// lib/sync-source/serialize.ts
+// ../../lib/sync-source/serialize.ts
 function serializeSourceJson(value) {
   return `${JSON.stringify(sortValue(value), null, 2)}
 `;
@@ -805,7 +805,7 @@ function sortValue(value) {
   return value;
 }
 
-// lib/sync-source/validate.ts
+// ../../lib/sync-source/validate.ts
 var VALID_ICON_DIR_NAME = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 var MAX_ICON_DIR_NAME_LENGTH = 128;
 function toIconDirName(name) {
@@ -900,7 +900,7 @@ function validateSourcePayload(payload) {
   return errors;
 }
 
-// lib/sync-source/export-source-payload.ts
+// ../../lib/sync-source/export-source-payload.ts
 function exportSourcePayload(project, options) {
   if (!isProject(project)) {
     throw new Error("Invalid project input for source export.");
@@ -947,7 +947,7 @@ ${messages}`);
   }
   return payload;
 }
-// lib/sync-source/source-to-project.ts
+// ../../lib/sync-source/source-to-project.ts
 import { readdir, readFile, stat } from "node:fs/promises";
 import path3 from "node:path";
 function iconFromSource(source) {
@@ -1047,11 +1047,11 @@ async function projectFromSourceDir(sourceDir, options) {
   } catch {}
   return projectFromSourceFiles(files, options);
 }
-// lib/compiler-contracts/types.ts
+// ../../lib/compiler-contracts/types.ts
 var COMPILED_ICON_SCHEMA_URI = "https://coniva.dev/schemas/compiled-icon/1.0.0";
 var PACKAGE_MANIFEST_SCHEMA_URI = "https://coniva.dev/schemas/manifest/1.0.0";
 var ICON_CHANGE_RECORD_SCHEMA_URI = "https://coniva.dev/schemas/change-record/1.0.0";
-// lib/compiler-contracts/validators.ts
+// ../../lib/compiler-contracts/validators.ts
 function isObject3(val) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
 }
@@ -1398,7 +1398,7 @@ function isIconChangeRecord(val) {
     return false;
   return true;
 }
-// lib/export/diff-compiled-icons.ts
+// ../../lib/export/diff-compiled-icons.ts
 var MODE_ORDER = [
   "monochrome",
   "hierarchical",
@@ -1679,7 +1679,7 @@ function sortJsonValue(value) {
   return value;
 }
 
-// lib/export/export-compiled-icon.ts
+// ../../lib/export/export-compiled-icon.ts
 import { createHash } from "node:crypto";
 function exportCompiledIcon(project, iconId) {
   const icon = project.icons[iconId];
@@ -1849,7 +1849,7 @@ function sortJsonValue2(value) {
   return value;
 }
 
-// lib/export/export-package-manifest.ts
+// ../../lib/export/export-package-manifest.ts
 var RENDERING_MODE_ORDER = [
   "monochrome",
   "hierarchical",
@@ -1956,7 +1956,7 @@ function sortJsonValue3(value) {
   return value;
 }
 
-// lib/export/export-react-components.ts
+// ../../lib/export/export-react-components.ts
 function generateReactIconComponents(compiledIcons, manifest) {
   const compiledById = new Map(compiledIcons.map((icon) => [icon.id, icon]));
   const files = [];
@@ -2199,7 +2199,7 @@ function serializeCode(value) {
   return JSON.stringify(value, null, 2);
 }
 
-// lib/export/compile-pipeline.ts
+// ../../lib/export/compile-pipeline.ts
 function compileProject(project, options) {
   if (!isProject(project)) {
     throw new Error("Invalid project input for compile pipeline.");
@@ -2320,7 +2320,7 @@ function sortJsonValue4(value) {
   return value;
 }
 
-// lib/sync-service/diff-source.ts
+// ../../lib/sync-service/diff-source.ts
 function diffSourcePayloads(previous, current) {
   const prevMap = toMap(previous);
   const currMap = toMap(current);
@@ -2448,7 +2448,7 @@ function extractAllIconDirs(fileMap) {
   return dirs;
 }
 
-// lib/live-sync/output-writer.ts
+// ../../lib/live-sync/output-writer.ts
 import { mkdir as mkdir2, writeFile as writeFile2 } from "node:fs/promises";
 import path4 from "node:path";
 async function writeCompiledToHostTarget(repoRoot, target, files) {
@@ -2495,7 +2495,7 @@ async function writeCompiledToHostTarget(repoRoot, target, files) {
   };
 }
 
-// lib/live-sync/incremental-rebuild.ts
+// ../../lib/live-sync/incremental-rebuild.ts
 async function fullRebuild(repoRoot, config, opts) {
   return runBuild(repoRoot, config, null, opts);
 }
@@ -2518,7 +2518,7 @@ async function runBuild(repoRoot, config, previousSourceFiles, opts) {
   }
   let currentPayload;
   try {
-    currentPayload = exportSourcePayload(project, { generatedAt: builtAt });
+    currentPayload = exportSourcePayload(project, { generatedAt: "1970-01-01T00:00:00.000Z" });
   } catch (err) {
     return {
       kind: "error",
@@ -2583,7 +2583,7 @@ async function runBuild(repoRoot, config, previousSourceFiles, opts) {
   };
 }
 
-// lib/live-sync/file-watcher.ts
+// ../../lib/live-sync/file-watcher.ts
 import { watch } from "node:fs";
 import path6 from "node:path";
 var RELEVANT_EXTENSIONS = new Set([".json", ".svg"]);
@@ -2635,7 +2635,7 @@ function watchSourceDir(sourceDir, onChanged, debounceMs = DEFAULT_DEBOUNCE_MS) 
   return handle;
 }
 
-// lib/live-sync/dev-server.ts
+// ../../lib/live-sync/dev-server.ts
 async function startDevServer(serverConfig) {
   const { repoRoot, coniva: config, port } = serverConfig;
   const state = {
@@ -2687,7 +2687,10 @@ async function startDevServer(serverConfig) {
 async function handleRequest(req, res, serverConfig, state) {
   const { method, url } = req;
   const { repoRoot, coniva: config, apiSecret } = serverConfig;
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+  const requestOrigin = req.headers["origin"];
+  if (requestOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Vary", "Origin");
@@ -2886,7 +2889,7 @@ function extractIconList(sourceFiles) {
   }
 }
 
-// packages/coniva-cli/src/commands/dev.ts
+// src/commands/dev.ts
 async function runDev(cwd, flags) {
   const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "coniva.config.ts");
   const rawPort = flags["port"];
@@ -2928,7 +2931,7 @@ ${result.error}`);
   await new Promise(() => {});
 }
 
-// packages/coniva-cli/src/commands/build.ts
+// src/commands/build.ts
 import path9 from "node:path";
 import { existsSync as existsSync3 } from "node:fs";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
@@ -3020,7 +3023,7 @@ ${result.error}`);
 [coniva] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
 }
 
-// packages/coniva-cli/src/commands/validate.ts
+// src/commands/validate.ts
 import path10 from "node:path";
 import { existsSync as existsSync4 } from "node:fs";
 async function runValidate(cwd, flags) {
@@ -3095,7 +3098,7 @@ ${loadResult.error}`);
   }
 }
 
-// packages/coniva-cli/src/bin.ts
+// src/bin.ts
 function parseFlags(argv) {
   const flags = {};
   for (let i = 0;i < argv.length; i++) {
@@ -3115,7 +3118,19 @@ function parseFlags(argv) {
 }
 var allArgs = process.argv.slice(2);
 var flags = parseFlags(allArgs);
-var command = allArgs.find((a) => !a.startsWith("--"));
+var command = (() => {
+  for (let i = 0;i < allArgs.length; i++) {
+    const a = allArgs[i];
+    if (a.startsWith("--")) {
+      const next = allArgs[i + 1];
+      if (next !== undefined && !next.startsWith("--"))
+        i++;
+    } else {
+      return a;
+    }
+  }
+  return;
+})();
 async function main() {
   if (flags["help"] || flags["h"]) {
     printUsage();

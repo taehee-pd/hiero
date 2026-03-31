@@ -122,8 +122,13 @@ async function handleRequest(
   const { method, url } = req;
   const { repoRoot, coniva: config, apiSecret } = serverConfig;
 
-  // CORS — allow the editor origin (web editor on localhost:3000)
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  // CORS — reflect the request origin so the editor works from any origin
+  // (localhost web editor, desktop webview, hosted app). The server already
+  // binds to 127.0.0.1 only, so arbitrary-origin reflection is safe here.
+  const requestOrigin = req.headers['origin'];
+  if (requestOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Vary', 'Origin');

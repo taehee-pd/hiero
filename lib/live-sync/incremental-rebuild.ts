@@ -82,10 +82,12 @@ async function runBuild(
     };
   }
 
-  // Step 2: Export canonical source payload for diff tracking
+  // Step 2: Export canonical source payload for diff tracking.
+  // Use a fixed sentinel timestamp so the manifest's generatedAt field doesn't
+  // cause false no-op misses — we only care whether icon sources changed.
   let currentPayload;
   try {
-    currentPayload = exportSourcePayload(project, { generatedAt: builtAt });
+    currentPayload = exportSourcePayload(project, { generatedAt: '1970-01-01T00:00:00.000Z' });
   } catch (err) {
     return {
       kind: 'error',

@@ -12,3 +12,6 @@ out/
 desktop/.generated/
 desktop/build/
 desktop/artifacts/
+
+# Claude Code worktrees (temporary)
+.claude/worktrees/

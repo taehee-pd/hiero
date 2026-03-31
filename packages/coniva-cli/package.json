@@ -1,0 +1,27 @@
+{
+  "name": "@coniva/cli",
+  "version": "0.1.0",
+  "description": "Coniva CLI — repo-native icon authoring for host repositories",
+  "bin": {
+    "coniva": "./dist/bin.js"
+  },
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.0"
+  },
+  "keywords": [
+    "coniva",
+    "icons",
+    "cli",
+    "icon-authoring"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "bun build src/bin.ts --outfile dist/bin.js --target node",
+    "prepare": "bun run build"
+  }
+}

@@ -10,6 +10,7 @@ export default tseslint.config(
       '.next/',
       'out/',
       'dist/',
+      'packages/*/dist/',
       'ci-artifacts/',
       '.codex/',
       'desktop/node_modules/',

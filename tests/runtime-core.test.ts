@@ -646,6 +646,69 @@ describe('effect scheduler', () => {
     expect(resolved.layerBindings.map((binding) => binding.durationMs)).toEqual([100, 100, 100]);
     expect(resolved.durationMs).toBe(300);
   });
+
+  test('resolveTransition applies from-center stagger order as binding ranks', () => {
+    const fromSnapshot: LayerSnapshot = {
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H2V2H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M3 0H5V2H3Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M6 0H8V2H6Z' }, style: {} },
+      },
+    };
+    const toSnapshot: LayerSnapshot = {
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H2V2H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M3 0H5V2H3Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M6 0H8V2H6Z' }, style: {} },
+      },
+    };
+    const transition: TransitionConfig = {
+      strategy: 'replace',
+      durationMs: 120,
+      stagger: { mode: 'from-center', perLayerMs: 25 },
+      layerBindings: [
+        { fromLayerId: 'a', toLayerId: 'a' },
+        { fromLayerId: 'b', toLayerId: 'b' },
+        { fromLayerId: 'c', toLayerId: 'c' },
+      ],
+    };
+
+    const resolved = resolveTransition(transition, fromSnapshot, toSnapshot);
+    expect(resolved.layerBindings.map((binding) => binding.delayMs)).toEqual([25, 0, 50]);
+  });
+
+  test('resolveTransition applies from-edges stagger order as binding ranks', () => {
+    const fromSnapshot: LayerSnapshot = {
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H2V2H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M3 0H5V2H3Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M6 0H8V2H6Z' }, style: {} },
+        d: { id: 'd', path: { d: 'M9 0H11V2H9Z' }, style: {} },
+      },
+    };
+    const toSnapshot: LayerSnapshot = {
+      layers: {
+        a: { id: 'a', path: { d: 'M0 0H2V2H0Z' }, style: {} },
+        b: { id: 'b', path: { d: 'M3 0H5V2H3Z' }, style: {} },
+        c: { id: 'c', path: { d: 'M6 0H8V2H6Z' }, style: {} },
+        d: { id: 'd', path: { d: 'M9 0H11V2H9Z' }, style: {} },
+      },
+    };
+    const transition: TransitionConfig = {
+      strategy: 'replace',
+      durationMs: 120,
+      stagger: { mode: 'from-edges', perLayerMs: 10 },
+      layerBindings: [
+        { fromLayerId: 'a', toLayerId: 'a' },
+        { fromLayerId: 'b', toLayerId: 'b' },
+        { fromLayerId: 'c', toLayerId: 'c' },
+        { fromLayerId: 'd', toLayerId: 'd' },
+      ],
+    };
+
+    const resolved = resolveTransition(transition, fromSnapshot, toSnapshot);
+    expect(resolved.layerBindings.map((binding) => binding.delayMs)).toEqual([0, 20, 30, 10]);
+  });
 });
 
 // --- B2: composeValues ---

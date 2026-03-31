@@ -195,7 +195,15 @@ export class DomRenderer {
   setState(stateId: string): void {
     this.ensureMounted();
 
-    const state = getVariantState(this.variant!, stateId);
+    // In the flat-variant model, stateId is a variantId. Switch this.variant when
+    // the caller requests a known variant so that layer lookups resolve correctly.
+    // Falls through to state-within-variant semantics for the legacy states model.
+    const variantById = this.icon.variants[stateId];
+    if (variantById) {
+      this.variant = variantById;
+    }
+
+    const state = getVariantState(this.variant!, variantById ? undefined : stateId);
 
     const svg = this.svg!;
     const defs = ensureManagedDefs(svg);

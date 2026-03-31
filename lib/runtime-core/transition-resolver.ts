@@ -211,6 +211,22 @@ function resolveBindings(
     resolved.push({ ...binding, fromLayer, toLayer, source: 'explicit' });
   }
 
+  // When layerBindings is a non-empty array the author has explicitly chosen which
+  // layers to morph. Skip auto-matching for the remaining unbound layers so the
+  // author's selection is honoured — those layers will snap (replace behaviour).
+  // An empty [] or undefined both fall through to automatic id-matching below.
+  if (transition.layerBindings !== undefined && transition.layerBindings.length > 0) {
+    // Still register unmatched layers as replace-only entries so the renderer
+    // knows which layers to display in the target state.
+    Object.values(fromSnapshot.layers).filter((l) => !usedFrom.has(l.id)).forEach((layer) => {
+      resolved.push({ fromLayerId: layer.id, fromLayer: layer, toLayer: undefined, source: 'explicit-unmatched' });
+    });
+    Object.values(toSnapshot.layers).filter((l) => !usedTo.has(l.id)).forEach((layer) => {
+      resolved.push({ toLayerId: layer.id, toLayer: layer, fromLayer: undefined, source: 'explicit-unmatched' });
+    });
+    return resolved;
+  }
+
   const unmatchedFrom = Object.values(fromSnapshot.layers).filter((layer) => !usedFrom.has(layer.id));
   const unmatchedTo = Object.values(toSnapshot.layers).filter((layer) => !usedTo.has(layer.id));
 
@@ -452,7 +468,8 @@ function decideRuntimeStrategy(
 ): 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'fallback' {
   if (!readiness) return 'fallback';
   if (declared === 'replace' || declared === 'lineAnimation') {
-    return readiness.recommendedStrategy;
+    // These strategies explicitly opt out of morphing — never silently upgrade them.
+    return 'fallback';
   }
   if (declared === 'strictMorph' && readiness.commandCompatibility < 1) {
     return readiness.recommendedStrategy;

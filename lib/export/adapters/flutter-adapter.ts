@@ -251,10 +251,12 @@ function generateFlutterWidget(
   // State-based path rendering
   lines.push('    switch (state) {');
   for (const stateId of stateIds) {
+    // Flat-variant model: 'default' state uses top-level variant layers.
     const state = firstVariant.states?.[stateId];
-    if (!state) continue;
+    const flatLayers = stateId === 'default' && !state ? firstVariant.layers : null;
+    if (!state && !flatLayers) continue;
     lines.push(`      case ${className}State.${toDartEnumCase(stateId)}:`);
-    const layers = Object.values(state.layers);
+    const layers = Object.values(state?.layers ?? flatLayers ?? {});
     for (const layer of layers) {
       if (layer.path?.d) {
         lines.push(`        // Layer "${layer.id}"`);
@@ -302,6 +304,10 @@ function collectStateIds(icon: Icon): string[] {
     for (const stateId of Object.keys(variant.states ?? {})) {
       ids.add(stateId);
     }
+  }
+  // Flat-variant model: no states map. The single implicit state is 'default'.
+  if (ids.size === 0) {
+    ids.add('default');
   }
   return [...ids].sort((a, b) => a.localeCompare(b));
 }

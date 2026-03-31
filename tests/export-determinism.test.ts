@@ -17,22 +17,15 @@ function makeIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24] as [number, number, number, number],
-        defaultState: 'default',
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              'layer-1': {
-                id: 'layer-1',
-                path: { d: 'M12 2L22 12L12 22L2 12Z' },
-                style: { fill: { mode: 'currentColor' } },
-              },
-            },
+        layers: {
+          'layer-1': {
+            id: 'layer-1',
+            path: { d: 'M12 2L22 12L12 22L2 12Z' },
+            style: { fill: { mode: 'currentColor' } },
           },
         },
       },
     },
-    transitions: {},
   };
 }
 

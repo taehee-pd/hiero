@@ -37,19 +37,13 @@ function makeMultiIconProject(): Project {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24] as [number, number, number, number],
-        defaultState: 'default',
-        states: {
-          default: {
-            id: 'default',
-            layers: {
-              triangle: {
-                id: 'triangle',
-                role: 'primary' as const,
-                visible: true,
-                path: { d: 'M6 4l12 8-12 8V4z' },
-                style: { fill: { mode: 'currentColor' as const } },
-              },
-            },
+        layers: {
+          triangle: {
+            id: 'triangle',
+            role: 'primary' as const,
+            visible: true,
+            path: { d: 'M6 4l12 8-12 8V4z' },
+            style: { fill: { mode: 'currentColor' as const } },
           },
         },
       },
@@ -207,37 +201,36 @@ describe('exportIconSource', () => {
     expect(source.tags).toEqual(['arrow', 'chevron']); // sorted
   });
 
-  test('preserves variant and state structure', () => {
+  test('preserves variant and layer structure', () => {
     const project = makeProject();
     const icon = project.icons['icon-chev']!;
     const source = exportIconSource(icon);
     expect(Object.keys(source.variants)).toContain('v24');
     expect(Object.keys(source.variants)).toContain('v32');
-    expect(Object.keys(source.variants['v24']!.states)).toContain('default');
-    expect(Object.keys(source.variants['v24']!.states)).toContain('active');
+    expect(Object.keys(source.variants['v24']!.layers)).toContain('chev');
   });
 
   test('strips importMeta from layers', () => {
     const project = makeProject();
     const icon = project.icons['icon-chev']!;
     // Add editor-only importMeta
-    icon.variants['v24']!.states['default']!.layers['chev']!.importMeta = {
+    icon.variants['v24']!.layers['chev']!.importMeta = {
       sourceTag: 'path',
       sourceNodeId: 'node-123',
     };
     const source = exportIconSource(icon);
-    const layer = source.variants['v24']!.states['default']!.layers['chev']!;
+    const layer = source.variants['v24']!.layers['chev']!;
     expect('importMeta' in layer).toBe(false);
   });
 
   test('strips isClipMask and groupId from layers', () => {
     const project = makeProject();
     const icon = project.icons['icon-chev']!;
-    const editorLayer = icon.variants['v24']!.states['default']!.layers['chev']!;
+    const editorLayer = icon.variants['v24']!.layers['chev']!;
     (editorLayer as any).isClipMask = true;
     (editorLayer as any).groupId = 'group-1';
     const source = exportIconSource(icon);
-    const layer = source.variants['v24']!.states['default']!.layers['chev']!;
+    const layer = source.variants['v24']!.layers['chev']!;
     expect('isClipMask' in layer).toBe(false);
     expect('groupId' in layer).toBe(false);
   });
@@ -260,11 +253,10 @@ describe('exportIconSource', () => {
     expect('customGuides' in source).toBe(false);
   });
 
-  test('preserves transitions and effects', () => {
+  test('preserves effects', () => {
     const project = makeProject();
     const icon = project.icons['icon-chev']!;
     const source = exportIconSource(icon);
-    expect(Object.keys(source.transitions)).toContain('default-active');
     expect(source.effects).toBeDefined();
     expect(Object.keys(source.effects!)).toContain('pulse');
   });

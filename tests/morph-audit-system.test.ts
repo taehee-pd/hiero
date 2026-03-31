@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { Layer, State, Transition } from '../lib/schema';
-import { inspectTransitionPlan, resolveTransition } from '../lib/runtime-core';
+import type { Layer, LayerSnapshot } from '../lib/schema';
+import { inspectTransitionPlan, resolveTransition, type TransitionConfig } from '../lib/runtime-core';
 
 type PairCase = {
   id: string;
@@ -27,14 +27,12 @@ const PAIRS: PairCase[] = [
   { id: 'bookmark-bookmark-fill', from: [makeLayer('glyph', 'M6 3 H18 V21 L12 17 L6 21 Z', 'primary')], to: [makeLayer('glyph', 'M6 3 H18 V21 L12 17 L6 21 Z', 'primary')], expected: 'strictMorph' },
 ];
 
-function makeStates(fromLayers: Layer[], toLayers: Layer[]): { from: State; to: State; transition: Transition } {
+function makeStates(fromLayers: Layer[], toLayers: Layer[]): { from: LayerSnapshot; to: LayerSnapshot; transition: TransitionConfig } {
   return {
-    from: { id: 'from', layers: Object.fromEntries(fromLayers.map((layer) => [layer.id, layer])) },
-    to: { id: 'to', layers: Object.fromEntries(toLayers.map((layer) => [layer.id, layer])) },
+    from: { layers: Object.fromEntries(fromLayers.map((layer) => [layer.id, layer])) },
+    to: { layers: Object.fromEntries(toLayers.map((layer) => [layer.id, layer])) },
     transition: {
       id: 't',
-      from: 'from',
-      to: 'to',
       strategy: 'bestGuessMorph',
       durationMs: 180,
       easing: 'ease-in-out',

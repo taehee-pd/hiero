@@ -214,9 +214,13 @@ function makeIcon(): Icon {
 
   const trackTransition: Transition = {
     id: 'idle-active',
+    fromIconId: 'icon-dom',
+    toIconId: 'icon-dom',
+    fromVariantId: 'v24',
+    toVariantId: 'v24',
     from: 'idle',
     to: 'active',
-    strategy: 'track',
+    strategy: 'lineAnimation',
     durationMs: 120,
     easing: 'linear',
     layerBindings: [
@@ -243,6 +247,7 @@ function makeIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: idleState.layers,
         defaultState: 'idle',
         states: {
           idle: idleState,
@@ -279,6 +284,7 @@ function makeSharedLayerIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: stateA.layers,
         defaultState: 'state-a',
         states: { 'state-a': stateA, 'state-b': stateB },
       },
@@ -350,7 +356,7 @@ describe('runtime dom renderer', () => {
     const container = createMockContainer();
     const icon = makeIcon();
     const renderer = new DomRenderer(container, icon);
-    const fromLayer = icon.variants.v24.states.idle!.layers.base!;
+    const fromLayer = icon.variants.v24.states!.idle!.layers.base!;
     const toLayer = {
       ...fromLayer,
       path: { d: 'M4 4 H20 V20 H4 Z', fillRule: 'evenodd' as const },
@@ -387,8 +393,8 @@ describe('runtime dom renderer', () => {
     const container = createMockContainer();
     const icon = makeIcon();
     const renderer = new DomRenderer(container, icon);
-    const fromLayer = icon.variants.v24.states.idle!.layers.base!;
-    const toLayer = icon.variants.v24.states.active!.layers.badge!;
+    const fromLayer = icon.variants.v24.states!.idle!.layers.base!;
+    const toLayer = icon.variants.v24.states!.active!.layers.badge!;
 
     renderer.mount('v24');
     renderer.applyFrame(
@@ -492,6 +498,10 @@ describe('runtime dom renderer', () => {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
+          layers: {
+            'layer-a': { id: 'layer-a', path: { d: 'M0 0H24V24H0Z' }, style: {} },
+            'layer-c': { id: 'layer-c', path: { d: 'M4 4H20V20H4Z' }, style: {} },
+          },
           defaultState: 'two-layers',
           states: {
             'two-layers': {

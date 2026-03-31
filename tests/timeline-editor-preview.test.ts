@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import { buildTimelineTransitionPreview } from '../components/editor/TimelineEditor';
-import type { Transition, Variant } from '../lib/schema/types';
+import type { TransitionConfig } from '../lib/runtime-core';
+import type { Variant } from '../lib/schema/types';
 
 describe('TimelineEditor preview frames', () => {
   test('builds interpolated values for track-based timeline scrubbing', () => {
@@ -10,6 +11,7 @@ describe('TimelineEditor preview frames', () => {
       size: 24,
       name: '24',
       viewBox: [0, 0, 24, 24],
+      layers: {},
       defaultState: 'idle',
       states: {
         idle: {
@@ -37,11 +39,9 @@ describe('TimelineEditor preview frames', () => {
       },
     };
 
-    const transition: Transition = {
+    const transition: TransitionConfig = {
       id: 'idle-to-active',
-      from: 'idle',
-      to: 'active',
-      strategy: 'track',
+      strategy: 'lineAnimation',
       durationMs: 300,
       easing: 'linear',
       layerBindings: [

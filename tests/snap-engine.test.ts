@@ -40,6 +40,7 @@ function createProjectFixture(): Project {
           id: 'v24',
           size: 24,
           viewBox: [0, 0, 24, 24],
+          layers: {},
           defaultState: 'default',
           states: {
             default: {
@@ -180,7 +181,7 @@ describe('snap engine', () => {
     expect(tight.snappedX).toBeTrue();
 
     // Mutate layer geometry and emit store update to trigger cache invalidation.
-    state.project!.icons.snap.variants.v24.states.default.layers.anchor.path!.d = 'M16 16 L20 20';
+    state.project!.icons.snap.variants.v24.states!.default.layers.anchor.path!.d = 'M16 16 L20 20';
     store.emit();
 
     const afterChange = engine.computeSnap(

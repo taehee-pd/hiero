@@ -185,7 +185,7 @@ export function ExplorerShell() {
           id,
           name: iconSet.meta.name,
           iconCount: Object.keys(iconSet.icons).length,
-          syncLabel: iconSet.sync ? `${iconSet.sync.owner}/${iconSet.sync.repo}` : null,
+          syncLabel: null as string | null,
           updatedAt: iconSet.meta.updatedAt,
           icons: Object.values(iconSet.icons).slice(0, 6),
           tokenColors: iconSet.tokenSet?.colors,
@@ -267,12 +267,11 @@ export function ExplorerShell() {
       if (!icon) continue;
       const variantId = Object.keys(icon.variants)[0];
       const variant = variantId ? icon.variants[variantId] : undefined;
-      const stateId = variant?.defaultState;
-      if (!variant || !stateId) continue;
+      if (!variant) continue;
       files[`icons/${toKebab(icon.name || icon.id)}.svg`] = exportSvgString(
         icon,
         variant.id,
-        stateId,
+        variant.id,
         project.tokenSet?.colors,
         variant.renderingMode,
       );
@@ -928,9 +927,7 @@ function PendingPublishBadge() {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {pendingPublishes.map((pending) => {
-        const targetName =
-          project?.syncTargets?.find((target) => target.id === pending.targetId)?.name ??
-          pending.targetId;
+        const targetName = pending.targetId;
         return (
           <div
             key={pending.targetId}
@@ -1041,10 +1038,9 @@ function ProjectCard({
               {thumbnailIcons.map((icon) => {
                 const firstVariantId = Object.keys(icon.variants)[0];
                 const variant = firstVariantId ? icon.variants[firstVariantId] : undefined;
-                const stateId = variant?.defaultState;
                 const svg =
-                  firstVariantId && stateId
-                    ? exportSvgString(icon, firstVariantId, stateId, iconSet.tokenColors)
+                  firstVariantId && variant
+                    ? exportSvgString(icon, firstVariantId, firstVariantId, iconSet.tokenColors)
                     : '';
                 return (
                   <div
@@ -1309,11 +1305,7 @@ function ProjectDetailView({
               <span className="ml-2 text-foreground">{selection.length} selected</span>
             )}
           </span>
-          {project?.sync && (
-            <span className="text-[length:var(--text-caption)] text-muted-foreground/70">
-              {project.sync.owner}/{project.sync.repo}
-            </span>
-          )}
+          {/* Sync label removed — sync settings are no longer on IconSet */}
         </div>
 
         <ScrollArea className="workspace-scroll h-full">
@@ -1360,7 +1352,7 @@ function ProjectDetailView({
                   ? exportSvgString(
                       iconDef,
                       firstVariantId,
-                      iconDef.variants[firstVariantId]?.defaultState,
+                      firstVariantId,
                       project?.tokenSet?.colors,
                     )
                   : '';

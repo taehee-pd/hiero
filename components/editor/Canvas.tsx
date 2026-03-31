@@ -238,18 +238,13 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     [handleSvgDrop],
   );
 
-  // Render SVG geometry when state changes.
-  // Always clear stale geometry if the active icon/variant/state becomes unavailable.
+  // Render SVG geometry when variant layers change.
+  // Always clear stale geometry if the active icon/variant becomes unavailable.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
 
-    const renderedState =
-      transitionPreview?.baseStateId && variant?.states[transitionPreview.baseStateId]
-        ? variant.states[transitionPreview.baseStateId]
-        : currentState;
-
-    if (!icon || !variant || !renderedState) {
+    if (!icon || !variant || !currentState) {
       svg.innerHTML = '';
       return;
     }
@@ -258,7 +253,6 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       {
         icon,
         variantId: variant.id,
-        stateId: renderedState.id,
         renderingMode,
         tokens: project?.tokenSet?.colors,
       },
@@ -270,25 +264,18 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     currentState,
     renderingMode,
     project?.tokenSet?.colors,
-    transitionPreview?.baseStateId,
   ]);
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg || !variant) return;
+    if (!svg || !variant || !currentState) return;
 
-    const renderedState =
-      transitionPreview?.baseStateId && variant.states[transitionPreview.baseStateId]
-        ? variant.states[transitionPreview.baseStateId]
-        : currentState;
-    if (!renderedState) return;
-
-    clearTransitionPreview(svg, renderedState);
+    clearTransitionPreview(svg, currentState);
     if (!transitionPreview) return;
 
     applyTransitionPreview(svg, {
-      baseState: renderedState,
-      targetState: variant.states[transitionPreview.targetStateId] ?? null,
+      baseState: currentState,
+      targetState: null,
       progress: transitionPreview.progress,
       resolvedTransition: transitionPreview.resolvedTransition,
       interpolatedValues: transitionPreview.interpolatedValues,

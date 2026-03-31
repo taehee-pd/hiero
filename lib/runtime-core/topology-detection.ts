@@ -12,7 +12,7 @@
  * @module
  */
 
-import type { Layer, State } from '../schema/types';
+import type { Layer, LayerSnapshot } from '../schema/types';
 import type { RuntimeDrawAnnotation } from '../export/export-runtime-json';
 import { canonicalizeLayerPath, type GeometryStats } from './path-normalization';
 
@@ -165,20 +165,20 @@ function splitSubPathSignatures(commandSignature: string[]): string[] {
 }
 
 /**
- * Analyze topology compatibility between two states.
+ * Analyze topology compatibility between two layer snapshots.
  *
- * Returns whether the states can be morphed or need crossfade fallback.
+ * Returns whether the snapshots can be morphed or need crossfade fallback.
  * Includes per-subpath strategy classification via classifySubPathStrategies.
  */
 export function analyzeTopologyCompatibility(
-  fromState: State,
-  toState: State,
+  fromSnapshot: LayerSnapshot,
+  toSnapshot: LayerSnapshot,
 ): TopologyAnalysis {
   const incompatibilities: TopologyIncompatibility[] = [];
   const details: string[] = [];
 
-  const fromLayers = Object.values(fromState.layers);
-  const toLayers = Object.values(toState.layers);
+  const fromLayers = Object.values(fromSnapshot.layers);
+  const toLayers = Object.values(toSnapshot.layers);
 
   let subPathStrategies: SubPathStrategyResult[] | undefined;
 

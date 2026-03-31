@@ -14,7 +14,6 @@ import type { Icon, Layer } from '@/lib/schema/types';
 import type {
   IconSourceFile,
   SourceLayer,
-  SourceState,
   SourceVariant,
 } from './types';
 import { ICON_SOURCE_SCHEMA_VERSION } from './types';
@@ -23,20 +22,10 @@ export function exportIconSource(icon: Icon): IconSourceFile {
   const variants: Record<string, SourceVariant> = {};
 
   for (const [variantId, variant] of sortedEntries(icon.variants)) {
-    const states: Record<string, SourceState> = {};
+    const layers: Record<string, SourceLayer> = {};
 
-    for (const [stateId, state] of sortedEntries(variant.states)) {
-      const layers: Record<string, SourceLayer> = {};
-
-      for (const [layerId, layer] of sortedEntries(state.layers)) {
-        layers[layerId] = stripLayer(layer);
-      }
-
-      states[stateId] = {
-        id: state.id,
-        layers,
-        ...(state.topology ? { topology: state.topology } : {}),
-      };
+    for (const [layerId, layer] of sortedEntries(variant.layers)) {
+      layers[layerId] = stripLayer(layer);
     }
 
     variants[variantId] = {
@@ -47,8 +36,8 @@ export function exportIconSource(icon: Icon): IconSourceFile {
       ...(variant.renderingMode ? { renderingMode: variant.renderingMode } : {}),
       ...(variant.weight ? { weight: variant.weight } : {}),
       ...(variant.scale ? { scale: variant.scale } : {}),
-      defaultState: variant.defaultState,
-      states,
+      layers,
+      ...(variant.topology ? { topology: variant.topology } : {}),
     };
   }
 
@@ -61,7 +50,9 @@ export function exportIconSource(icon: Icon): IconSourceFile {
       ? { tags: [...icon.tags].sort((a, b) => a.localeCompare(b)) }
       : {}),
     variants,
-    transitions: icon.transitions,
+    ...(icon.transitions && Object.keys(icon.transitions).length > 0
+      ? { transitions: icon.transitions }
+      : {}),
     ...(icon.effects && Object.keys(icon.effects).length > 0
       ? { effects: icon.effects }
       : {}),

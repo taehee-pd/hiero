@@ -54,7 +54,7 @@ export function resolveLayerStyleForRendering(
     const paletteColor = tokens?.[role];
     fill = coercePaint(fill, paletteColor);
     stroke = coercePaint(stroke, paletteColor);
-  } else if (renderingMode === 'autoGradient') {
+  } else if ((renderingMode as string) === 'autoGradient') {
     // Auto-gradient mode: preserve original fill/stroke colors so the
     // renderer can derive gradient stops from them, and set the flag so
     // the SVG renderer generates <linearGradient> defs.

@@ -53,10 +53,11 @@ import type {
   Icon,
   Layer,
   RenderingMode,
-  State,
-  Transition,
   Variant,
+  LayerSnapshot,
 } from '@/lib/schema/types';
+import { variantToSnapshot } from '@/lib/schema/types';
+import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { clearCurrentProjectPath, exportSvg, isDesktop, saveProject } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { exportSvgString } from '@/lib/export/export-svg';
@@ -79,9 +80,7 @@ import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
 type DeleteIntent =
-  | { type: 'state'; id: string }
-  | { type: 'variant'; id: string }
-  | { type: 'transition'; id: string };
+  | { type: 'variant'; id: string };
 type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
@@ -95,7 +94,6 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'hierarchical', label: 'Hierarchical' },
   { value: 'palette', label: 'Palette' },
   { value: 'multicolor', label: 'Multicolor' },
-  { value: 'autoGradient', label: 'Auto Gradient' },
 ];
 
 function slugify(value: string) {
@@ -129,21 +127,17 @@ function scaleViewBox(
 }
 
 function buildTransitionPreview(
-  transition: Transition,
+  transition: TransitionConfig,
   variant: Variant,
   progress: number,
 ): TransitionPreview | null {
-  const fromState = variant.states[transition.from];
-  const toState = variant.states[transition.to];
-  if (!fromState || !toState) return null;
+  const snapshot = variantToSnapshot(variant);
 
   const clampedProgress = Math.max(0, Math.min(1, progress));
-  const resolvedTransition = resolveTransition(transition, fromState, toState);
+  const resolvedTransition = resolveTransition(transition, snapshot, snapshot);
 
   return {
-    transitionId: transition.id,
-    baseStateId: transition.from,
-    targetStateId: transition.to,
+    transitionId: transition.id ?? 'preview',
     progress: clampedProgress,
     resolvedTransition,
     interpolatedValues: interpolateTransitionValues(resolvedTransition, clampedProgress),
@@ -201,48 +195,32 @@ function LeftSidebar({
   workspaceName,
   currentIcon,
   currentVariant,
-  currentStateId,
   layerRows,
   selectedLayerId,
   onSelectLayer,
   onToggleLayerVisibility,
   variants,
   currentVariantId,
-  stateIds,
-  transitionCounts,
   onSelectVariant,
-  onSelectState,
   newVariantSize,
   onNewVariantSizeChange,
   onCreateVariant,
-  newStateName,
-  onNewStateNameChange,
-  onCreateDuplicateState,
-  onCreateBlankState,
 }: {
   leftTab: LeftTab;
   onLeftTabChange: (tab: LeftTab) => void;
   workspaceName: string;
   currentIcon: Icon | null;
   currentVariant: Variant | null;
-  currentStateId: string | null;
   layerRows: ReturnType<typeof buildLayerPanelRows>;
   selectedLayerId: string | null;
   onSelectLayer: (layerId: string) => void;
   onToggleLayerVisibility: (layerId: string, visible: boolean) => void;
   variants: Variant[];
   currentVariantId: string | null;
-  stateIds: string[];
-  transitionCounts: Record<string, number>;
   onSelectVariant: (variantId: string) => void;
-  onSelectState: (stateId: string) => void;
   newVariantSize: string;
   onNewVariantSizeChange: (value: string) => void;
   onCreateVariant: () => void;
-  newStateName: string;
-  onNewStateNameChange: (value: string) => void;
-  onCreateDuplicateState: () => void;
-  onCreateBlankState: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -371,39 +349,7 @@ function LeftSidebar({
               );
             })}
 
-            <div className="wire-section-header">
-              <span>States</span>
-            </div>
-            <Input
-              value={newStateName}
-              onChange={(event) => onNewStateNameChange(event.target.value)}
-              placeholder="hover"
-              className="wire-input w-full"
-            />
-            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-              <button type="button" className="wire-mini-button" onClick={onCreateDuplicateState}>
-                Duplicate
-              </button>
-              <button type="button" className="wire-mini-button" onClick={onCreateBlankState}>
-                Blank
-              </button>
-            </div>
-            {stateIds.length === 0 ? (
-              <div className="wire-empty-note mt-2">No states</div>
-            ) : (
-              stateIds.map((stateId) => (
-                <button
-                  key={stateId}
-                  type="button"
-                  data-active={stateId === currentStateId ? 'true' : 'false'}
-                  className="wire-list-row"
-                  onClick={() => onSelectState(stateId)}
-                >
-                  <span>{stateId}</span>
-                  <span className="wire-row-caption">{transitionCounts[stateId] ?? 0}</span>
-                </button>
-              ))
-            )}
+            {/* States section removed -- Variant now has layers directly */}
           </div>
         )}
       </ScrollArea>
@@ -602,14 +548,11 @@ function RightSidebar({
   selectedLayer,
   currentIcon,
   currentVariant,
-  currentState,
   onRenameIcon,
-  onRenameState,
   onPatchVariant,
   onPatchSelectedLayer,
   onPatchSelectedLayerStyle,
   onPatchSelectedLayerTransform,
-  onDeleteState,
   onDeleteVariant,
   guideMasterName,
   guidesVisible,
@@ -619,14 +562,11 @@ function RightSidebar({
   selectedLayer: Layer | null;
   currentIcon: Icon | null;
   currentVariant: Variant | null;
-  currentState: State | null;
   onRenameIcon: (value: string) => void;
-  onRenameState: (value: string) => void;
   onPatchVariant: (patch: VariantEditorPatch) => void;
   onPatchSelectedLayer: (patch: Partial<Layer>) => void;
   onPatchSelectedLayerStyle: (patch: Partial<Layer['style']>) => void;
   onPatchSelectedLayerTransform: (patch: Partial<NonNullable<Layer['transform']>>) => void;
-  onDeleteState: () => void;
   onDeleteVariant: () => void;
   guideMasterName: string | null;
   guidesVisible: boolean;
@@ -865,14 +805,6 @@ function RightSidebar({
                   />
                 </RowField>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <RowField label="State">
-                    <Input
-                      key={currentState?.id}
-                      defaultValue={currentState?.id ?? ''}
-                      onBlur={(event) => onRenameState(event.target.value)}
-                      className="wire-input w-full"
-                    />
-                  </RowField>
                   <RowField label="Size">
                     <Input
                       type="number"
@@ -914,10 +846,7 @@ function RightSidebar({
                   <span className="wire-field-name">Visible</span>
                   <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5 pt-2">
-                  <button type="button" className="wire-mini-button" onClick={onDeleteState}>
-                    Delete state
-                  </button>
+                <div className="pt-2">
                   <button type="button" className="wire-mini-button" onClick={onDeleteVariant}>
                     Delete size
                   </button>
@@ -937,7 +866,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const router = useRouter();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
-  const currentStateId = useEditorStore((s) => s.currentStateId);
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selection = useEditorStore((s) => s.selection);
@@ -957,28 +885,19 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
       ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
-  const currentState = useEditorStore((s) =>
-    s.currentIconId && s.currentVariantId && s.currentStateId
-      ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId]?.states[
-          s.currentStateId
-        ] ?? null)
-      : null,
-  );
+  const currentSnapshot: LayerSnapshot | null = useMemo(() => {
+    return currentVariant ? variantToSnapshot(currentVariant) : null;
+  }, [currentVariant]);
 
   const {
-    addState,
     addVariant,
     createBlankIcon,
     openIconTab,
     patchLayer,
     patchVariant,
-    removeState,
-    removeTransition,
     removeVariant,
     renameIcon,
-    renameState,
     setCurrentIcon,
-    setCurrentState,
     setCurrentVariant,
     setSelection,
     setTool,
@@ -994,7 +913,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newVariantSize, setNewVariantSize] = useState('32');
-  const [newStateName, setNewStateName] = useState('');
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
@@ -1008,8 +926,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const requestedIconId = initialIconId ?? searchIconId;
 
   const layerRows = useMemo(
-    () => buildLayerPanelRows(Object.values(currentState?.layers ?? {})),
-    [currentState?.layers],
+    () => buildLayerPanelRows(Object.values(currentVariant?.layers ?? {})),
+    [currentVariant?.layers],
   );
 
   const variants = useMemo(
@@ -1021,40 +939,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     [currentIcon?.variants],
   );
 
-  const stateIds = useMemo(
-    () => Object.keys(currentVariant?.states ?? {}),
-    [currentVariant?.states],
-  );
-
-  const transitionCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const stateId of stateIds) {
-      counts[stateId] = Object.values(currentIcon?.transitions ?? {}).filter(
-        (transition) => transition.from === stateId || transition.to === stateId,
-      ).length;
-    }
-    return counts;
-  }, [currentIcon?.transitions, stateIds]);
-
-  const transitions = useMemo(
-    () => Object.values(currentIcon?.transitions ?? {}).sort((a, b) => a.id.localeCompare(b.id)),
-    [currentIcon?.transitions],
-  );
-
-  const selectedTransition = useMemo(() => {
-    if (!transitions.length) return null;
-    if (selectedTransitionId) {
-      return (
-        transitions.find((transition) => transition.id === selectedTransitionId) ??
-        transitions[0] ??
-        null
-      );
-    }
-    return transitions[0] ?? null;
-  }, [selectedTransitionId, transitions]);
+  // Transitions are now runtime-resolved; no authored transitions on Icon.
+  const selectedTransition = null as TransitionConfig | null;
 
   const selectedLayerId = selection.layerIds[0] ?? null;
-  const selectedLayer = selectedLayerId ? (currentState?.layers[selectedLayerId] ?? null) : null;
+  const selectedLayer = selectedLayerId ? (currentVariant?.layers[selectedLayerId] ?? null) : null;
   const projectName = project?.meta.name ?? 'Untitled Set';
 
   useEffect(() => {
@@ -1107,13 +996,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   // (not when user explicitly clears selection via Escape or empty-canvas click)
   const autoSelectKeyRef = useRef('');
   useEffect(() => {
-    const key = `${currentIconId}:${currentVariantId}:${currentStateId}`;
+    const key = `${currentIconId}:${currentVariantId}`;
     if (key === autoSelectKeyRef.current) return;
     autoSelectKeyRef.current = key;
-    if (!project || !currentIconId || !currentStateId) return;
+    if (!project || !currentIconId) return;
     const layers = currentVariantId
-      ? (project.icons[currentIconId]?.variants[currentVariantId]?.states[currentStateId]?.layers ??
-        {})
+      ? (project.icons[currentIconId]?.variants[currentVariantId]?.layers ?? {})
       : {};
     const nextLayerId =
       Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
@@ -1121,7 +1009,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     setSelection({ layerIds: [nextLayerId], pointIds: [] });
   }, [
     currentIconId,
-    currentStateId,
     currentVariantId,
     project,
     setSelection,
@@ -1197,12 +1084,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const handleExportCurrentSvg = () =>
     runExport('SVG', async () => {
       const state = editorStore.getState();
-      if (!currentIcon || !currentVariant || !currentState) return;
+      if (!currentIcon || !currentVariant) return;
 
       const svg = exportSvgString(
         currentIcon,
         currentVariant.id,
-        currentState.id,
+        'default',
         state.project?.tokenSet?.colors,
         state.renderingMode,
       );
@@ -1260,8 +1147,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   };
 
   const handlePatchSelectedLayer = (patch: Partial<Layer>) => {
-    if (!currentIcon || !currentState || !selectedLayer) return;
-    patchLayer(currentIcon.id, currentState.id, selectedLayer.id, patch);
+    if (!currentIcon || !selectedLayer) return;
+    patchLayer(currentIcon.id, selectedLayer.id, patch);
   };
 
   const handlePatchSelectedLayerStyle = (patch: Partial<Layer['style']>) => {
@@ -1295,12 +1182,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     renameIcon(currentIcon.id, next);
   };
 
-  const handleRenameState = (value: string) => {
-    const next = value.trim();
-    if (!currentIcon || !currentState || !next || next === currentState.id) return;
-    renameState(currentIcon.id, currentState.id, next);
-  };
-
   const handleCreateVariant = () => {
     if (!currentIcon) return;
     const size = Number.parseFloat(newVariantSize);
@@ -1315,31 +1196,9 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     });
   };
 
-  const handleCreateDuplicateState = () => {
-    if (!currentIcon) return;
-    addState(currentIcon.id, {
-      name: newStateName.trim() || undefined,
-      sourceStateId: currentStateId,
-      blank: false,
-    });
-    setNewStateName('');
-  };
-
-  const handleCreateBlankState = () => {
-    if (!currentIcon) return;
-    addState(currentIcon.id, {
-      name: newStateName.trim() || undefined,
-      sourceStateId: null,
-      blank: true,
-    });
-    setNewStateName('');
-  };
-
   const handleDeleteConfirm = () => {
     if (!pendingDelete || !currentIcon) return;
-    if (pendingDelete.type === 'state') removeState(currentIcon.id, pendingDelete.id);
     if (pendingDelete.type === 'variant') removeVariant(currentIcon.id, pendingDelete.id);
-    if (pendingDelete.type === 'transition') removeTransition(currentIcon.id, pendingDelete.id);
     setPendingDelete(null);
     setPreviewPlaying(false);
     setPreviewProgress(0);
@@ -1387,27 +1246,19 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             workspaceName={projectName}
             currentIcon={currentIcon}
             currentVariant={currentVariant}
-            currentStateId={currentStateId}
             layerRows={layerRows}
             selectedLayerId={selectedLayerId}
             onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
             onToggleLayerVisibility={(layerId, visible) => {
-              if (!currentIcon || !currentState) return;
-              patchLayer(currentIcon.id, currentState.id, layerId, { visible });
+              if (!currentIcon) return;
+              patchLayer(currentIcon.id, layerId, { visible });
             }}
             variants={variants}
             currentVariantId={currentVariantId}
-            stateIds={stateIds}
-            transitionCounts={transitionCounts}
             onSelectVariant={setCurrentVariant}
-            onSelectState={setCurrentState}
             newVariantSize={newVariantSize}
             onNewVariantSizeChange={setNewVariantSize}
             onCreateVariant={handleCreateVariant}
-            newStateName={newStateName}
-            onNewStateNameChange={setNewStateName}
-            onCreateDuplicateState={handleCreateDuplicateState}
-            onCreateBlankState={handleCreateBlankState}
           />
         </div>
 
@@ -1437,7 +1288,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
                 </button>
               </div>
             )}
-            {currentIcon && currentVariant && currentState ? (
+            {currentIcon && currentVariant ? (
               <Canvas showStatusHud={false} />
             ) : (
               <div className="wire-canvas-empty">
@@ -1489,16 +1340,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
           selectedLayer={selectedLayer}
           currentIcon={currentIcon}
           currentVariant={currentVariant}
-          currentState={currentState}
           onRenameIcon={handleRenameIcon}
-          onRenameState={handleRenameState}
           onPatchVariant={handlePatchVariant}
           onPatchSelectedLayer={handlePatchSelectedLayer}
           onPatchSelectedLayerStyle={handlePatchSelectedLayerStyle}
           onPatchSelectedLayerTransform={handlePatchSelectedLayerTransform}
-          onDeleteState={() =>
-            currentState ? setPendingDelete({ type: 'state', id: currentState.id }) : undefined
-          }
           onDeleteVariant={() =>
             currentVariant
               ? setPendingDelete({ type: 'variant', id: currentVariant.id })
@@ -1607,20 +1453,16 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingDelete?.type === 'state'
-                ? 'Delete state'
-                : pendingDelete?.type === 'variant'
-                  ? 'Delete size'
-                  : 'Delete transition'}
+              {pendingDelete?.type === 'variant'
+                ? 'Delete size'
+                : 'Delete transition'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDelete?.type === 'state'
-                ? `Delete the ${pendingDelete.id} state?`
-                : pendingDelete?.type === 'variant'
-                  ? `Delete the ${pendingDelete.id} variant?`
-                  : pendingDelete
-                    ? `Delete the ${pendingDelete.id} transition?`
-                    : ''}
+              {pendingDelete?.type === 'variant'
+                ? `Delete the ${pendingDelete.id} variant?`
+                : pendingDelete
+                  ? `Delete the ${pendingDelete.id} transition?`
+                  : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

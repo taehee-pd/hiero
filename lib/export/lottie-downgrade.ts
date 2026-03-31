@@ -11,7 +11,7 @@
  * @module
  */
 
-import type { Icon, Variant, Transition, Effect, SpringConfig } from '@/lib/schema/types';
+import type { Icon, Variant, Effect, Transition } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,24 +49,27 @@ export function collectLottieDowngrades(
   // Check variableValue (not representable in Lottie)
   checkVariableValue(variant, diagnostics);
 
-  // Check transitions for downgrade-worthy features
-  const transitions = Object.values(icon.transitions ?? {}).filter(
-    (t) =>
-      Object.keys(variant.states ?? {}).includes(t.from) &&
-      Object.keys(variant.states ?? {}).includes(t.to),
-  );
-
-  for (const transition of transitions) {
-    checkSpringEasing(transition, diagnostics);
-    checkMorphBindings(transition, variant, diagnostics);
+  // Check paint styles for radialGradient — in variant layers and state layers
+  const allLayers = new Map<string, typeof variant.layers[string]>();
+  for (const [id, layer] of Object.entries(variant.layers ?? {})) {
+    allLayers.set(id, layer);
+  }
+  for (const state of Object.values(variant.states ?? {})) {
+    for (const [id, layer] of Object.entries(state.layers ?? {})) {
+      allLayers.set(id, layer);
+    }
+  }
+  for (const layer of allLayers.values()) {
+    checkRadialGradient(layer.style?.fill, layer.id, diagnostics);
+    checkRadialGradient(layer.style?.stroke, layer.id, diagnostics);
   }
 
-  // Check paint styles for radialGradient
-  for (const state of Object.values(variant.states ?? {})) {
-    for (const layer of Object.values(state.layers ?? {})) {
-      checkRadialGradient(layer.style?.fill, layer.id, diagnostics);
-      checkRadialGradient(layer.style?.stroke, layer.id, diagnostics);
+  // Check transitions for this variant
+  for (const transition of Object.values(icon.transitions ?? {})) {
+    if (transition.fromVariantId !== variantId && transition.toVariantId !== variantId) {
+      continue;
     }
+    checkTransitionCompatibility(icon, variant, transition, diagnostics);
   }
 
   // Check effects
@@ -96,69 +99,6 @@ function checkVariableValue(
         'Variable value (SF Symbols-style weight/size interpolation) cannot be represented in Lottie.',
       fallback: 'Static rendering at the default variable value.',
     });
-  }
-}
-
-function checkSpringEasing(
-  transition: Transition,
-  diagnostics: LottieDowngradeDiagnostic[],
-): void {
-  const isSpring = (e: string | SpringConfig | undefined): boolean =>
-    !!e && typeof e === 'object' && e.type === 'spring';
-
-  if (isSpring(transition.easing)) {
-    diagnostics.push({
-      feature: 'spring-easing',
-      severity: 'info',
-      message:
-        `Transition "${transition.from}→${transition.to}" uses spring easing, which has no direct Lottie equivalent.`,
-      fallback: 'Approximated as ease-in-out cubic-bezier.',
-    });
-  }
-
-  // Also check per-binding track easings
-  for (const binding of transition.layerBindings ?? []) {
-    for (const track of binding.tracks ?? []) {
-      if (isSpring(track.easing)) {
-        if (!diagnostics.some((d) => d.feature === 'spring-easing')) {
-          diagnostics.push({
-            feature: 'spring-easing',
-            severity: 'info',
-            message: `Track "${track.property}" uses spring easing.`,
-            fallback: 'Approximated as ease-in-out cubic-bezier.',
-          });
-        }
-      }
-    }
-  }
-}
-
-function checkMorphBindings(
-  transition: Transition,
-  variant: Variant,
-  diagnostics: LottieDowngradeDiagnostic[],
-): void {
-  for (const binding of transition.layerBindings ?? []) {
-    if (binding.morph?.topology === 'bestGuess') {
-      const fromLayer = variant.states?.[transition.from]?.layers?.[binding.fromLayerId ?? ''];
-      const toLayer = variant.states?.[transition.to]?.layers?.[binding.toLayerId ?? ''];
-
-      if (fromLayer?.path?.d && toLayer?.path?.d) {
-        // Check if command counts match — if not, bestGuessMorph may degrade
-        const fromCommands = (fromLayer.path.d.match(/[MCLZ]/gi) ?? []).length;
-        const toCommands = (toLayer.path.d.match(/[MCLZ]/gi) ?? []).length;
-
-        if (fromCommands !== toCommands) {
-          diagnostics.push({
-            feature: 'bestGuessMorph-mismatch',
-            severity: 'warning',
-            message:
-              `Morph "${binding.fromLayerId}→${binding.toLayerId}" uses bestGuess topology with mismatched path commands (${fromCommands} vs ${toCommands}).`,
-            fallback: 'Falls back to crossfade if morph normalization fails.',
-          });
-        }
-      }
-    }
   }
 }
 
@@ -202,6 +142,62 @@ function checkEffectCompatibility(
       fallback: 'First palette color used as static fill.',
     });
   }
+}
+
+function checkTransitionCompatibility(
+  icon: Icon,
+  variant: Variant,
+  transition: Transition,
+  diagnostics: LottieDowngradeDiagnostic[],
+): void {
+  // Check spring easing
+  if (
+    transition.easing &&
+    typeof transition.easing === 'object' &&
+    transition.easing.type === 'spring'
+  ) {
+    if (!diagnostics.some((d) => d.feature === 'spring-easing')) {
+      diagnostics.push({
+        feature: 'spring-easing',
+        severity: 'warning',
+        message:
+          'Spring easing in transition cannot be exactly represented in Lottie.',
+        fallback: 'Approximated as cubic-bezier ease-in-out.',
+      });
+    }
+  }
+
+  // Check bestGuessMorph with mismatched commands
+  if (transition.strategy === 'bestGuessMorph') {
+    for (const binding of transition.layerBindings ?? []) {
+      if (!binding.morph || binding.morph.topology !== 'bestGuess') continue;
+      const fromLayerId = binding.fromLayerId;
+      const toLayerId = binding.toLayerId;
+      if (!fromLayerId || !toLayerId) continue;
+
+      const fromState = variant.states?.[transition.from ?? 'default'];
+      const toState = variant.states?.[transition.to ?? 'default'];
+      const fromLayer = fromState?.layers?.[fromLayerId] ?? variant.layers?.[fromLayerId];
+      const toLayer = toState?.layers?.[toLayerId] ?? variant.layers?.[toLayerId];
+
+      if (fromLayer?.path?.d && toLayer?.path?.d) {
+        const fromCommands = extractPathCommands(fromLayer.path.d);
+        const toCommands = extractPathCommands(toLayer.path.d);
+        if (fromCommands !== toCommands) {
+          diagnostics.push({
+            feature: 'bestGuessMorph-mismatch',
+            severity: 'warning',
+            message: `bestGuessMorph between "${fromLayerId}" and "${toLayerId}" has mismatched path commands.`,
+            fallback: 'Path will be interpolated with best-effort vertex matching.',
+          });
+        }
+      }
+    }
+  }
+}
+
+function extractPathCommands(d: string): string {
+  return (d.match(/[A-Za-z]/g) ?? []).join('');
 }
 
 function checkWeightInterpolation(

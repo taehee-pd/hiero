@@ -182,7 +182,7 @@ async function readIconSources(sourceDir: string): Promise<IconEntry[]> {
     } catch (err) {
       entries.push({
         dirName,
-        source: { schemaVersion: '', id: '', name: '', variants: {}, transitions: {} },
+        source: { schemaVersion: '', id: '', name: '', variants: {} },
         rawJson: '',
       });
     }
@@ -275,11 +275,8 @@ function checkSchemaCompliance(icons: IconEntry[]): CheckResult {
       if (!variant.viewBox || variant.viewBox.length !== 4) {
         errors.push(`${dirName}: Variant "${variantId}" has invalid viewBox.`);
       }
-      if (!variant.defaultState) {
-        errors.push(`${dirName}: Variant "${variantId}" missing defaultState.`);
-      }
-      if (!variant.states || Object.keys(variant.states).length === 0) {
-        errors.push(`${dirName}: Variant "${variantId}" must have at least one state.`);
+      if (!variant.layers || Object.keys(variant.layers).length === 0) {
+        errors.push(`${dirName}: Variant "${variantId}" must have at least one layer.`);
       }
     }
   }

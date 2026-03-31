@@ -81,7 +81,6 @@ export function generateReactFromRuntime(
     const componentName = toPascal(icon.name || icon.id);
     componentNames.push(componentName);
 
-    const stateIds = collectStateIds(icon);
     const variantIds = Object.keys(icon.variants).sort((a, b) =>
       a.localeCompare(b),
     );
@@ -91,19 +90,16 @@ export function generateReactFromRuntime(
     const firstVariant = getFirstVariant(icon);
     const defaultSize = firstVariant.size;
     const defaultVariantId = firstVariant.id;
-    const defaultStateId = firstVariant.defaultState;
 
     const code = generateComponent({
       componentName,
       icon,
       runtimePackage,
       typescript,
-      stateIds,
       variantIds,
       effectIds,
       defaultSize,
       defaultVariantId,
-      defaultStateId,
       sizeLiterals: iconSizeLiteralValues(icon),
     });
 
@@ -144,12 +140,10 @@ type ComponentGenParams = {
   icon: Icon;
   runtimePackage: string;
   typescript: boolean;
-  stateIds: string[];
   variantIds: string[];
   effectIds: string[];
   defaultSize: number;
   defaultVariantId: string;
-  defaultStateId: string;
   sizeLiterals: string[];
 };
 
@@ -159,12 +153,10 @@ function generateComponent(params: ComponentGenParams): string {
     icon,
     runtimePackage,
     typescript,
-    stateIds,
     variantIds,
     effectIds,
     defaultSize,
     defaultVariantId,
-    defaultStateId,
     sizeLiterals,
   } = params;
 
@@ -190,7 +182,6 @@ function generateComponent(params: ComponentGenParams): string {
     lines.push(
       `  variant?: ${stringUnion([...variantIds, ...sizeLiterals])} | number;`,
     );
-    lines.push(`  state?: ${stringUnion(stateIds)};`);
     if (effectIds.length > 0) {
       lines.push(`  effect?: ${stringUnion(effectIds)} | null;`);
     } else {
@@ -219,7 +210,6 @@ function generateComponent(params: ComponentGenParams): string {
   lines.push('  label,');
   lines.push("  reduceMotion = 'system',");
   lines.push(`  variant = ${JSON.stringify(defaultVariantId)},`);
-  lines.push(`  state = ${JSON.stringify(defaultStateId)},`);
   if (effectIds.length > 0) {
     lines.push('  effect = null,');
   }
@@ -242,7 +232,6 @@ function generateComponent(params: ComponentGenParams): string {
   lines.push('      label={label}');
   lines.push('      reduceMotion={reduceMotion}');
   lines.push('      variant={variant}');
-  lines.push('      state={state}');
   lines.push('      animate={animate}');
   if (effectIds.length > 0) {
     lines.push('      effect={effect}');
@@ -264,16 +253,6 @@ function getFirstVariant(icon: Icon) {
   )[0];
   if (!key) throw new Error(`Icon "${icon.id}" has no variants.`);
   return icon.variants[key]!;
-}
-
-function collectStateIds(icon: Icon): string[] {
-  const ids = new Set<string>();
-  for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states)) {
-      ids.add(stateId);
-    }
-  }
-  return [...ids].sort((a, b) => a.localeCompare(b));
 }
 
 function iconSizeLiteralValues(icon: Icon): string[] {

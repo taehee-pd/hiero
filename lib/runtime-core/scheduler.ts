@@ -300,8 +300,8 @@ function interpolateTrack(
   transitionDurationMs?: number,
 ): AnimatedValue {
   const effectiveProgress = resolveTrackProgress(track, progress, transitionEasing, transitionDurationMs);
-  if (track.property === 'fill' || track.property === 'stroke') {
-    return interpolateStringKeyframes(track.keyframes, effectiveProgress);
+  if ((track.property as string) === 'fill' || (track.property as string) === 'stroke') {
+    return interpolateStringKeyframes(track.keyframes as unknown as string[], effectiveProgress);
   }
   return interpolateNumericKeyframes(track.keyframes, effectiveProgress);
 }

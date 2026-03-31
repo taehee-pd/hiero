@@ -26,7 +26,7 @@ describe('import hardening fixtures', () => {
     const icon = convertNormalizedIconToIcon(normalized, { sourceName: fetched.suggestedName });
 
     expect(normalized.nodes).toHaveLength(1);
-    expect(Object.keys(icon.variants.v24!.states.default.layers)).toHaveLength(1);
+    expect(Object.keys(icon.variants.v24!.layers)).toHaveLength(1);
   });
 
   test('primitive-heavy icon fixture', () => {
@@ -42,7 +42,7 @@ describe('import hardening fixtures', () => {
       { name: 'Primitives' },
     );
     const icon = convertNormalizedIconToIcon(normalized, { sourceName: 'Primitives' });
-    expect(Object.keys(icon.variants.v24!.states.default.layers)).toHaveLength(6);
+    expect(Object.keys(icon.variants.v24!.layers)).toHaveLength(6);
   });
 
   test('grouped/transformed icon fixture', () => {
@@ -51,7 +51,7 @@ describe('import hardening fixtures', () => {
       { name: 'Grouped' },
     );
     const icon = convertNormalizedIconToIcon(normalized, { sourceName: 'Grouped' });
-    const layers = icon.variants.v24!.states.default.layers;
+    const layers = icon.variants.v24!.layers;
     expect(layers.a?.transform).toEqual({ x: 2, y: 3 });
     expect(layers.b?.transform).toEqual({ x: 2, y: 3 });
   });

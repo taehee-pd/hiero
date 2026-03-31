@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Plus, Trash2, FolderOpen, GitBranch, Package, Key, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useEditorStore, useEditorActions } from '@/lib/editor-store/hooks';
+import { useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { toast } from '@/components/ui/use-toast';
 import { getNextPublishVersion, publishNpmTarget, type PublishSemver } from '@/lib/sync-service/npm-publish-client';
@@ -30,32 +30,44 @@ function generateId(): string {
 export function SyncTargetPanel() {
   const project = useEditorStore((s) => s.project);
   const pendingPublishes = useEditorStore((s) => s.pendingPublishes);
-  const {
-    addSyncTarget,
-    removeSyncTarget,
-    updateSyncTarget,
-    recordPublishedVersion,
-  } = useEditorActions();
   const [isAddOpen, setIsAddOpen] = useState(false);
-
-  const targets: SyncTarget[] = useMemo(
-    () => project?.syncTargets ?? [],
-    [project],
-  );
+  const [targets, setTargets] = useState<SyncTarget[]>([]);
 
   const handleRemove = useCallback(
     (id: string) => {
-      removeSyncTarget(id);
+      setTargets((prev) => prev.filter((t) => t.id !== id));
     },
-    [removeSyncTarget],
+    [],
+  );
+
+  const handleUpdate = useCallback(
+    (id: string, patch: Partial<SyncTarget>) => {
+      setTargets((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      );
+    },
+    [],
+  );
+
+  const handleRecordPublishedVersion = useCallback(
+    (targetId: string, version: string) => {
+      setTargets((prev) =>
+        prev.map((t) =>
+          t.id === targetId
+            ? { ...t, npmRegistry: t.npmRegistry ? { ...t.npmRegistry, lastPublishedVersion: version } : undefined }
+            : t,
+        ),
+      );
+    },
+    [],
   );
 
   const handleAdd = useCallback(
     (target: SyncTarget) => {
-      addSyncTarget(target);
+      setTargets((prev) => [...prev, target]);
       setIsAddOpen(false);
     },
-    [addSyncTarget],
+    [],
   );
 
   return (
@@ -96,8 +108,8 @@ export function SyncTargetPanel() {
               project={project}
               isPending={pendingPublishes.some((pending) => pending.targetId === target.id)}
               onRemove={handleRemove}
-              onUpdate={updateSyncTarget}
-              onRecordPublishedVersion={recordPublishedVersion}
+              onUpdate={handleUpdate}
+              onRecordPublishedVersion={handleRecordPublishedVersion}
             />
           ))}
         </div>

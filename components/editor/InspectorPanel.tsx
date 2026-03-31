@@ -150,7 +150,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     addVariant,
     removeVariant,
     setCurrentVariant,
-    setStateTopology,
+    setTopology,
     setShapePolygonSides,
     setShapeStarPoints,
     setShapeSubTool,
@@ -348,13 +348,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
     });
   }, [addVariant, currentIcon, currentVariant?.viewBox, currentVariantId, selectedVariantSize]);
   const handleLockTopology = useCallback(() => {
-    if (!currentIconId || !currentStateId || !currentState) return;
-    setStateTopology(currentIconId, currentStateId, lockTopology(currentState));
-  }, [currentIconId, currentState, currentStateId, setStateTopology]);
+    if (!currentIconId || !currentVariantId || !currentState) return;
+    setTopology(currentIconId, currentVariantId, lockTopology(currentState));
+  }, [currentIconId, currentState, currentVariantId, setTopology]);
   const handleUnlockTopology = useCallback(() => {
-    if (!currentIconId || !currentStateId) return;
-    setStateTopology(currentIconId, currentStateId, undefined);
-  }, [currentIconId, currentStateId, setStateTopology]);
+    if (!currentIconId || !currentVariantId) return;
+    setTopology(currentIconId, currentVariantId, undefined);
+  }, [currentIconId, currentVariantId, setTopology]);
 
 
 
@@ -1402,36 +1402,36 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
 function patchStyle(
   iconId: string | null,
-  stateId: string | null,
+  _stateId: string | null,
   layerId: string,
   stylePatch: Partial<Layer['style']>,
 ) {
-  if (!iconId || !stateId) return;
+  if (!iconId) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
-  const layer = st?.layers[layerId];
+  const variant = state.currentVariantId ? icon?.variants[state.currentVariantId] : null;
+  const layer = variant?.layers[layerId];
   if (!layer) return;
 
-  state.patchLayer(iconId, stateId, layerId, {
+  state.patchLayer(iconId, layerId, {
     style: { ...layer.style, ...stylePatch },
   });
 }
 
 function patchTransform(
   iconId: string | null,
-  stateId: string | null,
+  _stateId: string | null,
   layerId: string,
   transformPatch: Partial<NonNullable<Layer['transform']>>,
 ) {
-  if (!iconId || !stateId) return;
+  if (!iconId) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
-  const layer = st?.layers[layerId];
+  const variant = state.currentVariantId ? icon?.variants[state.currentVariantId] : null;
+  const layer = variant?.layers[layerId];
   if (!layer) return;
 
-  state.patchLayer(iconId, stateId, layerId, {
+  state.patchLayer(iconId, layerId, {
     transform: { ...(layer.transform ?? {}), ...transformPatch },
   });
 }
@@ -1452,16 +1452,16 @@ type ResolvedEditablePoint = {
 
 function patchSelectedPoints(
   iconId: string | null,
-  stateId: string | null,
+  _stateId: string | null,
   layerId: string,
   pointIds: string[],
   updater: (point: EditablePoint, resolved: ResolvedEditablePoint) => void,
 ) {
-  if (!iconId || !stateId || pointIds.length === 0) return;
+  if (!iconId || pointIds.length === 0) return;
   const state = editorStore.getState();
   const icon = state.project?.icons[iconId];
-  const st = state.currentVariantId ? icon?.variants[state.currentVariantId]?.states[stateId] : null;
-  const layer = st?.layers[layerId];
+  const variant = state.currentVariantId ? icon?.variants[state.currentVariantId] : null;
+  const layer = variant?.layers[layerId];
   const d = layer?.path?.d;
   if (!layer || !d || !isPathDirectlyEditable(d)) return;
 
@@ -1471,7 +1471,7 @@ function patchSelectedPoints(
     if (resolved) updater(resolved.point as EditablePoint, resolved);
   }
 
-  state.patchLayer(iconId, stateId, layerId, {
+  state.patchLayer(iconId, layerId, {
     path: { ...layer.path, d: serializePath(path) },
   });
 }

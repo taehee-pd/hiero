@@ -65,7 +65,6 @@ export const iconMeta: IconComponentMeta = ${serializeCode({
       schema: 'https://coniva.dev/schemas/compiled-icon/1.0.0',
       version: entry.version,
       availableSizes: entry.supportedSizes,
-      availableStates: entry.states,
       availableModes: entry.supportedModes,
     })};
 `,
@@ -131,7 +130,7 @@ function makeSizeEntryFile(componentName: string, size: number): GeneratedFile {
 
 function makeIconComponentFile(compiled: CompiledIcon, entry: PackageManifest['icons'][string]): GeneratedFile {
   const sizeUnion = unionOfNumbers(entry.supportedSizes);
-  const stateUnion = unionOfStrings(entry.states);
+  const stateUnion = unionOfStates(compiled);
   const modeUnion = unionOfModes(entry.supportedModes);
   const effectUnion = unionOfAnimateKinds(compiled.effects.map((effect) => effect.kind));
 
@@ -262,6 +261,21 @@ function findVariantBySize(
   size: number,
 ): CompiledIcon['variants'][string] | undefined {
   return Object.values(compiled.variants).find((variant) => variant.size === size);
+}
+
+function unionOfStates(compiled: CompiledIcon): string {
+  const states = new Set<string>(['default']);
+  for (const transition of compiled.transitions) {
+    if (transition.from) states.add(transition.from);
+    if (transition.to) states.add(transition.to);
+  }
+  // Sort with "default" always first, then alphabetical
+  const sorted = [...states].sort((a, b) => {
+    if (a === 'default') return -1;
+    if (b === 'default') return 1;
+    return a.localeCompare(b);
+  });
+  return sorted.map((s) => JSON.stringify(s)).join(' | ');
 }
 
 function unionOfNumbers(values: number[]): string {

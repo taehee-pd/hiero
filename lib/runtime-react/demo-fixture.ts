@@ -4,9 +4,9 @@ import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 const runtimeProject = structuredClone(SAMPLE_PROJECT);
 const runtimeIcon = runtimeProject.icons['icon-home']!;
 const runtimeVariant = runtimeIcon.variants.v24;
-const defaultState = runtimeVariant.states.default;
+const defaultState = runtimeVariant.states!.default;
 
-runtimeVariant.states.active = {
+runtimeVariant.states!.active = {
   ...structuredClone(defaultState),
   id: 'active',
   layers: {
@@ -28,9 +28,13 @@ runtimeIcon.customGuides = [
 runtimeIcon.transitions = {
   activate: {
     id: 'activate',
+    fromIconId: runtimeIcon.id,
+    toIconId: runtimeIcon.id,
+    fromVariantId: runtimeVariant.id,
+    toVariantId: runtimeVariant.id,
     from: 'default',
     to: 'active',
-    strategy: 'track',
+    strategy: 'lineAnimation',
     durationMs: 220,
     easing: 'ease-in-out',
     layerBindings: [
@@ -47,6 +51,10 @@ runtimeIcon.transitions = {
   },
   reset: {
     id: 'reset',
+    fromIconId: runtimeIcon.id,
+    toIconId: runtimeIcon.id,
+    fromVariantId: runtimeVariant.id,
+    toVariantId: runtimeVariant.id,
     from: 'active',
     to: 'default',
     strategy: 'replace',
@@ -71,10 +79,30 @@ runtimeIcon.effects = {
   },
 };
 
-export const SAMPLE_RUNTIME_EXPORT = exportRuntimeIconVariant(
+const defaultExport = exportRuntimeIconVariant(
   runtimeProject,
   runtimeIcon.id,
   runtimeVariant.id,
 );
+
+const activeProject = structuredClone(runtimeProject);
+activeProject.icons[runtimeIcon.id]!.variants[runtimeVariant.id]!.layers =
+  structuredClone(runtimeVariant.states!.active!.layers);
+const activeExport = exportRuntimeIconVariant(
+  activeProject,
+  runtimeIcon.id,
+  runtimeVariant.id,
+);
+
+export const SAMPLE_RUNTIME_EXPORT = {
+  ...defaultExport,
+  variant: {
+    ...defaultExport.variant,
+    states: {
+      default: { layers: defaultExport.variant.layers },
+      active: { layers: activeExport.variant.layers },
+    },
+  },
+};
 
 export const SAMPLE_RUNTIME_PAYLOAD = SAMPLE_RUNTIME_EXPORT.variant;

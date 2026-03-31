@@ -1,14 +1,28 @@
 import type {
   Layer,
   LayerBinding,
+  LayerSnapshot,
   SpringConfig,
-  State,
   TimelineTrack,
-  Transition,
+  TransitionStagger,
 } from '../schema';
 import { attemptCrossIconMorph, bestGuessMorph, strictMorph, type MorphInterpolator } from './morph';
 import { canonicalizeLayerPath, type CanonicalPath } from './path-normalization';
 import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-detection';
+
+/**
+ * Local transition configuration accepted by the resolver.
+ * Replaces the removed `Transition` schema type.
+ */
+export type TransitionConfig = {
+  id?: string;
+  strategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
+  durationMs: number;
+  easing?: string | SpringConfig;
+  direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
+  layerBindings?: LayerBinding[];
+  stagger?: TransitionStagger;
+};
 
 export type CrossIconContext = {
   sourceIconId: string;
@@ -50,14 +64,14 @@ export type ResolvedLayerBinding = {
 };
 
 export type ResolvedTransition = {
-  strategy: Transition['strategy'];
+  strategy: TransitionConfig['strategy'];
   durationMs: number;
   easing: string | SpringConfig;
   layerBindings: ResolvedLayerBinding[];
   diagnostics: string[];
   topologyAnalysis?: TopologyAnalysis;
   /** Directional slide+fade for replace transitions. */
-  direction?: Transition['direction'];
+  direction?: TransitionConfig['direction'];
 };
 
 export type ResolveTransitionOptions = {
@@ -70,9 +84,9 @@ export type ResolveTransitionOptions = {
 };
 
 export function resolveTransition(
-  transition: Transition,
-  fromState: State,
-  toState: State,
+  transition: TransitionConfig,
+  fromSnapshot: LayerSnapshot,
+  toSnapshot: LayerSnapshot,
   options: ResolveTransitionOptions = {},
 ): ResolvedTransition {
   const diagnostics: string[] = [];
@@ -92,13 +106,13 @@ export function resolveTransition(
   // When topology is incompatible the analysis recommends 'crossfade' or
   // 'draw-crossfade', which we propagate to bindings that would otherwise
   // attempt a morph.
-  const topologyAnalysis = analyzeTopologyCompatibility(fromState, toState);
+  const topologyAnalysis = analyzeTopologyCompatibility(fromSnapshot, toSnapshot);
   if (!topologyAnalysis.compatible) {
     diagnostics.push(`topologyIncompatible:${topologyAnalysis.incompatibilities.join(',')}`);
     diagnostics.push(`topologyRecommended:${topologyAnalysis.recommendedStrategy}`);
   }
 
-  const plannedBindings = resolveBindings(transition, fromState, toState, isCrossIcon);
+  const plannedBindings = resolveBindings(transition, fromSnapshot, toSnapshot, isCrossIcon);
   const staggerOrder = computeStaggerOrder(plannedBindings, transition.stagger?.mode);
   const layerBindings = plannedBindings.map((binding, index) => {
     const resolved = resolveLayerBinding(
@@ -161,7 +175,7 @@ export function resolveTransition(
 }
 
 function computeResolvedTransitionDuration(
-  transition: Transition,
+  transition: TransitionConfig,
   layerBindings: ResolvedLayerBinding[],
 ): number {
   const configuredDuration = Math.max(0, transition.durationMs);
@@ -174,22 +188,22 @@ function computeResolvedTransitionDuration(
 }
 
 function resolveBindings(
-  transition: Transition,
-  fromState: State,
-  toState: State,
+  transition: TransitionConfig,
+  fromSnapshot: LayerSnapshot,
+  toSnapshot: LayerSnapshot,
   isCrossIcon = false,
 ): Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }> {
   const byFrom = new Map<string, Layer>();
   const byTo = new Map<string, Layer>();
-  Object.values(fromState.layers).forEach((layer) => byFrom.set(layer.id, layer));
-  Object.values(toState.layers).forEach((layer) => byTo.set(layer.id, layer));
+  Object.values(fromSnapshot.layers).forEach((layer) => byFrom.set(layer.id, layer));
+  Object.values(toSnapshot.layers).forEach((layer) => byTo.set(layer.id, layer));
 
   const resolved: Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }> = [];
   const usedFrom = new Set<string>();
   const usedTo = new Set<string>();
 
   // Honour explicit author-defined bindings regardless of mode.
-  for (const binding of transition.layerBindings) {
+  for (const binding of transition.layerBindings ?? []) {
     const fromLayer = binding.fromLayerId ? byFrom.get(binding.fromLayerId) : undefined;
     const toLayer = binding.toLayerId ? byTo.get(binding.toLayerId) : undefined;
     if (fromLayer) usedFrom.add(fromLayer.id);
@@ -197,8 +211,8 @@ function resolveBindings(
     resolved.push({ ...binding, fromLayer, toLayer, source: 'explicit' });
   }
 
-  const unmatchedFrom = Object.values(fromState.layers).filter((layer) => !usedFrom.has(layer.id));
-  const unmatchedTo = Object.values(toState.layers).filter((layer) => !usedTo.has(layer.id));
+  const unmatchedFrom = Object.values(fromSnapshot.layers).filter((layer) => !usedFrom.has(layer.id));
+  const unmatchedTo = Object.values(toSnapshot.layers).filter((layer) => !usedTo.has(layer.id));
 
   if (isCrossIcon) {
     // Cross-icon matching: layers come from different icons so IDs will never
@@ -332,7 +346,7 @@ function matchLayersByReadiness(
 
 function resolveLayerBinding(
   binding: LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string },
-  transition: Transition,
+  transition: TransitionConfig,
   index: number,
   total: number,
   staggerIndex: number,
@@ -345,7 +359,7 @@ function resolveLayerBinding(
   const resolved: ResolvedLayerBinding = {
     fromLayer,
     toLayer,
-    tracks: transition.strategy === 'track' ? [...(binding.tracks ?? [])] : [],
+    tracks: transition.strategy === 'lineAnimation' ? [...(binding.tracks ?? [])] : [],
     animationType: 'replace',
     readiness,
     delayMs: computeDelay(binding, transition, staggerIndex, total, fromLayer, toLayer),
@@ -362,78 +376,10 @@ function resolveLayerBinding(
     diagnostics,
   };
 
-  // I7: Honour per-binding strategyOverride before the automatic strategy cascade.
-  const override = binding.strategyOverride;
-  if (override && override !== 'auto') {
-    const fromD = fromLayer?.path?.d;
-    const toD = toLayer?.path?.d;
-
-    if (override === 'morph' && fromD && toD) {
-      diagnostics.push('strategyOverride:morph');
-      // Attempt strict morph, then bestGuess, then crossIcon
-      try {
-        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
-        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
-        const sm = strictMorph(fromCanonical, toCanonical);
-        resolved.morph = sm;
-        resolved.animationType = 'morph';
-        return resolved;
-      } catch { /* fall through to bestGuess */ }
-
-      {
-        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
-        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
-        const bg = bestGuessMorph(fromCanonical, toCanonical) ?? undefined;
-        if (bg) {
-          resolved.morph = bg;
-          resolved.animationType = 'morph';
-          return resolved;
-        }
-      }
-
-      try {
-        const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
-        const toCanonical = canonicalizeLayerPath(toLayer)!.d;
-        const cm = attemptCrossIconMorph(fromCanonical, toCanonical);
-        if (cm) {
-          resolved.morph = cm;
-          resolved.animationType = 'morph';
-          diagnostics.push('overrideMorphViaCrossIcon');
-          return resolved;
-        }
-      } catch { /* fall through to default */ }
-
-      diagnostics.push('overrideMorphFailed:allStrategiesExhausted');
-      // Fall through to default cascade below
-    }
-
-    if (override === 'trim') {
-      diagnostics.push('strategyOverride:trim');
-      resolved.morph = undefined;
-      resolved.animationType = 'trim';
-      // Ensure default trim tracks exist if the binding has none
-      const hasTrimTrack = resolved.tracks.some(
-        (t) => t.property === 'trimStart' || t.property === 'trimEnd' || t.property === 'trimOffset',
-      );
-      if (!hasTrimTrack) {
-        resolved.tracks.push({ property: 'trimEnd', keyframes: [0, 1], easing: transition.easing ?? 'linear' });
-      }
-      return resolved;
-    }
-
-    if (override === 'crossfade') {
-      diagnostics.push('strategyOverride:crossfade');
-      resolved.morph = undefined;
-      resolved.fallback = 'fade-through';
-      resolved.animationType = 'replace';
-      return resolved;
-    }
-  }
-
-  // Track-strategy bindings with explicit tracks are animated via their track
-  // keyframes only. Path morphing would double-animate (morph + CSS transform).
+  // lineAnimation-strategy bindings with explicit tracks are animated via their
+  // track keyframes only. Path morphing would double-animate (morph + CSS transform).
   // The path geometry snaps when setState is called after animation completion.
-  if (transition.strategy === 'track' && resolved.tracks.length > 0) {
+  if (transition.strategy === 'lineAnimation' && resolved.tracks.length > 0) {
     resolved.animationType = 'replace';
     return resolved;
   }
@@ -501,11 +447,11 @@ function resolveLayerBinding(
 }
 
 function decideRuntimeStrategy(
-  declared: Transition['strategy'],
+  declared: TransitionConfig['strategy'],
   readiness: MorphReadiness | undefined,
 ): 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'fallback' {
   if (!readiness) return 'fallback';
-  if (declared === 'replace' || declared === 'track') {
+  if (declared === 'replace' || declared === 'lineAnimation') {
     return readiness.recommendedStrategy;
   }
   if (declared === 'strictMorph' && readiness.commandCompatibility < 1) {
@@ -519,6 +465,11 @@ function decideRuntimeStrategy(
       return 'crossIconMorph';
     }
     return 'fallback';
+  }
+  // When crossIconMorph is explicitly declared, always use it —
+  // no readiness gate. The pipeline handles any sub-path topology.
+  if (declared === 'crossIconMorph') {
+    return 'crossIconMorph';
   }
   return declared;
 }
@@ -667,7 +618,7 @@ function fallbackToAnimationType(
 
 function computeDelay(
   binding: LayerBinding,
-  transition: Transition,
+  transition: TransitionConfig,
   staggerIndex: number,
   total: number,
   fromLayer: Layer | undefined,
@@ -687,7 +638,7 @@ function computeDelay(
     return Math.max(0, staggerIndex * transition.stagger.perLayerMs);
   }
 
-  if (transition.strategy === 'track') {
+  if (transition.strategy === 'lineAnimation') {
     return 0;
   }
 
@@ -705,36 +656,40 @@ function computeDelay(
 
 function computeStaggerOrder(
   bindings: Array<LayerBinding & { fromLayer?: Layer; toLayer?: Layer; source: string }>,
-  mode: Transition['stagger'] extends infer T
-    ? T extends { mode: infer Mode }
-      ? Mode
-      : never
-    : never = 'linear',
+  mode: TransitionStagger['mode'] | undefined = 'linear',
 ): number[] {
   const baseOrder = bindings.map((_, index) => index);
-  switch (mode) {
-    case 'from-center':
-      return [...baseOrder].sort((left, right) => {
-        const center = (bindings.length - 1) / 2;
-        return Math.abs(left - center) - Math.abs(right - center) || left - right;
-      });
-    case 'from-edges':
-      return [...baseOrder].sort((left, right) => {
-        const edgeDistanceLeft = Math.min(left, bindings.length - 1 - left);
-        const edgeDistanceRight = Math.min(right, bindings.length - 1 - right);
-        return edgeDistanceLeft - edgeDistanceRight || left - right;
-      });
-    case 'random':
-      return [...baseOrder].sort((left, right) => {
-        const leftId = bindings[left]?.toLayer?.id ?? bindings[left]?.fromLayer?.id ?? String(left);
-        const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
-        return hashString(leftId) - hashString(rightId);
-      });
-    case 'individually':
-    case 'linear':
-    default:
-      return baseOrder;
-  }
+  const sequence = (() => {
+    switch (mode) {
+      case 'from-center':
+        return [...baseOrder].sort((left, right) => {
+          const center = (bindings.length - 1) / 2;
+          return Math.abs(left - center) - Math.abs(right - center) || left - right;
+        });
+      case 'from-edges':
+        return [...baseOrder].sort((left, right) => {
+          const edgeDistanceLeft = Math.min(left, bindings.length - 1 - left);
+          const edgeDistanceRight = Math.min(right, bindings.length - 1 - right);
+          return edgeDistanceLeft - edgeDistanceRight || left - right;
+        });
+      case 'random':
+        return [...baseOrder].sort((left, right) => {
+          const leftId = bindings[left]?.toLayer?.id ?? bindings[left]?.fromLayer?.id ?? String(left);
+          const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
+          return hashString(leftId) - hashString(rightId);
+        });
+      case 'individually':
+      case 'linear':
+      default:
+        return baseOrder;
+    }
+  })();
+
+  const orderByBindingIndex = new Array(bindings.length).fill(0);
+  sequence.forEach((bindingIndex, order) => {
+    orderByBindingIndex[bindingIndex] = order;
+  });
+  return orderByBindingIndex;
 }
 
 function hashString(value: string): number {

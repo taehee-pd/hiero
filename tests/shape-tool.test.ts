@@ -36,7 +36,7 @@ function bootstrap() {
   const state = editorStore.getState();
   state.loadProject(structuredClone(SAMPLE_PROJECT));
   // Replace the complex Lucide path with a simple 3-point polyline for point-editing tests
-  state.patchLayer('icon-home', 'default', 'roof', {
+  state.patchLayer('icon-home', 'roof', {
     path: { d: 'M9.5 7 L14.5 12 L9.5 17' },
   });
   clearHistory();
@@ -65,7 +65,7 @@ function createMockSvg(): SVGSVGElement {
 }
 
 function getCurrentLayer(layerId: string) {
-  return editorStore.getState().project!.icons['icon-home'].variants.v24.states.default.layers[layerId];
+  return editorStore.getState().project!.icons['icon-home'].variants.v24.states!.default.layers[layerId];
 }
 
 function pointerEvent(init: {

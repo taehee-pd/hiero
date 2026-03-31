@@ -594,6 +594,10 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
     };
     const transition: Transition = {
       id: 'test',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'from',
       to: 'to',
       strategy: 'bestGuessMorph',
@@ -619,6 +623,10 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
     };
     const transition: Transition = {
       id: 'topo-test',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'from',
       to: 'to',
       strategy: 'bestGuessMorph',
@@ -641,6 +649,10 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
     };
     const transition: Transition = {
       id: 'stroke-fill',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'outline',
       to: 'filled',
       strategy: 'strictMorph',
@@ -740,6 +752,10 @@ describe('Phase 8 — MorphReadiness crossIconMorph strategy', () => {
     };
     const transition: Transition = {
       id: 'mixed',
+      fromIconId: 'icon',
+      toIconId: 'icon',
+      fromVariantId: 'v',
+      toVariantId: 'v',
       from: 'from',
       to: 'to',
       strategy: 'replace',

@@ -12,48 +12,35 @@ describe('compiled icon export adapter', () => {
   test('resolves token references to concrete values', () => {
     const project = structuredClone(SAMPLE_PROJECT);
     const icon = project.icons['icon-home']!;
-    icon.variants.v24.states.default.layers.roof.style.stroke = {
+    icon.variants.v24.layers.roof.style.stroke = {
       mode: 'token',
       token: 'accent',
     };
 
     const compiled = exportCompiledIcon(project, icon.id);
-    const layer = compiled.variants.v24.states.default.modes.monochrome.layers.find(
-      (item) => item.id === 'roof',
+    const layer = compiled.variants.v24.layers.layers.find(
+      (item: { id: string }) => item.id === 'roof',
     );
 
     expect(layer?.style.stroke).toBe('#38bdf8');
   });
 
-  test('materializes all rendering modes for each state', () => {
-    const compiled = exportCompiledIcon(structuredClone(SAMPLE_PROJECT), 'icon-home');
-    const modes = compiled.variants.v24.states.default.modes;
-
-    expect(Object.keys(modes).sort()).toEqual([
-      'autoGradient',
-      'hierarchical',
-      'monochrome',
-      'multicolor',
-      'palette',
-    ]);
-  });
-
   test('exports layers in deterministic draw order', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    const state = project.icons['icon-home']!.variants.v24.states.default;
-    state.layers = {
-      roof: state.layers.roof,
-      house: state.layers.house,
+    const variant = project.icons['icon-home']!.variants.v24;
+    variant.layers = {
+      roof: variant.layers.roof,
+      house: variant.layers.house,
     };
 
     const compiled = exportCompiledIcon(project, 'icon-home');
-    const layers = compiled.variants.v24.states.default.modes.monochrome.layers;
-    expect(layers.map((layer) => layer.id)).toEqual(['house', 'roof']);
+    const layers = compiled.variants.v24.layers.layers;
+    expect(layers.map((layer: { id: string }) => layer.id)).toEqual(['house', 'roof']);
   });
 
   test('omits identity transform', () => {
     const project = structuredClone(SAMPLE_PROJECT);
-    project.icons['icon-home']!.variants.v24.states.default.layers.roof.transform = {
+    project.icons['icon-home']!.variants.v24.layers.roof.transform = {
       x: 0,
       y: 0,
       rotate: 0,
@@ -62,8 +49,8 @@ describe('compiled icon export adapter', () => {
     };
 
     const compiled = exportCompiledIcon(project, 'icon-home');
-    const layer = compiled.variants.v24.states.default.modes.monochrome.layers.find(
-      (item) => item.id === 'roof',
+    const layer = compiled.variants.v24.layers.layers.find(
+      (item: { id: string }) => item.id === 'roof',
     );
 
     expect(layer?.transform).toBeUndefined();

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { useEditorStore } from '@/lib/editor-store/hooks';
 // TODO(deprecation): Migrate to lib/sync-service/ — see lib/sync-service/index.ts
 import { syncIconsToGitHub, type SyncOptions, type SyncResult } from '@/lib/integrations/github/sync-icons';
 
@@ -43,7 +43,6 @@ export function GitHubSyncPanel({
 }: SyncPanelProps) {
   const resolvedIconSetId = useEditorStore((s) => iconSetId ?? s.activeIconSetId);
   const iconSet = useEditorStore((s) => (resolvedIconSetId ? s.workspace?.iconSets[resolvedIconSetId] ?? null : null));
-  const { updateIconSetSync } = useEditorActions();
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState<SyncSettings>(DEFAULT_SETTINGS);
   const [token, setToken] = useState('');
@@ -52,13 +51,8 @@ export function GitHubSyncPanel({
   const [result, setResult] = useState<SyncResult | null>(null);
 
   useEffect(() => {
-    setSettings({
-      owner: iconSet?.sync?.owner ?? DEFAULT_SETTINGS.owner,
-      repo: iconSet?.sync?.repo ?? DEFAULT_SETTINGS.repo,
-      baseBranch: iconSet?.sync?.baseBranch ?? DEFAULT_SETTINGS.baseBranch,
-      packagePath: iconSet?.sync?.packagePath ?? DEFAULT_SETTINGS.packagePath,
-      exportFormat: iconSet?.sync?.exportFormat ?? DEFAULT_SETTINGS.exportFormat,
-    });
+    // Sync settings are stored locally; reset to defaults when icon set changes.
+    setSettings({ ...DEFAULT_SETTINGS });
   }, [iconSet]);
 
   const canSync = useMemo(() => {
@@ -66,11 +60,7 @@ export function GitHubSyncPanel({
   }, [iconSet, resolvedIconSetId, settings, token]);
 
   const patchSettings = (patch: Partial<SyncSettings>) => {
-    const nextSettings = { ...settings, ...patch };
-    setSettings(nextSettings);
-    if (resolvedIconSetId) {
-      updateIconSetSync(resolvedIconSetId, nextSettings);
-    }
+    setSettings((prev) => ({ ...prev, ...patch }));
   };
 
   const handleSync = async () => {

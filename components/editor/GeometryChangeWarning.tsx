@@ -8,7 +8,8 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import type { State, Transition } from '@/lib/schema/types';
+import type { LayerSnapshot, LayerBinding } from '@/lib/schema/types';
+import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { canonicalizePath } from '@/lib/runtime-core/path-normalization';
 
 // ---------------------------------------------------------------------------
@@ -29,19 +30,17 @@ export type GeometryBreak = {
 export type GeometryWarning = {
   transitionId: string;
   layerId: string;
-  stateId: string;
+  variantId: string;
   issue: string;
   severity: 'error' | 'warning';
   suggestedAction: 'downgrade-to-crossfade' | 'review-bindings';
 };
 
 type GeometryChangeWarningProps = {
-  /** Current icon states */
-  states: Record<string, State>;
+  /** Current snapshot (layers + topology) */
+  snapshot: LayerSnapshot;
   /** All transitions defined for this icon */
-  transitions: Transition[];
-  /** The state that was just modified */
-  modifiedStateId: string;
+  transitions: TransitionConfig[];
   /** The layer that was modified */
   modifiedLayerId: string;
   /** Previous path d-string before modification */
@@ -51,7 +50,7 @@ type GeometryChangeWarningProps = {
   /** Callback when user dismisses warning */
   onDismiss?: () => void;
   /** Callback when user wants to auto-fix (downgrade strategy) */
-  onDowngradeStrategy?: (transitionId: string, newStrategy: Transition['strategy']) => void;
+  onDowngradeStrategy?: (transitionId: string, newStrategy: TransitionConfig['strategy']) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -194,25 +193,20 @@ function longestCommonSubsequenceLength(a: string[], b: string[]): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Given transitions and a modified state+layer, find which transitions are
+ * Given transitions and a modified variant+layer, find which transitions are
  * affected and produce warnings.
  */
 function buildWarnings(
-  states: Record<string, State>,
-  transitions: Transition[],
-  modifiedStateId: string,
+  snapshot: LayerSnapshot,
+  transitions: TransitionConfig[],
   modifiedLayerId: string,
   previousD: string,
   currentD: string,
 ): GeometryWarning[] {
   const warnings: GeometryWarning[] = [];
 
-  // Find transitions referencing the modified state
-  const affectedTransitions = transitions.filter(
-    (t) => t.from === modifiedStateId || t.to === modifiedStateId,
-  );
-
-  for (const transition of affectedTransitions) {
+  // Check all morph transitions for the modified layer
+  for (const transition of transitions) {
     // Only care about morph strategies
     if (
       transition.strategy !== 'strictMorph' &&
@@ -221,14 +215,16 @@ function buildWarnings(
       continue;
     }
 
+    const bindings = transition.layerBindings ?? [];
+
     // Check if the modified layer is part of a layer binding
-    const hasBinding = transition.layerBindings.some(
-      (binding) =>
+    const hasBinding = bindings.some(
+      (binding: LayerBinding) =>
         binding.fromLayerId === modifiedLayerId ||
         binding.toLayerId === modifiedLayerId,
     );
 
-    if (!hasBinding && transition.layerBindings.length > 0) {
+    if (!hasBinding && bindings.length > 0) {
       // The modified layer is not part of any binding in this transition
       continue;
     }
@@ -237,15 +233,17 @@ function buildWarnings(
     const breaks = detectGeometryBreaks(previousD, currentD);
     if (breaks.length === 0) continue;
 
+    const transitionId = transition.id ?? 'unknown';
+
     for (const brk of breaks) {
       const isError =
         brk.kind === 'subpath-count-changed' ||
         brk.kind === 'closed-status-changed';
 
       warnings.push({
-        transitionId: transition.id,
+        transitionId,
         layerId: modifiedLayerId,
-        stateId: modifiedStateId,
+        variantId: transitionId,
         issue: brk.detail,
         severity: isError ? 'error' : 'warning',
         suggestedAction:
@@ -262,12 +260,11 @@ function buildWarnings(
 // ---------------------------------------------------------------------------
 
 export function useGeometryValidation(
-  states: Record<string, State>,
-  transitions: Transition[],
+  snapshot: LayerSnapshot,
+  transitions: TransitionConfig[],
 ): {
   warnings: GeometryWarning[];
   validateChange: (
-    stateId: string,
     layerId: string,
     previousD: string,
     currentD: string,
@@ -278,15 +275,13 @@ export function useGeometryValidation(
 
   const validateChange = useCallback(
     (
-      stateId: string,
       layerId: string,
       previousD: string,
       currentD: string,
     ): GeometryWarning[] => {
       const newWarnings = buildWarnings(
-        states,
+        snapshot,
         transitions,
-        stateId,
         layerId,
         previousD,
         currentD,
@@ -296,7 +291,7 @@ export function useGeometryValidation(
       }
       return newWarnings;
     },
-    [states, transitions],
+    [snapshot, transitions],
   );
 
   const clearWarnings = useCallback(() => {
@@ -311,9 +306,8 @@ export function useGeometryValidation(
 // ---------------------------------------------------------------------------
 
 export function GeometryChangeWarning({
-  states,
+  snapshot,
   transitions,
-  modifiedStateId,
   modifiedLayerId,
   previousD,
   currentD,
@@ -323,14 +317,13 @@ export function GeometryChangeWarning({
   const warnings = useMemo(
     () =>
       buildWarnings(
-        states,
+        snapshot,
         transitions,
-        modifiedStateId,
         modifiedLayerId,
         previousD,
         currentD,
       ),
-    [states, transitions, modifiedStateId, modifiedLayerId, previousD, currentD],
+    [snapshot, transitions, modifiedLayerId, previousD, currentD],
   );
 
   if (warnings.length === 0) return null;
@@ -366,9 +359,9 @@ export function GeometryChangeWarning({
 type TransitionWarningCardProps = {
   transitionId: string;
   warnings: GeometryWarning[];
-  transition?: Transition;
+  transition?: TransitionConfig;
   onDismiss?: () => void;
-  onDowngradeStrategy?: (transitionId: string, newStrategy: Transition['strategy']) => void;
+  onDowngradeStrategy?: (transitionId: string, newStrategy: TransitionConfig['strategy']) => void;
 };
 
 function TransitionWarningCard({
@@ -383,9 +376,7 @@ function TransitionWarningCard({
   const hasError = warnings.some((w) => w.severity === 'error');
 
   const strategyLabel = transition?.strategy ?? 'unknown';
-  const fromTo = transition
-    ? `${transition.from} → ${transition.to}`
-    : transitionId;
+  const fromTo = transition?.id ?? transitionId;
 
   return (
     <div

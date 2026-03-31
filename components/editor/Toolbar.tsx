@@ -203,7 +203,7 @@ export function Toolbar() {
     const svg = exportSvgString(
       icon,
       variant.id,
-      currentState.id,
+      state.currentStateId ?? 'default',
       state.project?.tokenSet?.colors,
       state.renderingMode,
     );

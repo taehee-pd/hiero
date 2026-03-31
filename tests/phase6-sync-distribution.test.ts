@@ -43,6 +43,7 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
+        layers: defaultState.layers,
         defaultState: 'default',
         states: { default: defaultState },
       },
@@ -58,7 +59,7 @@ function makeMeta(icon: Icon): RuntimeIconMeta {
     variants: Object.fromEntries(
       Object.entries(icon.variants).map(([k, v]) => [
         k,
-        { size: v.size, viewBox: v.viewBox, defaultState: v.defaultState },
+        { size: v.size, viewBox: v.viewBox },
       ]),
     ),
   };
@@ -66,18 +67,13 @@ function makeMeta(icon: Icon): RuntimeIconMeta {
 
 function makeMockVariant(): RuntimeVariantPayload {
   return {
-    variant: { id: 'v24', size: 24, viewBox: [0, 0, 24, 24], defaultState: 'default' },
-    states: {
-      default: {
-        layers: [{
-          id: 'bg',
-          d: 'M0 0H24V24H0Z',
-          fill: { kind: 'solid', color: '#fff' },
-          stroke: { kind: 'none' },
-        }],
-      },
-    },
-    transitions: {},
+    variant: { id: 'v24', size: 24, viewBox: [0, 0, 24, 24] },
+    layers: [{
+      id: 'bg',
+      d: 'M0 0H24V24H0Z',
+      fill: { kind: 'solid', color: '#fff' },
+      stroke: { kind: 'none' },
+    }],
   };
 }
 
@@ -128,16 +124,16 @@ describe('6.1 — SyncTarget schema', () => {
   });
 
   test('IconSet accepts syncTargets array', () => {
-    const iconSet: Partial<IconSet> = {
-      version: '1.0',
+    const iconSet = {
+      version: '1.0' as const,
       meta: { name: 'Test', createdAt: '', updatedAt: '' },
       icons: {},
       syncTargets: [
         {
           id: 'target-1',
           name: 'Local',
-          platform: 'react',
-          deliveryMode: 'local-directory',
+          platform: 'react' as const,
+          deliveryMode: 'local-directory' as const,
           localDirectory: { path: '/tmp/icons' },
         },
       ],

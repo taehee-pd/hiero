@@ -13,6 +13,12 @@ import { editorStore } from '@/lib/editor-store/store';
 import { createAutoPublishManager } from '@/lib/sync-service/auto-publish';
 import { getNextPublishVersion, publishNpmTarget } from '@/lib/sync-service/npm-publish-client';
 import { toast } from '@/components/ui/use-toast';
+import type { SyncTarget } from '@/lib/schema/types';
+
+/** Legacy accessor — IconSet no longer has syncTargets in the canonical type. */
+function getProjectSyncTargets(project: unknown): SyncTarget[] {
+  return ((project as Record<string, unknown>)?.syncTargets as SyncTarget[] | undefined) ?? [];
+}
 
 const manager = createAutoPublishManager();
 
@@ -32,7 +38,7 @@ export function useAutoPublish(): void {
         if (state.lastSavedAt && state.skipNextAutoPublish) {
           state.clearAutoPublishSkip();
         } else if (state.lastSavedAt && state.project) {
-          for (const target of state.project.syncTargets ?? []) {
+          for (const target of getProjectSyncTargets(state.project)) {
             if (
               target.deliveryMode === 'npm-registry' &&
               target.npmRegistry &&
@@ -67,7 +73,7 @@ export function useAutoPublish(): void {
           continue;
         }
 
-        const target = state.project?.syncTargets?.find((item) => item.id === pending.targetId);
+        const target = getProjectSyncTargets(state.project).find((item: SyncTarget) => item.id === pending.targetId);
         if (!target?.npmRegistry || !state.project) {
           editorStore.getState().cancelPendingPublish(pending.targetId);
           continue;
@@ -77,8 +83,8 @@ export function useAutoPublish(): void {
         manager.schedule(pending.targetId, async () => {
           const latestState = editorStore.getState();
           const currentProject = latestState.project;
-          const currentTarget = currentProject?.syncTargets?.find(
-            (item) => item.id === pending.targetId,
+          const currentTarget = getProjectSyncTargets(currentProject).find(
+            (item: SyncTarget) => item.id === pending.targetId,
           );
 
           latestState.cancelPendingPublish(pending.targetId);
@@ -104,7 +110,8 @@ export function useAutoPublish(): void {
             }
 
             if (result.kind === 'success') {
-              editorStore.getState().recordPublishedVersion(pending.targetId, nextVersion);
+              // recordPublishedVersion was removed from EditorStore during migration.
+              // Version tracking is now handled externally.
             }
 
             toast({

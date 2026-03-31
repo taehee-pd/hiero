@@ -1,11 +1,11 @@
 import { parseSvgPath } from './parse';
-import type { State, TopologyContract } from '@/lib/schema/types';
+import type { LayerSnapshot, TopologyContract } from '@/lib/schema/types';
 
-export function computeTopology(state: State): TopologyContract {
+export function computeTopology(state: LayerSnapshot): TopologyContract {
   return buildTopology(state, false);
 }
 
-export function lockTopology(state: State): TopologyContract {
+export function lockTopology(state: LayerSnapshot): TopologyContract {
   return buildTopology(state, true);
 }
 
@@ -52,7 +52,7 @@ export function areTopologiesCompatible(
   return { compatible: mismatches.length === 0, mismatches };
 }
 
-function buildTopology(state: State, locked: boolean): TopologyContract {
+function buildTopology(state: LayerSnapshot, locked: boolean): TopologyContract {
   return {
     locked,
     layerPairs: Object.values(state.layers)

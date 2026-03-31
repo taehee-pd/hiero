@@ -13,7 +13,7 @@ function makeIconInput(
     id: `icon-${name.toLowerCase().replace(/\s+/g, '-')}`,
     name,
     variants: {
-      v24: { size: 24, viewBox: [0, 0, 24, 24], defaultState: 'default' },
+      v24: { size: 24, viewBox: [0, 0, 24, 24] },
     },
   };
 

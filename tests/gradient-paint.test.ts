@@ -34,7 +34,7 @@ describe('gradient paint', () => {
 
   test('serializes gradient paints into deterministic SVG defs', () => {
     const icon = structuredClone(SAMPLE_PROJECT.icons['icon-home']);
-    icon.variants.v24.states.default.layers.roof.style.fill = {
+    icon.variants.v24.layers.roof.style.fill = {
       mode: 'linearGradient',
       angle: 0,
       stops: [
@@ -42,7 +42,7 @@ describe('gradient paint', () => {
         { offset: 1, color: '#eeeeee' },
       ],
     };
-    icon.variants.v24.states.default.layers.roof.style.stroke = {
+    icon.variants.v24.layers.roof.style.stroke = {
       mode: 'radialGradient',
       cx: 0.25,
       cy: 0.75,

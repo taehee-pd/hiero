@@ -54,9 +54,11 @@ describe('runtime sdk primitives', () => {
   test('paletteColors is ignored outside palette mode', () => {
     const warns: string[] = [];
     const warn = console.warn;
+    const prevNodeEnv = process.env.NODE_ENV;
     console.warn = (message?: any) => {
       warns.push(String(message));
     };
+    process.env.NODE_ENV = 'development';
 
     try {
       const result = resolvePaletteColors('monochrome', { primary: '#ff0000' });
@@ -64,6 +66,7 @@ describe('runtime sdk primitives', () => {
       expect(warns.some((entry) => entry.includes('ignored outside palette'))).toBeTrue();
     } finally {
       console.warn = warn;
+      process.env.NODE_ENV = prevNodeEnv;
     }
   });
 

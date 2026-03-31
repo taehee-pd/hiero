@@ -136,6 +136,25 @@ describe('validateConfig', () => {
     expect(result.valid).toBeFalse();
   });
 
+  test('rejects local-directory release target with absolute outputDir', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [{ kind: 'local-directory', outputMode: 'snapshot', outputDir: '/tmp/out' }],
+    });
+    expect(result.valid).toBeFalse();
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.field.includes('outputDir'))).toBeTrue();
+    }
+  });
+
+  test('rejects local-directory release target with traversal outputDir', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [{ kind: 'local-directory', outputMode: 'snapshot', outputDir: '../outside' }],
+    });
+    expect(result.valid).toBeFalse();
+  });
+
   test('rejects git-pr release target with missing owner', () => {
     const result = validateConfig({
       ...VALID_CONFIG,
@@ -180,6 +199,39 @@ describe('validateConfig', () => {
       ],
     });
     expect(result.valid).toBeTrue();
+  });
+
+  test('accepts valid git-pr release target with packagePath', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [
+        { kind: 'git-pr', outputMode: 'snapshot', owner: 'acme', repo: 'icons', baseBranch: 'main', packagePath: 'packages/icons' },
+      ],
+    });
+    expect(result.valid).toBeTrue();
+  });
+
+  test('rejects git-pr release target with absolute packagePath', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [
+        { kind: 'git-pr', outputMode: 'snapshot', owner: 'acme', repo: 'icons', baseBranch: 'main', packagePath: '/tmp/out' },
+      ],
+    });
+    expect(result.valid).toBeFalse();
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.field.includes('packagePath'))).toBeTrue();
+    }
+  });
+
+  test('rejects git-pr release target with traversal packagePath', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [
+        { kind: 'git-pr', outputMode: 'snapshot', owner: 'acme', repo: 'icons', baseBranch: 'main', packagePath: '../../outside' },
+      ],
+    });
+    expect(result.valid).toBeFalse();
   });
 
   test('accepts valid npm-registry release target', () => {

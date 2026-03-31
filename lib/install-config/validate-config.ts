@@ -131,11 +131,13 @@ function validateReleaseTarget(
     }
     if (!outputDir || typeof outputDir !== 'string' || (outputDir as string).trim() === '') {
       errors.push({ field: `${prefix}.outputDir`, message: 'outputDir is required and must be a non-empty string.' });
+    } else {
+      validateRepoRelativePath(`${prefix}.outputDir`, outputDir as string, errors);
     }
   }
 
   if (kind === 'git-pr') {
-    const { outputMode, owner, repo, baseBranch } = target as Record<string, unknown>;
+    const { outputMode, owner, repo, baseBranch, packagePath } = target as Record<string, unknown>;
     if (outputMode !== 'snapshot') {
       errors.push({ field: `${prefix}.outputMode`, message: "outputMode must be 'snapshot'." });
     }
@@ -147,6 +149,13 @@ function validateReleaseTarget(
     }
     if (!baseBranch || typeof baseBranch !== 'string' || (baseBranch as string).trim() === '') {
       errors.push({ field: `${prefix}.baseBranch`, message: 'baseBranch is required and must be a non-empty string.' });
+    }
+    if (packagePath !== undefined) {
+      if (typeof packagePath !== 'string' || (packagePath as string).trim() === '') {
+        errors.push({ field: `${prefix}.packagePath`, message: 'packagePath must be a non-empty string when provided.' });
+      } else {
+        validateRepoRelativePath(`${prefix}.packagePath`, packagePath as string, errors);
+      }
     }
   }
 

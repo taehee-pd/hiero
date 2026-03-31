@@ -30,12 +30,7 @@ function validateSourceDir(config: Record<string, unknown>, errors: ConfigValida
     errors.push({ field: 'sourceDir', message: 'sourceDir is required and must be a non-empty string.' });
     return;
   }
-  if (path.isAbsolute(sourceDir)) {
-    errors.push({ field: 'sourceDir', message: 'sourceDir must be a relative path.' });
-  }
-  if (sourceDir.startsWith('..')) {
-    errors.push({ field: 'sourceDir', message: 'sourceDir must not escape the repo root.' });
-  }
+  validateRepoRelativePath('sourceDir', sourceDir, errors);
 }
 
 function validateHostTargets(config: Record<string, unknown>, errors: ConfigValidationError[]): void {
@@ -81,23 +76,17 @@ function validateHostTarget(
   }
 
   if (runtimeMode === 'cache-dir') {
-    if (!cacheDir || typeof cacheDir !== 'string' || cacheDir.trim() === '') {
+    if (!cacheDir || typeof cacheDir !== 'string' || (cacheDir as string).trim() === '') {
       errors.push({
         field: `${prefix}.cacheDir`,
         message: "cacheDir is required when runtimeMode is 'cache-dir'.",
       });
-    } else if (path.isAbsolute(cacheDir as string)) {
-      errors.push({
-        field: `${prefix}.cacheDir`,
-        message: 'cacheDir must be a relative path inside the repo.',
-      });
-    } else if ((cacheDir as string).startsWith('..')) {
-      errors.push({
-        field: `${prefix}.cacheDir`,
-        message: 'cacheDir must not escape the repo root.',
-      });
+    } else {
+      validateRepoRelativePath(`${prefix}.cacheDir`, cacheDir as string, errors);
     }
   }
+
+  rejectInlineCredentials(target, prefix, errors);
 }
 
 function validateReleaseTargets(config: Record<string, unknown>, errors: ConfigValidationError[]): void {
@@ -150,14 +139,14 @@ function validateReleaseTarget(
     if (outputMode !== 'snapshot') {
       errors.push({ field: `${prefix}.outputMode`, message: "outputMode must be 'snapshot'." });
     }
-    if (!owner || typeof owner !== 'string') {
-      errors.push({ field: `${prefix}.owner`, message: 'owner is required.' });
+    if (!owner || typeof owner !== 'string' || (owner as string).trim() === '') {
+      errors.push({ field: `${prefix}.owner`, message: 'owner is required and must be a non-empty string.' });
     }
-    if (!repo || typeof repo !== 'string') {
-      errors.push({ field: `${prefix}.repo`, message: 'repo is required.' });
+    if (!repo || typeof repo !== 'string' || (repo as string).trim() === '') {
+      errors.push({ field: `${prefix}.repo`, message: 'repo is required and must be a non-empty string.' });
     }
-    if (!baseBranch || typeof baseBranch !== 'string') {
-      errors.push({ field: `${prefix}.baseBranch`, message: 'baseBranch is required.' });
+    if (!baseBranch || typeof baseBranch !== 'string' || (baseBranch as string).trim() === '') {
+      errors.push({ field: `${prefix}.baseBranch`, message: 'baseBranch is required and must be a non-empty string.' });
     }
   }
 
@@ -169,17 +158,78 @@ function validateReleaseTarget(
     if (!packageName || typeof packageName !== 'string' || (packageName as string).trim() === '') {
       errors.push({ field: `${prefix}.packageName`, message: 'packageName is required and must be a non-empty string.' });
     }
-    // Secrets must not appear in config values — credentials belong in platform keychain only.
-    const secretLike = ['token', 'secret', 'password', 'key', 'auth'];
-    for (const [field, value] of Object.entries(target)) {
-      if (secretLike.some((s) => field.toLowerCase().includes(s)) && typeof value === 'string' && value.trim() !== '') {
-        errors.push({
-          field: `${prefix}.${field}`,
-          message: `Config must not store credentials. Move "${field}" to the platform keychain.`,
-        });
-      }
+  }
+
+  // Credentials must not appear in any target config regardless of kind —
+  // tokens and secrets belong in the platform keychain only.
+  rejectInlineCredentials(target, prefix, errors);
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject a path that escapes the repo root or is absolute.
+ * Tracks cumulative depth so that `a/../../b` is caught even though it does
+ * not literally start with `..`.
+ */
+function validateRepoRelativePath(
+  field: string,
+  value: string,
+  errors: ConfigValidationError[],
+): void {
+  if (path.isAbsolute(value)) {
+    errors.push({ field, message: `${field} must be a relative path.` });
+    return;
+  }
+  if (escapesRoot(value)) {
+    errors.push({ field, message: `${field} must not escape the repo root.` });
+  }
+}
+
+/**
+ * Reject any field whose name looks like a secret or credential.
+ * Applies to every target kind — credentials belong in the platform keychain.
+ */
+function rejectInlineCredentials(
+  target: Record<string, unknown>,
+  prefix: string,
+  errors: ConfigValidationError[],
+): void {
+  const secretLike = ['token', 'secret', 'password', 'key', 'auth'];
+  for (const [field, value] of Object.entries(target)) {
+    if (
+      secretLike.some((s) => field.toLowerCase().includes(s)) &&
+      typeof value === 'string' &&
+      value.trim() !== ''
+    ) {
+      errors.push({
+        field: `${prefix}.${field}`,
+        message: `Config must not store credentials. Move "${field}" to the platform keychain.`,
+      });
     }
   }
+}
+
+/**
+ * Returns true if traversing `p` relative to a root would go above that root
+ * at any point. Handles both posix and Windows separators.
+ * Examples: '../foo' → true, 'a/../../b' → true, 'a/../b' → false.
+ */
+function escapesRoot(p: string): boolean {
+  const parts = p.replace(/\\/g, '/').split('/');
+  let depth = 0;
+  for (const part of parts) {
+    if (part === '' || part === '.') continue;
+    if (part === '..') {
+      depth--;
+      if (depth < 0) return true;
+    } else {
+      depth++;
+    }
+  }
+  return false;
 }
 
 // Minimal path helpers — avoids importing Node 'path' at type-check time in browser contexts.

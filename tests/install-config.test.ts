@@ -67,6 +67,11 @@ describe('validateConfig', () => {
     expect(result.valid).toBeFalse();
   });
 
+  test('rejects sourceDir that escapes via nested traversal (icons/../../outside)', () => {
+    const result = validateConfig({ ...VALID_CONFIG, sourceDir: 'icons/../../outside' });
+    expect(result.valid).toBeFalse();
+  });
+
   test('rejects non-array hostTargets', () => {
     const result = validateConfig({ ...VALID_CONFIG, hostTargets: 'bad' });
     expect(result.valid).toBeFalse();
@@ -137,6 +142,34 @@ describe('validateConfig', () => {
       releaseTargets: [{ kind: 'git-pr', outputMode: 'snapshot', owner: '', repo: 'icons', baseBranch: 'main' }],
     });
     expect(result.valid).toBeFalse();
+  });
+
+  test('rejects git-pr release target with whitespace-only owner', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [{ kind: 'git-pr', outputMode: 'snapshot', owner: '   ', repo: 'icons', baseBranch: 'main' }],
+    });
+    expect(result.valid).toBeFalse();
+  });
+
+  test('rejects git-pr release target with inline token (credential guard applies to all kinds)', () => {
+    const result = validateConfig({
+      ...VALID_CONFIG,
+      releaseTargets: [
+        {
+          kind: 'git-pr',
+          outputMode: 'snapshot',
+          owner: 'acme',
+          repo: 'icons',
+          baseBranch: 'main',
+          token: 'ghp_supersecret',
+        },
+      ],
+    });
+    expect(result.valid).toBeFalse();
+    if (!result.valid) {
+      expect(result.errors.some((e) => e.field.includes('token'))).toBeTrue();
+    }
   });
 
   test('accepts valid git-pr release target', () => {

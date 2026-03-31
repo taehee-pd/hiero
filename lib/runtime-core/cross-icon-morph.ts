@@ -708,6 +708,43 @@ function catmullRomToClosedBezier(pts: Point[]): CubicSubPath {
 }
 
 /**
+ * Reconstruct an open smooth cubic bezier path from N uniformly-distributed
+ * points using Catmull-Rom → Bezier conversion (tension = 1/6).
+ *
+ * For open paths the first and last control handles use clamped (non-wrapping)
+ * neighbours, which avoids wrap-around kinks at the endpoints.
+ */
+function catmullRomToOpenBezier(pts: Point[]): CubicSubPath {
+  const n = pts.length;
+  if (n < 2) return { start: pts[0] ?? { x: 0, y: 0 }, segments: [], closed: false };
+
+  const TENSION = 1 / 6;
+  const segments: CubicSegment[] = [];
+
+  for (let i = 0; i < n - 1; i++) {
+    // Clamp neighbours at the endpoints instead of wrapping
+    const prev = pts[Math.max(0, i - 1)]!;
+    const curr = pts[i]!;
+    const next = pts[i + 1]!;
+    const nextNext = pts[Math.min(n - 1, i + 2)]!;
+
+    segments.push({
+      c1: {
+        x: curr.x + (next.x - prev.x) * TENSION,
+        y: curr.y + (next.y - prev.y) * TENSION,
+      },
+      c2: {
+        x: next.x - (nextNext.x - curr.x) * TENSION,
+        y: next.y - (nextNext.y - curr.y) * TENSION,
+      },
+      end: next,
+    });
+  }
+
+  return { start: pts[0]!, segments, closed: false };
+}
+
+/**
  * Find the cyclic rotation offset (in sample space) that minimises total
  * point displacement between two sets of N arc-length-uniform samples.
  * Returns a rotated copy of `toPts`.
@@ -765,6 +802,7 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
     toPts: Point[];
     disappearing: boolean;
     appearing: boolean;
+    closed: boolean;
   };
   const pairs: Pair[] = [];
 
@@ -781,7 +819,7 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
       ? alignSampledPoints(fromPts, rawToPts)
       : rawToPts;
 
-    pairs.push({ fromPts, toPts, disappearing: false, appearing: false });
+    pairs.push({ fromPts, toPts, disappearing: false, appearing: false, closed: fromSub.closed && toSub.closed });
   }
 
   // Step 3: Unmatched sub-paths — collapse to / expand from centroid
@@ -794,6 +832,7 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
         toPts: Array.from({ length: N }, () => ({ ...centroid })),
         disappearing: true,
         appearing: false,
+        closed: fromSub.closed,
       });
     }
   }
@@ -806,6 +845,7 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
         toPts: sampleSubPathNPoints(toSub, N),
         disappearing: false,
         appearing: true,
+        closed: toSub.closed,
       });
     }
   }
@@ -825,11 +865,12 @@ export function crossIconMorph(from: CubicPath, to: CubicPath): MorphInterpolato
         effectiveT = easeOutCubic(t);  // centroid → to: decelerate expansion
       }
 
-      // Lerp each sample point, then reconstruct a smooth closed bezier
+      // Lerp each sample point, then reconstruct a smooth bezier.
+      // Use closed vs open Catmull-Rom based on the pair's geometry.
       const pts: Point[] = pair.fromPts.map((fp, i) =>
         lerpPoint(fp, pair.toPts[i]!, effectiveT),
       );
-      result.push(catmullRomToClosedBezier(pts));
+      result.push(pair.closed ? catmullRomToClosedBezier(pts) : catmullRomToOpenBezier(pts));
     }
     return serializePath(result);
   };

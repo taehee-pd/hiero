@@ -54,11 +54,14 @@ describe('runtime sdk primitives', () => {
   test('paletteColors is ignored outside palette mode', () => {
     const warns: string[] = [];
     const warn = console.warn;
-    const prevNodeEnv = process.env.NODE_ENV;
+    // bun defaults NODE_ENV to 'production', which silences warnDev. Override
+    // via a cast since process.env is typed read-only in strict mode.
+    const env = process.env as Record<string, string | undefined>;
+    const prevNodeEnv = env.NODE_ENV;
     console.warn = (message?: any) => {
       warns.push(String(message));
     };
-    process.env.NODE_ENV = 'development';
+    env.NODE_ENV = 'development';
 
     try {
       const result = resolvePaletteColors('monochrome', { primary: '#ff0000' });
@@ -66,7 +69,7 @@ describe('runtime sdk primitives', () => {
       expect(warns.some((entry) => entry.includes('ignored outside palette'))).toBeTrue();
     } finally {
       console.warn = warn;
-      process.env.NODE_ENV = prevNodeEnv;
+      env.NODE_ENV = prevNodeEnv;
     }
   });
 

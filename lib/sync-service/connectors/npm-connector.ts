@@ -3,8 +3,8 @@
  * as an npm package to a registry.
  *
  * Implements SyncConnector for type-safe dispatch from SyncTargetPanel.
- * Uses NpmPublisher abstraction for testability (mock in tests, bridge
- * on desktop, fetch to web proxy on web).
+ * Uses NpmPublisher abstraction for testability (mock in tests,
+ * fetch to web proxy in production).
  *
  * @module
  */

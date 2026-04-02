@@ -51,13 +51,12 @@ import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import { exportSvgString } from '@/lib/export/export-svg';
-import { clearCurrentProjectPath, isDesktop, showNativeContextMenu } from '@/lib/platform/bridge';
+import { clearCurrentProjectPath } from '@/lib/platform/bridge';
 import { useProjectList } from '@/lib/persistence/use-persistence';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { createImportedIcon, isSvgFile } from '@/lib/import/import-svg-file';
 import { replaceWorkspaceIconSet } from '@/lib/schema/workspace';
-import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { cn } from '@/lib/utils';
 import type { Collection, Icon, Project } from '@/lib/schema/types';
 import { IconGridItem } from './IconGridItem';
@@ -123,7 +122,6 @@ export function ExplorerShell() {
   const [selection, setSelection] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({ kind: 'all' });
-  const [desktop, setDesktop] = useState(false);
   const [importMode, setImportMode] = useState<'current-project' | 'new-project'>(
     'current-project',
   );
@@ -142,38 +140,29 @@ export function ExplorerShell() {
   const { projects: recentProjects, isLoading: _recentLoading, refresh: refreshRecent, loadProject: loadSavedProject, deleteProject: deleteSavedProject, setCurrentProjectId } = useProjectList();
 
   useEffect(() => {
-    setDesktop(isDesktop());
-  }, []);
-
-  useEffect(() => {
     const state = editorStore.getState();
     if (state.workspace) return;
 
-    // On web, try loading the most recent project from IndexedDB
-    if (!isDesktop()) {
-      void (async () => {
-        try {
-          const { IndexedDBAdapter } = await import('@/lib/persistence/indexeddb-adapter');
-          const adapter = new IndexedDBAdapter();
-          const list = await adapter.list();
-          if (list.length > 0) {
-            const saved = await adapter.load(list[0].id);
-            if (saved) {
-              setCurrentProjectId(saved.id);
-              state.loadWorkspace(saved.data);
-              return;
-            }
+    // Try loading the most recent project from IndexedDB
+    void (async () => {
+      try {
+        const { IndexedDBAdapter } = await import('@/lib/persistence/indexeddb-adapter');
+        const adapter = new IndexedDBAdapter();
+        const list = await adapter.list();
+        if (list.length > 0) {
+          const saved = await adapter.load(list[0].id);
+          if (saved) {
+            setCurrentProjectId(saved.id);
+            state.loadWorkspace(saved.data);
+            return;
           }
-        } catch {
-          // IndexedDB unavailable (e.g. incognito) — fall through to sample
         }
-        clearCurrentProjectPath();
-        state.loadWorkspace(SAMPLE_WORKSPACE);
-      })();
-    } else {
+      } catch {
+        // IndexedDB unavailable (e.g. incognito) — fall through to sample
+      }
       clearCurrentProjectPath();
       state.loadWorkspace(SAMPLE_WORKSPACE);
-    }
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
@@ -454,7 +443,6 @@ export function ExplorerShell() {
       className="swift-surface flex h-full flex-col overflow-hidden text-foreground"
       style={{ position: 'fixed', inset: 0 }}
     >
-      {desktop && <TitleTabBar onNavigateExplorer={goBackToWorkspace} />}
       <header
         className="flex h-10 shrink-0 items-center gap-3 border-b border-[var(--border-separator)] px-4"
         style={{ fontFamily: 'var(--font-system)' }}
@@ -587,7 +575,7 @@ export function ExplorerShell() {
             setDeleteProjectTarget(target);
             setDeleteConfirmValue('');
           }}
-          recentProjects={desktop ? [] : recentProjects}
+          recentProjects={recentProjects}
           onLoadRecent={async (id) => {
             const saved = await loadSavedProject(id);
             if (saved) {
@@ -1381,10 +1369,6 @@ function ProjectDetailView({
                   onToggleSelection={() => onToggleSelection(icon.id)}
                   onContextMenu={(event) => {
                     event.preventDefault();
-                    void showNativeContextMenu('explorerIcon', {
-                      iconId: icon.id,
-                      favorite,
-                    });
                   }}
                 />
               );

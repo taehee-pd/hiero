@@ -58,7 +58,7 @@ import type {
 } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
-import { clearCurrentProjectPath, exportSvg, isDesktop, saveProject } from '@/lib/platform/bridge';
+import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { exportSvgPackage } from '@/lib/export/export-svg-package';
@@ -67,7 +67,6 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
-import { TitleTabBar } from '@/components/platform/TitleTabBar';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Input } from '@/components/kibo-ui/input';
 import { Canvas } from './Canvas';
@@ -909,7 +908,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
 
   const [leftTab, setLeftTab] = useState<LeftTab>('layers');
   const [rightTab, setRightTab] = useState<RightTab>('inspect');
-  const [desktop, setDesktop] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newVariantSize, setNewVariantSize] = useState('32');
@@ -947,7 +945,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const projectName = project?.meta.name ?? 'Untitled Set';
 
   useEffect(() => {
-    setDesktop(isDesktop());
     const search = new URLSearchParams(window.location.search);
     setSearchIconId(parseEditorSearchParam(search.get('icon') ?? undefined));
     setSearchIconSetId(parseEditorSearchParam(search.get('set') ?? undefined));
@@ -1212,7 +1209,6 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
 
   return (
     <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
-      {desktop ? <TitleTabBar /> : null}
       <Toolbar />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">

@@ -3,14 +3,12 @@
  *
  * - Auto-saves to IndexedDB when workspace changes (debounced 500ms)
  * - Provides load/list/delete/rename operations for the Explorer
- * - Desktop skips IndexedDB auto-save (handled by DesktopCommandBridge)
  */
 
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
-import { isDesktop } from '@/lib/platform/bridge';
 import { IndexedDBAdapter } from './indexeddb-adapter';
 import { PersistenceManager } from './persistence-manager';
 import type { ProjectMeta, SavedProject } from './adapter';
@@ -43,15 +41,11 @@ function getManager(): PersistenceManager {
 
 /**
  * Hook for auto-save wiring. Call once at the app root.
- * On desktop, this is a no-op (desktop has its own save path).
  */
 export function useAutoSave(): void {
   const managerRef = useRef<PersistenceManager | null>(null);
 
   useEffect(() => {
-    // Desktop has its own auto-save via DesktopCommandBridge
-    if (isDesktop()) return;
-
     const manager = getManager();
     managerRef.current = manager;
 
@@ -80,7 +74,6 @@ export function useAutoSave(): void {
 
 /**
  * Hook for project list operations (Explorer).
- * Works on both web (IndexedDB) and desktop (filesystem via bridge).
  */
 export function useProjectList() {
   const [projects, setProjects] = useState<ProjectMeta[]>([]);

@@ -10,7 +10,6 @@ import {
   useEditorStore,
   useEditorActions,
 } from '@/lib/editor-store/hooks';
-import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { selectCurrentVariant } from '@/lib/editor-store/selectors';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
@@ -193,7 +192,6 @@ export const LayerPanel = memo(function LayerPanel() {
                   event.preventDefault();
                   setFocusedIndex(rowIndex);
                   setSelection({ layerIds: [layer.id], pointIds: [] });
-                  void showNativeContextMenu('layerPanel', { layerId: layer.id });
                 }}
                 role="option"
                 tabIndex={-1}

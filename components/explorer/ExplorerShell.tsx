@@ -140,6 +140,7 @@ export function ExplorerShell() {
   const { projects: recentProjects, isLoading: _recentLoading, refresh: refreshRecent, loadProject: loadSavedProject, deleteProject: deleteSavedProject, setCurrentProjectId } = useProjectList();
 
   useEffect(() => {
+    let cancelled = false;
     const state = editorStore.getState();
     if (state.workspace) return;
 
@@ -152,17 +153,21 @@ export function ExplorerShell() {
         if (list.length > 0) {
           const saved = await adapter.load(list[0].id);
           if (saved) {
+            // Guard: abort if component unmounted or store was populated while we waited
+            if (cancelled || editorStore.getState().workspace) return;
             setCurrentProjectId(saved.id);
-            state.loadWorkspace(saved.data);
+            editorStore.getState().loadWorkspace(saved.data);
             return;
           }
         }
       } catch {
         // IndexedDB unavailable (e.g. incognito) — fall through to sample
       }
+      if (cancelled || editorStore.getState().workspace) return;
       clearCurrentProjectPath();
-      state.loadWorkspace(SAMPLE_WORKSPACE);
+      editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
     })();
+    return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';

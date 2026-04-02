@@ -951,6 +951,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const state = editorStore.getState();
     if (!state.workspace) {
       // Try restoring from IndexedDB before falling back to sample
@@ -962,6 +963,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
           if (list.length > 0) {
             const saved = await adapter.load(list[0].id);
             if (saved) {
+              // Guard: abort if component unmounted or store was populated while we waited
+              if (cancelled || editorStore.getState().workspace) return;
               const { setPersistenceProjectId } = await import('@/lib/persistence/use-persistence');
               setPersistenceProjectId(saved.id);
               editorStore.getState().loadWorkspace(saved.data);
@@ -972,11 +975,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         } catch {
           // IndexedDB unavailable — fall through to sample
         }
+        if (cancelled || editorStore.getState().workspace) return;
         clearCurrentProjectPath();
         editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
         applySearchParams();
       })();
-      return;
+      return () => { cancelled = true; };
     }
 
     applySearchParams();

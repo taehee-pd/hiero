@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useEditorStore } from '@/lib/editor-store/hooks';
+import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { toast } from '@/components/ui/use-toast';
 import { getNextPublishVersion, publishNpmTarget, type PublishSemver } from '@/lib/sync-service/npm-publish-client';
@@ -28,55 +28,65 @@ function generateId(): string {
 }
 
 export function SyncTargetPanel() {
+  return <SyncTargetPanelContent />;
+}
+
+export function SyncTargetPanelContent({
+  title = 'Sync Targets',
+  description = 'Configure where generated code is delivered.',
+}: {
+  title?: string;
+  description?: string;
+}) {
   const project = useEditorStore((s) => s.project);
   const pendingPublishes = useEditorStore((s) => s.pendingPublishes);
+  const targets = useEditorStore((s) => s.project?.syncTargets ?? []);
+  const { addSyncTarget, removeSyncTarget, updateSyncTarget } = useEditorActions();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [targets, setTargets] = useState<SyncTarget[]>([]);
 
   const handleRemove = useCallback(
     (id: string) => {
-      setTargets((prev) => prev.filter((t) => t.id !== id));
+      removeSyncTarget(id);
     },
-    [],
+    [removeSyncTarget],
   );
 
   const handleUpdate = useCallback(
     (id: string, patch: Partial<SyncTarget>) => {
-      setTargets((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-      );
+      updateSyncTarget(id, patch);
     },
-    [],
+    [updateSyncTarget],
   );
 
   const handleRecordPublishedVersion = useCallback(
     (targetId: string, version: string) => {
-      setTargets((prev) =>
-        prev.map((t) =>
-          t.id === targetId
-            ? { ...t, npmRegistry: t.npmRegistry ? { ...t.npmRegistry, lastPublishedVersion: version } : undefined }
-            : t,
-        ),
-      );
+      const current = targets.find((target) => target.id === targetId);
+      if (!current?.npmRegistry) return;
+      updateSyncTarget(targetId, {
+        npmRegistry: {
+          ...current.npmRegistry,
+          lastPublishedVersion: version,
+        },
+      });
     },
-    [],
+    [targets, updateSyncTarget],
   );
 
   const handleAdd = useCallback(
     (target: SyncTarget) => {
-      setTargets((prev) => [...prev, target]);
+      addSyncTarget(target);
       setIsAddOpen(false);
     },
-    [],
+    [addSyncTarget],
   );
 
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-foreground">Sync Targets</p>
+          <p className="text-sm font-semibold text-foreground">{title}</p>
           <p className="text-xs text-muted-foreground">
-            Configure where generated code is delivered.
+            {description}
           </p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>

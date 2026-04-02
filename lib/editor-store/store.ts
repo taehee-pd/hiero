@@ -17,6 +17,7 @@ import type {
   SymbolComponent,
   SymbolScale,
   SymbolWeight,
+  SyncTarget,
   Variant,
   RenderingMode,
 } from '@/lib/schema/types';
@@ -177,6 +178,9 @@ export type EditorActions = {
   removeIconSet(iconSetId: string): void;
   renameIconSet(iconSetId: string, name: string): void;
   setActiveIconSet(iconSetId: string): void;
+  addSyncTarget(target: SyncTarget): void;
+  updateSyncTarget(targetId: string, patch: Partial<SyncTarget>): void;
+  removeSyncTarget(targetId: string): void;
   schedulePendingPublish(targetId: string, semver: 'patch' | 'minor' | 'major'): void;
   cancelPendingPublish(targetId: string): void;
   clearAutoPublishSkip(): void;
@@ -2422,6 +2426,50 @@ function createActions(): EditorActions {
           ...buildWorkspaceState(s.workspace, iconSetId, { previousState: s, keepTabs: true }),
           activeTabId: s.activeTabId,
           openTabs: s.openTabs,
+        };
+      });
+    },
+
+    addSyncTarget(target) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: [...(s.project.syncTargets ?? []), target],
+          },
+        };
+      });
+    },
+
+    updateSyncTarget(targetId, patch) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.syncTargets?.some((target) => target.id === targetId)) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: (s.project.syncTargets ?? []).map((target) =>
+              target.id === targetId ? { ...target, ...patch } : target,
+            ),
+          },
+        };
+      });
+    },
+
+    removeSyncTarget(targetId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        const nextTargets = (s.project.syncTargets ?? []).filter((target) => target.id !== targetId);
+        if (nextTargets.length === (s.project.syncTargets ?? []).length) return s;
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            syncTargets: nextTargets,
+          },
+          pendingPublishes: s.pendingPublishes.filter((pending) => pending.targetId !== targetId),
         };
       });
     },

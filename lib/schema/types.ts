@@ -93,6 +93,7 @@ export type IconSet = {
   version: '1.0';
   meta: { name: string; createdAt: string; updatedAt: string };
   icons: Record<string, Icon>;
+  syncTargets?: SyncTarget[];
   guideMasters?: Record<string, GuideMaster>;
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];

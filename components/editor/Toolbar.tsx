@@ -42,7 +42,6 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
-import { PublishPanel } from '@/components/export/PublishPanel';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
 import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
 import {
@@ -545,9 +544,6 @@ export function Toolbar() {
               title="Repo-native Distribution"
               description="Manage release targets from the editor and publish generated packages directly."
             />
-            <div className="mt-4 border-t border-border/60 pt-4">
-              <PublishPanel />
-            </div>
           </div>
         </SheetContent>
       </Sheet>

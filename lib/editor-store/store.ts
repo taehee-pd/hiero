@@ -19,6 +19,7 @@ import type {
   SymbolWeight,
   SyncTarget,
   Variant,
+  State,
   RenderingMode,
 } from '@/lib/schema/types';
 import {
@@ -131,6 +132,10 @@ export type EditorActions = {
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentState(id: string): void;
+  addState(iconId: string, stateId: string): void;
+  removeState(iconId: string, stateId: string): void;
+  renameState(iconId: string, oldStateId: string, newStateId: string): void;
+  duplicateState(iconId: string, sourceStateId: string, newStateId: string): void;
   setTopology(iconId: string, variantId: string, topology: TopologyContract | undefined): void;
   setStateTopology(iconId: string, stateId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
@@ -1529,6 +1534,154 @@ function createActions(): EditorActions {
 
     setCurrentState(id) {
       editorStoreApi.setState((s) => ({ currentStateId: id }));
+    },
+
+    addState(iconId, stateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        if (variant.states?.[stateId]) return s; // already exists
+
+        const newState: State = {
+          id: stateId,
+          layers: { ...variant.layers },
+          topology: variant.topology,
+        };
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [s.currentVariantId]: withLegacyVariantStateView({
+                    ...variant,
+                    states: { ...(variant.states ?? {}), [stateId]: newState },
+                  }),
+                },
+              },
+            },
+          },
+          currentStateId: stateId,
+        };
+      });
+    },
+
+    removeState(iconId, stateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant || !variant.states?.[stateId]) return s;
+
+        const { [stateId]: _, ...remainingStates } = variant.states;
+        const stateIds = Object.keys(remainingStates);
+        const nextStateId = stateIds[0] ?? null;
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [s.currentVariantId]: withLegacyVariantStateView({
+                    ...variant,
+                    states: stateIds.length > 0 ? remainingStates : undefined,
+                    defaultState: variant.defaultState === stateId
+                      ? nextStateId ?? undefined
+                      : variant.defaultState,
+                  }),
+                },
+              },
+            },
+          },
+          currentStateId: nextStateId ?? s.currentStateId,
+        };
+      });
+    },
+
+    renameState(iconId, oldStateId, newStateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant || !variant.states?.[oldStateId]) return s;
+        if (variant.states[newStateId]) return s; // target name already exists
+
+        const oldState = variant.states[oldStateId];
+        const { [oldStateId]: _, ...rest } = variant.states;
+        const renamedStates = { ...rest, [newStateId]: { ...oldState, id: newStateId } };
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [s.currentVariantId]: withLegacyVariantStateView({
+                    ...variant,
+                    states: renamedStates,
+                    defaultState: variant.defaultState === oldStateId
+                      ? newStateId
+                      : variant.defaultState,
+                  }),
+                },
+              },
+            },
+          },
+          currentStateId: s.currentStateId === oldStateId ? newStateId : s.currentStateId,
+        };
+      });
+    },
+
+    duplicateState(iconId, sourceStateId, newStateId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+
+        const sourceState = variant.states?.[sourceStateId]
+          ?? { id: sourceStateId, layers: variant.layers, topology: variant.topology };
+        if (variant.states?.[newStateId]) return s; // target already exists
+
+        const duplicated: State = {
+          id: newStateId,
+          layers: JSON.parse(JSON.stringify(sourceState.layers)),
+          topology: sourceState.topology ? JSON.parse(JSON.stringify(sourceState.topology)) : undefined,
+        };
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: {
+                ...icon,
+                variants: {
+                  ...icon.variants,
+                  [s.currentVariantId]: withLegacyVariantStateView({
+                    ...variant,
+                    states: { ...(variant.states ?? {}), [newStateId]: duplicated },
+                  }),
+                },
+              },
+            },
+          },
+          currentStateId: newStateId,
+        };
+      });
     },
 
     setTopology(iconId, variantId, topology) {

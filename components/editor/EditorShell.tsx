@@ -188,6 +188,161 @@ function PropertyValue({ children }: { children: React.ReactNode }) {
 
 /* ToolRail removed — search/import actions moved to sidebar head */
 
+// UX-1.4: State management section for variants with multiple states
+function StatesSection({
+  currentVariant,
+  currentStateId,
+  onSelectState,
+  onAddState,
+  onRemoveState,
+  onRenameState,
+  onDuplicateState,
+}: {
+  currentVariant: Variant | null;
+  currentStateId: string | null;
+  onSelectState: (stateId: string) => void;
+  onAddState: (stateId: string) => void;
+  onRemoveState: (stateId: string) => void;
+  onRenameState: (oldId: string, newId: string) => void;
+  onDuplicateState: (sourceId: string, newId: string) => void;
+}) {
+  const [newStateName, setNewStateName] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  const stateIds = useMemo(
+    () => Object.keys(currentVariant?.states ?? {}),
+    [currentVariant?.states],
+  );
+
+  const handleAdd = () => {
+    const name = newStateName.trim() || `state-${stateIds.length + 1}`;
+    onAddState(name);
+    setNewStateName('');
+  };
+
+  const commitRename = (oldId: string) => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== oldId) {
+      onRenameState(oldId, trimmed);
+    }
+    setRenamingId(null);
+  };
+
+  return (
+    <>
+      <div className="wire-section-header mt-4">
+        <span>States</span>
+      </div>
+
+      <div className="wire-inline-form">
+        <Input
+          value={newStateName}
+          onChange={(e) => setNewStateName(e.target.value)}
+          placeholder="e.g. hover, active"
+          className="wire-input"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        <button type="button" className="wire-mini-button" onClick={handleAdd}>
+          Add
+        </button>
+      </div>
+
+      {stateIds.length === 0 ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          No states. Add states to define different appearances (e.g. default, hover, active).
+        </p>
+      ) : (
+        stateIds.map((stateId) => (
+          <div key={stateId} className="group flex items-center">
+            {renamingId === stateId ? (
+              <Input
+                className="wire-input mx-3 my-0.5 h-7 text-xs"
+                value={renameValue}
+                autoFocus
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitRename(stateId);
+                  } else if (e.key === 'Escape') {
+                    setRenamingId(null);
+                  }
+                }}
+                onBlur={() => commitRename(stateId)}
+              />
+            ) : (
+              <button
+                type="button"
+                data-active={stateId === currentStateId ? 'true' : 'false'}
+                className="wire-list-row flex-1"
+                onClick={() => onSelectState(stateId)}
+                onDoubleClick={() => {
+                  setRenamingId(stateId);
+                  setRenameValue(stateId);
+                }}
+              >
+                <span>{stateId}</span>
+                {stateId === currentVariant?.defaultState && (
+                  <span className="ml-auto rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
+                    default
+                  </span>
+                )}
+              </button>
+            )}
+            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 pr-2">
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                aria-label={`Duplicate ${stateId}`}
+                onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
+              >
+                <Copy className="size-3" />
+              </button>
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                aria-label={`Delete ${stateId}`}
+                onClick={() => setDeleteTarget(stateId)}
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete state</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete the &ldquo;{deleteTarget}&rdquo; state? This removes all layer data for this state. You can undo this action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteTarget) onRemoveState(deleteTarget);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function LeftSidebar({
   leftTab,
   onLeftTabChange,
@@ -204,6 +359,12 @@ function LeftSidebar({
   newVariantSize,
   onNewVariantSizeChange,
   onCreateVariant,
+  currentStateId,
+  onSelectState,
+  onAddState,
+  onRemoveState,
+  onRenameState,
+  onDuplicateState,
 }: {
   leftTab: LeftTab;
   onLeftTabChange: (tab: LeftTab) => void;
@@ -220,6 +381,12 @@ function LeftSidebar({
   newVariantSize: string;
   onNewVariantSizeChange: (value: string) => void;
   onCreateVariant: () => void;
+  currentStateId: string | null;
+  onSelectState: (stateId: string) => void;
+  onAddState: (stateId: string) => void;
+  onRemoveState: (stateId: string) => void;
+  onRenameState: (oldId: string, newId: string) => void;
+  onDuplicateState: (sourceId: string, newId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -348,7 +515,16 @@ function LeftSidebar({
               );
             })}
 
-            {/* States section removed -- Variant now has layers directly */}
+            {/* UX-1.4: State management section */}
+            <StatesSection
+              currentVariant={currentVariant}
+              currentStateId={currentStateId}
+              onSelectState={onSelectState}
+              onAddState={onAddState}
+              onRemoveState={onRemoveState}
+              onRenameState={onRenameState}
+              onDuplicateState={onDuplicateState}
+            />
           </div>
         )}
       </ScrollArea>
@@ -865,6 +1041,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   const router = useRouter();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
+  const currentStateId = useEditorStore((s) => s.currentStateId);
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selection = useEditorStore((s) => s.selection);
@@ -898,6 +1075,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
     renameIcon,
     setCurrentIcon,
     setCurrentVariant,
+    setCurrentState,
+    addState,
+    removeState,
+    renameState,
+    duplicateState,
     setSelection,
     setTool,
     setTransitionPreview,
@@ -1284,6 +1466,12 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
             newVariantSize={newVariantSize}
             onNewVariantSizeChange={setNewVariantSize}
             onCreateVariant={handleCreateVariant}
+            currentStateId={currentStateId}
+            onSelectState={setCurrentState}
+            onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
+            onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
+            onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
+            onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
           />
         </div>
 

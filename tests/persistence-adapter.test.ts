@@ -52,6 +52,17 @@ class InMemoryAdapter implements PersistenceAdapter {
   async delete(id: string): Promise<void> {
     this.store.delete(id);
   }
+
+  async rename(id: string, newName: string): Promise<void> {
+    const record = this.store.get(id);
+    if (!record) return;
+    record.name = newName;
+    record.data = {
+      ...record.data,
+      meta: { ...record.data.meta, name: newName },
+    };
+    record.updatedAt = Date.now();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -191,5 +202,52 @@ describe('PersistenceAdapter contract', () => {
     const updated = await adapter.list();
     expect(updated).toHaveLength(2);
     expect(updated.map((p) => p.name).sort()).toEqual(['Project A', 'Project C']);
+  });
+
+  it('rename updates project name in both metadata and workspace data', async () => {
+    await adapter.save('p1', makeWorkspace('Old Name', 3));
+
+    await adapter.rename('p1', 'New Name');
+
+    const loaded = await adapter.load('p1');
+    expect(loaded).not.toBeNull();
+    expect(loaded!.name).toBe('New Name');
+    expect(loaded!.data.meta.name).toBe('New Name');
+
+    const list = await adapter.list();
+    expect(list[0].name).toBe('New Name');
+    expect(list[0].iconCount).toBe(3);
+  });
+
+  it('rename is a no-op for non-existent ID', async () => {
+    await adapter.rename('nonexistent', 'New Name');
+    const list = await adapter.list();
+    expect(list).toEqual([]);
+  });
+
+  it('rename preserves all workspace data (icons, icon sets)', async () => {
+    const ws = makeWorkspace('Original', 5);
+    await adapter.save('p1', ws);
+
+    await adapter.rename('p1', 'Renamed');
+
+    const loaded = await adapter.load('p1');
+    expect(loaded!.data.version).toBe('2.0');
+    expect(Object.keys(loaded!.data.iconSets.default.icons)).toHaveLength(5);
+  });
+
+  it('save preserves full workspace structure through roundtrip', async () => {
+    const ws = makeWorkspace('Roundtrip Test', 3);
+    await adapter.save('rt1', ws);
+
+    const loaded = await adapter.load('rt1');
+    expect(loaded).not.toBeNull();
+    expect(loaded!.data.version).toBe(ws.version);
+    expect(loaded!.data.meta.name).toBe(ws.meta.name);
+    expect(loaded!.data.meta.createdAt).toBe(ws.meta.createdAt);
+
+    const originalIcons = Object.keys(ws.iconSets.default.icons);
+    const loadedIcons = Object.keys(loaded!.data.iconSets.default.icons);
+    expect(loadedIcons).toEqual(originalIcons);
   });
 });

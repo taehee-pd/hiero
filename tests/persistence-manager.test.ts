@@ -35,6 +35,12 @@ function createMockAdapter() {
     async delete(id: string): Promise<void> {
       store.delete(id);
     },
+    async rename(id: string, newName: string): Promise<void> {
+      const r = store.get(id);
+      if (!r) return;
+      r.data = { ...r.data, meta: { ...r.data.meta, name: newName } };
+      r.updatedAt = Date.now();
+    },
   };
 
   return adapter;
@@ -162,7 +168,7 @@ describe('PersistenceManager', () => {
     expect(manager.projectId).toBe('current');
   });
 
-  it('renameProject updates project name', async () => {
+  it('renameProject updates project name via adapter', async () => {
     await adapter.save('rename-me', makeWorkspace('Old Name'));
 
     await manager.renameProject('rename-me', 'New Name');
@@ -196,6 +202,7 @@ describe('PersistenceManager', () => {
         throw new Error('Disk full');
       },
       async delete() {},
+      async rename() {},
     };
 
     const errorManager = new PersistenceManager(failingAdapter, {

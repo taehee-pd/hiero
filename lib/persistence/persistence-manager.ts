@@ -109,15 +109,9 @@ export class PersistenceManager {
     }
   }
 
-  /** Rename a project (load, update name, save). */
+  /** Rename a project. */
   async renameProject(id: string, newName: string): Promise<void> {
-    const project = await this.adapter.load(id);
-    if (!project) return;
-    const updated: Workspace = {
-      ...project.data,
-      meta: { ...project.data.meta, name: newName },
-    };
-    await this.adapter.save(id, updated);
+    await this.adapter.rename(id, newName);
   }
 
   dispose(): void {

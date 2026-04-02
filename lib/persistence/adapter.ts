@@ -10,11 +10,8 @@
  * │  load() ◄───────────┼──── PersistenceAdapter.load()
  * └────────────────────┘
  *          │
- *          ├── IndexedDBAdapter (web)
- *          │     └── idb: coniva_projects table
- *          │
- *          └── FileSystemAdapter (desktop)
- *                └── Electrobun bridge: saveProject/openProject
+ *          └── IndexedDBAdapter (web)
+ *                └── idb: coniva_projects table
  * ```
  */
 

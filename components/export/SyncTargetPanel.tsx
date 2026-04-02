@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { Plus, Trash2, FolderOpen, GitBranch, Package, Key, Upload } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, GitBranch, Package, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +18,6 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { toast } from '@/components/ui/use-toast';
 import { getNextPublishVersion, publishNpmTarget, type PublishSemver } from '@/lib/sync-service/npm-publish-client';
-import { isDesktop } from '@/lib/platform/bridge';
 
 const PLATFORMS = ['react', 'swift', 'flutter', 'web-component'] as const;
 const DELIVERY_MODES = ['local-directory', 'git-pr', 'npm-registry'] as const;
@@ -147,13 +146,11 @@ function SyncTargetCard({
   onUpdate: (id: string, patch: Partial<SyncTarget>) => void;
   onRecordPublishedVersion: (targetId: string, version: string) => void;
 }) {
-  const [tokenInput, setTokenInput] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const isNpm = target.deliveryMode === 'npm-registry' && target.npmRegistry;
   const bump = (target.autoPublish?.semver ?? 'patch') as PublishSemver;
   const nextVersion = isNpm ? getNextPublishVersion(target, bump) : null;
-  const requiresDesktopToken = isDesktop();
-  const canPublish = !isPublishing && !isPending && (!requiresDesktopToken || !!target.npmRegistry?.tokenStored);
+  const canPublish = !isPublishing && !isPending;
 
   const handlePublish = useCallback(
     async (dryRun: boolean) => {
@@ -252,15 +249,9 @@ function SyncTargetCard({
                     dry-run
                   </Badge>
                 ) : null}
-                {target.npmRegistry!.tokenStored ? (
-                  <Badge variant="outline" className="text-[10px] text-emerald-600">
-                    <Key className="mr-0.5 size-2.5" /> token
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">
-                    {requiresDesktopToken ? 'no token' : 'server token'}
-                  </Badge>
-                )}
+                <Badge variant="outline" className="text-[10px] text-emerald-600">
+                  server token
+                </Badge>
                 {isPending ? (
                   <Badge variant="outline" className="text-[10px] text-amber-600">
                     pending
@@ -283,44 +274,6 @@ function SyncTargetCard({
       {/* npm-registry: version management + token + publish */}
       {isNpm && (
         <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
-          {/* Token setup */}
-          {!target.npmRegistry!.tokenStored && requiresDesktopToken && (
-            <div className="flex items-end gap-2">
-              <div className="flex-1 space-y-1">
-                <Label className="text-[10px]">npm token</Label>
-                <Input
-                  type="password"
-                  placeholder="npm_..."
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  className="h-7 text-xs"
-                />
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                disabled={!tokenInput.trim()}
-                onClick={async () => {
-                  try {
-                    // Store token in platform keychain (desktop) or skip (web)
-                    const { setNpmToken } = await import('@/lib/platform/keychain');
-                    await setNpmToken(target.id, tokenInput.trim());
-                  } catch {
-                    // Web environment — keychain unavailable. Token will be
-                    // passed via server-side env var for npm publish proxy.
-                  }
-                  onUpdate(target.id, {
-                    npmRegistry: { ...target.npmRegistry!, tokenStored: true },
-                  });
-                  setTokenInput('');
-                }}
-              >
-                <Key className="mr-1 size-3" /> Save
-              </Button>
-            </div>
-          )}
-
           {/* Version bump + publish */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded-lg border border-border/70 p-0.5">

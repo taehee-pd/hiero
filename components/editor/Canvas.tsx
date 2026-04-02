@@ -20,7 +20,6 @@ import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
-import { showNativeContextMenu } from '@/lib/platform/bridge';
 import { cn } from '@/lib/utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -794,7 +793,6 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       onDrop={handleDrop}
       onContextMenu={(event) => {
         event.preventDefault();
-        void showNativeContextMenu('canvas');
       }}
     >
       {icon && variant ? (

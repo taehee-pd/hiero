@@ -6,7 +6,7 @@
  * - Client sends only compiled files + metadata, never credentials
  * - Validates request structure before executing
  *
- * Desktop users go through the Electrobun RPC bridge instead.
+ * npm tokens are stored as server-side env vars only.
  */
 
 import { NextResponse } from 'next/server';

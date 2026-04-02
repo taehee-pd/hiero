@@ -154,3 +154,12 @@ export function resetPersistenceForNewProject(): void {
   const id = manager.generateId();
   manager.setProjectId(id);
 }
+
+/**
+ * Set the persistence manager's current project ID.
+ * Call this after loading a project from IndexedDB to ensure
+ * auto-save writes to the correct slot.
+ */
+export function setPersistenceProjectId(id: string | null): void {
+  getManager().setProjectId(id);
+}

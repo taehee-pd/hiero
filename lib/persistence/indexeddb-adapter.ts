@@ -123,4 +123,22 @@ export class IndexedDBAdapter implements PersistenceAdapter {
       db.close();
     }
   }
+
+  async rename(id: string, newName: string): Promise<void> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, 'readwrite');
+      const record = await requestToPromise<StoredRecord | undefined>(store.get(id));
+      if (!record) return;
+      record.name = newName;
+      record.data = {
+        ...record.data,
+        meta: { ...record.data.meta, name: newName },
+      };
+      record.updatedAt = Date.now();
+      await requestToPromise(store.put(record));
+    } finally {
+      db.close();
+    }
+  }
 }

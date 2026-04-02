@@ -951,26 +951,51 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, []);
 
   useEffect(() => {
-    let state = editorStore.getState();
+    const state = editorStore.getState();
     if (!state.workspace) {
-      clearCurrentProjectPath();
-      state.loadWorkspace(SAMPLE_WORKSPACE);
-      state = editorStore.getState();
+      // Try restoring from IndexedDB before falling back to sample
+      void (async () => {
+        try {
+          const { IndexedDBAdapter } = await import('@/lib/persistence/indexeddb-adapter');
+          const adapter = new IndexedDBAdapter();
+          const list = await adapter.list();
+          if (list.length > 0) {
+            const saved = await adapter.load(list[0].id);
+            if (saved) {
+              const { setPersistenceProjectId } = await import('@/lib/persistence/use-persistence');
+              setPersistenceProjectId(saved.id);
+              editorStore.getState().loadWorkspace(saved.data);
+              applySearchParams();
+              return;
+            }
+          }
+        } catch {
+          // IndexedDB unavailable — fall through to sample
+        }
+        clearCurrentProjectPath();
+        editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
+        applySearchParams();
+      })();
+      return;
     }
 
-    if (searchIconSetId && state.workspace?.iconSets[searchIconSetId]) {
-      state.setActiveIconSet(searchIconSetId);
-      state = editorStore.getState();
-    }
+    applySearchParams();
 
-    if (requestedIconId && state.project?.icons[requestedIconId]) {
-      state.setCurrentIcon(requestedIconId);
-      const nextIconSetId =
-        (searchIconSetId && state.workspace?.iconSets[searchIconSetId]
-          ? searchIconSetId
-          : state.activeIconSetId) ?? null;
-      if (nextIconSetId) {
-        state.openIconTab(nextIconSetId, requestedIconId);
+    function applySearchParams() {
+      let current = editorStore.getState();
+      if (searchIconSetId && current.workspace?.iconSets[searchIconSetId]) {
+        current.setActiveIconSet(searchIconSetId);
+        current = editorStore.getState();
+      }
+      if (requestedIconId && current.project?.icons[requestedIconId]) {
+        current.setCurrentIcon(requestedIconId);
+        const nextIconSetId =
+          (searchIconSetId && current.workspace?.iconSets[searchIconSetId]
+            ? searchIconSetId
+            : current.activeIconSetId) ?? null;
+        if (nextIconSetId) {
+          current.openIconTab(nextIconSetId, requestedIconId);
+        }
       }
     }
   }, [requestedIconId, searchIconSetId]);

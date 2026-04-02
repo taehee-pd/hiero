@@ -43,4 +43,7 @@ export interface PersistenceAdapter {
 
   /** Delete a project by ID. No-op if not found. */
   delete(id: string): Promise<void>;
+
+  /** Rename a project. No-op if not found. */
+  rename(id: string, newName: string): Promise<void>;
 }

@@ -13,11 +13,10 @@ import { editorStore } from '@/lib/editor-store/store';
 import { createAutoPublishManager } from '@/lib/sync-service/auto-publish';
 import { getNextPublishVersion, publishNpmTarget } from '@/lib/sync-service/npm-publish-client';
 import { toast } from '@/components/ui/use-toast';
-import type { SyncTarget } from '@/lib/schema/types';
+import type { Project, SyncTarget } from '@/lib/schema/types';
 
-/** Legacy accessor — IconSet no longer has syncTargets in the canonical type. */
-function getProjectSyncTargets(project: unknown): SyncTarget[] {
-  return ((project as Record<string, unknown>)?.syncTargets as SyncTarget[] | undefined) ?? [];
+function getProjectSyncTargets(project: Project | null): SyncTarget[] {
+  return project?.syncTargets ?? [];
 }
 
 const manager = createAutoPublishManager();

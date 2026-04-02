@@ -46,7 +46,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/use-toast';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
-import { SyncTargetPanel } from '@/components/export/SyncTargetPanel';
+import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
@@ -1292,7 +1292,10 @@ function ProjectDetailView({
           )}
 
           <section>
-            <SyncTargetPanel />
+            <SyncTargetPanelContent
+              title="Repo-native Distribution"
+              description="Configure release targets for local directories, Git PRs, and npm registry publishing."
+            />
           </section>
         </div>
       </aside>

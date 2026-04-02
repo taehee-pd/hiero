@@ -16,6 +16,7 @@ import {
   Maximize2,
   Import,
   Plus,
+  Package,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -40,6 +41,7 @@ import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
+import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
 import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
 import {
@@ -126,6 +128,7 @@ export function Toolbar() {
   }, [lastSavedAt]);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [distributionSheetOpen, setDistributionSheetOpen] = useState(false);
 
   const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
@@ -449,6 +452,12 @@ export function Toolbar() {
               <TooltipContent side="bottom">More exports</TooltipContent>
             </Tooltip>
             <SyncPrPanel />
+            <ToolbarButton
+              icon={Package}
+              label="Distribution"
+              onClick={() => setDistributionSheetOpen(true)}
+              compact={false}
+            />
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -521,6 +530,20 @@ export function Toolbar() {
           </SheetHeader>
           <div className="px-1 py-4">
             <LottieExportPanel />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={distributionSheetOpen} onOpenChange={setDistributionSheetOpen}>
+        <SheetContent side="right" className="sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Repo-native Distribution</SheetTitle>
+          </SheetHeader>
+          <div className="px-1 py-4">
+            <SyncTargetPanelContent
+              title="Repo-native Distribution"
+              description="Manage release targets from the editor and publish generated packages directly."
+            />
           </div>
         </SheetContent>
       </Sheet>

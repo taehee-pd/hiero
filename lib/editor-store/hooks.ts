@@ -137,6 +137,7 @@ const editorActions = {
   pauseHistory: editorStore.getState().pauseHistory,
   resumeHistory: editorStore.getState().resumeHistory,
   commitHistory: editorStore.getState().commitHistory,
+  toggleNavPane: editorStore.getState().toggleNavPane,
 };
 
 export function useEditorActions() {

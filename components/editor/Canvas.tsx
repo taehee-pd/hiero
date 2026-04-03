@@ -832,7 +832,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         ref={interactionRootRef}
         className="absolute inset-0 flex items-center justify-center"
         data-canvas-interaction-root
-        role="application"
+        role="region"
         aria-label="Icon editor canvas"
         aria-roledescription="drawing canvas"
       >

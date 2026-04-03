@@ -61,6 +61,39 @@ describe('state CRUD', () => {
     expect(variant.states?.['active']).toBeDefined();
   });
 
+  test('removeState preserves currentStateId when deleting a non-active state', () => {
+    const iconId = editorStore.getState().currentIconId!;
+    editorStore.getState().addState(iconId, 'alpha');
+    editorStore.getState().addState(iconId, 'beta');
+
+    // beta is now current (addState switches to it)
+    expect(editorStore.getState().currentStateId).toBe('beta');
+
+    // Delete alpha (not the active state)
+    editorStore.getState().removeState(iconId, 'alpha');
+
+    // currentStateId should still be beta, not switched
+    expect(editorStore.getState().currentStateId).toBe('beta');
+    const variant = getVariant()!;
+    expect(variant.states?.['alpha']).toBeUndefined();
+    expect(variant.states?.['beta']).toBeDefined();
+  });
+
+  test('removeState switches currentStateId only when deleting the active state', () => {
+    const iconId = editorStore.getState().currentIconId!;
+    editorStore.getState().addState(iconId, 'first');
+    editorStore.getState().addState(iconId, 'second');
+
+    // Switch to 'first'
+    editorStore.getState().setCurrentState('first');
+    expect(editorStore.getState().currentStateId).toBe('first');
+
+    // Delete 'first' (the active state) — should switch to remaining
+    editorStore.getState().removeState(iconId, 'first');
+    expect(editorStore.getState().currentStateId).not.toBe('first');
+    expect(editorStore.getState().currentStateId).toBeDefined();
+  });
+
   test('removeState falls back to legacy default when last authored state is removed', () => {
     const iconId = editorStore.getState().currentIconId!;
     editorStore.getState().addState(iconId, 'only-state');

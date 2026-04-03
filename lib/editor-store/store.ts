@@ -1546,8 +1546,8 @@ function createActions(): EditorActions {
 
         const newState: State = {
           id: stateId,
-          layers: { ...variant.layers },
-          topology: variant.topology,
+          layers: JSON.parse(JSON.stringify(variant.layers)),
+          topology: variant.topology ? JSON.parse(JSON.stringify(variant.topology)) : undefined,
         };
 
         return {
@@ -1603,7 +1603,9 @@ function createActions(): EditorActions {
               },
             },
           },
-          currentStateId: nextStateId ?? s.currentStateId,
+          currentStateId: s.currentStateId === stateId
+            ? (nextStateId ?? s.currentStateId)
+            : s.currentStateId,
         };
       });
     },

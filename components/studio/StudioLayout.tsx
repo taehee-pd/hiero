@@ -22,6 +22,31 @@ export function StudioLayout() {
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
 
+  // Restore pane state from URL query params after workspace loads
+  useEffect(() => {
+    if (!workspace) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const projectParam = params.get('project');
+    const iconParam = params.get('icon');
+    if (!projectParam) return;
+
+    const state = editorStore.getState();
+    // Only apply if the store doesn't already match (avoid redundant updates)
+    if (projectParam && workspace.iconSets[projectParam] && state.activeIconSetId !== projectParam) {
+      state.setActiveIconSet(projectParam);
+    }
+    if (iconParam) {
+      const updatedState = editorStore.getState();
+      if (updatedState.project?.icons[iconParam] && updatedState.currentIconId !== iconParam) {
+        updatedState.setCurrentIcon(iconParam);
+        if (updatedState.activeIconSetId) {
+          updatedState.openIconTab(updatedState.activeIconSetId, iconParam);
+        }
+      }
+    }
+  }, [workspace]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load workspace from IndexedDB or sample on first mount
   useEffect(() => {
     let cancelled = false;

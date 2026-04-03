@@ -1372,8 +1372,11 @@ function ProjectDetailView({
                   }}
                   onToggleFavorite={() => onToggleFavorite(icon.id)}
                   onToggleSelection={() => onToggleSelection(icon.id)}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
+                  onDuplicate={() => {
+                    editorStore.getState().duplicateIcon(icon.id);
+                  }}
+                  onDelete={() => {
+                    editorStore.getState().removeIcon(icon.id);
                   }}
                 />
               );

@@ -88,6 +88,8 @@ export type EditorState = {
    * metadata such as lastPublishedVersion.
    */
   skipNextAutoPublish: boolean;
+  /** Studio layout: whether the nav pane is expanded */
+  navPaneExpanded: boolean;
 };
 
 export type EditorTab = {
@@ -207,6 +209,7 @@ export type EditorActions = {
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
+  toggleNavPane(): void;
   applyBoolean(mode: BooleanMode): Promise<void>;
   /** Phase N: generate a derived variant (fill/slash/circle/square/badge). */
   applyDerivedVariant(
@@ -304,6 +307,7 @@ const initialState: EditorState = {
   isDeriving: false,
   pendingPublishes: [],
   skipNextAutoPublish: false,
+  navPaneExpanded: false,
 };
 
 let currentState: EditorStore;
@@ -2926,6 +2930,10 @@ function createActions(): EditorActions {
 
     commitHistory(label?: string) {
       temporalState.commit(label);
+    },
+
+    toggleNavPane() {
+      editorStoreApi.setState((s) => ({ navPaneExpanded: !s.navPaneExpanded }));
     },
 
     async applyBoolean(mode) {

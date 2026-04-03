@@ -75,6 +75,7 @@ import { ColorPickerPopover } from './ColorPickerPopover';
 import { TransitionPanel } from './TransitionPanel';
 import { EditorSidebarTabs } from './EditorSidebarTabs';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
+import { cn } from '@/lib/utils';
 
 type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
@@ -1037,7 +1038,7 @@ function RightSidebar({
   );
 }
 
-export function EditorShell({ initialIconId }: { initialIconId?: string }) {
+export function EditorShell({ initialIconId, embedded = false }: { initialIconId?: string; embedded?: boolean }) {
   const router = useRouter();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
@@ -1133,6 +1134,8 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   }, []);
 
   useEffect(() => {
+    // In embedded mode, StudioLayout handles workspace loading
+    if (embedded) return;
     let cancelled = false;
     const state = editorStore.getState();
     if (!state.workspace) {
@@ -1184,7 +1187,7 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
         }
       }
     }
-  }, [requestedIconId, searchIconSetId]);
+  }, [embedded, requestedIconId, searchIconSetId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1419,8 +1422,11 @@ export function EditorShell({ initialIconId }: { initialIconId?: string }) {
   );
 
   return (
-    <div className="wireframe-editor fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
-      <Toolbar />
+    <div className={cn(
+      'wireframe-editor flex flex-col overflow-hidden bg-background text-foreground',
+      embedded ? 'h-full w-full' : 'fixed inset-0',
+    )}>
+      {!embedded && <Toolbar />}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/* Mobile/tablet sidebar toggle */}

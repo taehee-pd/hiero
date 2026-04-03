@@ -1,7 +1,7 @@
 'use client';
 
-import { ExplorerShell } from '@/components/explorer/ExplorerShell';
+import { StudioLayout } from '@/components/studio/StudioLayout';
 
 export default function Page() {
-  return <ExplorerShell />;
+  return <StudioLayout />;
 }

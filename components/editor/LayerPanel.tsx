@@ -1,8 +1,15 @@
 'use client';
 
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Link2 } from 'lucide-react';
+import { Eye, EyeOff, Link2, Pencil, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import {
@@ -164,8 +171,9 @@ export const LayerPanel = memo(function LayerPanel() {
             const hasVariableValue = variableValueResults != null;
 
             return (
+              <ContextMenu key={layer.id}>
+                <ContextMenuTrigger asChild>
               <div
-                key={layer.id}
                 ref={(el) => {
                   if (el) itemRefs.current.set(rowIndex, el);
                   else itemRefs.current.delete(rowIndex);
@@ -188,8 +196,7 @@ export const LayerPanel = memo(function LayerPanel() {
                   setRenamingLayerId(layer.id);
                   setRenameValue(layer.id);
                 }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
+                onContextMenu={() => {
                   setFocusedIndex(rowIndex);
                   setSelection({ layerIds: [layer.id], pointIds: [] });
                 }}
@@ -284,6 +291,33 @@ export const LayerPanel = memo(function LayerPanel() {
                   {isVisible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
                 </Button>
               </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onSelect={() => {
+                    setRenamingLayerId(layer.id);
+                    setRenameValue(layer.id);
+                  }}>
+                    <Pencil className="size-4" />
+                    Rename
+                  </ContextMenuItem>
+                  <ContextMenuItem onSelect={() => {
+                    if (currentIconId) {
+                      setLayerVisibility(currentIconId, layer.id, !isVisible);
+                    }
+                  }}>
+                    {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {isVisible ? 'Hide' : 'Show'}
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onSelect={() => removeSelectedLayers()}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                    Delete
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             );
           })}
         </div>

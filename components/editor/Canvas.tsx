@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -20,6 +21,13 @@ import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -765,7 +773,23 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     transform: `translate(${viewport.panX}px, ${viewport.panY}px)`,
   };
 
+  const handleZoomIn = useCallback(() => {
+    const state = editorStore.getState();
+    state.setViewport({ zoom: Math.min(state.viewport.zoom * 1.25, MAX_ZOOM) });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const state = editorStore.getState();
+    state.setViewport({ zoom: Math.max(state.viewport.zoom / 1.25, MIN_ZOOM) });
+  }, []);
+
+  const handleFitCanvas = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
+  }, []);
+
   return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
     <div
       ref={containerRef}
       className={cn(
@@ -791,9 +815,6 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      onContextMenu={(event) => {
-        event.preventDefault();
-      }}
     >
       {icon && variant ? (
         <Rulers
@@ -874,6 +895,22 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         </div>
       )}
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onSelect={handleZoomIn}>
+          <ZoomIn className="size-4" />
+          Zoom In
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleZoomOut}>
+          <ZoomOut className="size-4" />
+          Zoom Out
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={handleFitCanvas}>
+          <Maximize2 className="size-4" />
+          Fit to View
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 

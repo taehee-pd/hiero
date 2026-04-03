@@ -1,6 +1,6 @@
 # Tasks
 
-**Last updated:** 2026-03-28
+**Last updated:** 2026-04-04
 **Canonical product name:** Coniva
 **Forward-looking roadmap:** See `docs_canonical/PLAN.md` for the production readiness plan.
 
@@ -46,6 +46,16 @@ codebase, specs, and commit history.
 | O | Cubic Weight Interpolation | 2026-03-28 | Fritsch-Carlson spline, 9-point controls, mounted visual curve editor | #77 |
 | P | Import Adapter Ecosystem | 2026-03-24 | Heroicons, Phosphor, Material Symbols, capability badges, batch | #76 |
 | Q | NPM Registry Distribution | 2026-03-28 | Connector, keychain, proxy, dry-run, mounted version UI, immediate publish, save-triggered auto-publish | #73 |
+| R1 | Desktop/Electrobun Removal | 2026-04-02 | Platform pivot to web-only; removed desktop shell, native bridge, desktop CI | — |
+| R2 | Web Persistence (IndexedDB) | 2026-04-02 | IndexedDB as sole storage path, auto-save, workspace restoration | — |
+| R3 | State Management UI | 2026-04-02 | Create/rename/duplicate/delete states from editor, CRUD actions | — |
+| R4 | Replace `prompt()` Dialogs | 2026-04-02 | Radix AlertDialog/DropdownMenu for all destructive actions | — |
+| R5 | Accessibility Pass | 2026-04-02 | Focus rings, ARIA roles/labels, live regions, keyboard nav | — |
+| — | Repo-Native Distribution | 2026-04-02 | Lane 1 live-sync, Lane 2 release, @coniva/cli, PublishPanel, ReleasePanel | — |
+| — | Figma Plugin Import | 2026-04-02 | Figma plugin export + API route + import dialog | — |
+| — | Studio Layout Revamp | 2026-04-03 | Sanity Studio-style single screen: NavPane, ListPane, embedded editor | — |
+| — | Stagger Ordering Fix | 2026-04-02 | Transition resolver stagger ordering ranks corrected | — |
+| — | Post-Review Bug Fixes | 2026-04-03 | 13 bugs fixed from Codex adversarial review | — |
 
 ---
 
@@ -53,7 +63,7 @@ codebase, specs, and commit history.
 
 Key technical decisions from the engineering review that remain relevant:
 
-- **Token security:** npm tokens live in platform keychain only, never in project JSON
+- **Token security:** npm tokens via server-side `NPM_PUBLISH_TOKEN` env var (web publish proxy); never in project JSON
 - **Lottie morph:** use `strictMorph()`/`bestGuessMorph()` directly, not `interpolatePaths()`
 - **Lottie frames:** `Math.round(durationMs / 1000 * fr)` — always integer
 - **lottie-web:** regular dependency, lazy-loaded with feature flag
@@ -73,4 +83,7 @@ All major implementations are documented in `/specs/`:
 | Schema | `icon-schema.md`, `transition-schema.md` |
 | Runtime | `morph-interpolation.md`, `topology-detection.md`, `transition-resolver.md`, `draw-executor.md`, `hybrid-compositor.md` |
 | Editor | `editor-store.md`, `cross-icon-transitions.md` |
-| Export | `runtime-json-format.md` |
+| Export | `runtime-json-format.md`, `repo-native-distribution.md`, `repo-native-workflow.md` |
+| UI | `screens.md`, `components.md` |
+| Runtime | `weight-interpolation-cubic.md` |
+| Schema | `install-config.md` |

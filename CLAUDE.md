@@ -5,7 +5,7 @@ This file provides guidance to Claude Code when working in this repository.
 ## Project Overview
 
 **Product:** Coniva — an icon authoring tool with SF Symbols-grade animation capabilities
-**Stack:** Next.js 16 + React 19 + TypeScript + Zustand + Tailwind CSS + Radix UI
+**Stack:** Next.js 16 + React 19 + TypeScript + Custom Store (`useSyncExternalStore`) + Tailwind CSS + Radix UI
 **Package Manager:** pnpm (with Bun test runner)
 **Dev Server:** `pnpm dev` (runs on port 3000)
 
@@ -52,27 +52,40 @@ regenerate `bun.lock`. Commit both lockfiles together.
 
 ```
 lib/
-├── schema/           # Icon, Variant, State, Layer, Transition types
-├── runtime-core/     # Morph, topology, transition resolver, draw executor, hybrid compositor
-├── runtime-dom/      # DOM renderer, IconDriver
-├── runtime-react/    # ConivaIcon React component
-├── editor-core/      # Path editor, snap engine, keyboard, topology
-├── editor-store/     # Zustand store (state, actions, undo/redo)
-├── rendering/        # Layer style resolution, auto-gradient
-├── export/           # Runtime JSON, compiled icons, adapters
-├── platform/         # Desktop/web bridge
-└── compiler-contracts/ # Export format types and validators
+├── schema/             # Icon, Variant, State, Layer, Transition types
+├── runtime-core/       # Morph, topology, transition resolver, draw executor,
+│                       # hybrid compositor, cubic weight interpolation
+├── runtime-dom/        # DOM renderer, IconDriver
+├── runtime-react/      # ConivaIcon React component, hooks
+├── runtime-sdk/        # Compiled icon rendering primitives
+├── editor-core/        # Path editor, snap engine, keyboard, topology, boolean ops
+├── editor-store/       # Custom store (state, actions, undo/redo via useSyncExternalStore)
+├── import/             # SVG import, adapter SDK, built-in adapters (Figma, Heroicons, etc.)
+├── export/             # Runtime JSON, Lottie, compiled icons, React codegen, adapters
+├── persistence/        # IndexedDB adapter, persistence manager, auto-save
+├── live-sync/          # Real-time publish transport
+├── sync-service/       # GitHub PR sync + connectors (local-dir, git-pr, npm)
+├── install-config/     # Installation configuration for icon packages
+├── rendering/          # Layer style resolution, auto-gradient
+├── platform/           # Web platform bridge and route helpers
+├── compiler-contracts/ # Export format types and validators
+└── animation/          # Animation utilities
 
 components/
 ├── editor/           # EditorShell, Canvas, LayerPanel, TransitionPanel, TimelineEditor
 ├── explorer/         # ExplorerShell, project management
-├── platform/         # DesktopCommandBridge, TitleTabBar
-├── ui/               # shadcn/ui components (54 files)
+├── studio/           # StudioLayout, NavPane, ListPane, Navbar (single-screen workspace)
+├── export/           # PublishPanel, ReleasePanel, export formats
+├── persistence/      # AutoSaveProvider
+├── runtime/          # Runtime preview
+├── ui/               # shadcn/ui components (57 files)
 └── kibo-ui/          # kibo-ui re-exports + color-picker
 
-specs/                # Spec-kit documentation (11 specs)
-docs_canonical/       # TASKS.md (engineering backlog)
-tests/                # Bun test files
+packages/coniva-cli/  # @coniva/cli command-line tool
+figma-plugin/         # Figma plugin for exporting to Coniva
+specs/                # Spec-kit documentation (21 specs)
+docs_canonical/       # Canonical reference docs (TASKS, ARCHITECTURE, DESIGN, etc.)
+tests/                # Bun test files (102+ tests)
 ```
 
 ## Key Conventions
@@ -80,7 +93,7 @@ tests/                # Bun test files
 - **Imports:** Use `@/` alias for all imports (resolves to project root)
 - **UI Components:** Always use shadcn/ui or kibo-ui — never raw `<select>`, `<input type="range">`, etc.
 - **CSS:** Use Tailwind utilities + `wire-*` CSS classes for editor panels (defined in `app/globals.css`)
-- **State:** Zustand store in `lib/editor-store/store.ts` — use `useEditorStore()` and `useEditorActions()`
+- **State:** Custom store in `lib/editor-store/store.ts` — use `useEditorStore()` and `useEditorActions()` (built on `useSyncExternalStore`)
 - **Testing:** `bun test` — all tests must pass before committing
 - **Commits:** Author as `taehee-pd <j.taehee@icloud.com>` with Co-Authored-By Claude
 
@@ -88,8 +101,8 @@ tests/                # Bun test files
 
 - **Spec-kit specs:** `/specs/` — structured markdown specs for all major systems
 - **Task backlog:** `/docs_canonical/TASKS.md` — engineering phases with task checklists
-- **Shipped phases:** Q (NPM Registry, #73), M (Lottie Export, #74), N (Derived Variants, #75), P (Import Ecosystem, #76)
-- **Open phases:** O (Cubic Weight Interpolation)
+- **Shipped phases:** All 23 engineering phases (1–8, C–Q) + R1–R5 + repo-native distribution + Figma import + Studio layout revamp
+- **Open phases:** R6 (Navigation & Discoverability), R7 (Server-Side Embedding Readiness)
 
 ## Project-Local Skills
 

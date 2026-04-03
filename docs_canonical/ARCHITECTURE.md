@@ -2,15 +2,13 @@
 
 ## System Overview
 
-This repository is a shared product codebase for an icon design tool that runs in both web and desktop environments.
-
-The web app is a Next.js App Router application. The desktop app is an Electrobun shell that hosts the same UI and adds native file, menu, window, and release capabilities. Authoring data flows through a shared schema and editor store, then into import, export, compile, and runtime layers.
+This repository is a Next.js web application for icon design and animation authoring. Authoring data flows through a shared schema and editor store, then into import, export, compile, and runtime layers. All persistence is via IndexedDB with auto-save.
 
 ## Primary Runtime Surfaces
 
-- Explorer surface: `app/page.tsx` renders the icon library and browsing workflow.
-- Editor surface: `app/editor/page.tsx` renders the authoring workspace.
-- Desktop surface: `desktop/src/bun/` and `desktop/src/mainview/` wrap the same app with native capabilities.
+- Studio surface: `app/page.tsx` renders `components/studio/StudioLayout.tsx` — a Sanity Studio-style single-screen workspace combining navigation, icon list, and embedded editor.
+- Editor surface: `app/editor/page.tsx` and `app/editor/[iconId]/page.tsx` render the focused authoring workspace.
+- Demo surface: `app/demo/runtime/page.tsx` renders runtime execution demos.
 
 ## Core Module Boundaries
 
@@ -50,14 +48,27 @@ These modules support the editor UI but do not define the canonical document sha
 
 - `lib/import/`: converts SVG input into schema-compliant icon data and
   hosts the external adapter SDK plus built-in source adapters
-  (Lucide, Heroicons, Phosphor, Material Symbols).
+  (Lucide, Heroicons, Phosphor, Material Symbols, Figma).
+- `app/api/import/figma/route.ts`: Figma import API (PAT per-request, never stored).
+- `figma-plugin/export-to-coniva/`: Figma plugin for exporting components to Coniva.
 - `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
 - `lib/export/`: produces SVG, runtime JSON, Lottie JSON, compiled icon
   artifacts, package manifests, change diffs, and generated component outputs.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter) and downgrade rules for cross-platform export.
 - `lib/compiler-contracts/`: validates compiled/exported artifact shapes.
 
-The export layer is already active and is not only a roadmap concern.
+### Persistence
+
+- `lib/persistence/`: IndexedDB adapter, persistence manager, and auto-save hook.
+- `components/persistence/AutoSaveProvider.tsx`: mounted in `app/layout.tsx` for automatic workspace persistence.
+
+### Distribution
+
+- `lib/live-sync/`: real-time publish transport with local-directory, git-pr, and npm-registry connectors.
+- `lib/install-config/`: installation configuration for icon packages.
+- `packages/coniva-cli/`: `@coniva/cli` command-line tool for icon operations.
+- `components/export/PublishPanel.tsx`: UI for Lane 1 live sync publishing.
+- `components/export/ReleasePanel.tsx`: UI for Lane 2 versioned releases.
 
 ### Sync and Source Export
 
@@ -133,14 +144,11 @@ The morph strategy selection cascade is: `strictMorph` (exact command match) →
 
 ### Platform Boundary
 
-Desktop-only behavior crosses through a platform boundary:
+Coniva is a web-only application. Platform abstraction is minimal:
 
-- `desktop/src/shared/rpc-types.ts`: typed request/message contract
-- `lib/platform/bridge.ts`: browser-side environment abstraction
-- `lib/platform/keychain.ts`: token storage abstraction for npm-registry delivery targets
-- `desktop/src/bun/`: native file/menu/window/update operations
-
-This keeps product UI code mostly shared between browser and desktop.
+- `lib/platform/bridge.ts`: web-only environment abstraction
+- `lib/platform/routes.ts`: route helpers
+- `lib/platform/types.ts`: platform type definitions
 
 ### Registry Distribution Boundary
 
@@ -149,6 +157,11 @@ This keeps product UI code mostly shared between browser and desktop.
 - `app/api/publish-npm/route.ts`: web-side secure publish proxy using
   a server-side `NPM_PUBLISH_TOKEN`
 - `lib/sync-service/auto-publish.ts`: debounced auto-publish scheduler/cancel manager
+- `lib/live-sync/publish-transport.ts`: real-time publish transport
+- `lib/install-config/`: installation configuration for icon packages
+- `packages/coniva-cli/`: `@coniva/cli` CLI for CI integration
+- `components/export/PublishPanel.tsx`: Lane 1 live sync UI
+- `components/export/ReleasePanel.tsx`: Lane 2 versioned release UI
 
 ## High-Level Data Flow
 
@@ -174,19 +187,12 @@ PR sync and post-merge build flow:
 4. `lib/sync-source/source-to-project.ts` reconstructs a `Project` via the adapter layer.
 5. `lib/export/compile-pipeline.ts` compiles the project into the runtime package.
 
-Desktop flow:
-
-1. The webview hosts the same UI as the browser app.
-2. Desktop bridge code sends typed requests to the Bun main process.
-3. Bun-side handlers perform native file I/O, menus, export actions, and release-related tasks.
-
 ## Architectural Constraints
 
 - Shared model first: editor, exports, and runtime-related code are anchored to the schema layer.
 - Dual-document compatibility: legacy `Project` files and newer `Workspace` files must both remain readable.
 - Deterministic outputs: compile and export code sorts and serializes data in stable ways for repeatable artifacts and tests.
-- Shared UI across web and desktop: native capabilities must route through the platform bridge instead of scattering platform checks across product code.
-- Desktop production build depends on a static Next export staged into the Electrobun mainview.
+- Web-only: all persistence via IndexedDB, all tokens via server-side env vars.
 - Single source of truth for builds: see "Schema Boundaries" below.
 
 ## Schema Boundaries and Source of Truth
@@ -208,8 +214,8 @@ Guardrails (`lib/sync-source/source-of-truth.ts`) enforce this at build time:
 
 ## Known Conflicts / Notes
 
-- Some legacy docs describe runtime/export work as future phases, but the repository already contains real runtime and export implementations under `lib/export/` and `lib/runtime-*`.
-- Desktop architecture docs now use `Coniva` as the desktop product name, with `icophone` retained only for compatibility surfaces such as legacy project files and update env vars.
+- Some legacy docs under `docs/plans/` describe runtime/export work as future phases, but all phases are now shipped.
+- The `desktop/` directory retains build artifacts but has no source code; it is no longer part of the active architecture.
 
 ## Sync Pipeline Known Limitations
 

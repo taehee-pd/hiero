@@ -1,6 +1,10 @@
 # Desktop Release Workflow
 
-Icon Authoring Tool desktop releases are built from the staged Next.js export plus the Electrobun wrapper.
+> **DEPRECATED (2026-04-04):** Coniva is now a web-only application. The desktop release workflow was removed in Phase R1. This document is retained for historical reference only.
+
+---
+
+Icon Authoring Tool desktop releases were built from the staged Next.js export plus the Electrobun wrapper.
 
 ## Release Steps
 

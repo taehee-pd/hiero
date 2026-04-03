@@ -1343,10 +1343,12 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     if (!iconId) return;
     if (activeIconSetId) {
       openIconTab(activeIconSetId, iconId);
-      router.push(buildEditorRoute(iconId, activeIconSetId));
-      return;
     }
     setCurrentIcon(iconId);
+    // In standalone mode, navigate to editor route
+    if (!embedded) {
+      router.push(buildEditorRoute(iconId, activeIconSetId));
+    }
   };
 
   const handleCreateBlankIcon = () => {
@@ -1354,7 +1356,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     const iconId = createBlankIcon();
     if (!iconId) return;
     openIconTab(activeIconSetId, iconId);
-    router.push(buildEditorRoute(iconId, activeIconSetId));
+    setCurrentIcon(iconId);
+    // In standalone mode, navigate to editor route
+    if (!embedded) {
+      router.push(buildEditorRoute(iconId, activeIconSetId));
+    }
   };
 
   const handlePatchSelectedLayer = (patch: Partial<Layer>) => {

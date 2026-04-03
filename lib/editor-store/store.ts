@@ -2581,10 +2581,13 @@ function createActions(): EditorActions {
     setActiveIconSet(iconSetId) {
       editorStoreApi.setState((s) => {
         if (!s.workspace?.iconSets[iconSetId]) return s;
+        // Filter tabs to only keep those belonging to the new icon set
+        const validTabs = (s.openTabs ?? []).filter((tab) => tab.id.startsWith(`${iconSetId}::`));
+        const activeTab = s.activeTabId && validTabs.some((t) => t.id === s.activeTabId) ? s.activeTabId : null;
         return {
           ...buildWorkspaceState(s.workspace, iconSetId, { previousState: s, keepTabs: true }),
-          activeTabId: s.activeTabId,
-          openTabs: s.openTabs,
+          openTabs: validTabs,
+          activeTabId: activeTab,
         };
       });
     },

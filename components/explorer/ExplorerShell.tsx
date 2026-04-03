@@ -1360,7 +1360,6 @@ function ProjectDetailView({
                   key={icon.id}
                   iconId={icon.id}
                   iconName={icon.name}
-                  activeIconSetId={activeIconSetId}
                   svg={svg}
                   active={active}
                   favorite={favorite}

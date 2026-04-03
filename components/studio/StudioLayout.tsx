@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { clearCurrentProjectPath } from '@/lib/platform/bridge';
@@ -21,19 +21,21 @@ export function StudioLayout() {
   const workspace = useEditorStore((s) => s.workspace);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
+  const urlRestoredRef = useRef(false);
 
-  // Restore pane state from URL query params after workspace loads
+  // Restore pane state from URL query params — runs once after workspace first loads
   useEffect(() => {
-    if (!workspace) return;
+    if (!workspace || urlRestoredRef.current) return;
+    urlRestoredRef.current = true;
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const projectParam = params.get('project');
+    // Support both new (?project=) and legacy (?set=) URL contracts
+    const projectParam = params.get('project') ?? params.get('set');
     const iconParam = params.get('icon');
     if (!projectParam) return;
 
     const state = editorStore.getState();
-    // Only apply if the store doesn't already match (avoid redundant updates)
-    if (projectParam && workspace.iconSets[projectParam] && state.activeIconSetId !== projectParam) {
+    if (workspace.iconSets[projectParam] && state.activeIconSetId !== projectParam) {
       state.setActiveIconSet(projectParam);
     }
     if (iconParam) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Download,
   FilePlus2,
@@ -9,8 +9,10 @@ import {
   Import,
   Plus,
   Save,
+  Search,
   FileJson,
   Package,
+  Square,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -45,6 +47,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { undo, redo } from '@/lib/editor-store/history';
@@ -71,9 +81,31 @@ export function Navbar() {
   const [distributionSheetOpen, setDistributionSheetOpen] = useState(false);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [toolbarError, setToolbarError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const toolbarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const project = useEditorStore((s) => s.project);
+  const commandIcons = useMemo(
+    () => Object.values(project?.icons ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
+    [project?.icons],
+  );
+
+  // Global Cmd+K handler — only active when no icon is open
+  // (when an icon is open, EditorShell provides its own richer command palette)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        // Skip if EditorShell is mounted (it handles Cmd+K itself)
+        if (editorStore.getState().currentIconId) return;
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Relative time label
   const [savedAgoLabel, setSavedAgoLabel] = useState<string | null>(null);
@@ -249,6 +281,16 @@ export function Navbar() {
             <TooltipContent side="bottom">Redo (Shift+Cmd/Ctrl+Z)</TooltipContent>
           </Tooltip>
 
+          {/* Search */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Search icons" onClick={() => setCommandOpen(true)}>
+                <Search className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>
+          </Tooltip>
+
           {/* Help */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -318,6 +360,29 @@ export function Navbar() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
+        <CommandInput placeholder="Search icons…" />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Icons">
+            {commandIcons.map((icon) => (
+              <CommandItem
+                key={icon.id}
+                onSelect={() => {
+                  setCommandOpen(false);
+                  editorStore.getState().setCurrentIcon(icon.id);
+                  const iconSetId = editorStore.getState().activeIconSetId;
+                  if (iconSetId) editorStore.getState().openIconTab(iconSetId, icon.id);
+                }}
+              >
+                <Square className="size-4" />
+                <span>{icon.name}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </>
   );
 }

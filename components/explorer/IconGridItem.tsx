@@ -58,7 +58,7 @@ export function IconGridItem({
             active ? 'border-primary/30 bg-primary/[0.06]' : 'hover:bg-accent/60',
           )}
         >
-          <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <button
               type="button"
               onClick={onToggleFavorite}

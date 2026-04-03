@@ -832,6 +832,9 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         ref={interactionRootRef}
         className="absolute inset-0 flex items-center justify-center"
         data-canvas-interaction-root
+        role="application"
+        aria-label="Icon editor canvas"
+        aria-roledescription="drawing canvas"
       >
         <div className="absolute inset-0" data-canvas-draft-surface />
 
@@ -888,6 +891,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       {importError && (
         <div
           role="alert"
+          aria-live="assertive"
           className="absolute bottom-4 left-1/2 z-50 max-w-sm -translate-x-1/2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur-sm"
         >
           {importError}

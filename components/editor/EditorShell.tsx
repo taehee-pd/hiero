@@ -296,10 +296,10 @@ function StatesSection({
                 )}
               </button>
             )}
-            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 pr-2">
+            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
               <button
                 type="button"
-                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                 aria-label={`Duplicate ${stateId}`}
                 onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
               >
@@ -307,7 +307,7 @@ function StatesSection({
               </button>
               <button
                 type="button"
-                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                className="rounded p-0.5 text-muted-foreground hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
                 aria-label={`Delete ${stateId}`}
                 onClick={() => setDeleteTarget(stateId)}
               >

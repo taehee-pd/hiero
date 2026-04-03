@@ -1,5 +1,7 @@
 # IconStudio IA Redesign — Feature Inventory & Information Architecture
 
+> **PARTIALLY OUTDATED (2026-04-04):** The layout proposals in this document predate the shipped Sanity Studio-style single-screen layout (`components/studio/StudioLayout.tsx`). The feature inventory remains useful as a reference, but the proposed IA (sidebar layout, explorer/editor split) no longer matches the current architecture. See `docs_canonical/LAYOUT_REVAMP.md` for the current layout design.
+
 > Figma, Glyphs 3, SF Symbols 등 전문 디자인 툴 레퍼런스 기반 IA 재설계 문서
 > 현재 기능의 완전한 인벤토리 + 전문 툴 기준 재배치 제안
 

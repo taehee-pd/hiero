@@ -92,10 +92,13 @@ export function Navbar() {
     [project?.icons],
   );
 
-  // Global Cmd+K handler — works even when no icon is open
+  // Global Cmd+K handler — only active when no icon is open
+  // (when an icon is open, EditorShell provides its own richer command palette)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        // Skip if EditorShell is mounted (it handles Cmd+K itself)
+        if (editorStore.getState().currentIconId) return;
         event.preventDefault();
         setCommandOpen(true);
       }

@@ -122,6 +122,7 @@ export function NavPane() {
                       onClick={() => handleSelectProject(iconSet.id)}
                       onContextMenu={(e) => { e.preventDefault(); setDeleteTarget(iconSet); }}
                       onKeyDown={(e) => {
+                        if (renamingId) return; // Don't intercept keys while renaming
                         if (e.key === 'F2') { e.preventDefault(); handleStartRename(iconSet); }
                         if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); setDeleteTarget(iconSet); }
                       }}

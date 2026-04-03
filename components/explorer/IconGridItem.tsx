@@ -2,7 +2,6 @@
 
 import type { MouseEventHandler } from 'react';
 
-import Link from 'next/link';
 import { Check, Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
@@ -12,13 +11,11 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 
-import { buildEditorRoute } from '@/lib/platform/routes';
 import { cn } from '@/lib/utils';
 
 export function IconGridItem({
   iconId,
   iconName,
-  activeIconSetId,
   svg,
   active,
   favorite,
@@ -30,7 +27,6 @@ export function IconGridItem({
 }: {
   iconId: string;
   iconName: string;
-  activeIconSetId: string | null;
   svg: string;
   active: boolean;
   favorite: boolean;
@@ -50,8 +46,6 @@ export function IconGridItem({
             if (event.key !== 'Enter') return;
             event.preventDefault();
             onOpen();
-            const link = event.currentTarget.querySelector('a');
-            link?.click();
           }}
           className={cn(
             'group relative flex flex-col items-center rounded-lg border border-transparent p-2 transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
@@ -88,8 +82,8 @@ export function IconGridItem({
             </button>
           </div>
 
-          <Link
-            href={buildEditorRoute(iconId, activeIconSetId)}
+          <button
+            type="button"
             onClick={onOpen}
             className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
             aria-label={`Open ${iconName}`}
@@ -110,7 +104,7 @@ export function IconGridItem({
                 {iconName}
               </p>
             </div>
-          </Link>
+          </button>
         </article>
       </ContextMenuTrigger>
       <ContextMenuContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FolderOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,6 +13,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -29,6 +35,21 @@ export function NavPane() {
   const [inlineNew, setInlineNew] = useState(false);
   const [inlineNewValue, setInlineNewValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; iconCount: number } | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const handleStartRename = useCallback((iconSet: { id: string; name: string }) => {
+    setRenamingId(iconSet.id);
+    setRenameValue(iconSet.name);
+  }, []);
+
+  const handleCommitRename = useCallback(() => {
+    if (!renamingId) return;
+    const trimmed = renameValue.trim();
+    if (trimmed) renameIconSet(renamingId, trimmed);
+    setRenamingId(null);
+    setRenameValue('');
+  }, [renamingId, renameValue, renameIconSet]);
 
   const iconSets = useMemo(
     () =>
@@ -87,28 +108,67 @@ export function NavPane() {
             {iconSets.map((iconSet) => (
               <Tooltip key={iconSet.id} delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectProject(iconSet.id)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setDeleteTarget(iconSet);
-                    }}
+                  <div
                     className={cn(
-                      'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition',
+                      'group/item flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition',
                       activeIconSetId === iconSet.id
                         ? 'bg-primary/10 font-medium text-primary'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                     )}
                   >
-                    <FolderOpen className="size-3.5 shrink-0" />
-                    {navExpanded && (
-                      <>
-                        <span className="min-w-0 truncate">{iconSet.name}</span>
-                        <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{iconSet.iconCount}</span>
-                      </>
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-2"
+                      onClick={() => handleSelectProject(iconSet.id)}
+                      onContextMenu={(e) => { e.preventDefault(); setDeleteTarget(iconSet); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'F2') { e.preventDefault(); handleStartRename(iconSet); }
+                        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); setDeleteTarget(iconSet); }
+                      }}
+                    >
+                      <FolderOpen className="size-3.5 shrink-0" />
+                      {navExpanded && renamingId === iconSet.id ? (
+                        <Input
+                          autoFocus
+                          className="h-5 min-w-0 flex-1 text-xs"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); handleCommitRename(); }
+                            if (e.key === 'Escape') { e.stopPropagation(); setRenamingId(null); }
+                          }}
+                          onBlur={handleCommitRename}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : navExpanded ? (
+                        <>
+                          <span className="min-w-0 truncate">{iconSet.name}</span>
+                          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{iconSet.iconCount}</span>
+                        </>
+                      ) : null}
+                    </button>
+                    {navExpanded && renamingId !== iconSet.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-accent group-hover/item:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
+                            aria-label={`Actions for ${iconSet.name}`}
+                          >
+                            <MoreHorizontal className="size-3" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" side="right">
+                          <DropdownMenuItem onSelect={() => handleStartRename(iconSet)}>
+                            <Pencil className="size-4" /> Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setDeleteTarget(iconSet)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="size-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                  </button>
+                  </div>
                 </TooltipTrigger>
                 {!navExpanded && (
                   <TooltipContent side="right">{iconSet.name} ({iconSet.iconCount})</TooltipContent>

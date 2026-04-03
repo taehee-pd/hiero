@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Download, Grid3X3, Import, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,8 +85,11 @@ export function ListPane() {
 
   const handleSvgFileDrop = useCallback(
     async (files: FileList) => {
-      const svgFiles = Array.from(files).filter(isSvgFile);
+      const MAX_FILES = 50;
+      const MAX_FILE_SIZE = 512 * 1024; // 512 KB per file
+      const svgFiles = Array.from(files).filter(isSvgFile).slice(0, MAX_FILES);
       for (const file of svgFiles) {
+        if (file.size > MAX_FILE_SIZE) continue; // skip oversized files
         const content = await file.text();
         const name = file.name.replace(/\.svg$/i, '');
         const importedIcon = createImportedIcon(content, { sourceName: name });
@@ -173,7 +175,6 @@ export function ListPane() {
                     key={icon.id}
                     iconId={icon.id}
                     iconName={icon.name}
-                    activeIconSetId={activeIconSetId}
                     svg={svg}
                     active={currentIconId === icon.id}
                     favorite={favoritesSet.has(icon.id)}

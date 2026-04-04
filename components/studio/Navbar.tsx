@@ -7,13 +7,16 @@ import {
   FolderOpen,
   HelpCircle,
   Import,
+  Moon,
   Plus,
   Save,
   Search,
+  Sun,
   FileJson,
   Package,
   Square,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +88,7 @@ export function Navbar() {
   const [toolbarError, setToolbarError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const toolbarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { resolvedTheme, setTheme } = useTheme();
 
   const project = useEditorStore((s) => s.project);
   const commandIcons = useMemo(
@@ -289,6 +293,22 @@ export function Navbar() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>
+          </Tooltip>
+
+          {/* Theme toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7 rounded-lg"
+                aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              >
+                {resolvedTheme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
           </Tooltip>
 
           {/* Help */}

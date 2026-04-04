@@ -73,6 +73,7 @@ import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorPickerPopover } from './ColorPickerPopover';
 import { TransitionPanel } from './TransitionPanel';
+import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { EditorSidebarTabs } from './EditorSidebarTabs';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { cn } from '@/lib/utils';
@@ -1030,7 +1031,10 @@ function RightSidebar({
               </>
             )
           ) : (
-            <TransitionPanel />
+            <>
+              <AnimationStudioPanel showTimelineEditor={false} />
+              <TransitionPanel />
+            </>
           )}
         </div>
       </ScrollArea>

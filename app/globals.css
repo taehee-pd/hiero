@@ -1487,7 +1487,7 @@
   }
 
   .wire-tab-button[data-active='true'] {
-    background: color-mix(in srgb, var(--accent) 50%, transparent);
+    background: white;
     color: var(--foreground);
     font-weight: 550;
   }

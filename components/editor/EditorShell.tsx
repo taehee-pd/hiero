@@ -76,6 +76,7 @@ import { TransitionPanel } from './TransitionPanel';
 import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { EditorSidebarTabs } from './EditorSidebarTabs';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
+import { ListPane } from '@/components/studio/ListPane';
 import { cn } from '@/lib/utils';
 
 type LeftTab = 'layers' | 'variants';
@@ -1458,37 +1459,45 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           />
         )}
 
+        {/* Mobile sidebar: icon selector (ListPane). Desktop: layer panel (LeftSidebar). */}
         <div
           className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 ${
             leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <LeftSidebar
-            leftTab={leftTab}
-            onLeftTabChange={setLeftTab}
-            workspaceName={projectName}
-            currentIcon={currentIcon}
-            currentVariant={currentVariant}
-            layerRows={layerRows}
-            selectedLayerId={selectedLayerId}
-            onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
-            onToggleLayerVisibility={(layerId, visible) => {
-              if (!currentIcon) return;
-              patchLayer(currentIcon.id, layerId, { visible });
-            }}
-            variants={variants}
-            currentVariantId={currentVariantId}
-            onSelectVariant={setCurrentVariant}
-            newVariantSize={newVariantSize}
-            onNewVariantSizeChange={setNewVariantSize}
-            onCreateVariant={handleCreateVariant}
-            currentStateId={currentStateId}
-            onSelectState={setCurrentState}
-            onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
-            onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
-            onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
-            onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
-          />
+          {/* Mobile: project/icon selector */}
+          <div className="h-full w-full overflow-y-auto bg-background lg:hidden">
+            <ListPane onIconOpen={() => setLeftSidebarOpen(false)} />
+          </div>
+          {/* Desktop: layer panel */}
+          <div className="hidden h-full w-full lg:block">
+            <LeftSidebar
+              leftTab={leftTab}
+              onLeftTabChange={setLeftTab}
+              workspaceName={projectName}
+              currentIcon={currentIcon}
+              currentVariant={currentVariant}
+              layerRows={layerRows}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
+              onToggleLayerVisibility={(layerId, visible) => {
+                if (!currentIcon) return;
+                patchLayer(currentIcon.id, layerId, { visible });
+              }}
+              variants={variants}
+              currentVariantId={currentVariantId}
+              onSelectVariant={setCurrentVariant}
+              newVariantSize={newVariantSize}
+              onNewVariantSizeChange={setNewVariantSize}
+              onCreateVariant={handleCreateVariant}
+              currentStateId={currentStateId}
+              onSelectState={setCurrentState}
+              onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
+              onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
+              onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
+              onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
+            />
+          </div>
         </div>
 
         <main className="wire-canvas-shell">

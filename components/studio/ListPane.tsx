@@ -29,7 +29,7 @@ function filterIcons(icons: ListIcon[], query: string): ListIcon[] {
   );
 }
 
-export function ListPane() {
+export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -60,8 +60,9 @@ export function ListPane() {
       if (activeIconSetId) {
         openIconTab(activeIconSetId, iconId);
       }
+      onIconOpen?.();
     },
-    [activeIconSetId, openIconTab],
+    [activeIconSetId, openIconTab, onIconOpen],
   );
 
   const handleCreateBlankIcon = useCallback(() => {

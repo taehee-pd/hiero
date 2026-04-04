@@ -44,6 +44,7 @@ const DIRECTION_OPTIONS: Array<{ value: NonNullable<RuntimeTransitionIntent['dir
 
 /** Human-readable display labels for each strategy. */
 const STRATEGY_LABELS: Record<RuntimeTransitionIntent['strategy'], string> = {
+  auto: 'Auto',
   strictMorph: 'Strict Morph',
   bestGuessMorph: 'Best Guess',
   crossIconMorph: 'Cross-Icon Morph',
@@ -53,6 +54,7 @@ const STRATEGY_LABELS: Record<RuntimeTransitionIntent['strategy'], string> = {
 
 /** Short descriptions shown below the strategy selector. */
 const STRATEGY_HINTS: Record<RuntimeTransitionIntent['strategy'], string> = {
+  auto: 'Automatically selects the best morph strategy for the given shapes.',
   strictMorph: 'Requires identical path topology.',
   bestGuessMorph: 'Fuzzy topology matching with readiness scoring.',
   crossIconMorph: 'Arc-length uniform sampling — works across any shapes.',
@@ -61,6 +63,7 @@ const STRATEGY_HINTS: Record<RuntimeTransitionIntent['strategy'], string> = {
 };
 
 const STRATEGY_OPTIONS: RuntimeTransitionIntent['strategy'][] = [
+  'auto',
   'strictMorph',
   'bestGuessMorph',
   'crossIconMorph',
@@ -122,7 +125,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [tgtVariantId, setTgtVariantId] = useState('');
 
   // --- Form state ---
-  const [formStrategy, setFormStrategy] = useState<RuntimeTransitionIntent['strategy']>('bestGuessMorph');
+  const [formStrategy, setFormStrategy] = useState<RuntimeTransitionIntent['strategy']>('auto');
   const [formDuration, setFormDuration] = useState('240');
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
@@ -890,6 +893,28 @@ function getCompatibilityStatus(
     return { tone: 'red', label: 'Replace / Fallback' };
   }
 
+  if (strategy === 'auto') {
+    // For auto strategy, check if any morphing is possible
+    let canMorph = false;
+    for (const binding of bindings) {
+      const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
+      const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
+      if (fromD && toD) {
+        try {
+          strictMorph(fromD, toD);
+          canMorph = true;
+          break;
+        } catch {
+          const morph = bestGuessMorph(fromD, toD);
+          if (morph) { canMorph = true; break; }
+        }
+      }
+    }
+    return canMorph
+      ? { tone: 'green' as const, label: 'Auto (morph detected)' }
+      : { tone: 'yellow' as const, label: 'Auto (will crossfade)' };
+  }
+
   if (strategy === 'strictMorph') {
     const allStrict = bindings.every((binding) => {
       const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
@@ -952,9 +977,9 @@ function buildDefaultLayerBindings(
   const fromIds = Object.keys(fromSnapshot.layers);
   const toIds = Object.keys(toSnapshot.layers);
 
-  // Cross-icon: layers from different icons — pair positionally, then
-  // add unmatched as added / removed.
-  if (strategy === 'crossIconMorph') {
+  // Auto strategy: use same behavior as crossIconMorph (most permissive pairing)
+  // since autoMorph handles strategy selection internally.
+  if (strategy === 'auto' || strategy === 'crossIconMorph') {
     const count = Math.min(fromIds.length, toIds.length);
     const bindings: LayerBinding[] = [];
 

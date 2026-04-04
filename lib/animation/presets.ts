@@ -54,6 +54,15 @@ export const animationPresets = {
   variableColor(options?: PresetOptions): Effect {
     return withBase({ id: createId('variable-color'), kind: 'variableColor', durationMs: 1400, easing: 'linear' }, options);
   },
+  drawReveal(options?: PresetOptions): Effect {
+    return withBase({ id: createId('draw-reveal'), kind: 'draw', durationMs: 1200, easing: 'ease-out', drawConfig: { mode: 'reveal' } }, options);
+  },
+  drawErase(options?: PresetOptions): Effect {
+    return withBase({ id: createId('draw-erase'), kind: 'draw', durationMs: 1000, easing: 'ease-in', drawConfig: { mode: 'erase' } }, options);
+  },
+  drawSlide(options?: PresetOptions): Effect {
+    return withBase({ id: createId('draw-slide'), kind: 'draw', durationMs: 1500, easing: 'linear', drawConfig: { mode: 'slide', windowSize: 0.25 } }, options);
+  },
 };
 
 export const PRESET_CARDS: Array<{ key: keyof typeof animationPresets; label: string; description: string }> = [
@@ -67,4 +76,7 @@ export const PRESET_CARDS: Array<{ key: keyof typeof animationPresets; label: st
   { key: 'appear', label: 'Appear', description: 'Opacity in + optional scale' },
   { key: 'disappear', label: 'Disappear', description: 'Opacity out + optional scale' },
   { key: 'variableColor', label: 'Variable Color', description: 'Cycle through palette colors' },
+  { key: 'drawReveal', label: 'Draw Reveal', description: 'Trim-based stroke reveal (open paths only)' },
+  { key: 'drawErase', label: 'Draw Erase', description: 'Trim-based stroke erase (open paths only)' },
+  { key: 'drawSlide', label: 'Draw Slide', description: 'Sliding stroke window (open paths only)' },
 ];

@@ -790,12 +790,24 @@ function toRuntimeEffect(
     return null;
   }
 
-  return {
+  const runtimeEffect: RuntimeEffect = {
     kind: effect.kind,
     durationMs: effect.durationMs,
     easing: effect.easing,
     palette: effect.palette,
   };
+
+  // Include drawConfig for 'draw' effects so the runtime consumer knows the mode
+  if (effect.kind === 'draw' && effect.drawConfig) {
+    (runtimeEffect as Record<string, unknown>).drawConfig = {
+      mode: effect.drawConfig.mode,
+      ...(effect.drawConfig.windowSize !== undefined && { windowSize: effect.drawConfig.windowSize }),
+      ...(effect.drawConfig.initialOffset !== undefined && { initialOffset: effect.drawConfig.initialOffset }),
+      ...(effect.drawConfig.compoundTrimMode !== undefined && { compoundTrimMode: effect.drawConfig.compoundTrimMode }),
+    };
+  }
+
+  return runtimeEffect;
 }
 
 function resolveRuntimeClipPath(
@@ -895,7 +907,7 @@ function buildRuntimeTransitions(
 
     // Map strategy to runtime strategy
     let runtimeStrategy: RuntimeTransition['strategy'] = 'track';
-    if (transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph') {
+    if (transition.strategy === 'auto' || transition.strategy === 'strictMorph' || transition.strategy === 'bestGuessMorph' || transition.strategy === 'crossIconMorph') {
       runtimeStrategy = 'morph';
     } else if (transition.strategy === 'replace') {
       runtimeStrategy = 'replace';

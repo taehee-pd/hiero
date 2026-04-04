@@ -5,6 +5,7 @@ import type {
   InterpolatedValues,
   ResolvedTransition,
 } from '../runtime-core';
+import { computeTrimValues } from '../runtime-core/draw-executor';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MANAGED_DEFS_ATTR = 'data-managed-by';
@@ -606,7 +607,18 @@ function applyAnimatedValues(entry: LayerRenderEntry, values: Record<string, Ani
     entry.element.style.removeProperty('transform-origin');
   }
 
-  if (values.pathLength !== undefined) {
+  // Trim values take precedence over pathLength (more expressive model).
+  // Both use stroke-dasharray/dashoffset, so they are mutually exclusive.
+  if (values.trimStart !== undefined || values.trimEnd !== undefined || values.trimOffset !== undefined) {
+    const trimStart = clamp01(asNumber(values.trimStart ?? 0));
+    const trimEnd = clamp01(asNumber(values.trimEnd ?? 1));
+    const trimOffset = clamp01(asNumber(values.trimOffset ?? 0));
+    const pathLength = entry.pathLength;
+
+    const { dashArray, dashOffset } = computeTrimValues(trimStart, trimEnd, trimOffset, pathLength);
+    entry.element.style.strokeDasharray = dashArray;
+    entry.element.style.strokeDashoffset = dashOffset;
+  } else if (values.pathLength !== undefined) {
     const normalized = clamp01(asNumber(values.pathLength));
     const pathLength = entry.pathLength;
     entry.element.style.strokeDasharray = String(pathLength);

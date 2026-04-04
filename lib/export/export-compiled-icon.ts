@@ -193,11 +193,21 @@ function toCompiledEffect(effect: Effect): CompiledEffect | null {
   if (effect.kind === 'appear' || effect.kind === 'disappear') {
     return null;
   }
-  return {
+  const compiled: CompiledEffect = {
     kind: effect.kind,
     durationMs: effect.durationMs,
     easing: effect.easing ?? 'linear',
   };
+  // Serialize drawConfig into params for the 'draw' effect kind
+  if (effect.kind === 'draw' && effect.drawConfig) {
+    compiled.params = {
+      mode: effect.drawConfig.mode,
+      ...(effect.drawConfig.windowSize !== undefined && { windowSize: effect.drawConfig.windowSize }),
+      ...(effect.drawConfig.initialOffset !== undefined && { initialOffset: effect.drawConfig.initialOffset }),
+      ...(effect.drawConfig.compoundTrimMode !== undefined && { compoundTrimMode: effect.drawConfig.compoundTrimMode }),
+    };
+  }
+  return compiled;
 }
 
 function cloneCompiledTrack(

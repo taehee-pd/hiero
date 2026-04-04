@@ -7,6 +7,7 @@ import type {
   TransitionStagger,
 } from '../schema';
 import { attemptCrossIconMorph, bestGuessMorph, strictMorph, type MorphInterpolator } from './morph';
+import { autoMorph } from './auto-morph';
 import { canonicalizeLayerPath, type CanonicalPath } from './path-normalization';
 import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-detection';
 
@@ -16,7 +17,7 @@ import { analyzeTopologyCompatibility, type TopologyAnalysis } from './topology-
  */
 export type TransitionConfig = {
   id?: string;
-  strategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
+  strategy: 'auto' | 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
@@ -412,6 +413,24 @@ function resolveLayerBinding(
   const runtimeStrategy = decideRuntimeStrategy(transition.strategy, readiness);
   diagnostics.push(`runtimeStrategy:${runtimeStrategy}`);
 
+  // Auto morph: bypass the old cascade and use the unified algorithm
+  if (transition.strategy === 'auto') {
+    const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
+    const toCanonical = canonicalizeLayerPath(toLayer)!.d;
+    const result = autoMorph(fromCanonical, toCanonical);
+    if (result) {
+      resolved.morph = result.interpolator;
+      resolved.animationType = 'morph';
+      diagnostics.push(`autoMorph:${result.selectedStrategy}`);
+      return resolved;
+    }
+    // autoMorph returned null — fall through to standard fallback
+    resolved.fallback = chooseFallbackMode(index);
+    resolved.animationType = fallbackToAnimationType(resolved.fallback, fromLayer, toLayer);
+    diagnostics.push('autoMorphFailed');
+    return resolved;
+  }
+
   if (runtimeStrategy === 'strictMorph') {
     try {
       const fromCanonical = canonicalizeLayerPath(fromLayer)!.d;
@@ -467,6 +486,10 @@ function decideRuntimeStrategy(
   readiness: MorphReadiness | undefined,
 ): 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'fallback' {
   if (!readiness) return 'fallback';
+  // 'auto' strategy: use the readiness-recommended strategy directly
+  if (declared === 'auto') {
+    return readiness.recommendedStrategy ?? 'fallback';
+  }
   if (declared === 'replace' || declared === 'lineAnimation') {
     // These strategies explicitly opt out of morphing — never silently upgrade them.
     return 'fallback';

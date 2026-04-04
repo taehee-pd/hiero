@@ -6,6 +6,15 @@ import {
   findOptimalShapeIndex,
   rotateSubPathSegments,
 } from './cross-icon-morph';
+import {
+  angleLerp,
+  decomposePolar,
+  reconstructFromPolar,
+  decomposeHandle,
+  reconstructHandle,
+  lerpIntrinsicHandle,
+  type IntrinsicHandle,
+} from './intrinsic-interpolation';
 
 export type MorphInterpolator = (t: number) => string;
 
@@ -65,6 +74,289 @@ export function strictMorph(fromD: string, toD: string): MorphInterpolator {
             lerp(value, target.values[valueIndex]!, t),
           ),
         );
+      })
+      .join(' ');
+  };
+}
+
+/**
+ * Intrinsic Strict Morph — Sederberg 1993 intrinsic interpolation.
+ *
+ * Same preconditions as strictMorph (identical command signatures),
+ * but uses intrinsic interpolation instead of linear lerp.
+ * This preserves edge lengths and angles during rotational transitions,
+ * eliminating the "shrinkage" artifact where a rotating shape collapses
+ * to ~70% of its size at t=0.5.
+ *
+ * Preserves the original command stream (M stays M, L stays L, etc.)
+ * — only the numeric values change.
+ */
+export function intrinsicStrictMorph(fromD: string, toD: string): MorphInterpolator {
+  const from = canonicalizeCommands(fromD);
+  const to = canonicalizeCommands(toD);
+
+  const fromSignature = from.map((c) => c.command);
+  const toSignature = to.map((c) => c.command);
+  if (!arrayEquals(fromSignature, toSignature)) {
+    throw new Error(
+      `Path command signatures do not match: [${fromSignature.join(', ')}] vs [${toSignature.join(', ')}].`,
+    );
+  }
+
+  for (let i = 0; i < from.length; i++) {
+    if (from[i]!.values.length !== to[i]!.values.length) {
+      throw new Error(`Path command value counts differ at index ${i}.`);
+    }
+  }
+
+  // Pre-compute intrinsic decompositions for each segment.
+  // Track running cursor position to decompose edges correctly.
+  const EPSILON = 1e-6;
+
+  type IntrinsicEntry = {
+    command: string;
+    fromValues: number[];
+    toValues: number[];
+    // For drawing commands: intrinsic edge and handle data
+    intrinsic?: {
+      fromEdge: { length: number; angle: number };
+      toEdge: { length: number; angle: number };
+      fromC1?: IntrinsicHandle;
+      toC1?: IntrinsicHandle;
+      fromC2?: IntrinsicHandle;
+      toC2?: IntrinsicHandle;
+    };
+  };
+
+  const entries: IntrinsicEntry[] = [];
+  let fromCx = 0, fromCy = 0, toCx = 0, toCy = 0;
+
+  for (let i = 0; i < from.length; i++) {
+    const fc = from[i]!;
+    const tc = to[i]!;
+    const entry: IntrinsicEntry = {
+      command: fc.command,
+      fromValues: fc.values,
+      toValues: tc.values,
+    };
+
+    switch (fc.command) {
+      case 'M': {
+        fromCx = fc.values[0]!; fromCy = fc.values[1]!;
+        toCx = tc.values[0]!; toCy = tc.values[1]!;
+        break;
+      }
+      case 'L': {
+        const fromStart = { x: fromCx, y: fromCy };
+        const fromEnd = { x: fc.values[0]!, y: fc.values[1]! };
+        const toStart = { x: toCx, y: toCy };
+        const toEnd = { x: tc.values[0]!, y: tc.values[1]! };
+
+        const fromEdge = decomposePolar(fromStart, fromEnd);
+        const toEdge = decomposePolar(toStart, toEnd);
+
+        if (fromEdge.length > EPSILON || toEdge.length > EPSILON) {
+          entry.intrinsic = { fromEdge, toEdge };
+        }
+
+        fromCx = fromEnd.x; fromCy = fromEnd.y;
+        toCx = toEnd.x; toCy = toEnd.y;
+        break;
+      }
+      case 'H': {
+        const fromStart = { x: fromCx, y: fromCy };
+        const fromEnd = { x: fc.values[0]!, y: fromCy };
+        const toStart = { x: toCx, y: toCy };
+        const toEnd = { x: tc.values[0]!, y: toCy };
+
+        entry.intrinsic = {
+          fromEdge: decomposePolar(fromStart, fromEnd),
+          toEdge: decomposePolar(toStart, toEnd),
+        };
+
+        fromCx = fromEnd.x; toCx = toEnd.x;
+        break;
+      }
+      case 'V': {
+        const fromStart = { x: fromCx, y: fromCy };
+        const fromEnd = { x: fromCx, y: fc.values[0]! };
+        const toStart = { x: toCx, y: toCy };
+        const toEnd = { x: toCx, y: tc.values[0]! };
+
+        entry.intrinsic = {
+          fromEdge: decomposePolar(fromStart, fromEnd),
+          toEdge: decomposePolar(toStart, toEnd),
+        };
+
+        fromCy = fromEnd.y; toCy = toEnd.y;
+        break;
+      }
+      case 'C': {
+        const fromStart = { x: fromCx, y: fromCy };
+        const fromC1 = { x: fc.values[0]!, y: fc.values[1]! };
+        const fromC2 = { x: fc.values[2]!, y: fc.values[3]! };
+        const fromEnd = { x: fc.values[4]!, y: fc.values[5]! };
+
+        const toStart = { x: toCx, y: toCy };
+        const toC1 = { x: tc.values[0]!, y: tc.values[1]! };
+        const toC2 = { x: tc.values[2]!, y: tc.values[3]! };
+        const toEnd = { x: tc.values[4]!, y: tc.values[5]! };
+
+        const fromEdge = decomposePolar(fromStart, fromEnd);
+        const toEdge = decomposePolar(toStart, toEnd);
+
+        if (fromEdge.length > EPSILON || toEdge.length > EPSILON) {
+          entry.intrinsic = {
+            fromEdge,
+            toEdge,
+            fromC1: decomposeHandle(fromC1, fromStart, fromEnd),
+            toC1: decomposeHandle(toC1, toStart, toEnd),
+            fromC2: decomposeHandle(fromC2, fromStart, fromEnd),
+            toC2: decomposeHandle(toC2, toStart, toEnd),
+          };
+        }
+
+        fromCx = fromEnd.x; fromCy = fromEnd.y;
+        toCx = toEnd.x; toCy = toEnd.y;
+        break;
+      }
+      case 'Q': {
+        const fromStart = { x: fromCx, y: fromCy };
+        const fromC1 = { x: fc.values[0]!, y: fc.values[1]! };
+        const fromEnd = { x: fc.values[2]!, y: fc.values[3]! };
+
+        const toStart = { x: toCx, y: toCy };
+        const toC1 = { x: tc.values[0]!, y: tc.values[1]! };
+        const toEnd = { x: tc.values[2]!, y: tc.values[3]! };
+
+        const fromEdge = decomposePolar(fromStart, fromEnd);
+        const toEdge = decomposePolar(toStart, toEnd);
+
+        if (fromEdge.length > EPSILON || toEdge.length > EPSILON) {
+          entry.intrinsic = {
+            fromEdge,
+            toEdge,
+            fromC1: decomposeHandle(fromC1, fromStart, fromEnd),
+            toC1: decomposeHandle(toC1, toStart, toEnd),
+          };
+        }
+
+        fromCx = fromEnd.x; fromCy = fromEnd.y;
+        toCx = toEnd.x; toCy = toEnd.y;
+        break;
+      }
+      case 'Z': {
+        // Z doesn't have values; no intrinsic decomposition needed
+        break;
+      }
+      default: {
+        // A and other commands: fall back to linear lerp (no intrinsic)
+        // Update cursor from values if applicable
+        if (fc.values.length >= 2) {
+          fromCx = fc.values[fc.values.length - 2]!;
+          fromCy = fc.values[fc.values.length - 1]!;
+          toCx = tc.values[tc.values.length - 2]!;
+          toCy = tc.values[tc.values.length - 1]!;
+        }
+        break;
+      }
+    }
+
+    entries.push(entry);
+  }
+
+  // Track cursor state during interpolation for coordinate reconstruction
+  return (t: number) => {
+    if (t <= 0) return fromD;
+    if (t >= 1) return toD;
+
+    let cursorX = 0, cursorY = 0;
+
+    return entries
+      .map((entry) => {
+        if (!entry.intrinsic) {
+          // Fall back to linear lerp for M, Z, A, and degenerate edges
+          const values = entry.fromValues.map((v, j) =>
+            lerp(v, entry.toValues[j]!, t),
+          );
+
+          // Update cursor
+          switch (entry.command) {
+            case 'M':
+              cursorX = values[0]!; cursorY = values[1]!;
+              break;
+            case 'L':
+              cursorX = values[0]!; cursorY = values[1]!;
+              break;
+            case 'H':
+              cursorX = values[0]!;
+              break;
+            case 'V':
+              cursorY = values[0]!;
+              break;
+            case 'C':
+              cursorX = values[4]!; cursorY = values[5]!;
+              break;
+            case 'Q':
+              cursorX = values[2]!; cursorY = values[3]!;
+              break;
+          }
+
+          return formatCommand(entry.command, values);
+        }
+
+        // Intrinsic interpolation
+        const { fromEdge, toEdge } = entry.intrinsic;
+        const interpLength = lerp(fromEdge.length, toEdge.length, t);
+        const interpAngle = angleLerp(fromEdge.angle, toEdge.angle, t);
+
+        const start = { x: cursorX, y: cursorY };
+        const end = reconstructFromPolar(start, { length: interpLength, angle: interpAngle });
+
+        switch (entry.command) {
+          case 'L': {
+            cursorX = end.x; cursorY = end.y;
+            return formatCommand('L', [end.x, end.y]);
+          }
+          case 'H': {
+            cursorX = end.x;
+            return formatCommand('H', [end.x]);
+          }
+          case 'V': {
+            cursorY = end.y;
+            return formatCommand('V', [end.y]);
+          }
+          case 'C': {
+            const c1 = entry.intrinsic.fromC1 && entry.intrinsic.toC1
+              ? reconstructHandle(lerpIntrinsicHandle(entry.intrinsic.fromC1, entry.intrinsic.toC1, t), start, end)
+              : { x: lerp(entry.fromValues[0]!, entry.toValues[0]!, t), y: lerp(entry.fromValues[1]!, entry.toValues[1]!, t) };
+            const c2 = entry.intrinsic.fromC2 && entry.intrinsic.toC2
+              ? reconstructHandle(lerpIntrinsicHandle(entry.intrinsic.fromC2, entry.intrinsic.toC2, t), start, end)
+              : { x: lerp(entry.fromValues[2]!, entry.toValues[2]!, t), y: lerp(entry.fromValues[3]!, entry.toValues[3]!, t) };
+
+            cursorX = end.x; cursorY = end.y;
+            return formatCommand('C', [c1.x, c1.y, c2.x, c2.y, end.x, end.y]);
+          }
+          case 'Q': {
+            const c1 = entry.intrinsic.fromC1 && entry.intrinsic.toC1
+              ? reconstructHandle(lerpIntrinsicHandle(entry.intrinsic.fromC1, entry.intrinsic.toC1, t), start, end)
+              : { x: lerp(entry.fromValues[0]!, entry.toValues[0]!, t), y: lerp(entry.fromValues[1]!, entry.toValues[1]!, t) };
+
+            cursorX = end.x; cursorY = end.y;
+            return formatCommand('Q', [c1.x, c1.y, end.x, end.y]);
+          }
+          default: {
+            // Shouldn't happen, but fall back to linear lerp
+            const values = entry.fromValues.map((v, j) =>
+              lerp(v, entry.toValues[j]!, t),
+            );
+            if (values.length >= 2) {
+              cursorX = values[values.length - 2]!;
+              cursorY = values[values.length - 1]!;
+            }
+            return formatCommand(entry.command, values);
+          }
+        }
       })
       .join(' ');
   };

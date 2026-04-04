@@ -1,8 +1,10 @@
 import type { DomRenderer } from '@/lib/runtime-dom';
-import type { Effect } from '@/lib/schema/types';
+import type { DrawConfig, Effect, Layer } from '@/lib/schema/types';
+import { isDrawEligible } from '@/lib/runtime-core/open-path-guard';
 
 export class EffectPlayer {
   private rafId: number | null = null;
+  private drawEligibleLayerIds: Set<string> | null = null;
   private startTime = 0;
   private elapsedBeforePause = 0;
   private speed = 1;
@@ -94,9 +96,31 @@ export class EffectPlayer {
   }
 
   private applyProgress(progress: number): void {
-    const layerIds = this.getLayerIds();
-    const values = buildInterpolatedValues(this.effect.kind, progress, layerIds);
+    let layerIds = this.getLayerIds();
+
+    // For draw effects, only apply trim values to eligible layers (open + stroked)
+    if (this.effect.kind === 'draw') {
+      if (!this.drawEligibleLayerIds) {
+        this.drawEligibleLayerIds = this.computeDrawEligible();
+      }
+      layerIds = layerIds.filter((id) => this.drawEligibleLayerIds!.has(id));
+    }
+
+    const values = buildInterpolatedValues(this.effect.kind, progress, layerIds, this.effect.drawConfig);
     this.renderer.applyFrame(this.baseStateId, progress, values);
+  }
+
+  private computeDrawEligible(): Set<string> {
+    const eligible = new Set<string>();
+    const entries = (this.renderer as unknown as { layerElements?: Map<string, { layer?: Layer }> }).layerElements;
+    if (entries) {
+      for (const [id, entry] of entries) {
+        if (entry.layer && isDrawEligible(entry.layer)) {
+          eligible.add(id);
+        }
+      }
+    }
+    return eligible;
   }
 
   private getLayerIds(): string[] {
@@ -112,6 +136,7 @@ function buildInterpolatedValues(
   kind: Effect['kind'],
   t: number,
   layerIds: string[],
+  drawConfig?: DrawConfig,
 ): Record<string, Record<string, number>> {
   const easedSin = Math.sin(t * Math.PI);
   const wave = Math.sin(t * Math.PI * 2);
@@ -140,6 +165,30 @@ function buildInterpolatedValues(
       case 'lineDrawOff':
         v.pathLength = 1 - t;
         break;
+      case 'draw': {
+        const mode = drawConfig?.mode ?? 'reveal';
+        const offset = drawConfig?.initialOffset ?? 0;
+        switch (mode) {
+          case 'reveal':
+            v.trimStart = 0;
+            v.trimEnd = t;
+            v.trimOffset = offset;
+            break;
+          case 'erase':
+            v.trimStart = t;
+            v.trimEnd = 1;
+            v.trimOffset = offset;
+            break;
+          case 'slide': {
+            const ws = drawConfig?.windowSize ?? 0.2;
+            v.trimStart = t * (1 - ws);
+            v.trimEnd = v.trimStart + ws;
+            v.trimOffset = offset;
+            break;
+          }
+        }
+        break;
+      }
       case 'appear':
         v.opacity = t;
         v.scale = 0.92 + 0.08 * t;

@@ -1487,7 +1487,7 @@
   }
 
   .wire-tab-button[data-active='true'] {
-    background: white;
+    background: var(--background-secondary);
     color: var(--foreground);
     font-weight: 550;
   }

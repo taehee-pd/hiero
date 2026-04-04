@@ -95,7 +95,7 @@ export function StudioLayout() {
       <div className="flex min-h-0 flex-1">
         <NavPane />
         {activeIconSetId && (
-          <div className="hidden lg:flex">
+          <div className={currentIconId ? 'hidden lg:flex' : 'flex'}>
             <ListPane />
           </div>
         )}

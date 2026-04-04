@@ -496,7 +496,7 @@ function applyEffectToSnapshot(
 
       let trimStart = 0;
       let trimEnd = 0;
-      let trimOffset = offset;
+      const trimOffset = offset;
       switch (mode) {
         case 'reveal':
           trimStart = 0;
@@ -514,12 +514,18 @@ function applyEffectToSnapshot(
         }
       }
 
-      nextSnapshot.layers = nextSnapshot.layers.map((layer) => ({
-        ...layer,
-        trimStart,
-        trimEnd,
-        trimOffset,
-      }));
+      // Only apply trim to draw-eligible layers (open stroked paths).
+      // Mirrors the EffectPlayer's filtering via isDrawEligible.
+      const drawEligible = new Set(
+        Object.keys(payload.draw?.layers ?? {}).sort((left, right) =>
+          left.localeCompare(right),
+        ),
+      );
+      nextSnapshot.layers = nextSnapshot.layers.map((layer) =>
+        drawEligible.size === 0 || drawEligible.has(layer.id)
+          ? { ...layer, trimStart, trimEnd, trimOffset }
+          : layer,
+      );
       return nextSnapshot;
     }
     case 'pulse':

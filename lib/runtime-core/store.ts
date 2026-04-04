@@ -16,6 +16,10 @@ export type RuntimeSnapshotLayer = RuntimeLayer & {
   key: string;
   opacity: number;
   pathLengthProgress?: number;
+  /** Trim-based draw animation values (0-1 normalised). */
+  trimStart?: number;
+  trimEnd?: number;
+  trimOffset?: number;
 };
 
 export type RuntimeSnapshot = {
@@ -479,6 +483,47 @@ function applyEffectToSnapshot(
               ...layer,
               pathLengthProgress: drawProgress,
             }
+          : layer,
+      );
+      return nextSnapshot;
+    }
+    case 'draw': {
+      const drawConfig = (playback.effect as Record<string, unknown>).drawConfig as
+        | { mode?: string; windowSize?: number; initialOffset?: number }
+        | undefined;
+      const mode = drawConfig?.mode ?? 'reveal';
+      const offset = drawConfig?.initialOffset ?? 0;
+
+      let trimStart = 0;
+      let trimEnd = 0;
+      const trimOffset = offset;
+      switch (mode) {
+        case 'reveal':
+          trimStart = 0;
+          trimEnd = progress;
+          break;
+        case 'erase':
+          trimStart = progress;
+          trimEnd = 1;
+          break;
+        case 'slide': {
+          const ws = drawConfig?.windowSize ?? 0.2;
+          trimStart = progress * (1 - ws);
+          trimEnd = trimStart + ws;
+          break;
+        }
+      }
+
+      // Only apply trim to draw-eligible layers (open stroked paths).
+      // Mirrors the EffectPlayer's filtering via isDrawEligible.
+      const drawEligible = new Set(
+        Object.keys(payload.draw?.layers ?? {}).sort((left, right) =>
+          left.localeCompare(right),
+        ),
+      );
+      nextSnapshot.layers = nextSnapshot.layers.map((layer) =>
+        drawEligible.size === 0 || drawEligible.has(layer.id)
+          ? { ...layer, trimStart, trimEnd, trimOffset }
           : layer,
       );
       return nextSnapshot;

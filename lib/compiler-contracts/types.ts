@@ -40,6 +40,7 @@ export type CompiledEffectKind =
   | 'variableColor'
   | 'lineDrawOn'
   | 'lineDrawOff'
+  | 'draw'
   | 'custom';
 
 export type CompiledIcon = {

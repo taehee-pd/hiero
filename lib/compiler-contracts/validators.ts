@@ -87,6 +87,7 @@ const EFFECT_KINDS: CompiledEffectKind[] = [
   'variableColor',
   'lineDrawOn',
   'lineDrawOff',
+  'draw',
 ];
 
 const CHANGE_KINDS: IconChangeKind[] = [

@@ -10,6 +10,7 @@ import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
 import type { Effect } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
+import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
 import { TimelineEditor } from './TimelineEditor';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorPickerPopover } from './ColorPickerPopover';
@@ -21,7 +22,11 @@ const EFFECT_KIND_LABELS: Record<string, string> = {
   lineDrawOn: 'Line Draw On',
   lineDrawOff: 'Line Draw Off',
   variableColor: 'Variable Color',
+  draw: 'Draw',
 };
+
+/** Preset keys that require open stroked paths. */
+const DRAW_PRESET_KEYS = new Set(['drawReveal', 'drawErase', 'drawSlide']);
 
 function formatEffectKind(kind: string): string {
   if (EFFECT_KIND_LABELS[kind]) return EFFECT_KIND_LABELS[kind];
@@ -48,6 +53,11 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   const [speed, setSpeed] = useState<Speed>(1);
   const [loop, setLoop] = useState(false);
   const [previewLabel, setPreviewLabel] = useState<string | null>(null);
+
+  const hasDrawEligibleLayers = useMemo(() => {
+    if (!variant?.layers) return false;
+    return filterDrawEligibleLayers(variant.layers).length > 0;
+  }, [variant?.layers]);
 
   // Transitions are now runtime-resolved; no authored transitions on Icon.
   const transitions: TransitionConfig[] = [];
@@ -146,12 +156,16 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          {PRESET_CARDS.map((preset) => (
-            <button key={preset.key} type="button" className="rounded-xl border border-border/70 bg-background p-3 text-left transition-all duration-150 hover:bg-accent hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30" onClick={() => playPreset(preset.key)}>
-              <p className="text-[length:var(--text-body)] font-medium">{preset.label}</p>
-              <p className="text-[length:var(--text-label)] text-muted-foreground">{preset.description}</p>
-            </button>
-          ))}
+          {PRESET_CARDS.map((preset) => {
+            const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
+            const disabled = isDrawPreset && !hasDrawEligibleLayers;
+            return (
+              <button key={preset.key} type="button" className={`rounded-xl border border-border/70 bg-background p-3 text-left transition-all duration-150 ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : undefined}>
+                <p className="text-[length:var(--text-body)] font-medium">{preset.label}</p>
+                <p className="text-[length:var(--text-label)] text-muted-foreground">{preset.description}</p>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Animation playback controls">

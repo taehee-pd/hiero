@@ -56,13 +56,9 @@ export const RuntimeSvgRenderer = forwardRef<SVGSVGElement, RuntimeSvgRendererPr
               clipPath={
                 layer.clipPath ? `url(#${buildClipPathId(prefix, layer.key)})` : undefined
               }
-              pathLength={layer.pathLengthProgress !== undefined ? 1 : undefined}
-              strokeDasharray={layer.pathLengthProgress !== undefined ? 1 : undefined}
-              strokeDashoffset={
-                layer.pathLengthProgress !== undefined
-                  ? 1 - layer.pathLengthProgress
-                  : undefined
-              }
+              pathLength={hasDashAnimation(layer) ? 1 : undefined}
+              strokeDasharray={computeSnapshotDashArray(layer)}
+              strokeDashoffset={computeSnapshotDashOffset(layer)}
             />
           ))}
         </g>
@@ -71,6 +67,36 @@ export const RuntimeSvgRenderer = forwardRef<SVGSVGElement, RuntimeSvgRendererPr
     );
   },
 );
+
+function hasDashAnimation(layer: RuntimeSnapshotLayer): boolean {
+  return layer.pathLengthProgress !== undefined || layer.trimEnd !== undefined;
+}
+
+function computeSnapshotDashArray(layer: RuntimeSnapshotLayer): number | undefined {
+  if (layer.trimStart !== undefined && layer.trimEnd !== undefined) {
+    // Trim mode: visible length as fraction of pathLength=1
+    const s = Math.max(0, Math.min(1, layer.trimStart));
+    const e = Math.max(0, Math.min(1, layer.trimEnd));
+    const visible = e >= s ? e - s : 1 - s + e;
+    return visible;
+  }
+  if (layer.pathLengthProgress !== undefined) {
+    return 1; // Full path as dash unit
+  }
+  return undefined;
+}
+
+function computeSnapshotDashOffset(layer: RuntimeSnapshotLayer): number | undefined {
+  if (layer.trimStart !== undefined && layer.trimEnd !== undefined) {
+    const s = Math.max(0, Math.min(1, layer.trimStart));
+    const o = Math.max(0, Math.min(1, layer.trimOffset ?? 0));
+    return -(s + o);
+  }
+  if (layer.pathLengthProgress !== undefined) {
+    return 1 - layer.pathLengthProgress;
+  }
+  return undefined;
+}
 
 function collectDefs(
   layers: RuntimeSnapshot['layers'],

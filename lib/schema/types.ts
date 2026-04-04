@@ -266,7 +266,7 @@ export type RuntimeTransitionIntent = {
   toIconId: string;
   fromVariantId: string;
   toVariantId: string;
-  strategy: 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
+  strategy: 'auto' | 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
   durationMs: number;
   easing?: string | SpringConfig;
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
@@ -438,6 +438,7 @@ export type Effect = {
     | 'variableColor'
     | 'lineDrawOn'
     | 'lineDrawOff'
+    | 'draw'
     | 'custom';
   durationMs: number;
   easing?: string | SpringConfig;
@@ -447,6 +448,28 @@ export type Effect = {
   /** Palette of hex colors for the variableColor effect. */
   palette?: string[];
   customTracks?: TimelineTrack[];
+  /** Configuration for the 'draw' effect (trim-based path drawing). */
+  drawConfig?: DrawConfig;
+};
+
+/**
+ * Configuration for the 'draw' effect.
+ *
+ * Controls how stroke visibility is animated using trimStart/trimEnd/trimOffset.
+ * Only applicable to open (non-closed) vector paths with a stroke style.
+ *
+ * - `'reveal'`: Stroke draws from start to end (trimEnd: 0→1)
+ * - `'erase'`:  Stroke erases from start to end (trimStart: 0→1)
+ * - `'slide'`:  A fixed-width visible window slides along the path
+ */
+export type DrawConfig = {
+  mode: 'reveal' | 'erase' | 'slide';
+  /** For 'slide' mode: fraction of path visible at any time (0-1). Default 0.2 */
+  windowSize?: number;
+  /** Initial trimOffset value (0-1). Default 0 */
+  initialOffset?: number;
+  /** How to handle compound paths with multiple open subpaths. Default 'simultaneously' */
+  compoundTrimMode?: CompoundTrimMode;
 };
 
 export type RenderingMode =

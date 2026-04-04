@@ -17,3 +17,6 @@ export * from './path-normalization';
 export * from './topology-detection';
 export * from './variable-value';
 export * from './weight-interpolation';
+export * from './intrinsic-interpolation';
+export * from './open-path-guard';
+export * from './auto-morph';

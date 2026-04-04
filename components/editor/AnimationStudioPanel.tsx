@@ -272,10 +272,9 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
   let rafId: number | null = null;
   let cancelled = false;
 
-  // Compute icon center from viewBox (x, y, width, height) for whole-icon transforms
-  const vb = svg.getAttribute('viewBox')?.split(/\s+/).map(Number) ?? [0, 0, 24, 24];
-  const centerX = vb[0]! + vb[2]! / 2; // x + width/2
-  const centerY = vb[1]! + vb[3]! / 2; // y + height/2
+  // The SVG element renders at a scaled CSS pixel size (e.g. 326px for a 24px viewBox).
+  // Use 'center center' for transform-origin so scaling/rotation pivots around
+  // the element center regardless of zoom level.
 
   // Effects that transform the whole icon as a group (scale/rotate around icon center)
   const isGroupTransform = ['bounce', 'pulse', 'breathe', 'wiggle', 'rotate', 'scale'].includes(effect.kind);
@@ -334,7 +333,7 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
       }
       // Compose: apply original pan/zoom THEN the effect transform
       svg.style.transform = `${originalSvgTransform} ${effectTransform}`.trim();
-      svg.style.transformOrigin = `${centerX}px ${centerY}px`;
+      svg.style.transformOrigin = 'center center';
       return;
     }
 

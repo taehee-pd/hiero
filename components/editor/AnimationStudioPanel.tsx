@@ -322,48 +322,132 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 });
 
 function previewCanvasEffect(effect: Effect, speed: number): () => void {
-  const svg = document.querySelector<SVGSVGElement>('svg');
+  // Find the editor canvas SVG (not any other SVG on the page)
+  const svg = document.querySelector<SVGSVGElement>('[data-editor-canvas] svg, svg');
   if (!svg) return () => {};
   const paths = Array.from(svg.querySelectorAll<SVGPathElement>('path[data-layer-id]'));
+  if (paths.length === 0) return () => {};
+
   const duration = Math.max(1, effect.durationMs / speed);
   const start = performance.now();
   let rafId: number | null = null;
   let cancelled = false;
 
-  const apply = (t: number) => {
-    if (cancelled) return;
-    const p = Math.min((t - start) / duration, 1);
+  // Cache path lengths for draw/trim animations
+  const pathLengths = new Map<SVGPathElement, number>();
+  for (const path of paths) {
+    try {
+      pathLengths.set(path, Math.max(path.getTotalLength?.() ?? 1, 1));
+    } catch {
+      pathLengths.set(path, 1);
+    }
+  }
+
+  const applyFrame = (p: number) => {
+    const wave = Math.sin(p * Math.PI * 2);
+    const easedSin = Math.sin(p * Math.PI);
+
     for (const path of paths) {
-      const wave = Math.sin(p * Math.PI * 2);
-      if (effect.kind === 'wiggle') path.style.transform = `rotate(${wave * 8}deg)`;
-      else if (effect.kind === 'bounce' || effect.kind === 'pulse' || effect.kind === 'breathe') path.style.transform = `scale(${1 + wave * 0.08})`;
-      else if (effect.kind === 'rotate') path.style.transform = `rotate(${p * 360}deg)`;
-      else if (effect.kind === 'lineDrawOn') {
-        const length = Math.max(path.getTotalLength?.() ?? 1, 1);
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length * (1 - p));
-      } else if (effect.kind === 'lineDrawOff') {
-        const length = Math.max(path.getTotalLength?.() ?? 1, 1);
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length * p);
-      } else if (effect.kind === 'appear') path.style.opacity = String(p);
-      else if (effect.kind === 'disappear') path.style.opacity = String(1 - p);
-      else if (effect.kind === 'variableColor') path.style.opacity = String(0.65 + 0.35 * (0.5 + 0.5 * wave));
+      const length = pathLengths.get(path) ?? 1;
+
+      switch (effect.kind) {
+        case 'wiggle':
+          path.style.transform = `rotate(${wave * 8}deg)`;
+          break;
+        case 'bounce':
+          path.style.transform = `scale(${1 + easedSin * 0.18})`;
+          break;
+        case 'pulse':
+        case 'breathe':
+          path.style.transform = `scale(${1 + wave * 0.08})`;
+          break;
+        case 'scale':
+          path.style.transform = `scale(${1 + wave * 0.1})`;
+          break;
+        case 'rotate':
+          path.style.transform = `rotate(${p * 360}deg)`;
+          break;
+        case 'lineDrawOn':
+          path.style.strokeDasharray = String(length);
+          path.style.strokeDashoffset = String(length * (1 - p));
+          break;
+        case 'lineDrawOff':
+          path.style.strokeDasharray = String(length);
+          path.style.strokeDashoffset = String(length * p);
+          break;
+        case 'draw': {
+          // Trim-based draw animation (reveal/erase/slide modes)
+          const mode = effect.drawConfig?.mode ?? 'reveal';
+          const offset = effect.drawConfig?.initialOffset ?? 0;
+          let trimStart = 0;
+          let trimEnd = 0;
+          switch (mode) {
+            case 'reveal':
+              trimStart = 0;
+              trimEnd = p;
+              break;
+            case 'erase':
+              trimStart = p;
+              trimEnd = 1;
+              break;
+            case 'slide': {
+              const ws = effect.drawConfig?.windowSize ?? 0.2;
+              trimStart = p * (1 - ws);
+              trimEnd = trimStart + ws;
+              break;
+            }
+          }
+          const visibleLength = (trimEnd >= trimStart ? trimEnd - trimStart : 1 - trimStart + trimEnd) * length;
+          const dashOffset = -(trimStart + offset) * length;
+          path.style.strokeDasharray = `${visibleLength} ${length}`;
+          path.style.strokeDashoffset = String(dashOffset);
+          break;
+        }
+        case 'appear':
+          path.style.opacity = String(p);
+          path.style.transform = `scale(${0.92 + 0.08 * p})`;
+          break;
+        case 'disappear':
+          path.style.opacity = String(1 - p);
+          path.style.transform = `scale(${1 - 0.08 * p})`;
+          break;
+        case 'variableColor':
+          path.style.opacity = String(0.65 + 0.35 * (0.5 + 0.5 * wave));
+          break;
+        default:
+          break;
+      }
       path.style.transformBox = 'fill-box';
       path.style.transformOrigin = 'center';
     }
-
-    if (p < 1) {
-      rafId = requestAnimationFrame(apply);
-    }
   };
 
-  rafId = requestAnimationFrame(apply);
+  const tick = (t: number) => {
+    if (cancelled) return;
+    const p = Math.min((t - start) / duration, 1);
+    applyFrame(p);
+
+    if (p < 1) {
+      rafId = requestAnimationFrame(tick);
+    }
+    // When p >= 1, the final frame stays rendered (hold at end)
+  };
+
+  rafId = requestAnimationFrame(tick);
 
   return () => {
     cancelled = true;
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
+    }
+    // Reset styles when preview is cleaned up
+    for (const path of paths) {
+      path.style.removeProperty('transform');
+      path.style.removeProperty('transform-box');
+      path.style.removeProperty('transform-origin');
+      path.style.removeProperty('opacity');
+      path.style.removeProperty('stroke-dasharray');
+      path.style.removeProperty('stroke-dashoffset');
     }
   };
 }

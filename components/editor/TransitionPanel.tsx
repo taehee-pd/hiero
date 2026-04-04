@@ -217,11 +217,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
   const handlePlaybackComplete = useCallback(() => {
     stopScheduler();
-    setTransitionPreview(null);
+    // Keep transitionPreview set so the canvas holds the final frame visible.
+    // Users can reset manually via Replay or by starting a new preview.
     setActivePreview((current) =>
-      current ? { ...current, playing: false, progress: 0 } : current,
+      current ? { ...current, playing: false, progress: 1 } : current,
     );
-  }, [setTransitionPreview, stopScheduler]);
+  }, [stopScheduler]);
 
   const startScheduler = useCallback(
     (preview: ActivePreview, startProgress: number, speed: number) => {
@@ -246,6 +247,8 @@ export const TransitionPanel = memo(function TransitionPanel() {
       );
 
       scheduler.onComplete(() => {
+        // Ensure the final frame is rendered before stopping
+        applyPreviewFrame(preview, 1);
         handlePlaybackComplete();
       });
 

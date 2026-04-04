@@ -1,11 +1,23 @@
 # Morph Interpolation
 
 **Status:** Implemented
-**Files:** `lib/runtime-core/morph.ts`, `lib/runtime-core/cross-icon-morph.ts`, `lib/runtime-core/arc-to-cubic.ts`
+**Files:** `lib/runtime-core/auto-morph.ts`, `lib/runtime-core/morph.ts`, `lib/runtime-core/intrinsic-interpolation.ts`, `lib/runtime-core/cross-icon-morph.ts`, `lib/runtime-core/arc-to-cubic.ts`
 
 ## Overview
 
-The morph system provides path interpolation between SVG `d` strings at varying levels of compatibility. Three morph strategies form a cascade: `strictMorph` requires exact command signature match, `bestGuessMorph` normalizes paths to cubic beziers before interpolating, and `crossIconMorph` handles differing topologies through sub-path matching, De Casteljau subdivision, winding normalization, and centroid collapse. The entry point `attemptCrossIconMorph` bridges raw SVG path strings to the cross-icon pipeline.
+The morph system provides path interpolation between SVG `d` strings at varying levels of compatibility. The primary entry point is `autoMorph()`, which automatically selects the best strategy for any pair of paths using a 5-level cascade:
+
+1. **Identity** — identical paths after normalization (no interpolation needed)
+2. **Intrinsic Strict** — exact command signature match, using Sederberg 1993 intrinsic interpolation (edge lengths + turning angles) to eliminate rotation shrinkage
+3. **Best Guess** — same topology with different segment counts, normalized to cubic beziers with degenerate padding
+4. **Point-Sampled** — different topologies, handled via arc-length sampling, Gauss-Legendre quadrature, sub-path matching, De Casteljau subdivision, and Catmull-Rom reconstruction
+5. **Fallback** — returns null; caller uses crossfade
+
+The three legacy strategies (`strictMorph`, `bestGuessMorph`, `crossIconMorph`) remain available as explicit overrides for backward compatibility.
+
+### Intrinsic Interpolation (Sederberg 1993)
+
+`intrinsicStrictMorph()` replaces the linear control-point lerp used in the original `strictMorph()`. Instead of interpolating absolute (x, y) coordinates (which causes shapes to shrink ~30% at t=0.5 during rotational transitions), it decomposes each segment into polar coordinates (edge length + angle) and intrinsic handle positions (tangent/normal ratios relative to the segment chord), interpolates those separately, then reconstructs absolute coordinates. This preserves edge lengths and angles throughout the morph. The original command stream is preserved (M stays M, L stays L, etc.).
 
 ## Types
 

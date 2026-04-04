@@ -21,8 +21,8 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 │  (Next.js 16 + React 19 + Custom Store + Tailwind + Radix)  │
 ├──────────────┬───────────────┬───────────────────────────────┤
 │  Schema      │  Editor Core  │  Runtime Core                 │
-│  (types.ts)  │  (path, snap, │  (morph, topology, transition │
-│              │   keyboard)   │   resolver, draw, compositor) │
+│  (types.ts)  │  (path, snap, │  (autoMorph, intrinsic interp,│
+│              │   keyboard)   │   topology, draw, compositor) │
 ├──────────────┴───────────────┴───────────────────────────────┤
 │                      Export Pipeline                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │

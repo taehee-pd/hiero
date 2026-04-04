@@ -1,7 +1,7 @@
 # Transition Resolver
 
-**Status:** Proposed product-model rewrite
-**Primary future files:** `lib/runtime-core/transition-resolver.ts`
+**Status:** Implemented
+**Files:** `lib/runtime-core/transition-resolver.ts`, `lib/runtime-core/auto-morph.ts`
 
 ## Overview
 

@@ -1,11 +1,21 @@
 # Draw Executor
 
 **Status:** Implemented
-**Files:** `lib/runtime-core/draw-executor.ts`
+**Files:** `lib/runtime-core/draw-executor.ts`, `lib/runtime-core/open-path-guard.ts`
 
 ## Overview
 
 The draw executor computes `pathLength` animation values for Draw On / Draw Off effects and trim path values for Lottie-style stroke trimming. It distributes overall animation progress across participating layers according to guide-point ordering and supports two compound trim modes for multi-subpath paths: `simultaneously` (single continuous range across all subpaths) and `individually` (same proportional trim per subpath).
+
+### Draw Animation Effect (kind: 'draw')
+
+The `draw` effect provides trim-based path drawing animation using `trimStart`/`trimEnd`/`trimOffset`. It is only applicable to open (non-closed) vector paths with a stroke style. Three modes are supported:
+
+- **reveal** — `trimEnd` animates from 0 to 1 (stroke draws from start to end)
+- **erase** — `trimStart` animates from 0 to 1 (stroke erases from start to end)
+- **slide** — a fixed-width visible window slides along the path
+
+Eligibility is enforced by `open-path-guard.ts` at both authoring time (editor dims/disables draw presets) and runtime (effect player/store filter to eligible layers only). A layer is eligible if ALL subpaths are open (no Z command) and the layer has a stroke with positive width.
 
 ## Types
 

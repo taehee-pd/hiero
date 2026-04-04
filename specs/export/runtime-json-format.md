@@ -69,7 +69,7 @@ type RuntimeTransitionPayload = {
   toIconId: string;
   fromVariantId: string;
   toVariantId: string;
-  strategy: 'strictMorph' | 'bestGuessMorph' | 'lineAnimation' | 'replace';
+  strategy: 'track' | 'morph' | 'replace' | 'lineAnimation'; // 'auto' resolves to 'morph' at export time
   durationMs: number;
   easing: string | SpringConfig;
   layerBindings: RuntimeLayerBinding[];

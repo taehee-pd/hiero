@@ -43,7 +43,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `lib/export/`: SVG export, runtime JSON export, Lottie export, compiled package generation, and diffing.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter), downgrade rules, storybook generation, and manifest cleanup.
 - `lib/compiler-contracts/`: compiled artifact types and validators.
-- `lib/runtime-core/`: transition resolution, morph interpolation (strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, state-machine behavior, and cubic weight interpolation.
+- `lib/runtime-core/`: unified autoMorph with automatic strategy selection and intrinsic interpolation (Sederberg 1993), morph interpolation (intrinsicStrict/strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, open-path guards, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, state-machine behavior, and cubic weight interpolation.
 - `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
 - `lib/persistence/`: IndexedDB adapter, persistence manager, and auto-save hook.
 - `lib/live-sync/`: real-time publish transport with connectors.

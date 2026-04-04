@@ -27,6 +27,7 @@ The following phases from the original plan have been implemented:
 | Studio Layout Revamp | Sanity Studio-style single screen: `NavPane`, `ListPane`, embedded editor in `StudioLayout.tsx` |
 | Stagger Ordering Fix | Transition resolver stagger ordering ranks corrected |
 | Post-Review Bug Fixes | 13 bugs fixed from Codex adversarial review (rename key conflicts, duplicate command palette, layout issues) |
+| Unified autoMorph + Draw Animation | `autoMorph()` with intrinsic interpolation (Sederberg 1993) replaces manual strategy selection. Draw animation effect (`kind: 'draw'`) with reveal/erase/slide modes for open stroked paths. 39 new tests. PR #100. |
 
 ---
 

@@ -120,7 +120,7 @@ Adapters are pure transforms (`Icon + RuntimeVariantPayload[] -> GeneratedFile[]
 
 The repository contains multiple runtime-focused layers:
 
-- `lib/runtime-core/`: transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, state-machine behavior, and cubic weight interpolation
+- `lib/runtime-core/`: unified autoMorph (automatic strategy selection with intrinsic interpolation), transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, open-path guards, state-machine behavior, and cubic weight interpolation
 - `lib/runtime-dom/`: DOM renderer/driver for runtime icons
 - `lib/runtime-react/`: React wrapper components (`ConivaIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
 - `lib/runtime-sdk/`: compiled icon rendering primitives and renderer logic
@@ -133,14 +133,17 @@ The runtime-core morphing pipeline resolves how icon state transitions are anima
 
 | Module | Responsibility |
 |--------|---------------|
-| `morph.ts` | `strictMorph()` (same-command paths), `bestGuessMorph()` (normalized cubics), `attemptCrossIconMorph()` (cross-icon fallback) |
+| `auto-morph.ts` | `autoMorph()` — unified entry point with automatic strategy cascade: identity → intrinsicStrict → bestGuess → pointSampled → fallback |
+| `intrinsic-interpolation.ts` | Sederberg 1993 intrinsic interpolation: polar decomposition, angle-preserving lerp, handle decompose/reconstruct |
+| `morph.ts` | `intrinsicStrictMorph()` (rotation-preserving same-command paths), `strictMorph()` (linear lerp legacy), `bestGuessMorph()` (normalized cubics), `attemptCrossIconMorph()` (cross-icon fallback) |
 | `cross-icon-morph.ts` | Sub-path matching, De Casteljau subdivision, shape index optimization, rotational interpolation, winding normalization |
 | `arc-to-cubic.ts` | SVG arc (A) → cubic bezier (C) conversion using pi/4 segment approximation |
+| `open-path-guard.ts` | Draw animation eligibility: open-path detection, stroke validation, layer filtering |
 | `path-normalization.ts` | Canonical path representation, geometry stats (subpath count, bbox, centroid), transform application |
 | `topology-detection.ts` | Incompatibility detection (stroke→fill, subpath mismatch, closed/open), crossfade strategy selection |
-| `transition-resolver.ts` | Orchestrates layer binding resolution, morph strategy selection (strict→bestGuess→crossIcon→fallback), topology override |
+| `transition-resolver.ts` | Orchestrates layer binding resolution; delegates to `autoMorph()` for `'auto'` strategy, falls back to legacy cascade for explicit strategies |
 
-The morph strategy selection cascade is: `strictMorph` (exact command match) → `bestGuessMorph` (normalized cubic alignment) → `crossIconMorph` (sub-path matching + subdivision) → fallback (crossfade/scale/slide). Topology detection runs before binding resolution and overrides morph bindings to crossfade when topology is incompatible (e.g., outline→filled icon transitions).
+The default morph strategy is now `'auto'`, which delegates to `autoMorph()`. The automatic cascade is: identity (identical paths) → `intrinsicStrictMorph` (same command signature, Sederberg 1993 intrinsic interpolation that preserves edge lengths during rotation) → `bestGuessMorph` (normalized cubic alignment) → `crossIconMorph` (sub-path matching + subdivision) → fallback (crossfade). Explicit strategies (`strictMorph`, `bestGuessMorph`, `crossIconMorph`) remain available as overrides. Topology detection runs before binding resolution and overrides morph bindings to crossfade when topology is incompatible.
 
 ### Platform Boundary
 

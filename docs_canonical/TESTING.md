@@ -135,6 +135,9 @@ Phase 8 morphing tests (`tests/phase-8-morph.test.ts`, `tests/morph.test.ts`) co
 - Coordinated crossfade (opacity curves, scale emphasis, draw-coordinated mode)
 - Geometry change warnings (`detectGeometryBreaks` for subpath/closed/command/point changes)
 - Transition resolver integration (crossIconMorph fallback, topology override, topology analysis attachment)
+- Unified autoMorph: automatic strategy selection (identity, intrinsicStrict, bestGuess, pointSampled)
+- Intrinsic interpolation: polar decomposition roundtrip, angle lerp (shortest-arc), handle decompose/reconstruct, degenerate chord handling
+- Draw animation: open-path guard (isPathFullyOpen, isStrokedLayer, isDrawEligible, filterDrawEligibleLayers), trim value computation (reveal/erase/slide modes), trim offset rotation
 
 ## Known Conflicts / Notes
 

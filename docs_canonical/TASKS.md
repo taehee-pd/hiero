@@ -56,6 +56,7 @@ codebase, specs, and commit history.
 | — | Studio Layout Revamp | 2026-04-03 | Sanity Studio-style single screen: NavPane, ListPane, embedded editor | — |
 | — | Stagger Ordering Fix | 2026-04-02 | Transition resolver stagger ordering ranks corrected | — |
 | — | Post-Review Bug Fixes | 2026-04-03 | 13 bugs fixed from Codex adversarial review | — |
+| — | Unified autoMorph + Draw Animation | 2026-04-04 | autoMorph (intrinsic interpolation, auto strategy selection), draw effect (trim-based open-path animation), 39 new tests | #100 |
 
 ---
 
@@ -64,7 +65,8 @@ codebase, specs, and commit history.
 Key technical decisions from the engineering review that remain relevant:
 
 - **Token security:** npm tokens via server-side `NPM_PUBLISH_TOKEN` env var (web publish proxy); never in project JSON
-- **Lottie morph:** use `strictMorph()`/`bestGuessMorph()` directly, not `interpolatePaths()`
+- **Lottie morph:** use `strictMorph()`/`bestGuessMorph()` directly, not `interpolatePaths()` (note: `autoMorph()` is now the preferred entry point for automatic strategy selection)
+- **Unified morph:** `autoMorph()` replaces manual strategy selection; cascade: identity → intrinsicStrict → bestGuess → pointSampled → fallback. Explicit strategies remain for backward compat.
 - **Lottie frames:** `Math.round(durationMs / 1000 * fr)` — always integer
 - **lottie-web:** regular dependency, lazy-loaded with feature flag
 - **Paper.js:** browser-only — tests must mock `booleanOp`

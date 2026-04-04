@@ -1,7 +1,7 @@
 # Animation Tab
 
-**Status:** Proposed product-model rewrite
-**Primary future files:** `components/editor/AnimationStudioPanel.tsx`, `components/editor/TransitionPanel.tsx`, `components/editor/TimelineEditor.tsx`
+**Status:** Implemented
+**Files:** `components/editor/AnimationStudioPanel.tsx`, `components/editor/TransitionPanel.tsx`, `components/editor/TimelineEditor.tsx`
 
 ## Overview
 

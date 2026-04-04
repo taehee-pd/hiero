@@ -323,7 +323,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
 function previewCanvasEffect(effect: Effect, speed: number): () => void {
   // Find the editor canvas SVG (not any other SVG on the page)
-  const svg = document.querySelector<SVGSVGElement>('[data-editor-canvas] svg, svg');
+  const svg = document.querySelector<SVGSVGElement>('svg[data-editor-canvas], svg');
   if (!svg) return () => {};
   const paths = Array.from(svg.querySelectorAll<SVGPathElement>('path[data-layer-id]'));
   if (paths.length === 0) return () => {};

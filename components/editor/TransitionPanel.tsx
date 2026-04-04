@@ -371,6 +371,13 @@ export const TransitionPanel = memo(function TransitionPanel() {
     [activePreview, startScheduler],
   );
 
+  // Clear held preview when the selected icon changes to prevent stale state
+  useEffect(() => {
+    stopScheduler();
+    setTransitionPreview(null);
+    setActivePreview(null);
+  }, [currentIconId, setTransitionPreview, stopScheduler]);
+
   useEffect(() => {
     return () => {
       stopScheduler();

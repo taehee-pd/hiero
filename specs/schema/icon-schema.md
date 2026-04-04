@@ -68,7 +68,7 @@ type Icon = {
   tags?: string[];
   customGuides?: GuideItem[];
   variants: Record<string, Variant>;
-  effects?: Record<string, Effect>;
+  effects?: Record<string, Effect>;  // includes 'draw' kind with DrawConfig
   components?: Record<string, SymbolComponent>;
   meta?: {
     externalImport?: IconExternalImportMeta;

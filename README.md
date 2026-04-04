@@ -69,8 +69,9 @@ components/
 
 lib/
 ├── schema/             # Icon, Variant, State, Layer, Transition types
-├── runtime-core/       # Morph, topology, transition resolver, draw executor,
-│                       # hybrid compositor, cubic weight interpolation
+├── runtime-core/       # autoMorph (unified automatic morph), intrinsic interpolation,
+│                       # morph, topology, transition resolver, draw executor,
+│                       # hybrid compositor, open-path guard, cubic weight interpolation
 ├── runtime-dom/        # DOM renderer, IconDriver
 ├── runtime-react/      # ConivaIcon React component, hooks
 ├── runtime-sdk/        # Compiled icon rendering primitives

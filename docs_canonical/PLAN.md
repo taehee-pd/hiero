@@ -25,7 +25,7 @@ React/Swift/Flutter adapters, and npm registry publishing all have working imple
 
 - Full vector path editor with pen, shape tools, snap engine, guide masters
 - 14 animation track types with timeline editor, easing picker, keyframe editing
-- Cross-icon morphing with 3-pass strategy selection (strict → bestGuess → crossIcon → fallback)
+- Unified autoMorph with automatic 5-level strategy cascade (identity → intrinsicStrict → bestGuess → pointSampled → fallback), intrinsic interpolation (Sederberg 1993), and draw animation effect (trim-based open-path stroke animation)
 - Derived variant generation (fill/slash/circle/square/badge) via Paper.js booleans
 - 4 import adapters (Lucide, Heroicons, Phosphor, Material Symbols) with batch import
 - Export adapters for React, Swift, Flutter with downgrade rules

@@ -318,8 +318,11 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 });
 
 function previewCanvasEffect(effect: Effect, speed: number): () => void {
-  // Find the editor canvas SVG (not any other SVG on the page)
-  const svg = document.querySelector<SVGSVGElement>('svg[data-editor-canvas], svg');
+  // Find the editor canvas SVG specifically, not any other SVG on the page.
+  // querySelector with comma returns first match in DOM order, so we must
+  // try the specific selector first and only fall back if not found.
+  const svg = document.querySelector<SVGSVGElement>('svg[data-editor-canvas]')
+    ?? document.querySelector<SVGSVGElement>('svg');
   if (!svg) return () => {};
   const paths = Array.from(svg.querySelectorAll<SVGPathElement>('path[data-layer-id]'));
   if (paths.length === 0) return () => {};

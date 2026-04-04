@@ -135,7 +135,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   );
 
   return (
-    <div className="space-y-3 p-[var(--panel-padding)]">
+    <div className="space-y-3">
       <div>
         <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
         <p className="text-[length:var(--text-label)] text-muted-foreground">

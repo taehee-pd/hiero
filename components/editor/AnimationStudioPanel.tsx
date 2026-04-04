@@ -2,7 +2,6 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
@@ -136,40 +135,39 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
   );
 
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-3 p-[var(--panel-padding)]">
-        <div>
-          <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
-          <p className="text-[length:var(--text-label)] text-muted-foreground">
-            Click a preset to preview. {previewLabel ? <span className="font-medium text-foreground">{formatEffectKind(previewLabel)}</span> : null}
-          </p>
-        </div>
+    <div className="space-y-3 p-[var(--panel-padding)]">
+      <div>
+        <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
+        <p className="text-[length:var(--text-label)] text-muted-foreground">
+          Click a preset to preview.{previewLabel ? <> <span className="font-medium text-foreground">{formatEffectKind(previewLabel)}</span></> : null}
+        </p>
+      </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
-          {PRESET_CARDS.map((preset) => {
-            const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
-            const disabled = isDrawPreset && !hasDrawEligibleLayers;
-            return (
-              <button key={preset.key} type="button" className={`rounded-md border border-border/60 bg-background px-2 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
-                <p className="text-[10px] font-medium leading-tight">{preset.label}</p>
-              </button>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {PRESET_CARDS.map((preset) => {
+          const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
+          const disabled = isDrawPreset && !hasDrawEligibleLayers;
+          return (
+            <button key={preset.key} type="button" className={`rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
+              <p className="text-[10px] font-medium leading-tight">{preset.label}</p>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="flex items-center gap-1.5" role="toolbar" aria-label="Animation controls">
-          <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={togglePlay} aria-label="Play animation">Play</Button>
-          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handlePause} aria-label="Pause animation">Pause</Button>
-          <Button size="sm" variant={loop ? 'default' : 'outline'} className="h-7 px-2.5 text-xs" onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
-          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
-          <div className="ml-auto flex items-center gap-1" role="toolbar" aria-label="Playback speed">
-            {SPEEDS.map((value) => (
-              <button key={value} type="button" className={`h-6 rounded px-1.5 text-[10px] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
-                {value}x
-              </button>
-            ))}
-          </div>
+      <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Animation controls">
+        <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={togglePlay} aria-label="Play animation">Play</Button>
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handlePause} aria-label="Pause animation">Pause</Button>
+        <Button size="sm" variant={loop ? 'default' : 'outline'} className="h-7 px-2.5 text-xs" onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
+        <div className="flex items-center gap-1" role="toolbar" aria-label="Playback speed">
+          {SPEEDS.map((value) => (
+            <button key={value} type="button" className={`h-6 rounded px-1.5 text-[10px] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
+              {value}x
+            </button>
+          ))}
         </div>
+      </div>
 
         {/* Draw Order — visible when a draw effect is the active preview */}
         {previewLabel === 'draw' && variant?.layers ? (
@@ -254,7 +252,6 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           )}
         </div>
       </div>
-    </ScrollArea>
   );
 });
 

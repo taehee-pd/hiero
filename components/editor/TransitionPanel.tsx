@@ -977,9 +977,39 @@ function buildDefaultLayerBindings(
   const fromIds = Object.keys(fromSnapshot.layers);
   const toIds = Object.keys(toSnapshot.layers);
 
-  // Auto strategy: use same behavior as crossIconMorph (most permissive pairing)
-  // since autoMorph handles strategy selection internally.
-  if (strategy === 'auto' || strategy === 'crossIconMorph') {
+  // Auto strategy: match by layer identity first (shared IDs), then treat
+  // unmatched layers as added/removed. This avoids false pairings when
+  // object key order differs between source and target.
+  if (strategy === 'auto') {
+    const toIdSet = new Set(toIds);
+    const fromIdSet = new Set(fromIds);
+    const bindings: LayerBinding[] = [];
+
+    // Shared layers — matched by ID
+    for (const id of fromIds) {
+      if (toIdSet.has(id)) {
+        bindings.push({ fromLayerId: id, toLayerId: id });
+      }
+    }
+    // Unmatched source → removed
+    for (const id of fromIds) {
+      if (!toIdSet.has(id)) {
+        bindings.push({ fromLayerId: id, toLayerId: undefined });
+      }
+    }
+    // Unmatched target → added
+    for (const id of toIds) {
+      if (!fromIdSet.has(id)) {
+        bindings.push({ fromLayerId: undefined, toLayerId: id });
+      }
+    }
+
+    return bindings;
+  }
+
+  // Cross-icon: layers from different icons — pair positionally, then
+  // add unmatched as added / removed.
+  if (strategy === 'crossIconMorph') {
     const count = Math.min(fromIds.length, toIds.length);
     const bindings: LayerBinding[] = [];
 

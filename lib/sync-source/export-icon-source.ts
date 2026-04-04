@@ -67,6 +67,7 @@ function stripLayer(layer: Layer): SourceLayer {
     ...(layer.role ? { role: layer.role } : {}),
     ...(layer.visible === false ? { visible: false } : {}),
     ...(layer.clipPathLayerId ? { clipPathLayerId: layer.clipPathLayerId } : {}),
+    ...(layer.drawOrder !== undefined && layer.drawOrder !== 1 ? { drawOrder: layer.drawOrder } : {}),
     ...(layer.path ? { path: layer.path } : {}),
     style: layer.style,
     ...(layer.transform ? { transform: layer.transform } : {}),

@@ -36,6 +36,7 @@ export type SourceLayer = {
   role?: 'primary' | 'secondary' | 'tertiary' | string;
   visible?: boolean;
   clipPathLayerId?: string;
+  drawOrder?: number;
   path?: { d: string; fillRule?: 'nonzero' | 'evenodd' };
   style: {
     fill?: PaintRef;

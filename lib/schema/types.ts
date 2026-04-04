@@ -180,6 +180,8 @@ export type Layer = {
   clipPathLayerId?: string;
   isClipMask?: boolean;
   groupId?: string;
+  /** Draw animation order (1-based). Same number = simultaneous, different = sequential. Default: 1 */
+  drawOrder?: number;
   path?: { d: string; fillRule?: 'nonzero' | 'evenodd' };
   style: {
     fill?: PaintRef;

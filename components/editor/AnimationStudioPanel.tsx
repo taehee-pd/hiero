@@ -3,15 +3,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
-import type { Effect } from '@/lib/schema/types';
-import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
+import type { Effect, Layer } from '@/lib/schema/types';
 import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
-import { TimelineEditor } from './TimelineEditor';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorPickerPopover } from './ColorPickerPopover';
 
@@ -35,17 +32,13 @@ function formatEffectKind(kind: string): string {
 }
 
 export const AnimationStudioPanel = memo(function AnimationStudioPanel({
-  onOpenTransitionEditor,
-  showTimelineEditor = true,
+  showTimelineEditor: _showTimelineEditor = true,
 }: {
-  onOpenTransitionEditor?: () => void;
   showTimelineEditor?: boolean;
 }) {
   const iconId = useEditorStore((s) => s.currentIconId);
   const icon = useEditorStore((s) => (s.currentIconId ? s.project?.icons[s.currentIconId] ?? null : null));
   const variant = useEditorStore((s) => (s.currentIconId && s.currentVariantId ? s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null : null));
-  const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
-  const { setSelectedTransitionId } = useEditorActions();
   const currentEffect = useRef<Effect | null>(null);
   const playerRef = useRef<EffectPlayer | null>(null);
   const canvasRafCleanupRef = useRef<(() => void) | null>(null);
@@ -59,10 +52,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
     return filterDrawEligibleLayers(variant.layers).length > 0;
   }, [variant?.layers]);
 
-  // Transitions are now runtime-resolved; no authored transitions on Icon.
-  const transitions: TransitionConfig[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectedTransition = null as TransitionConfig | null;
+  // Transitions are handled by TransitionPanel mounted separately below.
 
   const savedEffects = useMemo(() => {
     if (!icon?.effects) return [];
@@ -147,7 +137,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-2.5 p-[var(--panel-padding)]">
+      <div className="space-y-3 p-[var(--panel-padding)]">
         <div>
           <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
           <p className="text-[length:var(--text-label)] text-muted-foreground">
@@ -181,61 +171,12 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">
-              Transitions
-            </p>
-            <div className="flex items-center gap-2">
-              {selectedTransition ? (
-                <EasingPicker value={typeof selectedTransition.easing === 'string' ? selectedTransition.easing : 'linear'} onSelect={() => {
-                  // Transitions are runtime-resolved; easing is not directly editable
-                }} />
-              ) : null}
-              <Button size="sm" variant="outline" onClick={onOpenTransitionEditor}>
-                Create Transition
-              </Button>
-            </div>
-          </div>
+        {/* Draw Order — visible when a draw effect is the active preview */}
+        {previewLabel === 'draw' && variant?.layers ? (
+          <DrawOrderEditor iconId={iconId} layers={variant.layers} />
+        ) : null}
 
-          {transitions.length > 0 ? (
-            <Select value={selectedTransition?.id ?? '__none__'} onValueChange={(v) => setSelectedTransitionId(v === '__none__' ? null : v)}>
-              <SelectTrigger className="h-9 w-full rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {transitions.map((transition) => (
-                  <SelectItem key={transition.id ?? 'unknown'} value={transition.id ?? 'unknown'}>{transition.id ?? 'transition'}: {transition.strategy}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-              <p className="text-xs font-medium text-foreground">No transitions available for timeline editing.</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Create states for this icon first, then add a transition between them in the inspector.
-              </p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={onOpenTransitionEditor}>
-                Open transition editor
-              </Button>
-            </div>
-          )}
-
-          {showTimelineEditor && iconId && variant && selectedTransition ? (
-            <TimelineEditor iconId={iconId} transition={selectedTransition} variant={variant} />
-          ) : null}
-          {!showTimelineEditor && selectedTransition ? (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-              <p className="text-xs font-medium text-foreground">Timeline is docked below.</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Keep working here for transition setup and use the bottom timeline panel for
-                scrubbing and keyframes.
-              </p>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="space-y-2">
+        <div className="space-y-2 border-t border-border/30 pt-3">
           <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">Saved Effects</p>
           {savedEffects.length === 0 ? (
             <p className="text-xs text-muted-foreground">No saved effects yet.</p>
@@ -319,8 +260,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
 function previewCanvasEffect(effect: Effect, speed: number): () => void {
   // Find the editor canvas SVG specifically, not any other SVG on the page.
-  // querySelector with comma returns first match in DOM order, so we must
-  // try the specific selector first and only fall back if not found.
+  // Try the editor canvas SVG first, then fall back to any SVG.
   const svg = document.querySelector<SVGSVGElement>('svg[data-editor-canvas]')
     ?? document.querySelector<SVGSVGElement>('svg');
   if (!svg) return () => {};
@@ -332,40 +272,77 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
   let rafId: number | null = null;
   let cancelled = false;
 
+  // Compute icon center from viewBox (x, y, width, height) for whole-icon transforms
+  const vb = svg.getAttribute('viewBox')?.split(/\s+/).map(Number) ?? [0, 0, 24, 24];
+  const centerX = vb[0]! + vb[2]! / 2; // x + width/2
+  const centerY = vb[1]! + vb[3]! / 2; // y + height/2
+
+  // Effects that transform the whole icon as a group (scale/rotate around icon center)
+  const isGroupTransform = ['bounce', 'pulse', 'breathe', 'wiggle', 'rotate', 'scale'].includes(effect.kind);
+
+  // Save the original SVG transform (canvas pan/zoom) so we can compose with it
+  const originalSvgTransform = svg.style.transform || '';
+  const originalSvgTransformOrigin = svg.style.transformOrigin || '';
+
   // Cache path lengths for draw/trim animations
   const pathLengths = new Map<SVGPathElement, number>();
-  for (const path of paths) {
-    try {
-      pathLengths.set(path, Math.max(path.getTotalLength?.() ?? 1, 1));
-    } catch {
-      pathLengths.set(path, 1);
+  if (!isGroupTransform) {
+    for (const path of paths) {
+      try {
+        pathLengths.set(path, Math.max(path.getTotalLength?.() ?? 1, 1));
+      } catch {
+        pathLengths.set(path, 1);
+      }
     }
   }
+
+  // Group paths by draw order for sequential draw effects
+  const drawOrderGroups = new Map<number, SVGPathElement[]>();
+  for (const path of paths) {
+    const order = Number(path.getAttribute('data-draw-order') ?? '1');
+    const group = drawOrderGroups.get(order) ?? [];
+    group.push(path);
+    drawOrderGroups.set(order, group);
+  }
+  const sortedOrders = [...drawOrderGroups.keys()].sort((a, b) => a - b);
+  const orderCount = sortedOrders.length;
 
   const applyFrame = (p: number) => {
     const wave = Math.sin(p * Math.PI * 2);
     const easedSin = Math.sin(p * Math.PI);
 
+    // Group transforms: compose with the existing canvas pan/zoom transform
+    if (isGroupTransform) {
+      let effectTransform = '';
+      switch (effect.kind) {
+        case 'wiggle':
+          effectTransform = `rotate(${wave * 8}deg)`;
+          break;
+        case 'bounce':
+          effectTransform = `scale(${1 + easedSin * 0.18})`;
+          break;
+        case 'pulse':
+        case 'breathe':
+          effectTransform = `scale(${1 + wave * 0.08})`;
+          break;
+        case 'scale':
+          effectTransform = `scale(${1 + wave * 0.1})`;
+          break;
+        case 'rotate':
+          effectTransform = `rotate(${p * 360}deg)`;
+          break;
+      }
+      // Compose: apply original pan/zoom THEN the effect transform
+      svg.style.transform = `${originalSvgTransform} ${effectTransform}`.trim();
+      svg.style.transformOrigin = `${centerX}px ${centerY}px`;
+      return;
+    }
+
+    // Per-path effects: stroke, opacity, draw
     for (const path of paths) {
       const length = pathLengths.get(path) ?? 1;
 
       switch (effect.kind) {
-        case 'wiggle':
-          path.style.transform = `rotate(${wave * 8}deg)`;
-          break;
-        case 'bounce':
-          path.style.transform = `scale(${1 + easedSin * 0.18})`;
-          break;
-        case 'pulse':
-        case 'breathe':
-          path.style.transform = `scale(${1 + wave * 0.08})`;
-          break;
-        case 'scale':
-          path.style.transform = `scale(${1 + wave * 0.1})`;
-          break;
-        case 'rotate':
-          path.style.transform = `rotate(${p * 360}deg)`;
-          break;
         case 'lineDrawOn':
           path.style.strokeDasharray = String(length);
           path.style.strokeDashoffset = String(length * (1 - p));
@@ -375,7 +352,15 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
           path.style.strokeDashoffset = String(length * p);
           break;
         case 'draw': {
-          // Trim-based draw animation (reveal/erase/slide modes)
+          // Trim-based draw animation with per-layer ordering
+          const drawOrder = Number(path.getAttribute('data-draw-order') ?? '1');
+          const orderIndex = sortedOrders.indexOf(drawOrder);
+          const groupStart = orderCount > 1 ? orderIndex / orderCount : 0;
+          const groupEnd = orderCount > 1 ? (orderIndex + 1) / orderCount : 1;
+          const localP = orderCount > 1
+            ? Math.max(0, Math.min(1, (p - groupStart) / (groupEnd - groupStart)))
+            : p;
+
           const mode = effect.drawConfig?.mode ?? 'reveal';
           const offset = effect.drawConfig?.initialOffset ?? 0;
           let trimStart = 0;
@@ -383,15 +368,15 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
           switch (mode) {
             case 'reveal':
               trimStart = 0;
-              trimEnd = p;
+              trimEnd = localP;
               break;
             case 'erase':
-              trimStart = p;
+              trimStart = localP;
               trimEnd = 1;
               break;
             case 'slide': {
               const ws = effect.drawConfig?.windowSize ?? 0.2;
-              trimStart = p * (1 - ws);
+              trimStart = localP * (1 - ws);
               trimEnd = trimStart + ws;
               break;
             }
@@ -405,10 +390,14 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
         case 'appear':
           path.style.opacity = String(p);
           path.style.transform = `scale(${0.92 + 0.08 * p})`;
+          path.style.transformBox = 'fill-box';
+          path.style.transformOrigin = 'center';
           break;
         case 'disappear':
           path.style.opacity = String(1 - p);
           path.style.transform = `scale(${1 - 0.08 * p})`;
+          path.style.transformBox = 'fill-box';
+          path.style.transformOrigin = 'center';
           break;
         case 'variableColor':
           path.style.opacity = String(0.65 + 0.35 * (0.5 + 0.5 * wave));
@@ -416,8 +405,6 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
         default:
           break;
       }
-      path.style.transformBox = 'fill-box';
-      path.style.transformOrigin = 'center';
     }
   };
 
@@ -439,7 +426,10 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
     }
-    // Reset styles when preview is cleaned up
+    // Restore original SVG transform (canvas pan/zoom)
+    svg.style.transform = originalSvgTransform;
+    svg.style.transformOrigin = originalSvgTransformOrigin;
+    // Reset per-path styles
     for (const path of paths) {
       path.style.removeProperty('transform');
       path.style.removeProperty('transform-box');
@@ -449,4 +439,76 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
       path.style.removeProperty('stroke-dashoffset');
     }
   };
+}
+
+// ---------------------------------------------------------------------------
+// DrawOrderEditor — per-layer draw order controls
+// ---------------------------------------------------------------------------
+
+function DrawOrderEditor({
+  iconId,
+  layers,
+}: {
+  iconId: string | null;
+  layers: Record<string, Layer>;
+}) {
+  const { patchLayer } = useEditorActions();
+  const layerEntries = useMemo(
+    () =>
+      Object.values(layers)
+        .filter((l) => l.visible !== false && l.path?.d)
+        .sort((a, b) => (a.drawOrder ?? 1) - (b.drawOrder ?? 1)),
+    [layers],
+  );
+
+  const setOrder = useCallback(
+    (layerId: string, order: number) => {
+      if (!iconId) return;
+      patchLayer(iconId, layerId, { drawOrder: Math.max(1, order) });
+    },
+    [iconId, patchLayer],
+  );
+
+  if (layerEntries.length < 2) return null;
+
+  return (
+    <div className="space-y-1.5 border-t border-border/30 pt-3">
+      <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">
+        Draw Order
+      </p>
+      <div className="space-y-1">
+        {layerEntries.map((layer) => {
+          const order = layer.drawOrder ?? 1;
+          return (
+            <div key={layer.id} className="flex items-center gap-2">
+              <span className="flex-1 truncate text-xs text-foreground">{layer.id}</span>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="flex h-5 w-5 items-center justify-center rounded text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onClick={() => setOrder(layer.id, order - 1)}
+                  disabled={order <= 1}
+                  aria-label={`Decrease draw order for ${layer.id}`}
+                >
+                  ▲
+                </button>
+                <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-[10px] font-semibold tabular-nums">
+                  {order}
+                </span>
+                <button
+                  type="button"
+                  className="flex h-5 w-5 items-center justify-center rounded text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onClick={() => setOrder(layer.id, order + 1)}
+                  aria-label={`Increase draw order for ${layer.id}`}
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[9px] text-muted-foreground/70">Same number = simultaneous. Different = sequential.</p>
+    </div>
+  );
 }

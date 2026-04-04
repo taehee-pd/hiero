@@ -73,6 +73,9 @@ export function renderSvg(input: RenderSvgInput, target: SVGSVGElement): void {
       target.appendChild(pathEl);
     }
 
+    // Draw order for animation sequencing
+    pathEl.setAttribute('data-draw-order', String(layer.drawOrder ?? 1));
+
     // Path data
     pathEl.setAttribute('d', layer.path.d);
     if (layer.path.fillRule) {

@@ -147,43 +147,39 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-3 p-[var(--panel-padding)]">
+      <div className="space-y-2.5 p-[var(--panel-padding)]">
         <div>
-          <p className="text-[length:var(--text-heading)] font-semibold">Animate</p>
+          <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
           <p className="text-[length:var(--text-label)] text-muted-foreground">
-            Preview effects, tune transitions, and manage motion behavior.
+            Click a preset to preview. {previewLabel ? <span className="font-medium text-foreground">{formatEffectKind(previewLabel)}</span> : null}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {PRESET_CARDS.map((preset) => {
             const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
             const disabled = isDrawPreset && !hasDrawEligibleLayers;
             return (
-              <button key={preset.key} type="button" className={`rounded-xl border border-border/70 bg-background p-3 text-left transition-all duration-150 ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-accent hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : undefined}>
-                <p className="text-[length:var(--text-body)] font-medium">{preset.label}</p>
-                <p className="text-[length:var(--text-label)] text-muted-foreground">{preset.description}</p>
+              <button key={preset.key} type="button" className={`rounded-md border border-border/60 bg-background px-2 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
+                <p className="text-[10px] font-medium leading-tight">{preset.label}</p>
               </button>
             );
           })}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Animation playback controls">
-          <Button size="sm" variant="secondary" onClick={togglePlay} aria-label="Play animation">Play</Button>
-          <Button size="sm" variant="outline" onClick={handlePause} aria-label="Pause animation">Pause</Button>
-          <Button size="sm" variant={loop ? 'default' : 'outline'} onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
-          <Button size="sm" variant="outline" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save Effect</Button>
+        <div className="flex items-center gap-1.5" role="toolbar" aria-label="Animation controls">
+          <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={togglePlay} aria-label="Play animation">Play</Button>
+          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handlePause} aria-label="Pause animation">Pause</Button>
+          <Button size="sm" variant={loop ? 'default' : 'outline'} className="h-7 px-2.5 text-xs" onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
+          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
+          <div className="ml-auto flex items-center gap-1" role="toolbar" aria-label="Playback speed">
+            {SPEEDS.map((value) => (
+              <button key={value} type="button" className={`h-6 rounded px-1.5 text-[10px] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
+                {value}x
+              </button>
+            ))}
+          </div>
         </div>
-
-        <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Playback speed">
-          {SPEEDS.map((value) => (
-            <Button key={value} size="sm" variant={speed === value ? 'default' : 'outline'} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
-              {value}x
-            </Button>
-          ))}
-        </div>
-
-        {previewLabel ? <p className="text-[length:var(--text-label)] text-muted-foreground">Preview: {formatEffectKind(previewLabel)}</p> : null}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -322,48 +318,132 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 });
 
 function previewCanvasEffect(effect: Effect, speed: number): () => void {
-  const svg = document.querySelector<SVGSVGElement>('svg');
+  // Find the editor canvas SVG (not any other SVG on the page)
+  const svg = document.querySelector<SVGSVGElement>('svg[data-editor-canvas], svg');
   if (!svg) return () => {};
   const paths = Array.from(svg.querySelectorAll<SVGPathElement>('path[data-layer-id]'));
+  if (paths.length === 0) return () => {};
+
   const duration = Math.max(1, effect.durationMs / speed);
   const start = performance.now();
   let rafId: number | null = null;
   let cancelled = false;
 
-  const apply = (t: number) => {
-    if (cancelled) return;
-    const p = Math.min((t - start) / duration, 1);
+  // Cache path lengths for draw/trim animations
+  const pathLengths = new Map<SVGPathElement, number>();
+  for (const path of paths) {
+    try {
+      pathLengths.set(path, Math.max(path.getTotalLength?.() ?? 1, 1));
+    } catch {
+      pathLengths.set(path, 1);
+    }
+  }
+
+  const applyFrame = (p: number) => {
+    const wave = Math.sin(p * Math.PI * 2);
+    const easedSin = Math.sin(p * Math.PI);
+
     for (const path of paths) {
-      const wave = Math.sin(p * Math.PI * 2);
-      if (effect.kind === 'wiggle') path.style.transform = `rotate(${wave * 8}deg)`;
-      else if (effect.kind === 'bounce' || effect.kind === 'pulse' || effect.kind === 'breathe') path.style.transform = `scale(${1 + wave * 0.08})`;
-      else if (effect.kind === 'rotate') path.style.transform = `rotate(${p * 360}deg)`;
-      else if (effect.kind === 'lineDrawOn') {
-        const length = Math.max(path.getTotalLength?.() ?? 1, 1);
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length * (1 - p));
-      } else if (effect.kind === 'lineDrawOff') {
-        const length = Math.max(path.getTotalLength?.() ?? 1, 1);
-        path.style.strokeDasharray = String(length);
-        path.style.strokeDashoffset = String(length * p);
-      } else if (effect.kind === 'appear') path.style.opacity = String(p);
-      else if (effect.kind === 'disappear') path.style.opacity = String(1 - p);
-      else if (effect.kind === 'variableColor') path.style.opacity = String(0.65 + 0.35 * (0.5 + 0.5 * wave));
+      const length = pathLengths.get(path) ?? 1;
+
+      switch (effect.kind) {
+        case 'wiggle':
+          path.style.transform = `rotate(${wave * 8}deg)`;
+          break;
+        case 'bounce':
+          path.style.transform = `scale(${1 + easedSin * 0.18})`;
+          break;
+        case 'pulse':
+        case 'breathe':
+          path.style.transform = `scale(${1 + wave * 0.08})`;
+          break;
+        case 'scale':
+          path.style.transform = `scale(${1 + wave * 0.1})`;
+          break;
+        case 'rotate':
+          path.style.transform = `rotate(${p * 360}deg)`;
+          break;
+        case 'lineDrawOn':
+          path.style.strokeDasharray = String(length);
+          path.style.strokeDashoffset = String(length * (1 - p));
+          break;
+        case 'lineDrawOff':
+          path.style.strokeDasharray = String(length);
+          path.style.strokeDashoffset = String(length * p);
+          break;
+        case 'draw': {
+          // Trim-based draw animation (reveal/erase/slide modes)
+          const mode = effect.drawConfig?.mode ?? 'reveal';
+          const offset = effect.drawConfig?.initialOffset ?? 0;
+          let trimStart = 0;
+          let trimEnd = 0;
+          switch (mode) {
+            case 'reveal':
+              trimStart = 0;
+              trimEnd = p;
+              break;
+            case 'erase':
+              trimStart = p;
+              trimEnd = 1;
+              break;
+            case 'slide': {
+              const ws = effect.drawConfig?.windowSize ?? 0.2;
+              trimStart = p * (1 - ws);
+              trimEnd = trimStart + ws;
+              break;
+            }
+          }
+          const visibleLength = (trimEnd >= trimStart ? trimEnd - trimStart : 1 - trimStart + trimEnd) * length;
+          const dashOffset = -(trimStart + offset) * length;
+          path.style.strokeDasharray = `${visibleLength} ${length}`;
+          path.style.strokeDashoffset = String(dashOffset);
+          break;
+        }
+        case 'appear':
+          path.style.opacity = String(p);
+          path.style.transform = `scale(${0.92 + 0.08 * p})`;
+          break;
+        case 'disappear':
+          path.style.opacity = String(1 - p);
+          path.style.transform = `scale(${1 - 0.08 * p})`;
+          break;
+        case 'variableColor':
+          path.style.opacity = String(0.65 + 0.35 * (0.5 + 0.5 * wave));
+          break;
+        default:
+          break;
+      }
       path.style.transformBox = 'fill-box';
       path.style.transformOrigin = 'center';
     }
-
-    if (p < 1) {
-      rafId = requestAnimationFrame(apply);
-    }
   };
 
-  rafId = requestAnimationFrame(apply);
+  const tick = (t: number) => {
+    if (cancelled) return;
+    const p = Math.min((t - start) / duration, 1);
+    applyFrame(p);
+
+    if (p < 1) {
+      rafId = requestAnimationFrame(tick);
+    }
+    // When p >= 1, the final frame stays rendered (hold at end)
+  };
+
+  rafId = requestAnimationFrame(tick);
 
   return () => {
     cancelled = true;
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
+    }
+    // Reset styles when preview is cleaned up
+    for (const path of paths) {
+      path.style.removeProperty('transform');
+      path.style.removeProperty('transform-box');
+      path.style.removeProperty('transform-origin');
+      path.style.removeProperty('opacity');
+      path.style.removeProperty('stroke-dasharray');
+      path.style.removeProperty('stroke-dashoffset');
     }
   };
 }

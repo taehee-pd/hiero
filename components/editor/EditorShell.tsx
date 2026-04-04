@@ -1439,7 +1439,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     )}>
       {!embedded && <Toolbar />}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
+      <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/* Mobile/tablet sidebar toggle */}
         <button
           type="button"
@@ -1459,45 +1459,45 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           />
         )}
 
-        {/* Mobile sidebar: icon selector (ListPane). Desktop: layer panel (LeftSidebar). */}
+        {/* Hamburger drawer: project/icon selector (ListPane) — mobile/tablet only */}
         <div
-          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:relative lg:inset-auto lg:z-auto lg:w-auto lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:hidden ${
             leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Mobile: project/icon selector */}
-          <div className="h-full w-full overflow-y-auto bg-background lg:hidden">
+          <div className="h-full w-full overflow-y-auto bg-background">
             <ListPane onIconOpen={() => setLeftSidebarOpen(false)} />
           </div>
-          {/* Desktop: layer panel */}
-          <div className="hidden h-full w-full lg:block">
-            <LeftSidebar
-              leftTab={leftTab}
-              onLeftTabChange={setLeftTab}
-              workspaceName={projectName}
-              currentIcon={currentIcon}
-              currentVariant={currentVariant}
-              layerRows={layerRows}
-              selectedLayerId={selectedLayerId}
-              onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
-              onToggleLayerVisibility={(layerId, visible) => {
-                if (!currentIcon) return;
-                patchLayer(currentIcon.id, layerId, { visible });
-              }}
-              variants={variants}
-              currentVariantId={currentVariantId}
-              onSelectVariant={setCurrentVariant}
-              newVariantSize={newVariantSize}
-              onNewVariantSizeChange={setNewVariantSize}
-              onCreateVariant={handleCreateVariant}
-              currentStateId={currentStateId}
-              onSelectState={setCurrentState}
-              onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
-              onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
-              onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
-              onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
-            />
-          </div>
+        </div>
+
+        {/* Layer panel — always visible at all breakpoints */}
+        <div>
+          <LeftSidebar
+            leftTab={leftTab}
+            onLeftTabChange={setLeftTab}
+            workspaceName={projectName}
+            currentIcon={currentIcon}
+            currentVariant={currentVariant}
+            layerRows={layerRows}
+            selectedLayerId={selectedLayerId}
+            onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
+            onToggleLayerVisibility={(layerId, visible) => {
+              if (!currentIcon) return;
+              patchLayer(currentIcon.id, layerId, { visible });
+            }}
+            variants={variants}
+            currentVariantId={currentVariantId}
+            onSelectVariant={setCurrentVariant}
+            newVariantSize={newVariantSize}
+            onNewVariantSizeChange={setNewVariantSize}
+            onCreateVariant={handleCreateVariant}
+            currentStateId={currentStateId}
+            onSelectState={setCurrentState}
+            onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
+            onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
+            onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
+            onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
+          />
         </div>
 
         <main className="wire-canvas-shell">

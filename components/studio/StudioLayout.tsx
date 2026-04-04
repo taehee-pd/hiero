@@ -94,7 +94,11 @@ export function StudioLayout() {
       <Navbar />
       <div className="flex min-h-0 flex-1">
         <NavPane />
-        {activeIconSetId && <ListPane />}
+        {activeIconSetId && (
+          <div className="hidden lg:flex">
+            <ListPane />
+          </div>
+        )}
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           {currentIconId ? (
             <EditorShell initialIconId={currentIconId} embedded />

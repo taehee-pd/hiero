@@ -171,6 +171,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={togglePlay} aria-label="Play animation">Play</Button>
           <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handlePause} aria-label="Pause animation">Pause</Button>
           <Button size="sm" variant={loop ? 'default' : 'outline'} className="h-7 px-2.5 text-xs" onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
+          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
           <div className="ml-auto flex items-center gap-1" role="toolbar" aria-label="Playback speed">
             {SPEEDS.map((value) => (
               <button key={value} type="button" className={`h-6 rounded px-1.5 text-[10px] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>

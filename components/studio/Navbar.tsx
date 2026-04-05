@@ -89,6 +89,8 @@ export function Navbar() {
   const [exporting, setExporting] = useState(false);
   const toolbarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const project = useEditorStore((s) => s.project);
   const commandIcons = useMemo(
@@ -295,21 +297,23 @@ export function Navbar() {
             <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>
           </Tooltip>
 
-          {/* Theme toggle */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7 rounded-lg"
-                aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              >
-                {resolvedTheme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
-          </Tooltip>
+          {/* Theme toggle — defer until mounted to avoid hydration mismatch */}
+          {mounted && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-7 w-7 rounded-lg"
+                  aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                >
+                  {resolvedTheme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Help */}
           <Tooltip>

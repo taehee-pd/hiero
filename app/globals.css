@@ -1487,7 +1487,7 @@
   }
 
   .wire-tab-button[data-active='true'] {
-    background: color-mix(in srgb, var(--accent) 92%, transparent);
+    background: var(--background-secondary);
     color: var(--foreground);
     font-weight: 550;
   }
@@ -1929,10 +1929,21 @@
     box-shadow: none;
   }
 
+  .dark .wireframe-editor .workspace-stage {
+    border-color: rgba(255, 255, 255, 0.06);
+    background: var(--greyscale-700);
+  }
+
   .wireframe-editor .workspace-empty-state {
     border: 1px dashed rgba(0, 0, 0, 0.08);
     background: rgba(255, 255, 255, 0.9);
     color: rgba(0, 0, 0, 0.5);
+  }
+
+  .dark .wireframe-editor .workspace-empty-state {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .wireframe-editor .workspace-canvas-shell [data-slot='scroll-area-scrollbar'],

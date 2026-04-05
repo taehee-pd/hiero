@@ -77,6 +77,7 @@ function layerFromSource(sl: SourceLayer): Layer {
     ...(sl.role ? { role: sl.role } : {}),
     ...(sl.visible === false ? { visible: false } : {}),
     ...(sl.clipPathLayerId ? { clipPathLayerId: sl.clipPathLayerId } : {}),
+    ...(sl.drawOrder !== undefined ? { drawOrder: sl.drawOrder } : {}),
     ...(sl.path ? { path: sl.path } : {}),
     style: sl.style,
     ...(sl.transform ? { transform: sl.transform } : {}),

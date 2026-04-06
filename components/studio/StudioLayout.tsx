@@ -103,9 +103,9 @@ export function StudioLayout() {
           {currentIconId ? (
             <EditorShell initialIconId={currentIconId} embedded />
           ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <p className="text-sm font-medium text-muted-foreground">
+            <div className="studio-dots flex flex-1 items-center justify-center">
+              <div className="rounded-2xl border border-border/70 bg-background/80 px-8 py-6 text-center backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-outline)' }}>
+                <p className="text-sm text-muted-foreground" style={{ fontWeight: 'var(--type-weight-medium)', letterSpacing: '-0.01em' }}>
                   {activeIconSetId ? 'Select an icon to start editing' : 'Select a project to get started'}
                 </p>
               </div>

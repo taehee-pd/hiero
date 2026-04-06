@@ -91,12 +91,13 @@ export function NavPane() {
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
           navExpanded ? 'w-[200px]' : 'w-14',
         )}
+        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Projects"
       >
         {/* Header */}
         <div className="flex h-10 items-center justify-between border-b border-border/40 px-2">
-          {navExpanded && <span className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Projects</span>}
+          {navExpanded && <span className="studio-kicker truncate px-1">Projects</span>}
           <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
             {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
@@ -110,11 +111,12 @@ export function NavPane() {
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      'group/item flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition',
+                      'group/item flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-all duration-[160ms]',
                       activeIconSetId === iconSet.id
-                        ? 'bg-primary/10 font-medium text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                        ? 'bg-primary-soft text-primary shadow-[inset_0_0_0_0.5px_var(--primary)]'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
+                    style={activeIconSetId === iconSet.id ? { fontWeight: 'var(--type-weight-medium)' } : undefined}
                   >
                     <button
                       type="button"
@@ -199,7 +201,7 @@ export function NavPane() {
                   <button
                     type="button"
                     onClick={() => setInlineNew(true)}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs text-muted-foreground transition-all duration-[160ms] hover:border-border hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]"
                   >
                     <Plus className="size-3.5 shrink-0" />
                     {navExpanded && <span>New Project</span>}

@@ -100,7 +100,7 @@ describe('6.1 — SyncTarget schema', () => {
       platform: 'react',
       deliveryMode: 'local-directory',
       localDirectory: { path: '/Users/dev/project/src/icons' },
-      adapterConfig: { runtimePackage: '@coniva/runtime-react', outputDir: 'src' },
+      adapterConfig: { runtimePackage: '@contour/runtime-react', outputDir: 'src' },
     };
     expect(target.deliveryMode).toBe('local-directory');
     expect(target.localDirectory?.path).toBe('/Users/dev/project/src/icons');
@@ -275,11 +275,11 @@ describe('6.4 — Adapter PR sync types', () => {
       icons: [{ icon, meta: makeMeta(icon), variants: [makeMockVariant()] }],
       actor: { name: 'User' },
       adapterConfig: {
-        runtimePackage: '@my-scope/coniva-runtime',
+        runtimePackage: '@my-scope/contour-runtime',
         outputDir: 'lib/icons',
       },
     };
-    expect(request.adapterConfig?.runtimePackage).toBe('@my-scope/coniva-runtime');
+    expect(request.adapterConfig?.runtimePackage).toBe('@my-scope/contour-runtime');
   });
 });
 

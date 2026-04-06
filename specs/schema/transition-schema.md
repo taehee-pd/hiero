@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines the reviewed transition model for Coniva.
+This spec defines the reviewed transition model for Contour.
 
 The old schema mixed:
 

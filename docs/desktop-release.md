@@ -1,10 +1,10 @@
 # Desktop Release Workflow
 
-> **DEPRECATED (2026-04-04):** Coniva is now a web-only application. The desktop release workflow was removed in Phase R1. This document is retained for historical reference only.
+> **DEPRECATED (2026-04-04):** Contour is now a web-only application. The desktop release workflow was removed in Phase R1. This document is retained for historical reference only.
 
 ---
 
-Icon Authoring Tool desktop releases were built from the staged Next.js export plus the Electrobun wrapper.
+Contour desktop releases were built from the staged Next.js export plus the Electrobun wrapper.
 
 ## Release Steps
 
@@ -75,8 +75,8 @@ At runtime, the app uses Electrobun’s built-in updater API:
 
 Release notes for the in-app banner are read from the summary endpoint configured by:
 
-- `CONIVA_UPDATE_ENDPOINT`
+- `CONTOUR_UPDATE_ENDPOINT`
 
 If unset, the desktop config defaults to:
 
-- `https://updates.coniva.app/releases/latest.json`
+- `https://updates.contour.app/releases/latest.json`

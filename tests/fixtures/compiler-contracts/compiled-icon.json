@@ -1,5 +1,5 @@
 {
-  "$schema": "https://coniva.dev/schemas/compiled-icon/1.0.0",
+  "$schema": "https://contour.dev/schemas/compiled-icon/1.0.0",
   "id": "icon-chevron",
   "name": "Chevron Right",
   "componentName": "IcChevronRight",

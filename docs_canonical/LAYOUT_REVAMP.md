@@ -1,4 +1,4 @@
-# Coniva Layout Revamp — Sanity Studio-Style Single Screen
+# Contour Layout Revamp — Sanity Studio-Style Single Screen
 
 **Created:** 2026-04-03
 **Reference:** [Sanity Studio](https://github.com/sanity-io/sanity) structure tool pane pattern

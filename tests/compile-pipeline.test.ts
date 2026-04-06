@@ -22,7 +22,7 @@ describe('compile pipeline end-to-end', () => {
     const project = makeProject();
     const result = compileProject(project, {
       package: {
-        name: '@coniva/icons',
+        name: '@contour/icons',
         version: '2.0.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
@@ -44,7 +44,7 @@ describe('compile pipeline end-to-end', () => {
     const previousProject = makeProject();
     const previous = compileProject(previousProject, {
       package: {
-        name: '@coniva/icons',
+        name: '@contour/icons',
         version: '1.0.0',
         builtAt: '2026-03-09T00:00:00.000Z',
       },
@@ -58,7 +58,7 @@ describe('compile pipeline end-to-end', () => {
 
     const result = compileProject(nextProject, {
       package: {
-        name: '@coniva/icons',
+        name: '@contour/icons',
         version: '1.1.0',
         builtAt: '2026-03-10T00:00:00.000Z',
       },
@@ -71,7 +71,7 @@ describe('compile pipeline end-to-end', () => {
   });
 
   test('runCompileCommand writes output files to disk', async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), 'coniva-compile-'));
+    const tempRoot = await mkdtemp(path.join(tmpdir(), 'contour-compile-'));
     const outDir = path.join(tempRoot, 'out');
 
     try {
@@ -79,7 +79,7 @@ describe('compile pipeline end-to-end', () => {
       await runCompileCommand({
         projectPath,
         outDir,
-        packageName: '@coniva/icons',
+        packageName: '@contour/icons',
         packageVersion: '2.0.0',
         builtAt: '2026-03-10T00:00:00.000Z',
         generateReact: true,
@@ -98,7 +98,7 @@ describe('compile pipeline end-to-end', () => {
     expect(() =>
       compileProject({} as unknown as Project, {
         package: {
-          name: '@coniva/icons',
+          name: '@contour/icons',
           version: '1.0.0',
           builtAt: '2026-03-10T00:00:00.000Z',
         },

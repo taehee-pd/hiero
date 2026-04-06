@@ -1,12 +1,12 @@
 /**
- * `coniva dev` — start the Lane 1 live integration dev server.
+ * `contour dev` — start the Lane 1 live integration dev server.
  *
- * Loads coniva.config.ts, runs a full initial build, starts the file watcher,
+ * Loads contour.config.ts, runs a full initial build, starts the file watcher,
  * and opens the HTTP API on the configured port (default: 4400).
  *
  * Options:
  *   --port <n>        Port to listen on (default: 4400)
- *   --config <path>   Path to coniva.config.ts
+ *   --config <path>   Path to contour.config.ts
  *   --secret <token>  Shared secret for API auth
  */
 
@@ -22,7 +22,7 @@ export async function runDev(
   const configPath =
     typeof flags['config'] === 'string'
       ? path.resolve(cwd, flags['config'])
-      : path.join(cwd, 'coniva.config.ts');
+      : path.join(cwd, 'contour.config.ts');
 
   const rawPort = flags['port'];
   const port =
@@ -32,24 +32,24 @@ export async function runDev(
 
   // Config check
   if (!existsSync(configPath)) {
-    console.error(`[coniva] Config not found: ${path.relative(cwd, configPath)}`);
-    console.error(`         Run \`coniva init\` to scaffold coniva.config.ts`);
+    console.error(`[contour] Config not found: ${path.relative(cwd, configPath)}`);
+    console.error(`         Run \`contour init\` to scaffold contour.config.ts`);
     process.exit(1);
   }
 
   // Load config
-  let config: import('@/lib/install-config/types').ConivaConfig;
+  let config: import('@/lib/install-config/types').ContourConfig;
   try {
     const rawModule = (await import(configPath)) as { default?: unknown };
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[coniva] Config invalid:\n${result.error}`);
+      console.error(`[contour] Config invalid:\n${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
     console.error(
-      `[coniva] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
+      `[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
@@ -57,14 +57,14 @@ export async function runDev(
   // Start server
   const server = await startDevServer({
     repoRoot: cwd,
-    coniva: config,
+    contour: config,
     port,
     apiSecret,
   });
 
   // Graceful shutdown
   const shutdown = async () => {
-    console.log('\n[coniva] Shutting down...');
+    console.log('\n[contour] Shutting down...');
     await server.close();
     process.exit(0);
   };

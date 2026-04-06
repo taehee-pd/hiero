@@ -5,7 +5,7 @@
 
 ## Overview
 
-The Animation tab remains the main surface for previewing and understanding Coniva's animation model.
+The Animation tab remains the main surface for previewing and understanding Contour's animation model.
 
 The old design assumed state-to-state authoring inside one icon. The reviewed direction rejects that.
 

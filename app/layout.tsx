@@ -21,7 +21,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Coniva',
+  title: 'Contour',
   description: 'Icon design studio for stateful, animated SVG icons',
   icons: {
     icon: [

@@ -343,7 +343,7 @@ function AddTargetForm({
   const [repo, setRepo] = useState('');
   const [baseBranch, setBaseBranch] = useState('main');
   const [packagePath, setPackagePath] = useState('');
-  const [runtimePackage, setRuntimePackage] = useState('@coniva/runtime-react');
+  const [runtimePackage, setRuntimePackage] = useState('@contour/runtime-react');
   const [outputDir, setOutputDir] = useState('src');
   // npm-registry fields
   const [registryUrl, setRegistryUrl] = useState('https://registry.npmjs.org');
@@ -356,7 +356,7 @@ function AddTargetForm({
   const [swiftUIMode, setSwiftUIMode] = useState<'swiftui' | 'uikit'>('swiftui');
   const [flutterSdkMin, setFlutterSdkMin] = useState('3.0.0');
   const [dartPackageName, setDartPackageName] = useState('');
-  const [customElementPrefix, setCustomElementPrefix] = useState('coniva');
+  const [customElementPrefix, setCustomElementPrefix] = useState('contour');
   const [shadowDom, setShadowDom] = useState(true);
 
   const isValid =
@@ -390,7 +390,7 @@ function AddTargetForm({
       target.adapterConfig!.dartPackageName = dartPackageName || undefined;
     }
     if (platform === 'web-component') {
-      target.adapterConfig!.customElementPrefix = customElementPrefix || 'coniva';
+      target.adapterConfig!.customElementPrefix = customElementPrefix || 'contour';
       target.adapterConfig!.shadowDom = shadowDom;
     }
 
@@ -631,7 +631,7 @@ function AddTargetForm({
             <div className="grid gap-1.5">
               <Label className="text-xs">Element Prefix</Label>
               <Input
-                placeholder="coniva"
+                placeholder="contour"
                 value={customElementPrefix}
                 onChange={(e) => setCustomElementPrefix(e.target.value)}
               />

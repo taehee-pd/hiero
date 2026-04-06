@@ -1,8 +1,8 @@
-# Coniva — Next Phases Plan
+# Contour — Next Phases Plan
 
 **Created:** 2026-04-02
 **Updated:** 2026-04-04
-**Context:** Platform pivot — Coniva targets server-side embedding (Storybook, Sanity, custom toolchains) rather than standalone desktop distribution.
+**Context:** Platform pivot — Contour targets server-side embedding (Storybook, Sanity, custom toolchains) rather than standalone desktop distribution.
 
 ---
 
@@ -12,7 +12,7 @@ The following phases from the original plan have been implemented:
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| **R1** — Desktop/Electrobun Removal | **SHIPPED** | Desktop shell removed; Coniva is now a pure Next.js web application. `desktop/` retains build artifacts only. |
+| **R1** — Desktop/Electrobun Removal | **SHIPPED** | Desktop shell removed; Contour is now a pure Next.js web application. `desktop/` retains build artifacts only. |
 | **R2** — Web Persistence (IndexedDB) | **SHIPPED** | `lib/persistence/` uses IndexedDB as sole storage path. `AutoSaveProvider` mounted in layout. Workspace restoration works in both StudioLayout and ExplorerShell. |
 | **R3** — State Management UI | **SHIPPED** | `EditorShell.tsx` wires add/remove/rename/duplicate state actions. `tests/state-crud.test.ts` verifies CRUD operations. |
 | **R4** — Replace `prompt()` Dialogs | **SHIPPED** | No remaining `prompt()`/`confirm()` calls in app code. Explorer uses `Dialog`/`AlertDialog`. |
@@ -22,8 +22,8 @@ The following phases from the original plan have been implemented:
 
 | Feature | Summary |
 |---------|---------|
-| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@coniva/cli` (`packages/coniva-cli/`), PublishPanel, ReleasePanel |
-| Figma Plugin Import | `figma-plugin/export-to-coniva/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
+| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@contour/cli` (`packages/contour-cli/`), PublishPanel, ReleasePanel |
+| Figma Plugin Import | `figma-plugin/export-to-contour/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
 | Studio Layout Revamp | Sanity Studio-style single screen: `NavPane`, `ListPane`, embedded editor in `StudioLayout.tsx` |
 | Stagger Ordering Fix | Transition resolver stagger ordering ranks corrected |
 | Post-Review Bug Fixes | 13 bugs fixed from Codex adversarial review (rename key conflicts, duplicate command palette, layout issues) |
@@ -65,7 +65,7 @@ Add `Cmd+K` command palette or searchable dropdown for switching between icons w
 
 #### Remaining work
 
-1. **Storybook addon compatibility** — verify `ConivaIcon` React component works in Storybook without editor dependencies; ensure tree-shaking separates runtime from editor
+1. **Storybook addon compatibility** — verify `ContourIcon` React component works in Storybook without editor dependencies; ensure tree-shaking separates runtime from editor
 2. **Headless export API** — expose icon compilation as a programmatic API (`lib/export/`) that can run in Node.js without browser APIs
 3. **CSP compatibility** — audit for `eval()`, inline styles via `style=` attribute, and other CSP-violating patterns; replace with Tailwind/CSS classes
 4. **iframe embedding** — verify editor works in iframe with appropriate `postMessage` communication for host integration

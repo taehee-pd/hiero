@@ -9,7 +9,7 @@ Date: 2026-03-29
 
 ## Verification Scope
 
-This verification checks whether the reviewed installable Coniva plan is consistent with the repository's canonical architecture, the new repo-native product boundary, the rewritten spec-kit documents, and the current code surfaces that will need implementation work.
+This verification checks whether the reviewed installable Contour plan is consistent with the repository's canonical architecture, the new repo-native product boundary, the rewritten spec-kit documents, and the current code surfaces that will need implementation work.
 
 ## What is already aligned
 
@@ -17,9 +17,9 @@ This verification checks whether the reviewed installable Coniva plan is consist
 
 Verified against:
 
-- [docs_canonical/ARCHITECTURE.md](/Users/taehee/IconStudio/docs_canonical/ARCHITECTURE.md)
-- [scripts/compile-from-source.ts](/Users/taehee/IconStudio/scripts/compile-from-source.ts)
-- [scripts/validate-source-export.ts](/Users/taehee/IconStudio/scripts/validate-source-export.ts)
+- [docs_canonical/ARCHITECTURE.md](/Users/taehee/Contour/docs_canonical/ARCHITECTURE.md)
+- [scripts/compile-from-source.ts](/Users/taehee/Contour/scripts/compile-from-source.ts)
+- [scripts/validate-source-export.ts](/Users/taehee/Contour/scripts/validate-source-export.ts)
 
 Why it matters:
 
@@ -31,9 +31,9 @@ Why it matters:
 
 Verified against:
 
-- [lib/export/export-runtime-json.ts](/Users/taehee/IconStudio/lib/export/export-runtime-json.ts)
-- [lib/export/adapters/react-adapter.ts](/Users/taehee/IconStudio/lib/export/adapters/react-adapter.ts)
-- [lib/export/export-react/generate-component.ts](/Users/taehee/IconStudio/lib/export/export-react/generate-component.ts)
+- [lib/export/export-runtime-json.ts](/Users/taehee/Contour/lib/export/export-runtime-json.ts)
+- [lib/export/adapters/react-adapter.ts](/Users/taehee/Contour/lib/export/adapters/react-adapter.ts)
+- [lib/export/export-react/generate-component.ts](/Users/taehee/Contour/lib/export/export-react/generate-component.ts)
 
 Why it matters:
 
@@ -44,8 +44,8 @@ Why it matters:
 
 Verified against:
 
-- [lib/export/adapters/storybook-generator.ts](/Users/taehee/IconStudio/lib/export/adapters/storybook-generator.ts)
-- [tests/storybook-generator.test.ts](/Users/taehee/IconStudio/tests/storybook-generator.test.ts)
+- [lib/export/adapters/storybook-generator.ts](/Users/taehee/Contour/lib/export/adapters/storybook-generator.ts)
+- [tests/storybook-generator.test.ts](/Users/taehee/Contour/tests/storybook-generator.test.ts)
 
 Why it matters:
 
@@ -62,12 +62,12 @@ Issue:
 
 Fix:
 
-- The reviewed direction centers repo-root `coniva.config.ts` and removes `project.syncTargets` rather than migrating it.
+- The reviewed direction centers repo-root `contour.config.ts` and removes `project.syncTargets` rather than migrating it.
 
 Verified in:
 
-- [2026-03-29-installable-codebase-platform-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-29-installable-codebase-platform-design.md)
-- [2026-03-29-installable-codebase-platform-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-29-installable-codebase-platform-implementation-plan.md)
+- [2026-03-29-installable-codebase-platform-design.md](/Users/taehee/Contour/docs/plans/2026-03-29-installable-codebase-platform-design.md)
+- [2026-03-29-installable-codebase-platform-implementation-plan.md](/Users/taehee/Contour/docs/plans/2026-03-29-installable-codebase-platform-implementation-plan.md)
 
 ### 2. The product model needed a clean break from per-icon multi-state authoring
 
@@ -83,10 +83,10 @@ Fix:
 
 Verified against current surfaces:
 
-- [lib/schema/types.ts](/Users/taehee/IconStudio/lib/schema/types.ts#L16)
-- [lib/editor-store/store.ts](/Users/taehee/IconStudio/lib/editor-store/store.ts)
-- [lib/runtime-core/transition-resolver.ts](/Users/taehee/IconStudio/lib/runtime-core/transition-resolver.ts)
-- [lib/export/export-runtime-json.ts](/Users/taehee/IconStudio/lib/export/export-runtime-json.ts)
+- [lib/schema/types.ts](/Users/taehee/Contour/lib/schema/types.ts#L16)
+- [lib/editor-store/store.ts](/Users/taehee/Contour/lib/editor-store/store.ts)
+- [lib/runtime-core/transition-resolver.ts](/Users/taehee/Contour/lib/runtime-core/transition-resolver.ts)
+- [lib/export/export-runtime-json.ts](/Users/taehee/Contour/lib/export/export-runtime-json.ts)
 
 ### 3. Animation planning needed to move from authored states to runtime research
 
@@ -116,7 +116,7 @@ Status: revised
 
 Reason:
 
-- The v1 contract is Figma ingress, Coniva SSOT in repo, repo-root config, and direct React codebase publish.
+- The v1 contract is Figma ingress, Contour SSOT in repo, repo-root config, and direct React codebase publish.
 - Optional watch mode can come later, but should not define the first implementation.
 
 ### Decision: keep Storybook as a reference, not a target
@@ -144,7 +144,7 @@ These are not blockers for the design, but they should be resolved before implem
 
 - Which concrete transition families will v1 support first, and what are the acceptance fixtures for each family?
 - Which runtime heuristics determine `strictMorph` vs `bestGuessMorph` vs `lineAnimation` vs `replace`?
-- Which generated files are owned by Coniva in direct React publish mode, and how is stale-output cleanup enforced?
+- Which generated files are owned by Contour in direct React publish mode, and how is stale-output cleanup enforced?
 - Should optional watch mode trigger on explicit save or on every accepted canonical-source write?
 
 ## Recommendation
@@ -154,7 +154,7 @@ The plan is directionally sound and consistent with the current repo architectur
 The safest execution order is:
 
 1. rewrite schema, store, runtime, and export around atomic icons plus variants
-2. remove `project.syncTargets` and move install behavior to `coniva.config.ts`
+2. remove `project.syncTargets` and move install behavior to `contour.config.ts`
 3. research and codify runtime icon-to-icon transition strategies
 4. implement deterministic direct React codebase publish with changed-icon-only writes
 5. add optional watch mode only after the publish path is solid

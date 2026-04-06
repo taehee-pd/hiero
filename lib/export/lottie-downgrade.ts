@@ -204,7 +204,7 @@ function checkWeightInterpolation(
   variant: Variant,
   diagnostics: LottieDowngradeDiagnostic[],
 ): void {
-  // Weight interpolation (cubic control points) is a Coniva-specific feature
+  // Weight interpolation (cubic control points) is a Contour-specific feature
   // with no Lottie equivalent
   if ((variant as Record<string, unknown>).weightControlPoints) {
     diagnostics.push({

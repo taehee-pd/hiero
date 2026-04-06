@@ -5,7 +5,7 @@
 
 ## Overview
 
-The runtime JSON format is the export boundary between Coniva authoring data and runtime icon behavior in product code.
+The runtime JSON format is the export boundary between Contour authoring data and runtime icon behavior in product code.
 
 The old format assumed variants contained states and transitions. The reviewed direction changes that:
 

@@ -1,4 +1,4 @@
-// Coniva Schema Types — canonical data model for icon projects.
+// Contour Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
 // ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ export function getVariantState(v: Variant, stateId?: string | null): State {
     Object.keys(v.states).length > 0
   ) {
     console.warn(
-      `[coniva] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`,
+      `[contour] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`,
     );
   }
   return buildDefaultLegacyState(v);

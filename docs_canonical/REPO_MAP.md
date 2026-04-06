@@ -14,8 +14,8 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/`: Next.js App Router entrypoints, API routes, and global app setup.
 - `components/`: React UI, split into product surfaces (`editor/`, `explorer/`, `studio/`, `export/`, `persistence/`, `runtime/`) and shared UI (`ui/`, `kibo-ui/`).
 - `lib/`: domain logic and non-route code.
-- `packages/coniva-cli/`: `@coniva/cli` command-line tool for icon operations.
-- `figma-plugin/`: Figma plugin for exporting to Coniva.
+- `packages/contour-cli/`: `@contour/cli` command-line tool for icon operations.
+- `figma-plugin/`: Figma plugin for exporting to Contour.
 - `scripts/`: repository-level helper scripts, including icon compilation and validation.
 - `tests/`: Bun test suites (102+ files), snapshots, fixtures, and helpers.
 - `specs/`: technical specification documents (21 specs).
@@ -28,7 +28,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/editor/page.tsx`: editor entry (no icon selected).
 - `app/editor/[iconId]/page.tsx`: editor entry (specific icon).
 - `app/layout.tsx`: global app shell, theme setup, `AutoSaveProvider`.
-- `packages/coniva-cli/src/bin.ts`: CLI entry point.
+- `packages/contour-cli/src/bin.ts`: CLI entry point.
 - `scripts/compile-icons.ts`: CLI wrapper around the compile/export pipeline.
 - `scripts/compile-from-source.ts`: CI build path from canonical source exports.
 
@@ -82,6 +82,6 @@ Workspace support is implemented in the schema and editor store.
 ## Known Conflicts / Notes
 
 - Legacy operational docs were normalized to repository-relative links.
-- Product name is `Coniva`. Root package metadata uses `icon-authoring-tool`.
+- Product name is `Contour`. Root package metadata uses `contour`.
 - Legacy docs in `docs/plans/` contain historical design material. Use `docs/plans/STATUS.md` as the entrypoint, and treat canonical docs as repository truth.
 - The `desktop/` directory retains build artifacts but is no longer part of the active source architecture.

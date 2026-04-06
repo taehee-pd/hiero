@@ -41,7 +41,7 @@ function makeProject(): Project {
 
 const COMPILE_OPTIONS = {
   package: {
-    name: '@coniva/icons',
+    name: '@contour/icons',
     version: '1.0.0',
     builtAt: '2026-01-01T00:00:00.000Z',
   },

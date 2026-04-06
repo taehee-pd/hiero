@@ -1,8 +1,8 @@
 # Swift Integration Guide
 
-Integrate Coniva icons into iOS/macOS apps with SwiftUI or UIKit.
+Integrate Contour icons into iOS/macOS apps with SwiftUI or UIKit.
 
-This guide assumes you are consuming a generated Swift package produced from the Coniva export pipeline.
+This guide assumes you are consuming a generated Swift package produced from the Contour export pipeline.
 
 ## Install (Swift Package Manager)
 
@@ -10,18 +10,18 @@ Add the package to your `Package.swift` or Xcode project:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/coniva-icons-swift", from: "1.0.0")
+    .package(url: "https://github.com/your-org/contour-icons-swift", from: "1.0.0")
 ]
 ```
 
 ## SwiftUI Usage
 
 ```swift
-import ConivaIcons
+import ContourIcons
 
 struct ContentView: View {
     var body: some View {
-        ConivaIcon("home", size: 24)
+        ContourIcon("home", size: 24)
     }
 }
 ```
@@ -35,7 +35,7 @@ struct InteractiveIcon: View {
     @State private var iconState = "default"
 
     var body: some View {
-        ConivaIcon("home", state: iconState, animate: true)
+        ContourIcon("home", state: iconState, animate: true)
             .onTapGesture {
                 iconState = iconState == "default" ? "active" : "default"
             }
@@ -47,10 +47,10 @@ struct InteractiveIcon: View {
 
 ```swift
 // By size
-ConivaIcon("home", variant: 32)
+ContourIcon("home", variant: 32)
 
 // By name
-ConivaIcon("home", variant: "filled")
+ContourIcon("home", variant: "filled")
 ```
 
 ## Effects
@@ -60,7 +60,7 @@ struct BouncingIcon: View {
     @State private var effect: String? = nil
 
     var body: some View {
-        ConivaIcon("bell", effect: effect)
+        ContourIcon("bell", effect: effect)
             .onTapGesture { effect = "bounce" }
     }
 }
@@ -69,10 +69,10 @@ struct BouncingIcon: View {
 ## Accessibility
 
 ```swift
-ConivaIcon("home")
+ContourIcon("home")
     .accessibilityLabel("Home")
 
-ConivaIcon("decorative-divider")
+ContourIcon("decorative-divider")
     .accessibilityHidden(true)
 ```
 
@@ -81,15 +81,15 @@ ConivaIcon("decorative-divider")
 Respects `UIAccessibility.isReduceMotionEnabled` by default.
 
 ```swift
-ConivaIcon("home", reduceMotion: false) // Force animations
+ContourIcon("home", reduceMotion: false) // Force animations
 ```
 
 ## UIKit Adapter
 
 ```swift
-import ConivaIcons
+import ContourIcons
 
-let iconView = ConivaIconView(name: "home", size: 24)
+let iconView = ContourIconView(name: "home", size: 24)
 iconView.setState("active", animated: true)
 iconView.triggerEffect("bounce")
 view.addSubview(iconView)

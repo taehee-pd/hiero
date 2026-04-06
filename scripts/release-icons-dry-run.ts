@@ -23,7 +23,7 @@ function getArg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const version = getArg('--package-version') ?? process.env.ICONS_PACKAGE_VERSION;
-  const packageName = getArg('--package-name') ?? '@coniva/icons';
+  const packageName = getArg('--package-name') ?? '@contour/icons';
 
   if (!version) {
     throw new Error('Missing package version. Provide --package-version <semver> or set ICONS_PACKAGE_VERSION.');

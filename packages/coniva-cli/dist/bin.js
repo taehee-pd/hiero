@@ -20,18 +20,18 @@ var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, 
 // package.json
 var require_package = __commonJS((exports, module) => {
   module.exports = {
-    name: "@coniva/cli",
+    name: "@contour/cli",
     version: "0.1.0",
-    description: "Coniva CLI — repo-native icon authoring for host repositories",
+    description: "Contour CLI — repo-native icon authoring for host repositories",
     bin: {
-      coniva: "./dist/bin.js"
+      contour: "./dist/bin.js"
     },
     engines: {
       node: ">=18",
       bun: ">=1.0"
     },
     keywords: [
-      "coniva",
+      "contour",
       "icons",
       "cli",
       "icon-authoring"
@@ -52,16 +52,16 @@ var require_package = __commonJS((exports, module) => {
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-var CONFIG_TEMPLATE = `import type { ConivaConfig } from '@coniva/cli';
+var CONFIG_TEMPLATE = `import type { ContourConfig } from '@contour/cli';
 
 export default {
-  sourceDir: 'coniva',
+  sourceDir: 'contour',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.coniva/cache/app',
+      cacheDir: '.contour/cache/app',
     },
   ],
   releaseTargets: [
@@ -71,7 +71,7 @@ export default {
       outputDir: 'src/icons/generated',
     },
   ],
-} satisfies ConivaConfig;
+} satisfies ContourConfig;
 `;
 function emptyManifest() {
   return JSON.stringify({
@@ -83,49 +83,49 @@ function emptyManifest() {
 `;
 }
 async function runInit(cwd, _flags) {
-  const configPath = path.join(cwd, "coniva.config.ts");
-  const sourceDirPath = path.join(cwd, "coniva");
+  const configPath = path.join(cwd, "contour.config.ts");
+  const sourceDirPath = path.join(cwd, "contour");
   const iconsDirPath = path.join(sourceDirPath, "icons");
   const manifestPath = path.join(sourceDirPath, "manifest.json");
   let anyCreated = false;
   if (!existsSync(configPath)) {
     await writeFile(configPath, CONFIG_TEMPLATE, "utf8");
-    log("created", "coniva.config.ts");
+    log("created", "contour.config.ts");
     anyCreated = true;
   } else {
-    log("exists ", "coniva.config.ts");
+    log("exists ", "contour.config.ts");
   }
   if (!existsSync(sourceDirPath)) {
     await mkdir(sourceDirPath, { recursive: true });
-    log("created", "coniva/");
+    log("created", "contour/");
     anyCreated = true;
   }
   if (!existsSync(iconsDirPath)) {
     await mkdir(iconsDirPath, { recursive: true });
-    log("created", "coniva/icons/");
+    log("created", "contour/icons/");
     anyCreated = true;
   }
   if (!existsSync(manifestPath)) {
     await writeFile(manifestPath, emptyManifest(), "utf8");
-    log("created", "coniva/manifest.json");
+    log("created", "contour/manifest.json");
     anyCreated = true;
   }
   if (anyCreated) {
     console.log(`
-[coniva] Initialized successfully.
+[contour] Initialized successfully.
 
 Next steps:
-  1.  Run \`coniva dev\` to start the live integration server
-  2.  Open the Coniva editor and connect to this repository
+  1.  Run \`contour dev\` to start the live integration server
+  2.  Open the Contour editor and connect to this repository
        (set the dev server URL to http://localhost:4400)
-  3.  Publish icons from the editor — they will appear in coniva/icons/
-  4.  Run \`coniva build\` to produce a snapshot build for CI
-  5.  Commit coniva/ to version-control as your canonical icon source
+  3.  Publish icons from the editor — they will appear in contour/icons/
+  4.  Run \`contour build\` to produce a snapshot build for CI
+  5.  Commit contour/ to version-control as your canonical icon source
 
-See docs at https://coniva.dev/docs/getting-started
+See docs at https://contour.dev/docs/getting-started
 `);
   } else {
-    console.log("[coniva] Already initialized — nothing to create.");
+    console.log("[contour] Already initialized — nothing to create.");
   }
 }
 function log(action, file) {
@@ -319,7 +319,7 @@ function isObject(value) {
 }
 // ../../lib/install-config/load-config.ts
 function loadConfig(raw, configPath) {
-  const label = configPath ?? "coniva.config.ts";
+  const label = configPath ?? "contour.config.ts";
   if (raw === null || raw === undefined) {
     return { ok: false, error: `${label}: default export is missing or undefined.` };
   }
@@ -429,6 +429,7 @@ function stripLayer(layer) {
     ...layer.role ? { role: layer.role } : {},
     ...layer.visible === false ? { visible: false } : {},
     ...layer.clipPathLayerId ? { clipPathLayerId: layer.clipPathLayerId } : {},
+    ...layer.drawOrder !== undefined && layer.drawOrder !== 1 ? { drawOrder: layer.drawOrder } : {},
     ...layer.path ? { path: layer.path } : {},
     style: layer.style,
     ...layer.transform ? { transform: layer.transform } : {}
@@ -490,7 +491,7 @@ function getVariantState(v, stateId) {
     };
   }
   if (resolvedStateId && resolvedStateId !== "default" && v.states && Object.keys(v.states).length > 0) {
-    console.warn(`[coniva] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`);
+    console.warn(`[contour] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`);
   }
   return buildDefaultLegacyState(v);
 }
@@ -987,6 +988,7 @@ function layerFromSource(sl) {
     ...sl.role ? { role: sl.role } : {},
     ...sl.visible === false ? { visible: false } : {},
     ...sl.clipPathLayerId ? { clipPathLayerId: sl.clipPathLayerId } : {},
+    ...sl.drawOrder !== undefined ? { drawOrder: sl.drawOrder } : {},
     ...sl.path ? { path: sl.path } : {},
     style: sl.style,
     ...sl.transform ? { transform: sl.transform } : {}
@@ -1048,9 +1050,9 @@ async function projectFromSourceDir(sourceDir, options) {
   return projectFromSourceFiles(files, options);
 }
 // ../../lib/compiler-contracts/types.ts
-var COMPILED_ICON_SCHEMA_URI = "https://coniva.dev/schemas/compiled-icon/1.0.0";
-var PACKAGE_MANIFEST_SCHEMA_URI = "https://coniva.dev/schemas/manifest/1.0.0";
-var ICON_CHANGE_RECORD_SCHEMA_URI = "https://coniva.dev/schemas/change-record/1.0.0";
+var COMPILED_ICON_SCHEMA_URI = "https://contour.dev/schemas/compiled-icon/1.0.0";
+var PACKAGE_MANIFEST_SCHEMA_URI = "https://contour.dev/schemas/manifest/1.0.0";
+var ICON_CHANGE_RECORD_SCHEMA_URI = "https://contour.dev/schemas/change-record/1.0.0";
 // ../../lib/compiler-contracts/validators.ts
 function isObject3(val) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
@@ -1096,7 +1098,8 @@ var EFFECT_KINDS = [
   "scale",
   "variableColor",
   "lineDrawOn",
-  "lineDrawOff"
+  "lineDrawOff",
+  "draw"
 ];
 var CHANGE_KINDS = [
   "geometry",
@@ -1814,11 +1817,20 @@ function toCompiledEffect(effect) {
   if (effect.kind === "appear" || effect.kind === "disappear") {
     return null;
   }
-  return {
+  const compiled = {
     kind: effect.kind,
     durationMs: effect.durationMs,
     easing: effect.easing ?? "linear"
   };
+  if (effect.kind === "draw" && effect.drawConfig) {
+    compiled.params = {
+      mode: effect.drawConfig.mode,
+      ...effect.drawConfig.windowSize !== undefined && { windowSize: effect.drawConfig.windowSize },
+      ...effect.drawConfig.initialOffset !== undefined && { initialOffset: effect.drawConfig.initialOffset },
+      ...effect.drawConfig.compoundTrimMode !== undefined && { compoundTrimMode: effect.drawConfig.compoundTrimMode }
+    };
+  }
+  return compiled;
 }
 function computeContentHash(compiled) {
   const canonical = serializeCompiledJson({
@@ -1940,7 +1952,7 @@ function resolveCollections(options) {
   return options.collections ?? {};
 }
 function getCompiledIconSchemaVersion(schemaUri) {
-  const match = schemaUri.match(/^https:\/\/(?:coniva|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
+  const match = schemaUri.match(/^https:\/\/(?:contour|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
   if (!match) {
     throw new Error(`Unexpected compiled icon schema URI: ${schemaUri}`);
   }
@@ -2001,7 +2013,7 @@ export const iconMeta: IconComponentMeta = ${serializeCode({
       id: entry.id,
       name: entry.name,
       componentName: entry.componentName,
-      schema: "https://coniva.dev/schemas/compiled-icon/1.0.0",
+      schema: "https://contour.dev/schemas/compiled-icon/1.0.0",
       version: entry.version,
       availableSizes: entry.supportedSizes,
       availableModes: entry.supportedModes
@@ -2031,7 +2043,7 @@ const iconData = {
   id: ${JSON.stringify(iconId)},
   name: ${JSON.stringify(componentName)},
   componentName: ${JSON.stringify(componentName)},
-  $schema: 'https://coniva.dev/schemas/compiled-icon/1.0.0',
+  $schema: 'https://contour.dev/schemas/compiled-icon/1.0.0',
   meta: {
     category: '',
     tags: [],
@@ -2267,7 +2279,7 @@ function generatePackageReadme(packageName, version, icons) {
   const sampleIcon = icons[0]?.id ?? "icon-name";
   return `# ${packageName}
 
-> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Coniva](https://coniva.dev).
+> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Contour](https://contour.dev).
 
 ## Install
 
@@ -2278,24 +2290,24 @@ npm install ${packageName}
 ## Quick Start (React)
 
 \`\`\`tsx
-import { ConivaIcon } from '${packageName}/react';
+import { ContourIcon } from '${packageName}/react';
 import icon from '${packageName}/icons/${sampleIcon}.compiled.json';
 
 function App() {
-  return <ConivaIcon icon={icon} size={24} animate />;
+  return <ContourIcon icon={icon} size={24} animate />;
 }
 \`\`\`
 
 ## State Transitions
 
 \`\`\`tsx
-<ConivaIcon icon={icon} state="active" animate />
+<ContourIcon icon={icon} state="active" animate />
 \`\`\`
 
 ## Effects
 
 \`\`\`tsx
-<ConivaIcon icon={icon} effect="bounce" />
+<ContourIcon icon={icon} effect="bounce" />
 \`\`\`
 
 ## Icons (${iconCount})
@@ -2304,7 +2316,7 @@ ${iconList}
 
 ---
 
-*v${version} — generated by Coniva*
+*v${version} — generated by Contour*
 `;
 }
 function serializeCanonicalJson(value) {
@@ -2541,7 +2553,7 @@ async function runBuild(repoRoot, config, previousSourceFiles, opts) {
   try {
     compiled = compileProject(project, {
       package: {
-        name: "coniva-live",
+        name: "contour-live",
         version: "0.0.0",
         builtAt
       }
@@ -2637,7 +2649,7 @@ function watchSourceDir(sourceDir, onChanged, debounceMs = DEFAULT_DEBOUNCE_MS) 
 
 // ../../lib/live-sync/dev-server.ts
 async function startDevServer(serverConfig) {
-  const { repoRoot, coniva: config, port } = serverConfig;
+  const { repoRoot, contour: config, port } = serverConfig;
   const state = {
     iconCount: 0,
     lastBuildAt: null,
@@ -2645,25 +2657,25 @@ async function startDevServer(serverConfig) {
     watching: false,
     previousSourceFiles: null
   };
-  console.log(`[coniva] Starting dev server on port ${port}...`);
-  console.log(`[coniva] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
-  console.log(`[coniva] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
+  console.log(`[contour] Starting dev server on port ${port}...`);
+  console.log(`[contour] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
+  console.log(`[contour] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
   const initialBuild = await fullRebuild(repoRoot, config);
   applyBuildResult(state, initialBuild);
   if (initialBuild.kind === "success") {
-    console.log(`[coniva] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
+    console.log(`[contour] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
   } else if (initialBuild.kind === "error") {
-    console.warn(`[coniva] Initial build failed: ${initialBuild.error}`);
-    console.warn(`[coniva] Continuing — server will retry on file change.`);
+    console.warn(`[contour] Initial build failed: ${initialBuild.error}`);
+    console.warn(`[contour] Continuing — server will retry on file change.`);
   }
   const sourceDir = path7.resolve(repoRoot, config.sourceDir);
   const watcher = watchSourceDir(sourceDir, async () => {
     const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
     applyBuildResult(state, result);
     if (result.kind === "success") {
-      console.log(`[coniva] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+      console.log(`[contour] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
     } else if (result.kind === "error") {
-      console.warn(`[coniva] Rebuild failed: ${result.error}`);
+      console.warn(`[contour] Rebuild failed: ${result.error}`);
     }
   });
   state.watching = watcher.active;
@@ -2674,7 +2686,7 @@ async function startDevServer(serverConfig) {
     server.on("error", reject);
     server.listen(port, "127.0.0.1", resolve);
   });
-  console.log(`[coniva] Listening on http://localhost:${port}`);
+  console.log(`[contour] Listening on http://localhost:${port}`);
   return {
     port,
     async close() {
@@ -2686,7 +2698,7 @@ async function startDevServer(serverConfig) {
 }
 async function handleRequest(req, res, serverConfig, state) {
   const { method, url } = req;
-  const { repoRoot, coniva: config, apiSecret } = serverConfig;
+  const { repoRoot, contour: config, apiSecret } = serverConfig;
   const requestOrigin = req.headers["origin"];
   if (requestOrigin) {
     res.setHeader("Access-Control-Allow-Origin", requestOrigin);
@@ -2719,12 +2731,12 @@ async function handleRequest(req, res, serverConfig, state) {
       sendJson(res, 404, { error: "Not found" });
     }
   } catch (err) {
-    console.error(`[coniva] Unhandled request error:`, err);
+    console.error(`[contour] Unhandled request error:`, err);
     sendJson(res, 500, { error: "Internal server error" });
   }
 }
 async function handleGetStatus(res, serverConfig, state) {
-  const { repoRoot, coniva: config, port } = serverConfig;
+  const { repoRoot, contour: config, port } = serverConfig;
   const status = {
     ok: true,
     repoRoot,
@@ -2794,7 +2806,7 @@ async function handlePostIcons(req, res, repoRoot, config, state) {
   const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
   applyBuildResult(state, result);
   if (result.kind === "success") {
-    console.log(`[coniva] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+    console.log(`[contour] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
   }
   sendJson(res, 200, {
     ok: true,
@@ -2891,13 +2903,13 @@ function extractIconList(sourceFiles) {
 
 // src/commands/dev.ts
 async function runDev(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "coniva.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "contour.config.ts");
   const rawPort = flags["port"];
   const port = typeof rawPort === "string" && /^\d+$/.test(rawPort) ? parseInt(rawPort, 10) : 4400;
   const apiSecret = typeof flags["secret"] === "string" ? flags["secret"] : undefined;
   if (!existsSync2(configPath)) {
-    console.error(`[coniva] Config not found: ${path8.relative(cwd, configPath)}`);
-    console.error(`         Run \`coniva init\` to scaffold coniva.config.ts`);
+    console.error(`[contour] Config not found: ${path8.relative(cwd, configPath)}`);
+    console.error(`         Run \`contour init\` to scaffold contour.config.ts`);
     process.exit(1);
   }
   let config;
@@ -2905,24 +2917,24 @@ async function runDev(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[coniva] Config invalid:
+      console.error(`[contour] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[coniva] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const server = await startDevServer({
     repoRoot: cwd,
-    coniva: config,
+    contour: config,
     port,
     apiSecret
   });
   const shutdown = async () => {
     console.log(`
-[coniva] Shutting down...`);
+[contour] Shutting down...`);
     await server.close();
     process.exit(0);
   };
@@ -2936,10 +2948,10 @@ import path9 from "node:path";
 import { existsSync as existsSync3 } from "node:fs";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
 async function runBuild2(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "coniva.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "contour.config.ts");
   const outOverride = typeof flags["out"] === "string" ? flags["out"] : undefined;
   if (!existsSync3(configPath)) {
-    console.error(`[coniva] Config not found: ${path9.relative(cwd, configPath)}`);
+    console.error(`[contour] Config not found: ${path9.relative(cwd, configPath)}`);
     process.exit(1);
   }
   let config;
@@ -2947,58 +2959,58 @@ async function runBuild2(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[coniva] Config invalid:
+      console.error(`[contour] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[coniva] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const releaseTargets = config.releaseTargets ?? [];
   if (releaseTargets.length === 0 && !outOverride) {
-    console.error(`[coniva] No releaseTargets configured and --out not provided.
-         Add a local-directory target to coniva.config.ts or pass --out <dir>.`);
+    console.error(`[contour] No releaseTargets configured and --out not provided.
+         Add a local-directory target to contour.config.ts or pass --out <dir>.`);
     process.exit(1);
   }
   const sourceDir = path9.resolve(cwd, config.sourceDir);
   if (!existsSync3(sourceDir)) {
-    console.error(`[coniva] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`coniva init\` to create it`);
+    console.error(`[contour] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`contour init\` to create it`);
     process.exit(1);
   }
-  console.log(`[coniva] Loading source from ${config.sourceDir}...`);
+  console.log(`[contour] Loading source from ${config.sourceDir}...`);
   let project;
   try {
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
-    console.error(`[coniva] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[contour] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
   if (iconCount === 0) {
-    console.warn(`[coniva] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
+    console.warn(`[contour] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
   }
-  console.log(`[coniva] Compiling ${iconCount} icon(s)...`);
+  console.log(`[contour] Compiling ${iconCount} icon(s)...`);
   const builtAt = new Date().toISOString();
   let compiled;
   try {
     compiled = compileProject(project, {
       package: {
-        name: "coniva-build",
+        name: "contour-build",
         version: "0.0.0",
         builtAt
       }
     });
   } catch (err) {
-    console.error(`[coniva] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[contour] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const localDirTargets = outOverride ? [{ kind: "local-directory", outputMode: "snapshot", outputDir: outOverride }] : releaseTargets.filter((t) => t.kind === "local-directory");
   for (const target of localDirTargets) {
     const outDir = path9.resolve(cwd, target.outputDir);
-    console.log(`[coniva] Writing to ${target.outputDir}...`);
+    console.log(`[contour] Writing to ${target.outputDir}...`);
     for (const file of compiled.files) {
       const targetPath = path9.join(outDir, file.path);
       await mkdir4(path9.dirname(targetPath), { recursive: true });
@@ -3009,46 +3021,46 @@ ${result.error}`);
   for (const target of releaseTargets) {
     if (target.kind === "git-pr") {
       console.log(`
-[coniva] git-pr target: ${target.owner}/${target.repo}
-         To open a pull request, use the Create PR action in the Coniva editor.`);
+[contour] git-pr target: ${target.owner}/${target.repo}
+         To open a pull request, use the Create PR action in the Contour editor.`);
     }
     if (target.kind === "npm-registry") {
       console.log(`
-[coniva] npm-registry target: ${target.packageName}
-         To publish to npm, use the Release action in the Coniva editor.`);
+[contour] npm-registry target: ${target.packageName}
+         To publish to npm, use the Release action in the Contour editor.`);
     }
   }
   const elapsedMs = Date.now() - new Date(builtAt).getTime();
   console.log(`
-[coniva] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
+[contour] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
 }
 
 // src/commands/validate.ts
 import path10 from "node:path";
 import { existsSync as existsSync4 } from "node:fs";
 async function runValidate(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "coniva.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "contour.config.ts");
   let exitCode = 0;
   if (!existsSync4(configPath)) {
-    console.error(`[coniva] Config not found: ${path10.relative(cwd, configPath)}`);
-    console.error(`         Run \`coniva init\` to scaffold coniva.config.ts`);
+    console.error(`[contour] Config not found: ${path10.relative(cwd, configPath)}`);
+    console.error(`         Run \`contour init\` to scaffold contour.config.ts`);
     process.exit(1);
   }
   let rawModule;
   try {
     rawModule = await import(configPath);
   } catch (err) {
-    console.error(`[coniva] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const loadResult = loadConfig(rawModule.default, configPath);
   if (!loadResult.ok) {
-    console.error(`[coniva] Config invalid:
+    console.error(`[contour] Config invalid:
 ${loadResult.error}`);
     process.exit(1);
   }
   const config = loadResult.config;
-  console.log(`[coniva] Config`);
+  console.log(`[contour] Config`);
   console.log(`   sourceDir:       ${config.sourceDir}`);
   console.log(`   hostTargets:     ${config.hostTargets.length}`);
   console.log(`   releaseTargets:  ${(config.releaseTargets ?? []).length}`);
@@ -3056,8 +3068,8 @@ ${loadResult.error}`);
   const sourceDir = path10.resolve(cwd, config.sourceDir);
   if (!existsSync4(sourceDir)) {
     console.error(`
-[coniva] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`coniva init\` to create it`);
+[contour] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`contour init\` to create it`);
     process.exit(1);
   }
   let project;
@@ -3065,7 +3077,7 @@ ${loadResult.error}`);
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
     console.error(`
-[coniva] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+[contour] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
@@ -3073,27 +3085,27 @@ ${loadResult.error}`);
     try {
       const payload = exportSourcePayload(project);
       console.log(`
-[coniva] Source`);
+[contour] Source`);
       console.log(`   icons:   ${iconCount}`);
       console.log(`   files:   ${payload.files.length}`);
       console.log(`   status:  OK`);
     } catch (err) {
       console.error(`
-[coniva] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
+[contour] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
       exitCode = 1;
     }
   } else {
     console.log(`
-[coniva] Source`);
-    console.log(`   icons:   0  (no icons — run \`coniva init\` to populate from the editor)`);
+[contour] Source`);
+    console.log(`   icons:   0  (no icons — run \`contour init\` to populate from the editor)`);
     console.log(`   status:  OK`);
   }
   if (exitCode === 0) {
     console.log(`
-[coniva] Validation passed`);
+[contour] Validation passed`);
   } else {
     console.error(`
-[coniva] Validation failed`);
+[contour] Validation failed`);
     process.exit(exitCode);
   }
 }
@@ -3156,7 +3168,7 @@ async function main() {
       break;
     default:
       if (command) {
-        console.error(`[coniva] Unknown command: "${command}"
+        console.error(`[contour] Unknown command: "${command}"
 `);
         printUsage();
         process.exit(1);
@@ -3167,20 +3179,20 @@ async function main() {
 }
 function printUsage() {
   console.log(`
-coniva — repo-native icon authoring by Coniva
+contour — repo-native icon authoring by Contour
 
 Usage:
-  coniva <command> [options]
+  contour <command> [options]
 
 Commands:
-  init              Scaffold coniva.config.ts and source directory
+  init              Scaffold contour.config.ts and source directory
   dev               Start live integration dev server (Lane 1)
   build             Deterministic snapshot build (Lane 2)
   validate          Validate config and source files
 
 Options:
   --port <n>        Dev server port (default: 4400)
-  --config <path>   Path to coniva.config.ts (default: ./coniva.config.ts)
+  --config <path>   Path to contour.config.ts (default: ./contour.config.ts)
   --out <path>      Output directory override for build
   --secret <token>  Shared secret for dev server API auth
   --version         Print version
@@ -3188,6 +3200,6 @@ Options:
 `);
 }
 main().catch((err) => {
-  console.error(`[coniva] ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`[contour] ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

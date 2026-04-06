@@ -1,15 +1,15 @@
 # Flutter Integration Guide
 
-Use Coniva icons in Flutter apps with full animation and state support.
+Use Contour icons in Flutter apps with full animation and state support.
 
-This guide assumes you are consuming generated Flutter output from the Coniva export pipeline.
+This guide assumes you are consuming generated Flutter output from the Contour export pipeline.
 
 ## Install
 
 ```yaml
 # pubspec.yaml
 dependencies:
-  coniva_icons: ^1.0.0
+  contour_icons: ^1.0.0
 ```
 
 ```bash
@@ -19,12 +19,12 @@ flutter pub get
 ## Basic Usage
 
 ```dart
-import 'package:coniva_icons/coniva_icons.dart';
+import 'package:contour_icons/contour_icons.dart';
 
 class MyWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ConivaIcon(
+    return ContourIcon(
       name: 'home',
       size: 24,
     );
@@ -51,7 +51,7 @@ class _InteractiveIconState extends State<InteractiveIcon> {
       onTap: () => setState(() {
         _state = _state == 'default' ? 'active' : 'default';
       }),
-      child: ConivaIcon(
+      child: ContourIcon(
         name: 'home',
         state: _state,
         animate: true,
@@ -64,14 +64,14 @@ class _InteractiveIconState extends State<InteractiveIcon> {
 ## Variants
 
 ```dart
-ConivaIcon(name: 'home', variant: '32px')
-ConivaIcon(name: 'home', variant: 'filled')
+ContourIcon(name: 'home', variant: '32px')
+ContourIcon(name: 'home', variant: 'filled')
 ```
 
 ## Effects
 
 ```dart
-ConivaIcon(
+ContourIcon(
   name: 'bell',
   effect: 'bounce',
   onEffectComplete: (effectId) => print('$effectId done'),
@@ -81,7 +81,7 @@ ConivaIcon(
 ## Variable Value
 
 ```dart
-ConivaIcon(
+ContourIcon(
   name: 'wifi',
   variableValue: 0.75, // 0.0 to 1.0
 )
@@ -92,7 +92,7 @@ ConivaIcon(
 ```dart
 Semantics(
   label: 'Home',
-  child: ConivaIcon(name: 'home'),
+  child: ContourIcon(name: 'home'),
 )
 ```
 
@@ -101,15 +101,15 @@ Semantics(
 Respects `MediaQuery.of(context).disableAnimations` by default.
 
 ```dart
-ConivaIcon(name: 'home', reduceMotion: false) // Force animations
+ContourIcon(name: 'home', reduceMotion: false) // Force animations
 ```
 
 ## Controller API
 
 ```dart
-final controller = ConivaIconController();
+final controller = ContourIconController();
 
-ConivaIcon(
+ContourIcon(
   name: 'home',
   controller: controller,
 )

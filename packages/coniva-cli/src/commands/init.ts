@@ -1,11 +1,11 @@
 /**
- * `coniva init` — scaffold coniva.config.ts and source directory.
+ * `contour init` — scaffold contour.config.ts and source directory.
  *
  * Creates:
- *   coniva.config.ts           Config file at repo root
- *   coniva/                    Source directory (default: sourceDir = 'coniva')
- *   coniva/icons/              Icon source directory
- *   coniva/manifest.json       Empty manifest
+ *   contour.config.ts           Config file at repo root
+ *   contour/                    Source directory (default: sourceDir = 'contour')
+ *   contour/icons/              Icon source directory
+ *   contour/manifest.json       Empty manifest
  *
  * Existing files are never overwritten.
  */
@@ -18,16 +18,16 @@ import path from 'node:path';
 // Templates
 // ---------------------------------------------------------------------------
 
-const CONFIG_TEMPLATE = `import type { ConivaConfig } from '@coniva/cli';
+const CONFIG_TEMPLATE = `import type { ContourConfig } from '@contour/cli';
 
 export default {
-  sourceDir: 'coniva',
+  sourceDir: 'contour',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.coniva/cache/app',
+      cacheDir: '.contour/cache/app',
     },
   ],
   releaseTargets: [
@@ -37,7 +37,7 @@ export default {
       outputDir: 'src/icons/generated',
     },
   ],
-} satisfies ConivaConfig;
+} satisfies ContourConfig;
 `;
 
 function emptyManifest(): string {
@@ -63,8 +63,8 @@ export async function runInit(
   cwd: string,
   _flags: Record<string, string | boolean>,
 ): Promise<void> {
-  const configPath = path.join(cwd, 'coniva.config.ts');
-  const sourceDirPath = path.join(cwd, 'coniva');
+  const configPath = path.join(cwd, 'contour.config.ts');
+  const sourceDirPath = path.join(cwd, 'contour');
   const iconsDirPath = path.join(sourceDirPath, 'icons');
   const manifestPath = path.join(sourceDirPath, 'manifest.json');
 
@@ -72,46 +72,46 @@ export async function runInit(
 
   if (!existsSync(configPath)) {
     await writeFile(configPath, CONFIG_TEMPLATE, 'utf8');
-    log('created', 'coniva.config.ts');
+    log('created', 'contour.config.ts');
     anyCreated = true;
   } else {
-    log('exists ', 'coniva.config.ts');
+    log('exists ', 'contour.config.ts');
   }
 
   if (!existsSync(sourceDirPath)) {
     await mkdir(sourceDirPath, { recursive: true });
-    log('created', 'coniva/');
+    log('created', 'contour/');
     anyCreated = true;
   }
 
   if (!existsSync(iconsDirPath)) {
     await mkdir(iconsDirPath, { recursive: true });
-    log('created', 'coniva/icons/');
+    log('created', 'contour/icons/');
     anyCreated = true;
   }
 
   if (!existsSync(manifestPath)) {
     await writeFile(manifestPath, emptyManifest(), 'utf8');
-    log('created', 'coniva/manifest.json');
+    log('created', 'contour/manifest.json');
     anyCreated = true;
   }
 
   if (anyCreated) {
     console.log(`
-[coniva] Initialized successfully.
+[contour] Initialized successfully.
 
 Next steps:
-  1.  Run \`coniva dev\` to start the live integration server
-  2.  Open the Coniva editor and connect to this repository
+  1.  Run \`contour dev\` to start the live integration server
+  2.  Open the Contour editor and connect to this repository
        (set the dev server URL to http://localhost:4400)
-  3.  Publish icons from the editor — they will appear in coniva/icons/
-  4.  Run \`coniva build\` to produce a snapshot build for CI
-  5.  Commit coniva/ to version-control as your canonical icon source
+  3.  Publish icons from the editor — they will appear in contour/icons/
+  4.  Run \`contour build\` to produce a snapshot build for CI
+  5.  Commit contour/ to version-control as your canonical icon source
 
-See docs at https://coniva.dev/docs/getting-started
+See docs at https://contour.dev/docs/getting-started
 `);
   } else {
-    console.log('[coniva] Already initialized — nothing to create.');
+    console.log('[contour] Already initialized — nothing to create.');
   }
 }
 

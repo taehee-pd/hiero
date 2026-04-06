@@ -1,14 +1,14 @@
-# Coniva — Design Document (Single Source of Truth)
+# Contour — Design Document (Single Source of Truth)
 
 **Last updated:** 2026-04-04
-**Product:** Coniva — icon authoring tool with SF Symbols-grade animation capabilities
-**gstack design docs:** `~/.gstack/projects/taehee-pd-icon-authoring-tool/`
+**Product:** Contour — Contour with SF Symbols-grade animation capabilities
+**gstack design docs:** `~/.gstack/projects/taehee-pd-contour/`
 
 ---
 
 ## Product Vision
 
-Coniva is a cross-platform icon authoring tool that enables designers to create,
+Contour is a cross-platform Contour that enables designers to create,
 animate, and distribute production-ready icons — with zero developer handoff for
 the distribution step. Designers edit, save, and publish. Developers consume via
 `npm install` or platform-native formats.
@@ -17,7 +17,7 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     Coniva Studio                            │
+│                     Contour Studio                            │
 │  (Next.js 16 + React 19 + Custom Store + Tailwind + Radix)  │
 ├──────────────┬───────────────┬───────────────────────────────┤
 │  Schema      │  Editor Core  │  Runtime Core                 │
@@ -27,14 +27,14 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 │                      Export Pipeline                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │ Runtime JSON  │  │ Lottie 5.x   │  │ Platform Adapters │  │
-│  │ (.coniva.json)│  │ (.json)      │  │ (React, Swift,    │  │
+│  │ (.contour.json)│  │ (.json)      │  │ (React, Swift,    │  │
 │  │              │  │              │  │  Flutter, WC)     │  │
 │  └──────────────┘  └──────────────┘  └───────────────────┘  │
 ├──────────────────────────────────────────────────────────────┤
 │                     Distribution                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │ Live Sync    │  │ Git PR       │  │ NPM Registry      │  │
-│  │ (Lane 1)     │  │ Connector    │  │ + @coniva/cli     │  │
+│  │ (Lane 1)     │  │ Connector    │  │ + @contour/cli     │  │
 │  └──────────────┘  └──────────────┘  └───────────────────┘  │
 ├──────────────────────────────────────────────────────────────┤
 │                     Persistence & Platform                   │
@@ -58,7 +58,7 @@ Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, 
 | P — Import Ecosystem | Heroicons, Phosphor, Material Symbols, Figma adapters + batch import |
 | O — Cubic Weight | Fritsch-Carlson monotone spline, 9-point controls |
 | R1–R5 | Desktop removal, IndexedDB persistence, state CRUD UI, dialog cleanup, a11y pass |
-| Distribution | Repo-native live-sync, release flow, `@coniva/cli`, PublishPanel, ReleasePanel |
+| Distribution | Repo-native live-sync, release flow, `@contour/cli`, PublishPanel, ReleasePanel |
 | Studio Layout | Sanity Studio-style single-screen workspace |
 | Figma Import | Figma plugin + API route + import dialog |
 

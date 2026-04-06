@@ -1,5 +1,5 @@
 export type {
-  ConivaConfig,
+  ContourConfig,
   HostTarget,
   ReactAppHostTarget,
   ReleaseTarget,

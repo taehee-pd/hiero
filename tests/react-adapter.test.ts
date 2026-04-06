@@ -137,13 +137,13 @@ describe('generateReactFromRuntime', () => {
     expect(indexFile).toBeDefined();
   });
 
-  test('component contains ConivaIcon import from runtime package', () => {
+  test('component contains ContourIcon import from runtime package', () => {
     const result = generateReactFromRuntime([makeInput()]);
     const component = result.files.find((f) =>
       f.path.includes('TestIcon.tsx'),
     )!;
     expect(component.contents).toContain(
-      "import { ConivaIcon } from '@coniva/runtime-react'",
+      "import { ContourIcon } from '@contour/runtime-react'",
     );
   });
 
@@ -155,7 +155,7 @@ describe('generateReactFromRuntime', () => {
       f.path.includes('TestIcon.tsx'),
     )!;
     expect(component.contents).toContain(
-      "import { ConivaIcon } from '@myorg/icons-runtime'",
+      "import { ContourIcon } from '@myorg/icons-runtime'",
     );
   });
 

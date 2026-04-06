@@ -1,10 +1,10 @@
 # Desktop Architecture
 
-> **DEPRECATED (2026-04-04):** Coniva is now a web-only application. The Electrobun desktop shell was removed in Phase R1. This document is retained for historical reference only. See `docs_canonical/ARCHITECTURE.md` for current architecture.
+> **DEPRECATED (2026-04-04):** Contour is now a web-only application. The Electrobun desktop shell was removed in Phase R1. This document is retained for historical reference only. See `docs_canonical/ARCHITECTURE.md` for current architecture.
 
 ---
 
-Coniva previously targeted two environments from the same product codebase:
+Contour previously targeted two environments from the same product codebase:
 
 - Web: the existing Next.js app continues to run independently for browser users and Vercel deployments.
 - Desktop: an Electrobun shell wraps the same editor experience to add native capabilities such as file system access, menus, and future updater/tray integrations.

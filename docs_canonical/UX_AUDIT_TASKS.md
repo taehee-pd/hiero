@@ -3,7 +3,7 @@
 ## Purpose
 
 This document catalogs UX gaps, friction points, and missing affordances
-identified through a systematic audit of the Coniva icon authoring tool.
+identified through a systematic audit of the Contour Contour.
 Each issue is grounded in the actual codebase (components, routes, store
 actions) and organized into phases by severity and dependency order.
 
@@ -94,7 +94,7 @@ Issues that cause confusion about where features are or how to reach them.
 - The explorer has a breadcrumb navigation in the header.
 - There is no unified navigation model. The editor does not have breadcrumbs.
 - The "library" button text is lowercase and doesn't match the explorer's
-  "Coniva Workspace" label.
+  "Contour Workspace" label.
 
 **Fix:** Implement consistent breadcrumb navigation across both surfaces:
 `Workspace > Project > Icon` in the editor, matching the explorer's

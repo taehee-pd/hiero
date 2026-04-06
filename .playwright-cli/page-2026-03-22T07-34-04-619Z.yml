@@ -18,9 +18,9 @@
             - img [ref=e27]
       - complementary [ref=e29]:
         - generic [ref=e30]:
-          - link "Coniva Starter" [ref=e123] [cursor=pointer]:
+          - link "Contour Starter" [ref=e123] [cursor=pointer]:
             - /url: /
-            - generic [ref=e32]: Coniva Starter
+            - generic [ref=e32]: Contour Starter
           - generic [ref=e33]:
             - generic [ref=e34]:
               - heading "Chevron Right" [level=1] [ref=e124]

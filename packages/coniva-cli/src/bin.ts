@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * Coniva CLI entry point.
+ * Contour CLI entry point.
  *
  * Usage:
- *   coniva init              Scaffold coniva.config.ts and source directory
- *   coniva dev [--port N]    Start live integration dev server (Lane 1)
- *   coniva build             Deterministic snapshot build (Lane 2)
- *   coniva validate          Validate config and source files
+ *   contour init              Scaffold contour.config.ts and source directory
+ *   contour dev [--port N]    Start live integration dev server (Lane 1)
+ *   contour build             Deterministic snapshot build (Lane 2)
+ *   contour validate          Validate config and source files
  *
  * Run via bun:
- *   bun packages/coniva-cli/src/bin.ts <command>
+ *   bun packages/contour-cli/src/bin.ts <command>
  *
  * Or after linking:
- *   coniva <command>
+ *   contour <command>
  */
 
 import { runInit } from './commands/init';
@@ -46,11 +46,11 @@ function parseFlags(argv: string[]): Record<string, string | boolean> {
 // Main
 // ---------------------------------------------------------------------------
 
-// Parse all args: flags can appear anywhere (e.g. `coniva --version`, `coniva dev --port 4401`)
+// Parse all args: flags can appear anywhere (e.g. `contour --version`, `contour dev --port 4401`)
 const allArgs = process.argv.slice(2);
 const flags = parseFlags(allArgs);
 // Find the first positional arg that is not a flag key or flag value.
-// This handles `coniva --config coniva.config.ts build` → command = "build".
+// This handles `contour --config contour.config.ts build` → command = "build".
 const command = (() => {
   for (let i = 0; i < allArgs.length; i++) {
     const a = allArgs[i]!;
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
       break;
     default:
       if (command) {
-        console.error(`[coniva] Unknown command: "${command}"\n`);
+        console.error(`[contour] Unknown command: "${command}"\n`);
         printUsage();
         process.exit(1);
       } else {
@@ -102,20 +102,20 @@ async function main(): Promise<void> {
 
 function printUsage(): void {
   console.log(`
-coniva — repo-native icon authoring by Coniva
+contour — repo-native icon authoring by Contour
 
 Usage:
-  coniva <command> [options]
+  contour <command> [options]
 
 Commands:
-  init              Scaffold coniva.config.ts and source directory
+  init              Scaffold contour.config.ts and source directory
   dev               Start live integration dev server (Lane 1)
   build             Deterministic snapshot build (Lane 2)
   validate          Validate config and source files
 
 Options:
   --port <n>        Dev server port (default: 4400)
-  --config <path>   Path to coniva.config.ts (default: ./coniva.config.ts)
+  --config <path>   Path to contour.config.ts (default: ./contour.config.ts)
   --out <path>      Output directory override for build
   --secret <token>  Shared secret for dev server API auth
   --version         Print version
@@ -124,6 +124,6 @@ Options:
 }
 
 main().catch((err: unknown) => {
-  console.error(`[coniva] ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`[contour] ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

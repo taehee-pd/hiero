@@ -1,4 +1,4 @@
-# Coniva — Production Readiness Plan
+# Contour — Production Readiness Plan
 
 **Last updated:** 2026-03-28
 **Standard:** "If you are coding for another project, would you recommend your team use this tool?"
@@ -8,7 +8,7 @@
 
 ## 1. Product Assessment
 
-Coniva is an icon authoring tool with animation capabilities comparable to SF Symbols.
+Contour is an Contour with animation capabilities comparable to SF Symbols.
 The **authoring engine is mature** — 23 shipped phases cover vector editing, 14 animation
 track types, morph/trim/crossfade transitions, derived variants, weight interpolation,
 and cross-icon morphing. The **export backend is complete** — Lottie, Runtime JSON, SVG,
@@ -150,13 +150,13 @@ In `components/export/SyncTargetPanel.tsx`:
 
 ### G3 — Figma Import (Shipped)
 
-Status: shipped 2026-03-28 — Coniva now supports a local `Export to Coniva` Figma plugin workflow plus the existing Figma proxy route.
+Status: shipped 2026-03-28 — Contour now supports a local `Export to Contour` Figma plugin workflow plus the existing Figma proxy route.
 
 **Problem:** No Figma adapter exists. Most icon designers work in Figma, and the
 import dialog offers Lucide/Heroicons/Phosphor/Material but not Figma.
 
 **Why it matters:** Teams with Figma-based icon design workflows can't bring their
-icons into Coniva without manual SVG export. This is the #1 friction point for adoption.
+icons into Contour without manual SVG export. This is the #1 friction point for adoption.
 
 **Technical plan:**
 
@@ -283,7 +283,7 @@ Desktop: OS keychain. Web: server-side env var.
 Status: partially shipped 2026-03-28 — signing prerequisites, release command ergonomics, and manifest/artifact checks are hardened in-repo, but producing a real signed installer still depends on external credentials and release hosting.
 
 **Problem:** The desktop app builds successfully in dev mode
-(`desktop/build/dev-macos-arm64/Coniva-dev.app`) but no signed, distributable
+(`desktop/build/dev-macos-arm64/Contour-dev.app`) but no signed, distributable
 installer exists. Auto-update infrastructure is configured but untested.
 
 **Why it matters:** Desktop is the only path to file-based persistence today.
@@ -303,10 +303,10 @@ pnpm desktop:dist
 ```
 - Verify `desktop/artifacts/latest.json` schema via `validate-latest-json.ts`
 - Verify `.app` bundle launches clean on fresh macOS install
-- Test file association (`.coniva.json` double-click opens app)
+- Test file association (`.contour.json` double-click opens app)
 
 **Step 3 — Auto-update endpoint**
-- Host `latest.json` at `CONIVA_RELEASE_BASE_URL`
+- Host `latest.json` at `CONTOUR_RELEASE_BASE_URL`
 - Verify Electrobun update check + download flow
 - Test upgrade path from dev → stable
 
@@ -329,7 +329,7 @@ pnpm desktop:dist
 Status: shipped 2026-03-28 — React, Swift, Flutter, and Figma plugin workflow guides are now present in `docs/guides/`.
 
 **Problem:** A developer installing the published icon package has no guide for
-integrating `ConivaIcon` into their React/Swift/Flutter app.
+integrating `ContourIcon` into their React/Swift/Flutter app.
 
 **Why it matters:** Without integration docs, the published package is a black box.
 
@@ -338,12 +338,12 @@ integrating `ConivaIcon` into their React/Swift/Flutter app.
 **Step 1 — React integration guide**
 Create `docs/guides/react-integration.md`:
 - Install: `npm install @your-scope/icons`
-- Import: `import { ConivaIcon } from '@your-scope/icons/react'`
-- Basic usage: `<ConivaIcon name="home" />`
-- State transitions: `<ConivaIcon name="home" state="active" />`
+- Import: `import { ContourIcon } from '@your-scope/icons/react'`
+- Basic usage: `<ContourIcon name="home" />`
+- State transitions: `<ContourIcon name="home" state="active" />`
 - Animation control: `useIconState()`, `useAnimationProgress()` hooks
 - Imperative API: `ref.current.setState('active')`
-- Variable value: `<ConivaIcon name="wifi" variableValue={0.75} />`
+- Variable value: `<ContourIcon name="wifi" variableValue={0.75} />`
 - TypeScript: exported types, prop interfaces
 
 **Step 2 — Swift integration guide**
@@ -447,7 +447,7 @@ These features are fully implemented and wired into the UI:
 | Cross-icon transitions | Complete | `TransitionPanel.tsx` |
 | Import from icon libraries (4 adapters) | Complete | `ImportIconDialog.tsx` |
 | Git PR sync + conflict detection | Complete | `GitHubSyncPanel.tsx` |
-| Runtime React component (`ConivaIcon`) | Complete | `lib/runtime-react/` |
+| Runtime React component (`ContourIcon`) | Complete | `lib/runtime-react/` |
 | Lottie export engine | Complete | `lib/export/export-lottie.ts` |
 | NPM publish backend | Complete | `lib/sync-service/connectors/npm-connector.ts` |
 | CI/CD (5 workflows) | Complete | `.github/workflows/` |
@@ -550,7 +550,7 @@ This is the complete IA covering ALL screens — existing and new.
 Items marked **[NEW]** need design. Items marked **[WIRE]** exist in code but need mounting.
 
 ```
-Coniva App
+Contour App
 │
 ├── Explorer Surface (/)
 │   │
@@ -767,7 +767,7 @@ Coniva App
 │   │   └── [NEW] Publish countdown badge (G4, mirrors explorer badge)
 │   ├── Native menus (File, Edit, View, Help)
 │   ├── Recent projects (from filesystem)
-│   └── File associations (.coniva.json, .icophone.json)
+│   └── File associations (.contour.json, .icophone.json)
 │
 ├── Runtime Demos (existing)
 │   ├── /demo/runtime
@@ -845,7 +845,7 @@ described in §2. The IA above shows exactly where each screen lives.
 Existing variables unchanged:
 - `GITHUB_SYNC_TOKEN` — GitHub PR sync (server-side)
 - `NPM_PUBLISH_TOKEN` — npm registry publish (server-side)
-- `CONIVA_RELEASE_BASE_URL` — desktop auto-update endpoint
+- `CONTOUR_RELEASE_BASE_URL` — desktop auto-update endpoint
 - `ELECTROBUN_BUILD_ENV` — desktop build mode (stable/dev)
 
 ---

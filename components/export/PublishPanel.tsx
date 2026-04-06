@@ -3,11 +3,11 @@
 /**
  * PublishPanel — Lane 1 (Live Integration) editor surface.
  *
- * Displays the coniva dev server connection status and lets the editor
+ * Displays the contour dev server connection status and lets the editor
  * push canonical source files to the consumer repo via the HTTP API.
  *
  * Transport: always api-push (POST to localhost:4400 by default).
- * The consumer must run `coniva dev` in their repo for this to work.
+ * The consumer must run `contour dev` in their repo for this to work.
  *
  * Corresponds to screens 9A/9B in specs/ui/screens.md.
  */
@@ -204,7 +204,7 @@ export function PublishPanel() {
         {connectionStatus === 'disconnected' && (
           <p className="mt-2 text-[10px] text-amber-600">
             Dev server not reachable. Run{' '}
-            <code className="font-mono">coniva dev</code> in the consumer repo.
+            <code className="font-mono">contour dev</code> in the consumer repo.
           </p>
         )}
       </div>

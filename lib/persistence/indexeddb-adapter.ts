@@ -10,7 +10,7 @@
 import type { Workspace } from '@/lib/schema/types';
 import type { PersistenceAdapter, ProjectMeta, SavedProject } from './adapter';
 
-const DB_NAME = 'coniva_projects';
+const DB_NAME = 'contour_projects';
 const DB_VERSION = 1;
 const STORE_NAME = 'projects';
 

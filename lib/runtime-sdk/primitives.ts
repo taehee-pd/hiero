@@ -237,7 +237,7 @@ function modeOrder(mode: CompiledRenderingMode): number {
 
 function warnDev(message: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[coniva-runtime] ${message}`);
+    console.warn(`[contour-runtime] ${message}`);
   }
 }
 

@@ -34,7 +34,7 @@ function parseProjectName(data: string) {
 }
 
 function defaultProjectFileName(data: string) {
-  return `${slugify(parseProjectName(data))}.coniva.json`;
+  return `${slugify(parseProjectName(data))}.contour.json`;
 }
 
 async function pickFiles(options: { accept: string; multiple?: boolean }) {
@@ -82,7 +82,7 @@ function downloadTextFile(content: string, fileName: string, mimeType: string) {
 }
 
 export async function openProject(): Promise<ProjectOpenResult> {
-  const files = await pickFiles({ accept: '.coniva.json,.json' });
+  const files = await pickFiles({ accept: '.contour.json,.json' });
   const file = files?.[0];
   if (!file) return null;
 

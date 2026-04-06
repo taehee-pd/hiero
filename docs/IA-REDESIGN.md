@@ -1,4 +1,4 @@
-# IconStudio IA Redesign — Feature Inventory & Information Architecture
+# Contour IA Redesign — Feature Inventory & Information Architecture
 
 > **PARTIALLY OUTDATED (2026-04-04):** The layout proposals in this document predate the shipped Sanity Studio-style single-screen layout (`components/studio/StudioLayout.tsx`). The feature inventory remains useful as a reference, but the proposed IA (sidebar layout, explorer/editor split) no longer matches the current architecture. See `docs_canonical/LAYOUT_REVAMP.md` for the current layout design.
 
@@ -355,7 +355,7 @@
 
 ```
 ┌─ Title Bar (desktop) ──────────────────────────────────────────────┐
-│  [IconStudio]  project_name — icon_name                            │
+│  [Contour]  project_name — icon_name                            │
 ├─ Menu Bar ─────────────────────────────────────────────────────────┤
 │  File  Edit  View  Layer  Path  Arrange  Animation  Window  Help   │
 ├─ Toolbar ──────────────────────────────────────────────────────────┤

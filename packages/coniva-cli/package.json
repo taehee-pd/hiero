@@ -1,16 +1,16 @@
 {
-  "name": "@coniva/cli",
+  "name": "@contour/cli",
   "version": "0.1.0",
-  "description": "Coniva CLI — repo-native icon authoring for host repositories",
+  "description": "Contour CLI — repo-native icon authoring for host repositories",
   "bin": {
-    "coniva": "./dist/bin.js"
+    "contour": "./dist/bin.js"
   },
   "engines": {
     "node": ">=18",
     "bun": ">=1.0"
   },
   "keywords": [
-    "coniva",
+    "contour",
     "icons",
     "cli",
     "icon-authoring"

@@ -20,15 +20,15 @@ import type { AnimationEvent } from '../runtime-core/animation-events';
 // ---------------------------------------------------------------------------
 
 /**
- * Imperative handle exposed via `ref` on `ConivaIcon`.
+ * Imperative handle exposed via `ref` on `ContourIcon`.
  *
  * Enables parent components to control the icon programmatically:
  * ```tsx
- * const iconRef = useRef<ConivaIconHandle>(null);
+ * const iconRef = useRef<ContourIconHandle>(null);
  * iconRef.current?.transitionTo('active'); // 'active' is a variant ID
  * ```
  */
-export type ConivaIconHandle = {
+export type ContourIconHandle = {
   /** Trigger a transition to the given variant ID. */
   transitionTo: (variantId: string) => void;
   /** Trigger a named effect. */
@@ -47,7 +47,7 @@ export type ConivaIconHandle = {
 // Props
 // ---------------------------------------------------------------------------
 
-export type ConivaIconProps = {
+export type ContourIconProps = {
   icon: Icon;
   variant?: string | number;
   state?: string;
@@ -95,8 +95,8 @@ export type ConivaIconProps = {
 // Component
 // ---------------------------------------------------------------------------
 
-export const ConivaIcon = forwardRef<ConivaIconHandle, ConivaIconProps>(
-  function ConivaIcon(
+export const ContourIcon = forwardRef<ContourIconHandle, ContourIconProps>(
+  function ContourIcon(
     {
       icon,
       variant,

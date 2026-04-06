@@ -7,7 +7,7 @@
 
 ## Overview
 
-Coniva has two primary screens (Explorer and Editor) and a set of modal/sheet
+Contour has two primary screens (Explorer and Editor) and a set of modal/sheet
 overlays for import, export, and sync operations. This spec documents every
 screen, sub-view, panel state, and dialog required for a complete Figma design
 file, ensuring no user flows are missing.
@@ -35,8 +35,8 @@ The landing view showing all icon sets in a grid.
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │                                                             │
 │  ┌─ Recent Projects ──────────────────────────────────────┐ │
-│  │  project-a.coniva  ·  3 days ago  [Load] [×]           │ │
-│  │  project-b.coniva  ·  1 week ago  [Load] [×]           │ │
+│  │  project-a.contour  ·  3 days ago  [Load] [×]           │ │
+│  │  project-b.contour  ·  1 week ago  [Load] [×]           │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -81,7 +81,7 @@ Entered by clicking an icon set card.
 ### 1C. Explorer Right Panel (Publish & Export)
 
 > **Changed:** Sync targets have been replaced by repo-native distribution.
-> This panel shows the publish status from `coniva.config.ts` and export options.
+> This panel shows the publish status from `contour.config.ts` and export options.
 
 Appears as a collapsible right panel or sheet.
 
@@ -89,7 +89,7 @@ Appears as a collapsible right panel or sheet.
 ┌─ Distribution ──────────────────────┐
 │                                      │
 │  ┌─ Repo Publish ────────────────┐  │
-│  │  Config: coniva.config.ts ✓   │  │
+│  │  Config: contour.config.ts ✓   │  │
 │  │                               │  │
 │  │  Host: react                  │  │
 │  │    → src/components/icons/    │  │
@@ -372,7 +372,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 │  │  Paste mode:                                        │   │
 │  │  Plugin payload JSON                                │   │
 │  │  ┌──────────────────────────────────────────────┐   │   │
-│  │  │ {"version":"1","source":"coniva-figma-       │   │   │
+│  │  │ {"version":"1","source":"contour-figma-       │   │   │
 │  │  │  plugin","icons":[...]}                      │   │   │
 │  │  └──────────────────────────────────────────────┘   │   │
 │  │  "Export from the Figma plugin, then paste here."   │   │
@@ -441,7 +441,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 │  Format                                                    │
 │  ○ SVG (single icon)                                       │
 │  ○ SVG Package (all icons, ZIP)                            │
-│  ○ Runtime JSON (.coniva.json)                             │
+│  ○ Runtime JSON (.contour.json)                             │
 │  ○ React Library (npm-ready TypeScript)                    │
 │  ○ Lottie JSON                                             │
 │                                                            │
@@ -574,13 +574,13 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 ## Screen 9: Install & Publish Configuration
 
 > **Changed:** Per-target sync (local / GitHub PR / npm) has been replaced by
-> repo-native distribution configured via `coniva.config.ts` at the repo root.
+> repo-native distribution configured via `contour.config.ts` at the repo root.
 > The UI shows the current config status and provides publish actions.
 
 ### 9A. Host Targets (Live Dev)
 
 ```
-┌─ Host Targets (from coniva.config.ts) ────────────────────┐
+┌─ Host Targets (from contour.config.ts) ────────────────────┐
 │                                                            │
 │  Source Dir   src/icons/source                             │
 │  Out Dir      src/icons/generated                          │
@@ -617,7 +617,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 ```
 ┌─ Config ──────────────────────────────────────────────────┐
 │                                                            │
-│  Config File   coniva.config.ts  ✓ Found                   │
+│  Config File   contour.config.ts  ✓ Found                   │
 │  Source Dir    src/icons/source   ✓ 24 icons                │
 │  Last Publish  2h ago (changed-only, 3 icons)              │
 │                                                            │

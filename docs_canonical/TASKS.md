@@ -1,7 +1,7 @@
 # Tasks
 
 **Last updated:** 2026-04-04
-**Canonical product name:** Coniva
+**Canonical product name:** Contour
 **Forward-looking roadmap:** See `docs_canonical/PLAN.md` for the production readiness plan.
 
 ---
@@ -25,7 +25,7 @@ codebase, specs, and commit history.
 |---|-------|-----------|---------|-----|
 | 1 | Runtime Export (R1) | 2026-03-18 | Draw annotation, variable draw, magic replace, diagnostics | — |
 | 2 | Runtime Execution (R2-R3) | 2026-03-18 | Draw executor, replace strategy, effect scheduler, DOM renderer | — |
-| 3 | Runtime React (R4) | 2026-03-18 | ConivaIcon, useSyncExternalStore, demo page | — |
+| 3 | Runtime React (R4) | 2026-03-18 | ContourIcon, useSyncExternalStore, demo page | — |
 | 4 | CI/CD & Ops | 2026-03-18 | Web/desktop CI, coverage, Prettier, ESLint strict, signing | — |
 | 5 | Platform & Adapters (R5-R6) | 2026-03-19 | Platform profiles, React adapter, Storybook, manifests | — |
 | 6 | Sync & Distribution (R7) | 2026-03-19 | SyncTarget schema, GitHub PR connector, local directory sync | — |
@@ -51,7 +51,7 @@ codebase, specs, and commit history.
 | R3 | State Management UI | 2026-04-02 | Create/rename/duplicate/delete states from editor, CRUD actions | — |
 | R4 | Replace `prompt()` Dialogs | 2026-04-02 | Radix AlertDialog/DropdownMenu for all destructive actions | — |
 | R5 | Accessibility Pass | 2026-04-02 | Focus rings, ARIA roles/labels, live regions, keyboard nav | — |
-| — | Repo-Native Distribution | 2026-04-02 | Lane 1 live-sync, Lane 2 release, @coniva/cli, PublishPanel, ReleasePanel | — |
+| — | Repo-Native Distribution | 2026-04-02 | Lane 1 live-sync, Lane 2 release, @contour/cli, PublishPanel, ReleasePanel | — |
 | — | Figma Plugin Import | 2026-04-02 | Figma plugin export + API route + import dialog | — |
 | — | Studio Layout Revamp | 2026-04-03 | Sanity Studio-style single screen: NavPane, ListPane, embedded editor | — |
 | — | Stagger Ordering Fix | 2026-04-02 | Transition resolver stagger ordering ranks corrected | — |

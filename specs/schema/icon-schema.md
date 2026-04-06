@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines the reviewed product direction for Coniva's icon schema.
+This spec defines the reviewed product direction for Contour's icon schema.
 
 The old model treated a single icon as a container for many authored states. The reviewed direction rejects that model.
 

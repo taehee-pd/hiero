@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { ConivaIcon, useIconState } from '@/lib/runtime-react';
+import { ContourIcon, useIconState } from '@/lib/runtime-react';
 import { HAMBURGER_CLOSE_ICON } from '@/lib/schema/sample-icons/hamburger-close';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
@@ -36,7 +36,7 @@ export default function RuntimeDemoPage() {
         {/* Hamburger → Close demo */}
         <section className="flex flex-col items-center gap-4">
           <h2 className="text-lg font-semibold">Hamburger / Close</h2>
-          <ConivaIcon
+          <ContourIcon
             icon={HAMBURGER_CLOSE_ICON}
             variant="24"
             state={hamburger.state}
@@ -57,7 +57,7 @@ export default function RuntimeDemoPage() {
         {/* Home icon demo */}
         <section className="flex flex-col items-center gap-4">
           <h2 className="text-lg font-semibold">Home</h2>
-          <ConivaIcon
+          <ContourIcon
             icon={homeIcon}
             variant="v24"
             state={home.state}

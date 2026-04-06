@@ -72,7 +72,7 @@ import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platfor
 import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
 
 export function Navbar() {
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Contour');
   const isDirty = useEditorStore((s) => s.isDirty);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const currentIconName = useEditorStore((s) =>
@@ -157,7 +157,7 @@ export function Navbar() {
       const json = JSON.parse(result.data);
       if (isWorkspace(json)) editorStore.getState().loadWorkspace(json);
       else if (isProject(json)) editorStore.getState().loadProject(json);
-      else { clearCurrentProjectPath(); showToolbarError('Invalid Coniva workspace file.'); }
+      else { clearCurrentProjectPath(); showToolbarError('Invalid Contour workspace file.'); }
     } catch { clearCurrentProjectPath(); showToolbarError('Failed to parse JSON file.'); }
   }, [showToolbarError]);
 

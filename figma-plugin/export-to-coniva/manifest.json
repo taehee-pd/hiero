@@ -1,6 +1,6 @@
 {
-  "name": "Export to Coniva",
-  "id": "coniva-export-to-coniva",
+  "name": "Export to Contour",
+  "id": "contour-export-to-contour",
   "api": "1.0.0",
   "editorType": ["figma"],
   "main": "code.js",

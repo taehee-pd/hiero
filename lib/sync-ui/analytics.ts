@@ -59,9 +59,9 @@ export function emitSyncEvent(
   }
 
   // Also dispatch a DOM CustomEvent for external listeners
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(
-      new CustomEvent('coniva:sync', {
+      new CustomEvent('contour:sync', {
         detail: { name, ...payload },
       }),
     );

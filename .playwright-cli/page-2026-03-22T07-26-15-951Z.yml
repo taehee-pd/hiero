@@ -3,9 +3,9 @@
     - generic [ref=e3]:
       - complementary [ref=e4]:
         - generic [ref=e5]:
-          - link "Coniva Starter" [ref=e6] [cursor=pointer]:
+          - link "Contour Starter" [ref=e6] [cursor=pointer]:
             - /url: /
-            - generic [ref=e7]: Coniva Starter
+            - generic [ref=e7]: Contour Starter
           - generic [ref=e8]:
             - generic [ref=e9]:
               - heading "Chevron Right" [level=1] [ref=e10]

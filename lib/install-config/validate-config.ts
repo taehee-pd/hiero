@@ -1,5 +1,5 @@
 import type {
-  ConivaConfig,
+  ContourConfig,
   ConfigValidationError,
   ConfigValidationResult,
   HostTarget,

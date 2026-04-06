@@ -170,7 +170,7 @@ export function ExplorerShell() {
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const workspaceName = workspace?.meta.name ?? 'Coniva Workspace';
+  const workspaceName = workspace?.meta.name ?? 'Contour Workspace';
 
   const iconSets = useMemo(
     () =>

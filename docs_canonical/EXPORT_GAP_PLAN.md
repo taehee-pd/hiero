@@ -1,6 +1,6 @@
 # Export Gap Plan — Missing Parts & IA
 
-**Scope:** Four confirmed gaps that block recommending Coniva as a sustainable icon library platform.
+**Scope:** Four confirmed gaps that block recommending Contour as a sustainable icon library platform.
 **Author:** Engineering
 **Status:** Draft — awaiting design
 

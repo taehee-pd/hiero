@@ -1,8 +1,8 @@
 /**
- * Coniva dev server — Lane 1 local HTTP API.
+ * Contour dev server — Lane 1 local HTTP API.
  *
  * Runs in the consumer repo (not in the editor). Consumers install
- * @coniva/cli and run `coniva dev` to start this server.
+ * @contour/cli and run `contour dev` to start this server.
  *
  * Responsibilities:
  *   - Watch sourceDir for changes and trigger incremental rebuilds
@@ -43,7 +43,7 @@ export async function startDevServer(serverConfig: DevServerConfig): Promise<{
   port: number;
   close(): Promise<void>;
 }> {
-  const { repoRoot, coniva: config, port } = serverConfig;
+  const { repoRoot, contour: config, port } = serverConfig;
 
   const state: DevServerState = {
     iconCount: 0,
@@ -54,20 +54,20 @@ export async function startDevServer(serverConfig: DevServerConfig): Promise<{
   };
 
   // --- Initial full build ---
-  console.log(`[coniva] Starting dev server on port ${port}...`);
-  console.log(`[coniva] Source directory: ${path.resolve(repoRoot, config.sourceDir)}`);
-  console.log(`[coniva] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(', ')}`);
+  console.log(`[contour] Starting dev server on port ${port}...`);
+  console.log(`[contour] Source directory: ${path.resolve(repoRoot, config.sourceDir)}`);
+  console.log(`[contour] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(', ')}`);
 
   const initialBuild = await fullRebuild(repoRoot, config);
   applyBuildResult(state, initialBuild);
 
   if (initialBuild.kind === 'success') {
     console.log(
-      `[coniva] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`,
+      `[contour] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`,
     );
   } else if (initialBuild.kind === 'error') {
-    console.warn(`[coniva] Initial build failed: ${initialBuild.error}`);
-    console.warn(`[coniva] Continuing — server will retry on file change.`);
+    console.warn(`[contour] Initial build failed: ${initialBuild.error}`);
+    console.warn(`[contour] Continuing — server will retry on file change.`);
   }
 
   // --- File watcher ---
@@ -78,10 +78,10 @@ export async function startDevServer(serverConfig: DevServerConfig): Promise<{
 
     if (result.kind === 'success') {
       console.log(
-        `[coniva] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`,
+        `[contour] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`,
       );
     } else if (result.kind === 'error') {
-      console.warn(`[coniva] Rebuild failed: ${result.error}`);
+      console.warn(`[contour] Rebuild failed: ${result.error}`);
     }
     // no-op: silent
   });
@@ -97,7 +97,7 @@ export async function startDevServer(serverConfig: DevServerConfig): Promise<{
     server.listen(port, '127.0.0.1', resolve);
   });
 
-  console.log(`[coniva] Listening on http://localhost:${port}`);
+  console.log(`[contour] Listening on http://localhost:${port}`);
 
   return {
     port,
@@ -120,7 +120,7 @@ async function handleRequest(
   state: DevServerState,
 ): Promise<void> {
   const { method, url } = req;
-  const { repoRoot, coniva: config, apiSecret } = serverConfig;
+  const { repoRoot, contour: config, apiSecret } = serverConfig;
 
   // CORS — reflect the request origin so the editor works from any origin
   // (localhost web editor, desktop webview, hosted app). The server already
@@ -161,7 +161,7 @@ async function handleRequest(
       sendJson(res, 404, { error: 'Not found' });
     }
   } catch (err) {
-    console.error(`[coniva] Unhandled request error:`, err);
+    console.error(`[contour] Unhandled request error:`, err);
     sendJson(res, 500, { error: 'Internal server error' });
   }
 }
@@ -175,7 +175,7 @@ async function handleGetStatus(
   serverConfig: DevServerConfig,
   state: DevServerState,
 ): Promise<void> {
-  const { repoRoot, coniva: config, port } = serverConfig;
+  const { repoRoot, contour: config, port } = serverConfig;
   const status: DevServerStatus = {
     ok: true,
     repoRoot,
@@ -229,7 +229,7 @@ async function handlePostIcons(
   req: IncomingMessage,
   res: ServerResponse,
   repoRoot: string,
-  config: import('@/lib/install-config/types').ConivaConfig,
+  config: import('@/lib/install-config/types').ContourConfig,
   state: DevServerState,
 ): Promise<void> {
   const body = await readBody(req);
@@ -264,7 +264,7 @@ async function handlePostIcons(
 
   if (result.kind === 'success') {
     console.log(
-      `[coniva] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`,
+      `[contour] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`,
     );
   }
 
@@ -284,7 +284,7 @@ async function handlePostManifest(
   req: IncomingMessage,
   res: ServerResponse,
   repoRoot: string,
-  config: import('@/lib/install-config/types').ConivaConfig,
+  config: import('@/lib/install-config/types').ContourConfig,
   state: DevServerState,
 ): Promise<void> {
   const body = await readBody(req);

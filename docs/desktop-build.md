@@ -1,10 +1,10 @@
 # Desktop Build Pipeline
 
-> **DEPRECATED (2026-04-04):** Coniva is now a web-only application. The desktop build pipeline was removed in Phase R1. This document is retained for historical reference only.
+> **DEPRECATED (2026-04-04):** Contour is now a web-only application. The desktop build pipeline was removed in Phase R1. This document is retained for historical reference only.
 
 ---
 
-Coniva previously shipped as two targets:
+Contour previously shipped as two targets:
 
 - Web: the standard Next.js app.
 - Desktop: a static Next.js export packaged into Electrobun and served from `views://mainview/index.html`.

@@ -54,7 +54,7 @@ jobs:
       - name: Validate icon package
         env:
           ICONS_PACKAGE_VERSION: ${{ github.event.inputs.package_version || format('0.0.0-dev.{0}', github.run_number) }}
-        run: bun run validate:icons:package --package-name @coniva/icons --package-version $ICONS_PACKAGE_VERSION
+        run: bun run validate:icons:package --package-name @contour/icons --package-version $ICONS_PACKAGE_VERSION
 
       - name: Pack tarball
         run: npm pack ./dist/icons-package
@@ -95,7 +95,7 @@ jobs:
       - name: Validate icon package for publish
         env:
           ICONS_PACKAGE_VERSION: ${{ github.event.inputs.package_version }}
-        run: bun run validate:icons:package --package-name @coniva/icons --package-version $ICONS_PACKAGE_VERSION
+        run: bun run validate:icons:package --package-name @contour/icons --package-version $ICONS_PACKAGE_VERSION
 
       - name: Publish to npm
         env:

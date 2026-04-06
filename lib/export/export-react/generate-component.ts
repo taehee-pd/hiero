@@ -18,7 +18,7 @@ export function generateIconComponent(
   if (typescript) {
     lines.push("import type { CSSProperties } from 'react';");
   }
-  lines.push("import { ConivaIcon } from '@/lib/runtime-react';");
+  lines.push("import { ContourIcon } from '@/lib/runtime-react';");
   if (typescript) {
     lines.push("import type { Icon } from '@/lib/schema/types';");
   }
@@ -69,7 +69,7 @@ export function generateIconComponent(
   lines.push(typescript ? `}: ${componentName}Props) {` : '}) {');
 
   lines.push('  return (');
-  lines.push('    <ConivaIcon');
+  lines.push('    <ContourIcon');
   lines.push(typescript ? '      icon={typedIconData}' : '      icon={iconData as any}');
   lines.push('      size={size}');
   lines.push('      color={color}');

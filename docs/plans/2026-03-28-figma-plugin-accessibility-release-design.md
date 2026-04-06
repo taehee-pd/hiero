@@ -11,17 +11,17 @@ Date: 2026-03-28
 
 Ship the next readiness slice by:
 
-- adding a repo-local Figma plugin that exports selected nodes to a Coniva-friendly payload
-- importing that payload through the existing Coniva SVG normalization pipeline
+- adding a repo-local Figma plugin that exports selected nodes to a Contour-friendly payload
+- importing that payload through the existing Contour SVG normalization pipeline
 - improving consumer documentation
 - tightening accessibility in the import flow and related touched UI
 - hardening the desktop release path after the plugin/docs/a11y batch
 
 ## Approved Direction
 
-- Build a narrow `Export to Coniva` Figma plugin, not a full file browser.
+- Build a narrow `Export to Contour` Figma plugin, not a full file browser.
 - Use selection-based export only.
-- Import plugin payloads as JSON in Coniva and reuse the existing sanitize → normalize → convert pipeline.
+- Import plugin payloads as JSON in Contour and reuse the existing sanitize → normalize → convert pipeline.
 - Scope accessibility fixes to the UI touched by this work.
 - Treat desktop distribution as release-path hardening, not a full hosted signing deployment.
 
@@ -40,9 +40,9 @@ Ship the next readiness slice by:
   - `icons[]` with `name`, `nodeId`, `svgContent`, and provenance
 - Unsupported nodes are reported back to the user instead of crashing the export.
 
-### Coniva Import
+### Contour Import
 
-- Extend `ImportIconDialog` with a new source mode for `Coniva Plugin`.
+- Extend `ImportIconDialog` with a new source mode for `Contour Plugin`.
 - Accept pasted JSON or uploaded `.json`.
 - Parse and validate the payload.
 - Import entries one by one through the existing SVG import path so all sanitization and normalization stays shared.

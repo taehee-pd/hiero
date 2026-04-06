@@ -1,5 +1,5 @@
-// Install Config Types — defines the coniva.config.ts contract for repo-native icon authoring.
-// This config lives at the host repository root and tells Coniva:
+// Install Config Types — defines the contour.config.ts contract for repo-native icon authoring.
+// This config lives at the host repository root and tells Contour:
 //   - where canonical icon source lives
 //   - which host surfaces should update live during development
 //   - which release outputs should be produced for CI, review, or publishing
@@ -10,8 +10,8 @@
 // Top-level config
 // ---------------------------------------------------------------------------
 
-export type ConivaConfig = {
-  /** Relative path to committed canonical icon source (e.g. 'coniva'). */
+export type ContourConfig = {
+  /** Relative path to committed canonical icon source (e.g. 'contour'). */
   sourceDir: string;
   /** Dev-time integrations that react to icon changes. */
   hostTargets: HostTarget[];

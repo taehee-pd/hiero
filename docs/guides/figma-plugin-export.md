@@ -1,18 +1,18 @@
 # Figma Plugin Export Guide
 
-Use the local `Export to Coniva` Figma plugin when you want to move selected icons from Figma into Coniva without managing API tokens.
+Use the local `Export to Contour` Figma plugin when you want to move selected icons from Figma into Contour without managing API tokens.
 
 ## Install The Plugin
 
 1. Open Figma desktop.
 2. Go to `Plugins` → `Development` → `Import plugin from manifest...`.
-3. Choose [manifest.json](/Users/taehee/IconStudio/figma-plugin/export-to-coniva/manifest.json).
+3. Choose [manifest.json](/Users/taehee/Contour/figma-plugin/export-to-contour/manifest.json).
 
 ## Export From Figma
 
 1. Open the Figma file that contains your icon nodes.
 2. Select one or more vector or component nodes.
-3. Run `Export to Coniva`.
+3. Run `Export to Contour`.
 4. Click `Export selection`.
 5. Copy the JSON payload or download it as a file.
 
@@ -24,14 +24,14 @@ The plugin exports:
 - page/frame provenance
 - skipped-node diagnostics when a selection cannot be exported
 
-## Import Into Coniva
+## Import Into Contour
 
-1. Open `Import icon` in Coniva.
-2. Choose `Coniva Plugin`.
+1. Open `Import icon` in Contour.
+2. Choose `Contour Plugin`.
 3. Paste the JSON payload or upload the downloaded `.json` file.
 4. Click `Import Plugin Payload`.
 
-Coniva sanitizes and normalizes each SVG before inserting it into the workspace, so the plugin path uses the same import hardening as the other SVG sources.
+Contour sanitizes and normalizes each SVG before inserting it into the workspace, so the plugin path uses the same import hardening as the other SVG sources.
 
 ## What Gets Skipped
 

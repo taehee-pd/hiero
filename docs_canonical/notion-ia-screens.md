@@ -1,8 +1,8 @@
-# Coniva — Information Architecture & Screen Inventory
+# Contour — Information Architecture & Screen Inventory
 
 ## Product Overview
 
-Coniva는 SF Symbols급 애니메이션 기능을 갖춘 아이콘 저작 도구입니다.
+Contour는 SF Symbols급 애니메이션 기능을 갖춘 아이콘 저작 도구입니다.
 Next.js 16 + React 19 + TypeScript + Zustand + Tailwind CSS + Radix UI 기반.
 
 ---
@@ -12,7 +12,7 @@ Next.js 16 + React 19 + TypeScript + Zustand + Tailwind CSS + Radix UI 기반.
 ### Top-Level Navigation
 
 ```
-Coniva App
+Contour App
 ├── Explorer (/)                        ← 워크스페이스 & 프로젝트 관리
 │   ├── Workspace View                  ← 아이콘 세트 그리드
 │   ├── Project View                    ← 세트 내 아이콘 그리드
@@ -45,7 +45,7 @@ Coniva App
     ├── Easing Curve Editor             ← 베지어 편집 + 프리셋
     ├── Color Picker                    ← HSB gradient + hex + swatches
     ├── Keyboard Shortcuts              ← 전체 단축키 레퍼런스
-    ├── Install & Publish Config        ← coniva.config.ts 기반 host/release
+    ├── Install & Publish Config        ← contour.config.ts 기반 host/release
     └── Confirmation Dialogs            ← Delete/Unsaved/Simple
 ```
 
@@ -117,9 +117,9 @@ Coniva App
 | 6 | Easing Curve Editor | 베지어 핸들 + cubic-bezier 값 + 프리셋 | Custom Edit / Preset Selected |
 | 7 | Color Picker | HSB gradient + Hue/Alpha slider + Hex + Swatches | Default / Alpha Active |
 | 8 | Keyboard Shortcuts | 전체 단축키 그리드 (Tools/Edit/Canvas/Path/File) | Static |
-| 9A | Host Targets (Live Dev) | coniva.config.ts 기반 host target 상태 + Publish | Watching / Publishing / Idle |
+| 9A | Host Targets (Live Dev) | contour.config.ts 기반 host target 상태 + Publish | Watching / Publishing / Idle |
 | 9B | Release Targets | npm 릴리스 설정 + History | Config / Releasing |
-| 9C | Config Status | coniva.config.ts 검증 + source dir 상태 | Found / Missing / Invalid |
+| 9C | Config Status | contour.config.ts 검증 + source dir 상태 | Found / Missing / Invalid |
 | 10A | Confirm: Delete (exact name) | 이름 입력 필수 삭제 확인 | Empty / Name Matched |
 | 10B | Confirm: Unsaved Changes | Don't Save / Cancel / Save 3버튼 | Static |
 | 10C | Confirm: Simple | Cancel / Delete 2버튼 | Static |
@@ -242,7 +242,7 @@ Morph Strategy, Trim Strategy, Crossfade Strategy, Locked State, Derived Variant
 
 ## Figma Design File Reference
 
-**File:** [IconStudio-Screens](https://www.figma.com/design/pjZU0O5hL442UwdGYP3184/IconStudio-Screens)
+**File:** [Contour-Screens](https://www.figma.com/design/pjZU0O5hL442UwdGYP3184/Contour-Screens)
 
 | Page | Contents |
 |---|---|

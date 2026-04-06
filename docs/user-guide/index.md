@@ -1,6 +1,6 @@
-# IconStudio User Guide
+# Contour User Guide
 
-This guide explains how to use IconStudio in plain language, from opening the library to drawing, organizing, guiding, and exporting icons.
+This guide explains how to use Contour in plain language, from opening the library to drawing, organizing, guiding, and exporting icons.
 
 ## Start Here
 
@@ -11,9 +11,9 @@ This guide explains how to use IconStudio in plain language, from opening the li
 - [Size Versions and Guides](./size-versions-and-guides.md)
 - [Saving, Importing, Exporting, and Shortcuts](./files-export-and-shortcuts.md)
 
-## What IconStudio Is For
+## What Contour Is For
 
-IconStudio is a browser-based icon editor for:
+Contour is a browser-based icon editor for:
 
 - building icons from paths and shapes
 - creating multiple size-specific versions of the same icon

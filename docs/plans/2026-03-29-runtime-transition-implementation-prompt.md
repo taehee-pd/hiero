@@ -1,4 +1,4 @@
-<!-- /autoplan restore point: /Users/taehee/.gstack/projects/taehee-pd-icon-authoring-tool/claude-busy-mclean-autoplan-restore-20260329-151148.md -->
+<!-- /autoplan restore point: /Users/taehee/.gstack/projects/taehee-pd-contour/claude-busy-mclean-autoplan-restore-20260329-151148.md -->
 ---
 status: ready-for-implementation
 last-reviewed: 2026-03-29
@@ -6,15 +6,15 @@ last-reviewed: 2026-03-29
 
 # Runtime Transition Rewrite Implementation Prompt
 
-Use this prompt when implementing the reviewed Coniva product-model rewrite.
+Use this prompt when implementing the reviewed Contour product-model rewrite.
 
 ## Mission
 
-Implement the reviewed v1 product direction for Coniva:
+Implement the reviewed v1 product direction for Contour:
 
 - Figma is ingress only
-- Coniva becomes the source of truth inside the repo
-- install behavior is defined at repo root via `coniva.config.ts`
+- Contour becomes the source of truth inside the repo
+- install behavior is defined at repo root via `contour.config.ts`
 - publish goes directly into the current React codebase
 - Storybook is reference-only and must not become a product target
 - backward compatibility is not required
@@ -26,31 +26,31 @@ Implement the reviewed v1 product direction for Coniva:
 
 These are the spec documents that were rewritten or added during this session and should be treated as the newest reviewed direction:
 
-- [install-config.md](/Users/taehee/IconStudio/specs/schema/install-config.md)
-- [repo-native-distribution.md](/Users/taehee/IconStudio/specs/export/repo-native-distribution.md)
-- [repo-native-workflow.md](/Users/taehee/IconStudio/specs/ui/repo-native-workflow.md)
-- [icon-schema.md](/Users/taehee/IconStudio/specs/schema/icon-schema.md)
-- [transition-schema.md](/Users/taehee/IconStudio/specs/schema/transition-schema.md)
-- [editor-store.md](/Users/taehee/IconStudio/specs/editor/editor-store.md)
-- [cross-icon-transitions.md](/Users/taehee/IconStudio/specs/editor/cross-icon-transitions.md)
-- [animation-tab.md](/Users/taehee/IconStudio/specs/editor/animation-tab.md)
-- [inspect-tab.md](/Users/taehee/IconStudio/specs/editor/inspect-tab.md)
-- [transition-resolver.md](/Users/taehee/IconStudio/specs/runtime/transition-resolver.md)
-- [runtime-json-format.md](/Users/taehee/IconStudio/specs/export/runtime-json-format.md)
-- [lottie-export.md](/Users/taehee/IconStudio/specs/export/lottie-export.md)
-- [README.md](/Users/taehee/IconStudio/specs/README.md)
+- [install-config.md](/Users/taehee/Contour/specs/schema/install-config.md)
+- [repo-native-distribution.md](/Users/taehee/Contour/specs/export/repo-native-distribution.md)
+- [repo-native-workflow.md](/Users/taehee/Contour/specs/ui/repo-native-workflow.md)
+- [icon-schema.md](/Users/taehee/Contour/specs/schema/icon-schema.md)
+- [transition-schema.md](/Users/taehee/Contour/specs/schema/transition-schema.md)
+- [editor-store.md](/Users/taehee/Contour/specs/editor/editor-store.md)
+- [cross-icon-transitions.md](/Users/taehee/Contour/specs/editor/cross-icon-transitions.md)
+- [animation-tab.md](/Users/taehee/Contour/specs/editor/animation-tab.md)
+- [inspect-tab.md](/Users/taehee/Contour/specs/editor/inspect-tab.md)
+- [transition-resolver.md](/Users/taehee/Contour/specs/runtime/transition-resolver.md)
+- [runtime-json-format.md](/Users/taehee/Contour/specs/export/runtime-json-format.md)
+- [lottie-export.md](/Users/taehee/Contour/specs/export/lottie-export.md)
+- [README.md](/Users/taehee/Contour/specs/README.md)
 
 ## Required reading
 
 Read these files first and treat them as the source of truth for this implementation:
 
-- [DESIGN.md](/Users/taehee/IconStudio/docs_canonical/DESIGN.md)
-- [TASKS.md](/Users/taehee/IconStudio/docs_canonical/TASKS.md)
-- [ARCHITECTURE.md](/Users/taehee/IconStudio/docs_canonical/ARCHITECTURE.md)
-- [2026-03-29-installable-codebase-platform-design.md](/Users/taehee/IconStudio/docs/plans/2026-03-29-installable-codebase-platform-design.md)
-- [2026-03-29-installable-codebase-platform-implementation-plan.md](/Users/taehee/IconStudio/docs/plans/2026-03-29-installable-codebase-platform-implementation-plan.md)
-- [2026-03-29-installable-codebase-platform-verification.md](/Users/taehee/IconStudio/docs/plans/2026-03-29-installable-codebase-platform-verification.md)
-- [taehee-codex-sync-repo-and-implement-tasks-design-20260329-142247.md](/Users/taehee/.gstack/projects/taehee-pd-icon-authoring-tool/taehee-codex-sync-repo-and-implement-tasks-design-20260329-142247.md)
+- [DESIGN.md](/Users/taehee/Contour/docs_canonical/DESIGN.md)
+- [TASKS.md](/Users/taehee/Contour/docs_canonical/TASKS.md)
+- [ARCHITECTURE.md](/Users/taehee/Contour/docs_canonical/ARCHITECTURE.md)
+- [2026-03-29-installable-codebase-platform-design.md](/Users/taehee/Contour/docs/plans/2026-03-29-installable-codebase-platform-design.md)
+- [2026-03-29-installable-codebase-platform-implementation-plan.md](/Users/taehee/Contour/docs/plans/2026-03-29-installable-codebase-platform-implementation-plan.md)
+- [2026-03-29-installable-codebase-platform-verification.md](/Users/taehee/Contour/docs/plans/2026-03-29-installable-codebase-platform-verification.md)
+- [taehee-codex-sync-repo-and-implement-tasks-design-20260329-142247.md](/Users/taehee/.gstack/projects/taehee-pd-contour/taehee-codex-sync-repo-and-implement-tasks-design-20260329-142247.md)
 
 Then read the updated spec-kit files listed in `Specs changed in this session`.
 
@@ -67,9 +67,9 @@ Then read the updated spec-kit files listed in `Specs changed in this session`.
 
 ### Schema and source model
 
-- [types.ts](/Users/taehee/IconStudio/lib/schema/types.ts)
-- [workspace.ts](/Users/taehee/IconStudio/lib/schema/workspace.ts)
-- [variant-derivation.ts](/Users/taehee/IconStudio/lib/schema/variant-derivation.ts)
+- [types.ts](/Users/taehee/Contour/lib/schema/types.ts)
+- [workspace.ts](/Users/taehee/Contour/lib/schema/workspace.ts)
+- [variant-derivation.ts](/Users/taehee/Contour/lib/schema/variant-derivation.ts)
 
 Implementation goal:
 
@@ -81,13 +81,13 @@ Implementation goal:
 
 ### Editor store and editor UI
 
-- [store.ts](/Users/taehee/IconStudio/lib/editor-store/store.ts)
-- [types.ts](/Users/taehee/IconStudio/lib/editor-store/types.ts)
-- [selectors.ts](/Users/taehee/IconStudio/lib/editor-store/selectors.ts)
-- [hooks.ts](/Users/taehee/IconStudio/lib/editor-store/hooks.ts)
-- [InspectorPanel.tsx](/Users/taehee/IconStudio/components/editor/InspectorPanel.tsx)
-- [TransitionPanel.tsx](/Users/taehee/IconStudio/components/editor/TransitionPanel.tsx)
-- [AnimationStudioPanel.tsx](/Users/taehee/IconStudio/components/editor/AnimationStudioPanel.tsx)
+- [store.ts](/Users/taehee/Contour/lib/editor-store/store.ts)
+- [types.ts](/Users/taehee/Contour/lib/editor-store/types.ts)
+- [selectors.ts](/Users/taehee/Contour/lib/editor-store/selectors.ts)
+- [hooks.ts](/Users/taehee/Contour/lib/editor-store/hooks.ts)
+- [InspectorPanel.tsx](/Users/taehee/Contour/components/editor/InspectorPanel.tsx)
+- [TransitionPanel.tsx](/Users/taehee/Contour/components/editor/TransitionPanel.tsx)
+- [AnimationStudioPanel.tsx](/Users/taehee/Contour/components/editor/AnimationStudioPanel.tsx)
 
 Implementation goal:
 
@@ -98,13 +98,13 @@ Implementation goal:
 
 ### Runtime transition engine
 
-- [transition-resolver.ts](/Users/taehee/IconStudio/lib/runtime-core/transition-resolver.ts)
-- [cross-icon-morph.ts](/Users/taehee/IconStudio/lib/runtime-core/cross-icon-morph.ts)
-- [morph.ts](/Users/taehee/IconStudio/lib/runtime-core/morph.ts)
-- [draw-executor.ts](/Users/taehee/IconStudio/lib/runtime-core/draw-executor.ts)
-- [inspection.ts](/Users/taehee/IconStudio/lib/runtime-core/inspection.ts)
-- [weight-interpolation.ts](/Users/taehee/IconStudio/lib/runtime-core/weight-interpolation.ts)
-- [state-machine.ts](/Users/taehee/IconStudio/lib/runtime-core/state-machine.ts)
+- [transition-resolver.ts](/Users/taehee/Contour/lib/runtime-core/transition-resolver.ts)
+- [cross-icon-morph.ts](/Users/taehee/Contour/lib/runtime-core/cross-icon-morph.ts)
+- [morph.ts](/Users/taehee/Contour/lib/runtime-core/morph.ts)
+- [draw-executor.ts](/Users/taehee/Contour/lib/runtime-core/draw-executor.ts)
+- [inspection.ts](/Users/taehee/Contour/lib/runtime-core/inspection.ts)
+- [weight-interpolation.ts](/Users/taehee/Contour/lib/runtime-core/weight-interpolation.ts)
+- [state-machine.ts](/Users/taehee/Contour/lib/runtime-core/state-machine.ts)
 
 Implementation goal:
 
@@ -115,14 +115,14 @@ Implementation goal:
 
 ### Export and direct React publish
 
-- [export-runtime-json.ts](/Users/taehee/IconStudio/lib/export/export-runtime-json.ts)
-- [export-react-components.ts](/Users/taehee/IconStudio/lib/export/export-react-components.ts)
-- [react-adapter.ts](/Users/taehee/IconStudio/lib/export/adapters/react-adapter.ts)
-- [generate-component.ts](/Users/taehee/IconStudio/lib/export/export-react/generate-component.ts)
-- [generate-library.ts](/Users/taehee/IconStudio/lib/export/export-react/generate-library.ts)
-- [write-library.ts](/Users/taehee/IconStudio/lib/export/export-react/write-library.ts)
-- [compile-from-source.ts](/Users/taehee/IconStudio/scripts/compile-from-source.ts)
-- [validate-source-export.ts](/Users/taehee/IconStudio/scripts/validate-source-export.ts)
+- [export-runtime-json.ts](/Users/taehee/Contour/lib/export/export-runtime-json.ts)
+- [export-react-components.ts](/Users/taehee/Contour/lib/export/export-react-components.ts)
+- [react-adapter.ts](/Users/taehee/Contour/lib/export/adapters/react-adapter.ts)
+- [generate-component.ts](/Users/taehee/Contour/lib/export/export-react/generate-component.ts)
+- [generate-library.ts](/Users/taehee/Contour/lib/export/export-react/generate-library.ts)
+- [write-library.ts](/Users/taehee/Contour/lib/export/export-react/write-library.ts)
+- [compile-from-source.ts](/Users/taehee/Contour/scripts/compile-from-source.ts)
+- [validate-source-export.ts](/Users/taehee/Contour/scripts/validate-source-export.ts)
 
 Implementation goal:
 
@@ -133,7 +133,7 @@ Implementation goal:
 
 ### Install config and repo-native publish path
 
-- [SyncTargetPanel.tsx](/Users/taehee/IconStudio/components/export/SyncTargetPanel.tsx)
+- [SyncTargetPanel.tsx](/Users/taehee/Contour/components/export/SyncTargetPanel.tsx)
 
 Implementation goal:
 
@@ -162,7 +162,7 @@ Before calling the work done, verify all of the following:
 
 ## Commands to run
 
-Run these from [/Users/taehee/IconStudio](/Users/taehee/IconStudio):
+Run these from [/Users/taehee/Contour](/Users/taehee/Contour):
 
 ```bash
 bun test
@@ -203,7 +203,7 @@ Auto-decision (P3 pragmatic): The animation runtime is already built (Phases C t
 
 **P2: "Figma should be an ingress path, not the long-term source of truth."**
 
-Assessment: VALID with a caveat. Correct for the React design-system wedge. But "ingress-only forever" is too strong as an architectural constraint. Designers iterate continuously in Figma. If Coniva cannot reflect changes back eventually, the SSOT claim erodes when designers maintain parallel Figma files. The plan correctly makes this v1-only, and the design doc lists back-sync as an open question.
+Assessment: VALID with a caveat. Correct for the React design-system wedge. But "ingress-only forever" is too strong as an architectural constraint. Designers iterate continuously in Figma. If Contour cannot reflect changes back eventually, the SSOT claim erodes when designers maintain parallel Figma files. The plan correctly makes this v1-only, and the design doc lists back-sync as an open question.
 
 Auto-decision (P6 bias toward action): Ship ingress-only in v1. Do not encode ingress-only as a permanent architectural constraint. The schema and plugin should remain back-sync-compatible. ACCEPT.
 
@@ -240,7 +240,7 @@ Auto-decision: TASTE DECISION. The subagent and the code analysis both flag this
 | Sync target UI | `components/export/SyncTargetPanel.tsx` (689 LOC) | Replace: repo install config |
 | Export pipeline | `lib/export/export-runtime-json.ts` | Reshape: no state payloads |
 | React adapter | `lib/export/adapters/react-adapter.ts` | Keep: adapter pattern still applies |
-| Figma plugin | `figma-plugin/export-to-coniva/` | Keep: ingress path already built |
+| Figma plugin | `figma-plugin/export-to-contour/` | Keep: ingress path already built |
 
 ### Step 0C: Dream State Diagram
 
@@ -250,7 +250,7 @@ CURRENT STATE                    THIS PLAN                       12-MONTH IDEAL
 Standalone app                  Repo-native control plane       Installable platform
 State-machine icons             Flat variant icons              Variant-axis icons
 Authored transitions            Runtime transitions             Smart runtime + user hints
-SyncTarget dashboard            coniva.config.ts                CLI + watch + CI publish
+SyncTarget dashboard            contour.config.ts                CLI + watch + CI publish
 Multi-target export             React-first publish             Multi-framework publish
 NPM registry (Phase Q)          Direct codebase publish         Both NPM + direct
 No Figma back-sync              Figma ingress-only              Optional Figma back-sync
@@ -275,8 +275,8 @@ Mode: **SELECTIVE EXPANSION** (auto-decided per P2 boil lakes).
 Baseline scope: The 6 execution steps in the plan's "Suggested execution order."
 
 Expansion opportunities identified:
-1. Add `coniva.config.ts` loader and validator (in blast radius, <1 day) -> AUTO-APPROVE (P2)
-2. Add CLI entry point (`coniva dev`, `coniva build`) -> OUT OF SCOPE (new infra, >1 day) -> DEFER to TODOS.md
+1. Add `contour.config.ts` loader and validator (in blast radius, <1 day) -> AUTO-APPROVE (P2)
+2. Add CLI entry point (`contour dev`, `contour build`) -> OUT OF SCOPE (new infra, >1 day) -> DEFER to TODOS.md
 3. Add watch mode for live rebuild -> OUT OF SCOPE -> DEFER
 4. Update Figma plugin to match new schema -> BORDERLINE (1-2 files) -> TASTE DECISION
 
@@ -298,7 +298,7 @@ SELECTIVE EXPANSION confirmed. Hold the 6-step baseline, cherry-pick config load
 ### Step 0.5: Dual Voices
 
 **CODEX SAYS (CEO, strategy challenge):**
-Codex identified the core strategic tension: 17 shipped phases are effectively being rewritten. The canonical design doc says "icon authoring tool with SF Symbols-grade animation capabilities" while this plan pivots toward "repo-native handoff platform." Codex was analyzing whether the plan conflates execution scope with a product pivot when its output was truncated. Key concern surfaced: the plan does not address competitive positioning against SVGR and Figma Dev Mode. [codex-partial]
+Codex identified the core strategic tension: 17 shipped phases are effectively being rewritten. The canonical design doc says "Contour with SF Symbols-grade animation capabilities" while this plan pivots toward "repo-native handoff platform." Codex was analyzing whether the plan conflates execution scope with a product pivot when its output was truncated. Key concern surfaced: the plan does not address competitive positioning against SVGR and Figma Dev Mode. [codex-partial]
 
 **CLAUDE SUBAGENT (CEO, strategic independence):**
 7 findings, 1 critical, 5 high, 1 medium:
@@ -343,7 +343,7 @@ Single critical finding from Claude subagent: backward compat premise untested.
 
 **Section 3 (Security):** Examined. No new attack surface. Config file is local. NPM tokens stay in keychain (existing decision). No secrets in config (hard constraint in install-config spec). No issues.
 
-**Section 4 (Data Flow):** Examined. Happy path: Figma -> import -> canonical source -> export -> React components. Shadow paths: nil import (empty Figma selection), zero-layer icon, upstream Figma API error. All addressed by existing import validation in `lib/import/coniva-plugin-payload.ts`. No new shadow paths introduced by this rewrite.
+**Section 4 (Data Flow):** Examined. Happy path: Figma -> import -> canonical source -> export -> React components. Shadow paths: nil import (empty Figma selection), zero-layer icon, upstream Figma API error. All addressed by existing import validation in `lib/import/contour-plugin-payload.ts`. No new shadow paths introduced by this rewrite.
 
 **Section 5 (Observability):** Not applicable for a local authoring tool. No dashboards, alerts, or metrics needed. The verification checklist serves as the observability surface.
 
@@ -359,7 +359,7 @@ Single critical finding from Claude subagent: backward compat premise untested.
 
 ### NOT in scope
 
-- CLI extraction (`@coniva/cli`, `coniva dev`, `coniva build`) -> TODOS.md
+- CLI extraction (`@contour/cli`, `contour dev`, `contour build`) -> TODOS.md
 - Watch mode for live rebuild -> TODOS.md
 - CI publish integration -> TODOS.md
 - Figma back-sync -> TODOS.md
@@ -373,7 +373,7 @@ Single critical finding from Claude subagent: backward compat premise untested.
 |-------------|--------------|--------|
 | Cross-icon morph engine | `lib/runtime-core/cross-icon-morph.ts` | Complete, no changes needed |
 | Morph scoring | `transition-resolver.ts:computeReadiness()` | Reshape to icon-to-icon |
-| Figma plugin | `figma-plugin/export-to-coniva/` | Complete, already ingress |
+| Figma plugin | `figma-plugin/export-to-contour/` | Complete, already ingress |
 | React adapter | `lib/export/adapters/react-adapter.ts` | Keep, reshape input |
 | Variant derivation | `lib/schema/variant-derivation.ts` | Keep as-is |
 | NPM publish client | `lib/sync-service/npm-publish-client.ts` | Keep, decouple from syncTargets |
@@ -475,7 +475,7 @@ The plan orders by code refactor, not user task. Auto-fix (P5 explicit): the imp
 
 **Pass 2: Missing States (3/10)**
 11+ interaction states missing. Auto-fix (P1 completeness): during implementation, each panel must handle: empty, loading, error, success. Specific additions:
-- Config-not-found: "Create coniva.config.ts" button with template
+- Config-not-found: "Create contour.config.ts" button with template
 - Publish progress: "Publishing X of Y icons..." with cancel
 - Publish success: toast + count reset
 - Morph fallback: diagnostic line showing why ("3 subpaths vs 1")
@@ -546,7 +546,7 @@ lib/editor-store/hooks.ts                   - state exports
 lib/runtime-core/transition-resolver.ts     - State params
 lib/runtime-core/state-machine.ts           - direct state access
 lib/runtime-core/inspection.ts              - state inspection
-lib/runtime-react/ConivaIcon.tsx            - variant.states resolution *
+lib/runtime-react/ContourIcon.tsx            - variant.states resolution *
 lib/runtime-react/use-icon.ts               - state machine usage *
 lib/runtime-dom/dom-renderer.ts             - state rendering *
 lib/compiler-contracts/types.ts             - CompiledVariant.states *
@@ -636,7 +636,7 @@ lib/schema/types.ts (Icon, Variant, Layer — NO State, NO defaultState)
     │       └── [REMOVED: state-machine.ts]
     │
     ├── lib/runtime-react/
-    │       ├── ConivaIcon.tsx (resolves variant, NO state lookup)
+    │       ├── ContourIcon.tsx (resolves variant, NO state lookup)
     │       └── use-icon.ts (NO state machine)
     │
     ├── lib/export/

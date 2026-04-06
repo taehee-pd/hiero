@@ -52,4 +52,4 @@ The repository uses Prettier with the configuration in `.prettierrc.json`. Run `
 
 - A root-level ESLint flat config (`eslint.config.mjs`) exists with `no-explicit-any` and `exhaustive-deps` errors enabled.
 - Prettier is committed at the root (`.prettierrc.json`, `.prettierignore`) and enforced in CI via `format:check`.
-- Product naming uses `Coniva` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).
+- Product naming uses `Contour` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).

@@ -80,7 +80,7 @@ import {
 
 export function Toolbar() {
   const router = useRouter();
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Coniva');
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Contour');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
@@ -164,7 +164,7 @@ export function Toolbar() {
         editorStore.getState().loadProject(json);
       } else {
         clearCurrentProjectPath();
-        showToolbarError('Invalid Coniva workspace file.');
+        showToolbarError('Invalid Contour workspace file.');
       }
     } catch {
       clearCurrentProjectPath();

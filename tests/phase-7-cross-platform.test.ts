@@ -167,7 +167,7 @@ describe('Phase 7.1 — Swift adapter', () => {
     expect(componentFile!.contents).toContain('struct _HamburgerView');
     expect(componentFile!.contents).toContain('HamburgerState');
 
-    const barrelFile = result.files.find((f) => f.path.includes('ConivaIcons.swift'));
+    const barrelFile = result.files.find((f) => f.path.includes('ContourIcons.swift'));
     expect(barrelFile).toBeTruthy();
     expect(barrelFile!.contents).toContain('typealias Hamburger');
   });
@@ -265,7 +265,7 @@ describe('Phase 7.2 — Flutter adapter', () => {
     expect(widgetFile!.contents).toContain('class Hamburger extends StatefulWidget');
     expect(widgetFile!.contents).toContain('HamburgerState');
 
-    const barrelFile = result.files.find((f) => f.path.includes('coniva_icons.dart'));
+    const barrelFile = result.files.find((f) => f.path.includes('contour_icons.dart'));
     expect(barrelFile).toBeTruthy();
     expect(barrelFile!.contents).toContain("export 'hamburger.dart'");
   });

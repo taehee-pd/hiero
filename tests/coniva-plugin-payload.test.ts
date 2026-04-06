@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildPluginImportEntries,
-  parseConivaPluginPayload,
-} from '@/lib/import/coniva-plugin-payload';
+  parseContourPluginPayload,
+} from '@/lib/import/contour-plugin-payload';
 
 const validPayload = JSON.stringify({
   version: '1',
-  source: 'coniva-figma-plugin',
+  source: 'contour-figma-plugin',
   exportedAt: '2026-03-28T12:00:00.000Z',
   fileName: 'Icons',
   icons: [
@@ -19,25 +19,25 @@ const validPayload = JSON.stringify({
   ],
 });
 
-describe('parseConivaPluginPayload', () => {
+describe('parseContourPluginPayload', () => {
   test('parses a valid plugin payload', () => {
-    const payload = parseConivaPluginPayload(validPayload);
+    const payload = parseContourPluginPayload(validPayload);
     expect(payload.fileName).toBe('Icons');
     expect(payload.icons[0]?.name).toBe('Arrow Right');
   });
 
   test('rejects invalid JSON', () => {
-    expect(() => parseConivaPluginPayload('{')).toThrow(
+    expect(() => parseContourPluginPayload('{')).toThrow(
       'Plugin payload must be valid JSON.',
     );
   });
 
   test('rejects payload with missing icons', () => {
     expect(() =>
-      parseConivaPluginPayload(
+      parseContourPluginPayload(
         JSON.stringify({
           version: '1',
-          source: 'coniva-figma-plugin',
+          source: 'contour-figma-plugin',
           exportedAt: '2026-03-28T12:00:00.000Z',
           fileName: 'Icons',
           icons: [],
@@ -49,7 +49,7 @@ describe('parseConivaPluginPayload', () => {
 
 describe('buildPluginImportEntries', () => {
   test('maps payload icons to import entries with provenance', () => {
-    const payload = parseConivaPluginPayload(validPayload);
+    const payload = parseContourPluginPayload(validPayload);
     const entries = buildPluginImportEntries(payload);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.name).toBe('Arrow Right');

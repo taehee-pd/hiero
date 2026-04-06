@@ -7,7 +7,7 @@ last-reviewed: 2026-03-18
 
 ## Goal
 
-Evolve Coniva from a single-library project into a workspace model that supports:
+Evolve Contour from a single-library project into a workspace model that supports:
 
 - multiple icon sets inside one workspace
 - icon-set level styles, collections, export profiles, and GitHub sync targets

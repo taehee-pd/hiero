@@ -156,13 +156,13 @@ import { compileProject } from '@/lib/export/compile-pipeline';
 
 // Reconstruct a Project from merged source files
 const project = await projectFromSourceDir('./icons-source-dir', {
-  name: '@coniva/icons',
+  name: '@contour/icons',
   tokenColors: { accent: '#38bdf8' },
 });
 
 // Feed into existing compile pipeline — no changes needed
 const result = compileProject(project, {
-  package: { name: '@coniva/icons', version: '2.0.0', builtAt: new Date().toISOString() },
+  package: { name: '@contour/icons', version: '2.0.0', builtAt: new Date().toISOString() },
   generateReact: true,
 });
 ```

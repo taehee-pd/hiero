@@ -63,7 +63,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
     currentEffect.current = effect;
     setPreviewLabel(effect.kind);
 
-    const maybeRenderer = (window as unknown as { __conivaDomRenderer?: unknown }).__conivaDomRenderer;
+    const maybeRenderer = (window as unknown as { __contourDomRenderer?: unknown }).__contourDomRenderer;
     if (maybeRenderer) {
       const player = new EffectPlayer(effect, maybeRenderer as never);
       player.setSpeed(speed);

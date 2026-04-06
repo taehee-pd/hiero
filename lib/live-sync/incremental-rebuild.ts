@@ -23,7 +23,7 @@ import { exportSourcePayload } from '@/lib/sync-source';
 import { projectFromSourceDir } from '@/lib/sync-source';
 import { compileProject } from '@/lib/export/compile-pipeline';
 import { diffSourcePayloads } from '@/lib/sync-service/diff-source';
-import type { ConivaConfig } from '@/lib/install-config/types';
+import type { ContourConfig } from '@/lib/install-config/types';
 import type { LiveBuildResult } from './types';
 import { writeCompiledToHostTarget } from './output-writer';
 
@@ -37,7 +37,7 @@ import { writeCompiledToHostTarget } from './output-writer';
  */
 export async function fullRebuild(
   repoRoot: string,
-  config: ConivaConfig,
+  config: ContourConfig,
   opts?: { builtAt?: string },
 ): Promise<LiveBuildResult> {
   return runBuild(repoRoot, config, null, opts);
@@ -49,7 +49,7 @@ export async function fullRebuild(
  */
 export async function incrementalRebuild(
   repoRoot: string,
-  config: ConivaConfig,
+  config: ContourConfig,
   previousSourceFiles: Array<{ path: string; contents: string }> | null,
   opts?: { builtAt?: string },
 ): Promise<LiveBuildResult> {
@@ -62,7 +62,7 @@ export async function incrementalRebuild(
 
 async function runBuild(
   repoRoot: string,
-  config: ConivaConfig,
+  config: ContourConfig,
   previousSourceFiles: Array<{ path: string; contents: string }> | null,
   opts?: { builtAt?: string },
 ): Promise<LiveBuildResult> {
@@ -114,7 +114,7 @@ async function runBuild(
   try {
     compiled = compileProject(project, {
       package: {
-        name: 'coniva-live',
+        name: 'contour-live',
         version: '0.0.0',
         builtAt,
       },

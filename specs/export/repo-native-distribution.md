@@ -1,22 +1,22 @@
 # Repo-Native Distribution
 
 **Status:** Proposed
-**Primary future files:** `lib/live-sync/*`, `packages/coniva-cli`, `lib/sync-service/*`
+**Primary future files:** `lib/live-sync/*`, `packages/contour-cli`, `lib/sync-service/*`
 
 ## Overview
 
-This spec defines how Coniva distributes icon changes in an installable, repo-native model.
+This spec defines how Contour distributes icon changes in an installable, repo-native model.
 
 The key change from the existing product model is:
 
 - live integration is the default development loop
 - sync and publish become release concerns
 
-Coniva should no longer treat `Local / GitHub / npm` as the primary way users experience edits. Those remain valid outputs, but they should happen after Coniva has already updated the host repo or host app locally.
+Contour should no longer treat `Local / GitHub / npm` as the primary way users experience edits. Those remain valid outputs, but they should happen after Contour has already updated the host repo or host app locally.
 
 ## Core Model
 
-Coniva distribution has two lanes.
+Contour distribution has two lanes.
 
 ### Lane 1: Live Integration
 
@@ -24,7 +24,7 @@ Used during day-to-day authoring.
 
 ```text
 Figma plugin export
-  -> Coniva canonical source
+  -> Contour canonical source
   -> local watcher
   -> incremental rebuild
   -> host module invalidation
@@ -36,7 +36,7 @@ Figma plugin export
 Used for deterministic outputs and transport.
 
 ```text
-Coniva canonical source
+Contour canonical source
   -> snapshot codegen
   -> local-directory OR git-pr OR npm-registry target
   -> CI / release workflow
@@ -50,7 +50,7 @@ Primary ingress for the first wedge:
 
 - Figma plugin payload exported by the designer
 
-After ingress, Coniva becomes the system of record.
+After ingress, Contour becomes the system of record.
 
 ### Source of Truth
 
@@ -66,8 +66,8 @@ Canonical source export files remain authoritative:
 
 Disposable local outputs for dev-time speed:
 
-- `.coniva/cache/runtime/*`
-- `.coniva/cache/generated/*`
+- `.contour/cache/runtime/*`
+- `.contour/cache/generated/*`
 
 Properties:
 
@@ -140,7 +140,7 @@ Responsibilities:
 ## Product Rules
 
 - Figma is ingress, not SSOT
-- Coniva is SSOT after import
+- Contour is SSOT after import
 - the host codebase consumes outputs directly
 - live feedback and release sync must remain separate in code and UX
 

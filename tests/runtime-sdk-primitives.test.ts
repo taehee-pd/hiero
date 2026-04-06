@@ -75,21 +75,21 @@ describe('runtime sdk primitives', () => {
 
   test('parser validates payload and dispatches migration hook by schema', () => {
     const icon = makeIcon() as any;
-    icon.$schema = 'https://coniva.dev/schemas/compiled-icon/0.9.0';
+    icon.$schema = 'https://contour.dev/schemas/compiled-icon/0.9.0';
 
     let called = false;
     const parsed = parseCompiledIconJson(icon, {
       migrationHook: (payload, schema) => {
         called = true;
-        expect(schema).toBe('https://coniva.dev/schemas/compiled-icon/0.9.0');
+        expect(schema).toBe('https://contour.dev/schemas/compiled-icon/0.9.0');
         const migrated = structuredClone(payload) as any;
-        migrated.$schema = 'https://coniva.dev/schemas/compiled-icon/1.0.0';
+        migrated.$schema = 'https://contour.dev/schemas/compiled-icon/1.0.0';
         return migrated;
       },
     });
 
     expect(called).toBeTrue();
-    expect(parsed.icon.$schema).toBe('https://coniva.dev/schemas/compiled-icon/1.0.0');
+    expect(parsed.icon.$schema).toBe('https://contour.dev/schemas/compiled-icon/1.0.0');
     expect(parsed.meta.availableModes).toEqual([
       'monochrome',
     ]);

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildPluginImportEntries,
   parseContourPluginPayload,
-} from '@/lib/import/coniva-plugin-payload';
+} from '@/lib/import/contour-plugin-payload';
 
 const validPayload = JSON.stringify({
   version: '1',

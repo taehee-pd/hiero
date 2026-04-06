@@ -205,22 +205,23 @@ export function Navbar() {
 
   return (
     <>
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 bg-background px-3" style={{ fontFamily: 'var(--font-system)' }}>
+      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 bg-background px-3" style={{ fontFamily: 'var(--font-system)', boxShadow: 'var(--shadow-outline)' }}>
         {/* Left: project name + save status */}
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <p className="truncate text-sm tracking-tight text-foreground" style={{ fontWeight: 'var(--type-weight-strong)' }}>{projectName}</p>
           <Badge
             variant="outline"
-            className={`h-5 shrink-0 rounded-full px-1.5 text-[10px] font-medium ${
+            className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-wide ${
               isDirty
-                ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
-                : 'border-border/70 bg-background/80 text-muted-foreground'
+                ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 shadow-[inset_0_0_0_0.5px_rgba(217,170,0,0.12)] dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
+                : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
             }`}
+            style={{ fontWeight: 'var(--type-weight-medium)' }}
           >
             {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}
           </Badge>
           {currentIconName && (
-            <span className="truncate text-xs text-muted-foreground">/ {currentIconName}</span>
+            <span className="truncate text-xs text-muted-foreground" style={{ letterSpacing: '0.01em' }}>/ {currentIconName}</span>
           )}
         </div>
 
@@ -329,7 +330,7 @@ export function Navbar() {
 
       {/* Error toast */}
       {toolbarError && (
-        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 shadow-lg" role="alert" aria-live="assertive">
+        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300" style={{ fontWeight: 'var(--type-weight-medium)', boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }} role="alert" aria-live="assertive">
           {toolbarError}
         </div>
       )}
@@ -369,16 +370,16 @@ export function Navbar() {
             <DialogTitle>Keyboard shortcuts</DialogTitle>
             <DialogDescription>Core editor shortcuts.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 text-sm">
+          <div className="grid gap-1.5 text-sm">
             {[
               ['Select tool', 'V'], ['Direct select', 'A'], ['Pen tool', 'P'], ['Shape tool', 'U'],
               ['Undo', 'Cmd/Ctrl+Z'], ['Redo', 'Shift+Cmd/Ctrl+Z'],
               ['Toggle guides', 'Cmd/Ctrl+;'], ['Toggle snap', 'Shift+Cmd/Ctrl+;'],
               ['Delete', 'Delete'], ['Escape', 'Esc'],
             ].map(([label, shortcut]) => (
-              <div key={label} className="flex items-center justify-between rounded-lg border border-border/70 bg-background/60 px-3 py-1.5">
-                <span>{label}</span>
-                <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs">{shortcut}</span>
+              <div key={label} className="flex items-center justify-between rounded-lg border border-border/70 bg-background/60 px-3 py-1.5" style={{ boxShadow: 'var(--shadow-outline)' }}>
+                <span style={{ fontWeight: 'var(--type-weight-default)' }}>{label}</span>
+                <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs" style={{ letterSpacing: '0.03125rem' }}>{shortcut}</span>
               </div>
             ))}
           </div>

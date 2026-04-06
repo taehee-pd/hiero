@@ -75,6 +75,7 @@ Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, 
 | Document | Purpose |
 |----------|---------|
 | `PLAN.md` | Production readiness plan — gaps, technical specs, full IA |
+| `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
 | `TASKS.md` | Open items + shipped phase summary table |
 | `ARCHITECTURE.md` | System architecture, module boundaries, data flow |
 | `REPO_MAP.md` | Repository structure and key entry points |

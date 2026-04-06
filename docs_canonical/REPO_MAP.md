@@ -21,6 +21,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `specs/`: technical specification documents (21 specs).
 - `docs/`: guides, plans, architecture notes, and user guide.
 - `docs_canonical/`: canonical repository knowledge layer for agents and future contributors.
+- `DESIGN.md`: root-level Stitch-style design system prompt for UI-coding agents.
 
 ## Key Entry Points
 

@@ -107,9 +107,11 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
 
   if (!activeIconSetId) {
     return (
-      <aside className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background" role="region" aria-label="Icon list">
+      <aside className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background" style={{ boxShadow: 'var(--shadow-inset-edge)' }} role="region" aria-label="Icon list">
         <div className="flex flex-1 items-center justify-center p-6 text-center">
-          <p className="text-xs text-muted-foreground">Select a project from the sidebar to view its icons.</p>
+          <div className="studio-dots rounded-xl border border-dashed border-border/70 px-6 py-8">
+            <p className="text-xs text-muted-foreground" style={{ letterSpacing: '0.01em' }}>Select a project from the sidebar to view its icons.</p>
+          </div>
         </div>
       </aside>
     );
@@ -119,6 +121,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     <>
       <aside
         className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background"
+        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Icon list"
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
@@ -130,8 +133,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-foreground">{projectName}</p>
-            <p className="text-[10px] text-muted-foreground">{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
+            <p className="truncate text-xs text-foreground" style={{ fontWeight: 'var(--type-weight-strong)' }}>{projectName}</p>
+            <p className="text-[10px] text-muted-foreground" style={{ letterSpacing: '0.03125rem' }}>{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
           </div>
           <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
             <Plus className="size-3" />
@@ -151,7 +154,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search icons…"
-            className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs shadow-none"
+            className="h-7 rounded-[0.625rem] border-border/70 bg-background/60 pl-7 text-xs"
+            style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}
           />
         </div>
 
@@ -159,9 +163,11 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         <ScrollArea className="flex-1">
           <div className="grid grid-cols-3 gap-1 p-2" role="list" aria-label="Icons">
             {filtered.length === 0 ? (
-              <p className="col-span-3 py-8 text-center text-xs text-muted-foreground">
-                {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
-              </p>
+              <div className="col-span-3 flex items-center justify-center py-8">
+                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}>
+                  {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
+                </p>
+              </div>
             ) : (
               filtered.map((icon) => {
                 const iconDef = project?.icons[icon.id];

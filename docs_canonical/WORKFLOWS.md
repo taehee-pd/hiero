@@ -96,6 +96,18 @@ Practical implication:
 - the Phase A runtime/export surface has a scoped LCOV threshold gate via `scripts/check-coverage.ts`
 - local build and test verification still matters for areas outside the current CI slice or formatter scope
 
+
+## Design System Prompt Workflow
+
+This repository now includes a root-level `DESIGN.md` (Stitch-style) to guide AI-assisted UI implementation.
+
+When making UI changes:
+
+1. Read `DESIGN.md` before authoring visual changes.
+2. Reuse existing component primitives and dark editor surface patterns.
+3. Update `DESIGN.md` when visual language or interaction conventions materially change.
+4. Keep `docs_canonical/DESIGN.md` as product architecture SSOT and `DESIGN.md` as UI styling/prompt SSOT for agents.
+
 ## Agent Task Lifecycle
 
 Recommended repository task loop for agents working in this repo:

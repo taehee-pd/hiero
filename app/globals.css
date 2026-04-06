@@ -158,7 +158,9 @@
   --border-level-2: var(--border-separator);
   --border-level-3: rgba(0, 0, 0, 0.16);
 
-  /* ── Shadow Levels ── */
+  /* ── Shadow Levels (multi-layer, sub-0.1 opacity — ElevenLabs-inspired) ── */
+  --shadow-inset-edge: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-outline: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -276,7 +278,11 @@
   --handle: var(--greyscale-800);
   --toolbar-bg: rgba(255, 255, 255, 0.76);
 
-  /* ── Typography ── */
+  /* ── Accent Soft & Warm Surface ── */
+  --primary-soft: rgba(49, 134, 238, 0.08);
+  --surface-warm: rgba(243, 247, 250, 0.8);
+
+  /* ── Typography ─��� */
   --type-family-default: var(--font-geist-sans);
   --type-family-display: var(--font-geist-sans);
   --type-family-mono: var(--font-geist-mono);
@@ -391,7 +397,13 @@
   --border-level-2: rgba(255, 255, 255, 0.1);
   --border-level-3: rgba(255, 255, 255, 0.18);
 
-  /* ── Dark Shadow Levels ── */
+  /* ── Accent Soft & Warm Surface (dark) ── */
+  --primary-soft: rgba(109, 173, 255, 0.12);
+  --surface-warm: rgba(33, 40, 45, 0.8);
+
+  /* ── Dark Shadow Levels (multi-layer, compensated opacity) ── */
+  --shadow-inset-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-outline: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.18);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.16);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.22);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.28);
@@ -517,6 +529,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ── Accent Soft & Warm Surface ── */
+  --color-primary-soft: var(--primary-soft);
+  --color-surface-warm: var(--surface-warm);
 
   /* ── Editor ── */
   --color-canvas-bg: var(--canvas-bg);
@@ -703,27 +719,24 @@
     background: var(--card);
     border: 1px solid var(--border);
     box-shadow:
-      0 1px 2px var(--darker-100),
-      0 0 0 1px var(--lighter-700) inset;
+      var(--shadow-inset-edge),
+      var(--shadow-outline);
     backdrop-filter: blur(12px);
-  }
-
-  .dark .studio-panel {
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.28),
-      0 0 0 1px var(--lighter-100) inset;
   }
 
   .studio-card {
     border: 1px solid var(--border);
     background: var(--card);
-    box-shadow: 0 1px 2px var(--darker-100);
+    box-shadow: var(--shadow-outline);
     transition: border-color 160ms ease, box-shadow 160ms ease;
   }
 
   .studio-card:hover {
     border-color: var(--border-secondary);
-    box-shadow: 0 2px 6px var(--darker-200);
+    box-shadow:
+      0 0 0 1px var(--border-secondary),
+      0 1px 2px var(--darker-100),
+      0 4px 12px var(--darker-100);
   }
 
   .studio-kicker {
@@ -902,7 +915,9 @@
   .workspace-stage {
     border: 1px solid var(--border);
     background: white;
-    box-shadow: 0 12px 40px var(--darker-200);
+    box-shadow:
+      var(--shadow-inset-edge),
+      0 12px 40px var(--darker-200);
   }
 
   .dark .workspace-stage {
@@ -937,6 +952,16 @@
     border: 1px solid var(--border);
     background: var(--card);
     padding: 0.9rem;
+    box-shadow: var(--shadow-outline);
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .workspace-insight-card:hover {
+    border-color: var(--border-secondary);
+    box-shadow:
+      0 0 0 1px var(--border-secondary),
+      0 1px 2px var(--darker-100),
+      0 4px 12px var(--darker-100);
   }
 
   .workspace-nav-button {
@@ -950,17 +975,24 @@
     background: var(--background);
     padding: 0.72rem 0.9rem;
     text-align: left;
-    transition: border-color 160ms ease, background 160ms ease;
+    box-shadow: var(--shadow-outline);
+    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
   }
 
   .workspace-nav-button:hover {
     border-color: var(--border-secondary);
     background: var(--background-hover);
+    box-shadow:
+      0 0 0 1px var(--border-secondary),
+      var(--shadow-sm);
   }
 
   .workspace-nav-button[data-active='true'] {
     border-color: var(--border-selected);
-    background: var(--background-highlight);
+    background: var(--primary-soft);
+    box-shadow:
+      0 0 0 1px var(--border-selected),
+      var(--shadow-sm);
   }
 
   .workspace-status-strip {

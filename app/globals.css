@@ -1370,6 +1370,8 @@
     font-size: 11px;
     line-height: 16px;
     color: var(--foreground-tertiary);
+    background-color: #ffffff;
+    background-image: none;
   }
 
   .wire-tab-button[data-active='true'] {

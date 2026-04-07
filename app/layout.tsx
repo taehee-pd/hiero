@@ -26,16 +26,16 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/favicon-32x32.png',
+        url: '/favicon-32x32.png?v=2',
         sizes: '32x32',
         type: 'image/png',
       },
       {
-        url: '/contour.svg',
+        url: '/contour.svg?v=2',
         type: 'image/svg+xml',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/apple-icon.png?v=2',
   },
   manifest: '/manifest.webmanifest',
 };

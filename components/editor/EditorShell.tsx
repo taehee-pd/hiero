@@ -395,9 +395,6 @@ function LeftSidebar({
   return (
     <aside className="wire-sidebar wire-sidebar-left">
       <div className="wire-sidebar-block wire-sidebar-head">
-        <Link href="/" className="wire-project-pill">
-          <span>{workspaceName}</span>
-        </Link>
         <div className="wire-sidebar-title-stack">
           <div className="wire-sidebar-title-row">
             <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>

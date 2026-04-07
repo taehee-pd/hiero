@@ -145,11 +145,11 @@ export const LayerPanel = memo(function LayerPanel() {
               </p>
               <div className="mt-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-center gap-2 text-[11px]">
-                  <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">P</kbd>
+                  <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">P</kbd>
                   <span>Pen tool</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-[11px]">
-                  <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">U</kbd>
+                  <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">U</kbd>
                   <span>Shape tool</span>
                 </div>
                 <div className="mt-1 text-[11px] text-muted-foreground/70">
@@ -181,8 +181,8 @@ export const LayerPanel = memo(function LayerPanel() {
                 className={cn(
                   'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-[length:var(--text-body)] transition',
                   isSelected
-                    ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
-                    : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
+                    ? 'border-primary/40 bg-primary-soft shadow-[inset_0_0_0_0.5px_var(--primary),_0_1px_3px_rgba(0,0,0,0.06)]'
+                    : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background hover:shadow-[var(--shadow-outline)]',
                   isFocused && !isSelected && 'ring-1 ring-primary/30',
                   // J7: Dim layers that are inactive at the current variableValue
                   hasVariableValue && !isVarActive && 'opacity-40',

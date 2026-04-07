@@ -1403,10 +1403,10 @@ function SidebarButton({
   return (
     <div
       className={cn(
-        'group flex w-full items-center gap-2 rounded-md px-2 py-1 text-[length:var(--text-heading)] transition-colors',
+        'group flex w-full items-center gap-2 rounded-lg px-2 py-1 text-[length:var(--text-heading)] transition-colors',
         active
-          ? 'bg-[var(--system-blue)]/10 text-[var(--system-blue)]'
-          : 'text-muted-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-foreground',
+          ? 'bg-primary-soft text-primary'
+          : 'text-muted-foreground hover:bg-accent hover:text-foreground',
       )}
     >
       <button

@@ -50,7 +50,7 @@ export function IconGridItem({
           className={cn(
             'group relative flex flex-col items-center rounded-xl border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
             active
-              ? 'border-primary/30 bg-primary-soft shadow-[inset_0_0_0_0.5px_var(--primary),_0_1px_3px_rgba(0,0,0,0.06)]'
+              ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
               : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >

@@ -61,16 +61,6 @@
   --yellow-700: #4D0B00;
   --yellow-800: #220000;
 
-  /* Navy */
-  --navy-100: #F4F4FF;
-  --navy-200: #CCCCF2;
-  --navy-300: #A5A4DB;
-  --navy-400: #817EC1;
-  --navy-500: #5F5AA0;
-  --navy-600: #403A78;
-  --navy-700: #241F4B;
-  --navy-800: #0B0721;
-
   /* Purple */
   --purple-100: #FFEDFF;
   --purple-200: #E9C1FF;
@@ -115,24 +105,12 @@
   --lighter-800: rgba(255, 255, 255, 0.90);
   --lighter-900: rgba(255, 255, 255, 0.95);
 
-  /* ── macOS System Colors ── */
+  /* ── System Colors (used by inspector labels & explorer) ── */
   --system-blue: #007AFF;
   --system-gray: #8E8E93;
-  --system-gray-2: #AEAEB2;
-  --system-gray-3: #C7C7CC;
-  --system-gray-4: #D1D1D6;
-  --system-gray-5: #E5E5EA;
-  --system-gray-6: #F2F2F7;
-  --system-red: #FF3B30;
-  --system-green: #34C759;
-  --system-orange: #FF9500;
-  --system-yellow: #FFCC00;
-  --system-purple: #AF52DE;
 
-  /* ── macOS-native Typography ── */
+  /* ── System Typography Stacks ── */
   --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif;
-  --font-system-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-system-rounded: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Rounded', 'SF Pro', 'Helvetica Neue', sans-serif;
 
   /* ── Spacing Scale (8px base grid) ── */
   --space-1: 4px;
@@ -142,21 +120,12 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
-  --panel-padding: var(--space-3);
-  --panel-gap: var(--space-2);
-  --section-gap: var(--space-3);
 
   /* ── Typography Scale ── */
   --text-heading: 13px;
   --text-body: 13px;
   --text-label: 11px;
   --text-caption: 10px;
-  --text-kicker: 9px;
-
-  /* ── Border Levels ── */
-  --border-level-1: var(--border-subtle);
-  --border-level-2: var(--border-separator);
-  --border-level-3: rgba(0, 0, 0, 0.16);
 
   /* ── Shadow Levels (multi-layer, sub-0.1 opacity — ElevenLabs-inspired) ── */
   --shadow-inset-edge: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -166,20 +135,20 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
   --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.10);
 
-  /* ── macOS-native Spacing ── */
+  /* ── Dimension Tokens ── */
   --toolbar-height: 38px;
-  --sidebar-width: 240px;
-  --inspector-width: 260px;
 
-  /* ── macOS Vibrancy Backgrounds ── */
+  /* ── Vibrancy Backgrounds (wire-* classes, ExplorerShell) ── */
   --bg-sidebar: rgba(246, 246, 246, 0.72);
   --bg-toolbar: rgba(246, 246, 246, 0.82);
-  --bg-inspector: rgba(250, 250, 252, 0.85);
   --bg-content: #FFFFFF;
 
-  /* ── macOS-native Borders ── */
+  /* ── Border Levels ── */
   --border-subtle: rgba(0, 0, 0, 0.06);
   --border-separator: rgba(0, 0, 0, 0.1);
+  --border-level-1: var(--border-subtle);
+  --border-level-2: var(--border-separator);
+  --border-level-3: rgba(0, 0, 0, 0.16);
 }
 
 /* ══════════════════════════════════════════════════
@@ -278,9 +247,8 @@
   --handle: var(--greyscale-800);
   --toolbar-bg: rgba(255, 255, 255, 0.76);
 
-  /* ── Accent Soft & Warm Surface ── */
+  /* ── Accent Soft ── */
   --primary-soft: rgba(49, 134, 238, 0.08);
-  --surface-warm: rgba(243, 247, 250, 0.8);
 
   /* ── Typography ─��� */
   --type-family-default: var(--font-geist-sans);
@@ -300,7 +268,7 @@
 .dark {
   /* ── Background ── */
   --background: var(--greyscale-900);
-  --background-secondary: var(--greyscale-500);
+  --background-secondary: var(--greyscale-700);
   --background-hover: var(--lighter-400);
   --background-inverse: var(--greyscale-000);
   --background-ghost: var(--darker-000);
@@ -384,22 +352,20 @@
   --handle: var(--greyscale-000);
   --toolbar-bg: rgba(10, 10, 10, 0.78);
 
-  /* ── macOS Vibrancy (dark) ── */
+  /* ── Vibrancy (dark) ── */
   --bg-sidebar: rgba(30, 30, 30, 0.78);
   --bg-toolbar: rgba(38, 38, 38, 0.85);
-  --bg-inspector: rgba(32, 32, 34, 0.88);
   --bg-content: #1C1C1E;
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-separator: rgba(255, 255, 255, 0.1);
 
   /* ── Dark Border Levels ── */
-  --border-level-1: rgba(255, 255, 255, 0.06);
-  --border-level-2: rgba(255, 255, 255, 0.1);
+  --border-level-1: var(--border-subtle);
+  --border-level-2: var(--border-separator);
   --border-level-3: rgba(255, 255, 255, 0.18);
 
-  /* ── Accent Soft & Warm Surface (dark) ── */
+  /* ── Accent Soft (dark) ── */
   --primary-soft: rgba(109, 173, 255, 0.12);
-  --surface-warm: rgba(33, 40, 45, 0.8);
 
   /* ── Dark Shadow Levels (multi-layer, compensated opacity) ── */
   --shadow-inset-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -451,52 +417,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* ── Semantic colors: Background ── */
+  /* ── Semantic colors (Tailwind utility registrations) ── */
   --color-background: var(--background);
-  --color-background-secondary: var(--background-secondary);
-  --color-background-hover: var(--background-hover);
-  --color-background-inverse: var(--background-inverse);
-  --color-background-ghost: var(--background-ghost);
-  --color-background-highlight-alt: var(--background-highlight-alt);
-  --color-background-highlight: var(--background-highlight);
-  --color-background-danger-alt: var(--background-danger-alt);
-  --color-background-danger: var(--background-danger);
-  --color-background-success-alt: var(--background-success-alt);
-  --color-background-success: var(--background-success);
-  --color-background-warning-alt: var(--background-warning-alt);
-  --color-background-warning: var(--background-warning);
-  --color-background-disabled: var(--background-disabled);
-
-  /* ── Semantic colors: Foreground ── */
   --color-foreground: var(--foreground);
-  --color-foreground-secondary: var(--foreground-secondary);
-  --color-foreground-tertiary: var(--foreground-tertiary);
-  --color-foreground-inverse: var(--foreground-inverse);
-  --color-foreground-fixed-white: var(--foreground-fixed-white);
-  --color-foreground-fixed-black: var(--foreground-fixed-black);
-  --color-foreground-highlight: var(--foreground-highlight);
-  --color-foreground-danger: var(--foreground-danger);
-  --color-foreground-success: var(--foreground-success);
-  --color-foreground-warning: var(--foreground-warning);
-  --color-foreground-disabled: var(--foreground-disabled);
-  --color-foreground-ghost: var(--foreground-ghost);
-
-  /* ── Semantic colors: Border ── */
   --color-border: var(--border);
-  --color-border-secondary: var(--border-secondary);
-  --color-border-tertiary: var(--border-tertiary);
-  --color-border-inverse: var(--border-inverse);
-  --color-border-ghost: var(--border-ghost);
-  --color-border-selected: var(--border-selected);
-  --color-border-danger: var(--border-danger);
-  --color-border-success: var(--border-success);
-  --color-border-warning: var(--border-warning);
-  --color-border-disabled: var(--border-disabled);
-
-  /* ── Semantic colors: Ring ── */
   --color-ring: var(--ring);
-  --color-ring-secondary: var(--ring-secondary);
-  --color-ring-inverse: var(--ring-inverse);
 
   /* ── shadcn/ui compatibility colors ── */
   --color-card: var(--card);
@@ -530,30 +455,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* ── Accent Soft & Warm Surface ── */
+  /* ── Accent Soft ── */
   --color-primary-soft: var(--primary-soft);
-  --color-surface-warm: var(--surface-warm);
 
-  /* ── Editor ── */
-  --color-canvas-bg: var(--canvas-bg);
-  --color-canvas-grid: var(--canvas-grid);
-  --color-selection: var(--selection);
-  --color-handle: var(--handle);
-  --color-toolbar-bg: var(--toolbar-bg);
-
-  /* ── Primitive: Greyscale ── */
-  --color-greyscale-000: var(--greyscale-000);
-  --color-greyscale-100: var(--greyscale-100);
-  --color-greyscale-200: var(--greyscale-200);
-  --color-greyscale-300: var(--greyscale-300);
-  --color-greyscale-400: var(--greyscale-400);
-  --color-greyscale-500: var(--greyscale-500);
-  --color-greyscale-600: var(--greyscale-600);
-  --color-greyscale-700: var(--greyscale-700);
-  --color-greyscale-800: var(--greyscale-800);
-  --color-greyscale-900: var(--greyscale-900);
-
-  /* ── Primitive: Blue ── */
+  /* ── Primitive: Blue (used by components via Tailwind utilities) ── */
   --color-blue-100: var(--blue-100);
   --color-blue-200: var(--blue-200);
   --color-blue-300: var(--blue-300);
@@ -593,59 +498,6 @@
   --color-yellow-700: var(--yellow-700);
   --color-yellow-800: var(--yellow-800);
 
-  /* ── Primitive: Navy ── */
-  --color-navy-100: var(--navy-100);
-  --color-navy-200: var(--navy-200);
-  --color-navy-300: var(--navy-300);
-  --color-navy-400: var(--navy-400);
-  --color-navy-500: var(--navy-500);
-  --color-navy-600: var(--navy-600);
-  --color-navy-700: var(--navy-700);
-  --color-navy-800: var(--navy-800);
-
-  /* ── Primitive: Purple ── */
-  --color-purple-100: var(--purple-100);
-  --color-purple-200: var(--purple-200);
-  --color-purple-300: var(--purple-300);
-  --color-purple-400: var(--purple-400);
-  --color-purple-500: var(--purple-500);
-  --color-purple-600: var(--purple-600);
-  --color-purple-700: var(--purple-700);
-  --color-purple-800: var(--purple-800);
-
-  /* ── Primitive: Teal ── */
-  --color-teal-100: var(--teal-100);
-  --color-teal-200: var(--teal-200);
-  --color-teal-300: var(--teal-300);
-  --color-teal-400: var(--teal-400);
-  --color-teal-500: var(--teal-500);
-  --color-teal-600: var(--teal-600);
-  --color-teal-700: var(--teal-700);
-  --color-teal-800: var(--teal-800);
-
-  /* ── Primitive: Darker ── */
-  --color-darker-000: var(--darker-000);
-  --color-darker-100: var(--darker-100);
-  --color-darker-200: var(--darker-200);
-  --color-darker-300: var(--darker-300);
-  --color-darker-400: var(--darker-400);
-  --color-darker-500: var(--darker-500);
-  --color-darker-600: var(--darker-600);
-  --color-darker-700: var(--darker-700);
-  --color-darker-800: var(--darker-800);
-  --color-darker-900: var(--darker-900);
-
-  /* ── Primitive: Lighter ── */
-  --color-lighter-000: var(--lighter-000);
-  --color-lighter-100: var(--lighter-100);
-  --color-lighter-200: var(--lighter-200);
-  --color-lighter-300: var(--lighter-300);
-  --color-lighter-400: var(--lighter-400);
-  --color-lighter-500: var(--lighter-500);
-  --color-lighter-600: var(--lighter-600);
-  --color-lighter-700: var(--lighter-700);
-  --color-lighter-800: var(--lighter-800);
-  --color-lighter-900: var(--lighter-900);
 }
 
 /* ══════════════════════════════════════════════════
@@ -1511,7 +1363,7 @@
     align-items: center;
     justify-content: center;
     min-height: 22px;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 0 8px;
     font-size: 11px;
     line-height: 16px;
@@ -1530,7 +1382,7 @@
     width: 24px;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: 6px;
     color: var(--foreground-secondary);
   }
 
@@ -1637,7 +1489,7 @@
   .wire-color {
     min-height: 24px;
     border: 1px solid var(--border);
-    border-radius: 5px;
+    border-radius: 6px;
     background: color-mix(in srgb, var(--bg-content) 94%, transparent);
     padding: 0 8px;
     font-size: 11px;
@@ -1652,7 +1504,8 @@
 
   .wire-input:focus,
   .wire-color:focus {
-    border-color: #0d99ff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
   .wire-mini-button {
@@ -1662,7 +1515,7 @@
     justify-content: center;
     gap: 4px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: 6px;
     background: color-mix(in srgb, var(--bg-content) 94%, transparent);
     padding: 0 8px;
     font-size: 11px;
@@ -1786,7 +1639,7 @@
     display: block;
     width: 100%;
     height: 64px;
-    border: 2px solid #0d99ff;
+    border: 2px solid var(--primary);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.04);
     padding: 0 16px;
@@ -1799,7 +1652,7 @@
   }
 
   .wire-zoom-input::selection {
-    background: rgba(13, 153, 255, 0.35);
+    background: color-mix(in srgb, var(--primary) 35%, transparent);
   }
 
   .wire-zoom-actions {
@@ -1904,7 +1757,7 @@
     height: 12px;
     width: 12px;
     border-radius: 999px;
-    background: #0d99ff;
+    background: var(--primary);
     border: none;
   }
 
@@ -1912,7 +1765,7 @@
     height: 12px;
     width: 12px;
     border-radius: 999px;
-    background: #0d99ff;
+    background: var(--primary);
     border: none;
   }
 

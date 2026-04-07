@@ -1264,6 +1264,7 @@
     background: #ffffff;
     color: rgba(0, 0, 0, 0.9);
     font-family: var(--font-geist-sans);
+    font-size: 12px;
   }
 
   /* wire-rail removed — ToolRail component deleted */
@@ -1282,6 +1283,7 @@
 
   .wire-sidebar-left {
     width: 220px;
+    font-size: 12px;
   }
 
   .wire-sidebar-right {
@@ -1371,7 +1373,8 @@
   }
 
   .wire-tab-button[data-active='true'] {
-    background: var(--background-secondary);
+    background-color: var(--background);
+    background-image: none;
     color: var(--foreground);
     font-weight: 550;
   }

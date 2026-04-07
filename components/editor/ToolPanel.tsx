@@ -140,7 +140,7 @@ export const ToolPanel = memo(function ToolPanel({
                     className={cn(
                       isDock
                         ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
-                        : 'workspace-nav-button h-10 rounded-md px-3 py-2',
+                        : 'workspace-nav-button h-10 px-3 py-2',
                       !isDock && (isShapeTool || isSelectEntry) && isActive && 'rounded-r-sm',
                       tool.disabled && !isGuideEntry && 'opacity-40',
                     )}
@@ -302,7 +302,7 @@ export const ToolPanel = memo(function ToolPanel({
             className={cn(
               isDock
                 ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
-                : 'workspace-nav-button h-10 rounded-md px-3 py-2',
+                : 'workspace-nav-button h-10 px-3 py-2',
             )}
           >
             <span className={cn('flex items-center gap-2', isDock && 'gap-0')}>
@@ -329,7 +329,7 @@ export const ToolPanel = memo(function ToolPanel({
       </Tooltip>
 
       {!isDock && guidePanelOpen ? (
-        <p className="px-2 text-sm uppercase text-muted-foreground">
+        <p className="px-2 text-[length:var(--text-label)] uppercase text-muted-foreground" style={{ fontWeight: 'var(--type-weight-strong)', letterSpacing: '0.03125rem' }}>
           Guides visible: {guidesVisible ? 'yes' : 'no'}
         </p>
       ) : null}

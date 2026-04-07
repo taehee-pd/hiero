@@ -123,7 +123,7 @@ export function createIconDriver(
   });
 
   let currentVariantId = variantId;
-  if (options.initialState && options.initialState !== variantId) {
+  if (options.initialState && options.initialState !== variantId && icon.variants[options.initialState]) {
     stateMachine.transitionTo(options.initialState);
     currentVariantId = options.initialState;
   }
@@ -358,6 +358,10 @@ export function createIconDriver(
 
   return {
     transitionTo(variantId: string) {
+      // Guard: skip if the target variant doesn't exist in the icon
+      // (e.g. variant-centric icons where resolveState returns a state name
+      // like "default" that isn't a top-level variant ID).
+      if (!icon.variants[variantId]) return;
       stateMachine.transitionTo(variantId);
     },
     getCurrentState() {

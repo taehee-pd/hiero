@@ -508,8 +508,9 @@ function resolveState(variant: Variant, requestedState?: string): string {
 
   const fallback = Object.values(variant.states ?? {})[0];
   if (!fallback) {
-    // Variant-centric model: no states map — use defaultState or 'default'.
-    return variant.defaultState ?? 'default';
+    // Variant-centric model: no states map — return the variant's own ID
+    // so the driver won't attempt a transition to a non-existent variant.
+    return variant.defaultState ?? variant.id;
   }
 
   return fallback.id;

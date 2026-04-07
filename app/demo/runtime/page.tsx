@@ -9,7 +9,7 @@ import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
 
 const homeIcon = SAMPLE_PROJECT.icons['icon-home']!;
 export default function RuntimeDemoPage() {
-  const hamburger = useIconState('open');
+  const [hamburgerVariant, setHamburgerVariant] = useState<'24-open' | '24-closed'>('24-open');
   const home = useIconState('default');
   const [animate, setAnimate] = useState(true);
   const [exportResult, setExportResult] = useState<string | null>(null);
@@ -38,8 +38,7 @@ export default function RuntimeDemoPage() {
           <h2 className="text-lg font-semibold">Hamburger / Close</h2>
           <ContourIcon
             icon={HAMBURGER_CLOSE_ICON}
-            variant="24"
-            state={hamburger.state}
+            variant={hamburgerVariant}
             animate={animate}
             size={72}
           />
@@ -47,10 +46,10 @@ export default function RuntimeDemoPage() {
             type="button"
             className="w-36 rounded border px-4 py-2"
             onClick={() =>
-              hamburger.transitionTo(hamburger.state === 'open' ? 'closed' : 'open')
+              setHamburgerVariant(hamburgerVariant === '24-open' ? '24-closed' : '24-open')
             }
           >
-            Toggle ({hamburger.state})
+            Toggle ({hamburgerVariant === '24-open' ? 'open' : 'closed'})
           </button>
         </section>
 

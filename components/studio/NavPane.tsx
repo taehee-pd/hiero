@@ -159,7 +159,7 @@ export function NavPane() {
                       ) : navExpanded ? (
                         <>
                           <span className="min-w-0 truncate">{iconSet.name}</span>
-                          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{iconSet.iconCount}</span>
+                          <span className="ml-auto shrink-0 rounded bg-black/[0.06] px-1 text-[10px] text-muted-foreground dark:bg-white/[0.08]">{iconSet.iconCount}</span>
                         </>
                       ) : null}
                     </button>

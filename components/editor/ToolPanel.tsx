@@ -139,7 +139,7 @@ export const ToolPanel = memo(function ToolPanel({
                     data-active={isActive ? 'true' : 'false'}
                     className={cn(
                       isDock
-                        ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
+                        ? 'workspace-tool-button h-11 w-11 rounded-lg border border-border/70 bg-background/90 px-0'
                         : 'workspace-nav-button h-10 px-3 py-2',
                       !isDock && (isShapeTool || isSelectEntry) && isActive && 'rounded-r-sm',
                       tool.disabled && !isGuideEntry && 'opacity-40',
@@ -193,7 +193,7 @@ export const ToolPanel = memo(function ToolPanel({
                           className={cn(
                             'border border-border bg-background px-0 hover:bg-accent/40',
                             isDock
-                              ? 'h-11 w-8 rounded-2xl border-border/70 bg-background/92'
+                              ? 'h-11 w-8 rounded-lg border-border/70 bg-background/92'
                               : 'h-10 w-8 rounded-l-sm rounded-r-md',
                           )}
                         >
@@ -244,7 +244,7 @@ export const ToolPanel = memo(function ToolPanel({
                           className={cn(
                             'border border-border bg-background px-0 hover:bg-accent/40',
                             isDock
-                              ? 'h-11 w-8 rounded-2xl border-border/70 bg-background/92'
+                              ? 'h-11 w-8 rounded-lg border-border/70 bg-background/92'
                               : 'h-10 w-8 rounded-l-sm rounded-r-md',
                           )}
                         >
@@ -301,7 +301,7 @@ export const ToolPanel = memo(function ToolPanel({
             data-active={snapEnabled ? 'true' : 'false'}
             className={cn(
               isDock
-                ? 'workspace-tool-button h-11 w-11 rounded-2xl border border-border/70 bg-background/90 px-0'
+                ? 'workspace-tool-button h-11 w-11 rounded-lg border border-border/70 bg-background/90 px-0'
                 : 'workspace-nav-button h-10 px-3 py-2',
             )}
           >

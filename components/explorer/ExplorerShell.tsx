@@ -781,7 +781,7 @@ function WorkspaceView({
         </div>
 
         {iconSets.length === 0 ? (
-          <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
+          <div className="workspace-empty-state flex flex-col items-center justify-center rounded-lg px-6 py-20 text-center">
             <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
@@ -971,7 +971,7 @@ function ProjectCard({
 
   return (
     <article
-      className="studio-card group relative flex flex-col rounded-xl text-left transition-all duration-150"
+      className="studio-card group relative flex flex-col rounded-lg text-left transition-all duration-150"
       role="listitem"
     >
       <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">

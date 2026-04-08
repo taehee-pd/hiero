@@ -115,7 +115,7 @@ export function ReleasePanel() {
 
       {/* Settings */}
       {showSettings && (
-        <div className="rounded-xl border border-border/60 bg-muted/20 p-3 grid gap-1.5">
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 grid gap-1.5">
           <Label className="text-[10px] text-muted-foreground uppercase tracking-tight">
             Dev server URL
           </Label>
@@ -233,7 +233,7 @@ function LocalDirectoryCard({
   };
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
         <FolderOpen className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
@@ -274,7 +274,7 @@ function GitPrCard({
   iconSetId: string | null;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
         <GitBranch className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
@@ -331,7 +331,7 @@ function NpmRegistryCard({
   };
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background/70 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
         <Package className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
@@ -367,7 +367,7 @@ function NpmRegistryCard({
 
 function ReleasePlaceholder({ devServerUrl }: { devServerUrl: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-border/60 px-4 py-5 text-center">
+    <div className="rounded-lg border border-dashed border-border/60 px-4 py-5 text-center">
       <p className="text-xs text-muted-foreground">
         Run <code className="font-mono">contour dev</code> in the consumer repo to connect.
       </p>

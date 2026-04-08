@@ -405,7 +405,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
           <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">Nothing selected</p>
         </div>
         <div className="flex flex-1 items-center justify-center px-4">
-          <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+          <div className="workspace-empty-state w-full rounded-lg px-5 py-6 text-left">
             <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
             <p className="mt-2 text-xs text-muted-foreground">
               Layer, style, vector, and transform controls appear only when they are relevant.
@@ -440,7 +440,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           type="button"
                           onClick={() => setCurrentVariant(variant.id)}
                           className={cn(
-                            'flex min-w-0 flex-1 flex-col rounded-xl border px-3 py-2 text-left transition',
+                            'flex min-w-0 flex-1 flex-col rounded-lg border px-3 py-2 text-left transition',
                             isActive
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
                               : 'border-border/70 bg-background/70 text-foreground hover:bg-accent/40',
@@ -810,7 +810,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     {currentTopology.layerPairs.map((pair) => (
                       <div
                         key={pair.layerId}
-                        className="rounded-xl border border-border/70 bg-background/70 px-3 py-2"
+                        className="rounded-lg border border-border/70 bg-background/70 px-3 py-2"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-medium text-foreground">{pair.layerId}</span>
@@ -831,7 +831,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
           {!layer ? (
             !showShapeToolSettings ? (
-              <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+              <div className="workspace-empty-state w-full rounded-lg px-5 py-6 text-left">
                 <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Variant switching stays available here so you can move between size masters before editing.
@@ -882,7 +882,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   variant="outline"
                   disabled={!canMakeClipMask}
                   onClick={handleMakeClipMask}
-                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                  className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
                     <VenetianMask className="size-4" />
@@ -919,7 +919,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         disabled={booleanDisabled}
                         onClick={() => void handleBooleanAction(mode)}
                         className={cn(
-                          'h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40',
+                          'h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40',
                           isPending && 'border-primary/40 text-primary',
                         )}
                       >
@@ -996,7 +996,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   size="sm"
                   variant="outline"
                   onClick={handleReleaseClipMask}
-                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                  className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
                     <ScissorsLineDashed className="size-4" />
@@ -1033,7 +1033,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
                 )}
                 {layerGeometryStats ? (
-                  <details className="rounded-xl border border-border/70 bg-background/50 px-3 py-2">
+                  <details className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
                     <summary className="cursor-pointer text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
                       Topology ({layerGeometryStats.subpathCount} subpath{layerGeometryStats.subpathCount === 1 ? '' : 's'}, {layerGeometryStats.pointCount} pts)
                     </summary>

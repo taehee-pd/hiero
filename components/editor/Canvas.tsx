@@ -883,7 +883,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       )}
 
       {isDropActive ? (
-        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-xl border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100 backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-lg border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100 backdrop-blur-sm">
           Drop SVG to import
         </div>
       ) : null}

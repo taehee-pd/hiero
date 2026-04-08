@@ -231,7 +231,7 @@
   --chart-4: var(--yellow-400);
   --chart-5: var(--purple-400);
 
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   /* ── Sidebar ── */
   --sidebar: var(--greyscale-000);
@@ -1401,7 +1401,7 @@
     padding: 6px 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
   }
 
   .wire-section-header {
@@ -1409,10 +1409,12 @@
     height: 28px;
     align-items: center;
     padding: 0 2px;
-    font-size: var(--text-label);
+    font-size: var(--text-caption);
     line-height: 16px;
-    font-weight: 500;
-    color: var(--foreground);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--foreground-tertiary);
   }
 
   /* Top border on non-first section headers (e.g., "States" after "Sizes") */
@@ -1428,7 +1430,7 @@
     width: 100%;
     align-items: center;
     gap: 6px;
-    padding: 6px 10px;
+    padding: 6px 12px;
     text-align: left;
     font-size: 11px;
     line-height: 16px;
@@ -1493,7 +1495,7 @@
 
   .wire-input,
   .wire-color {
-    min-height: var(--field-height-md);
+    min-height: var(--field-height-sm);
     width: 100%;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -1517,7 +1519,7 @@
 
   .wire-mini-button {
     display: inline-flex;
-    min-height: var(--field-height-md);
+    min-height: var(--field-height-sm);
     align-items: center;
     justify-content: center;
     gap: 4px;
@@ -1701,16 +1703,16 @@
 
   .wire-panel-title {
     padding: 0 2px;
-    font-size: 12px;
+    font-size: var(--text-body);
     line-height: 18px;
-    font-weight: 550;
+    font-weight: 600;
     color: var(--foreground);
   }
 
   .wire-label {
-    font-size: var(--text-label);
+    font-size: var(--text-caption);
     line-height: 14px;
-    font-weight: 500;
+    font-weight: 400;
     letter-spacing: 0.01em;
     color: var(--foreground-tertiary);
     text-transform: uppercase;
@@ -1727,8 +1729,8 @@
 
   .wire-field {
     display: grid;
-    gap: 3px;
-    padding-top: 4px;
+    gap: 4px;
+    padding-top: 6px;
   }
 
   .wire-field-name {

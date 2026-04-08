@@ -351,7 +351,7 @@ export function Toolbar() {
                       variant="ghost"
                       size="icon-sm"
                       aria-label="File menu"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                      className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
                       <FilePlus2 className="size-3.5" />
                     </Button>
@@ -419,7 +419,7 @@ export function Toolbar() {
                       variant="ghost"
                       size="icon-sm"
                       aria-label="More exports"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                      className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
                       <Download className="size-3.5" />
                     </Button>
@@ -600,7 +600,7 @@ export function Toolbar() {
           key={zoomOverlay}
         >
           <div
-            className="rounded-2xl border border-border/50 bg-background/90 px-6 py-3 text-2xl text-foreground backdrop-blur-sm"
+            className="rounded-lg border border-border/50 bg-background/90 px-6 py-3 text-2xl text-foreground backdrop-blur-sm"
             style={{ boxShadow: 'var(--shadow-lg)', animation: 'zoom-overlay-fade 900ms ease-out forwards' }}
           >
             {zoomOverlay}

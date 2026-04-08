@@ -122,10 +122,10 @@ export const LayerPanel = memo(function LayerPanel() {
         >
           {/* UX-F7: Visual onboarding empty state with illustrated shortcuts */}
           {rows.length === 0 ? (
-            <div className="workspace-empty-state rounded-xl px-4 py-8 text-center text-xs text-muted-foreground">
+            <div className="workspace-empty-state rounded-lg px-4 py-8 text-center text-xs text-muted-foreground">
               {/* Illustrated icon hint */}
               <div className="mx-auto mb-3 flex items-center justify-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-primary/40 bg-primary/5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-primary/40 bg-primary/5">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
                     <path d="M12 19l7-7 3 3-7 7-3-3z" />
                     <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
@@ -133,7 +133,7 @@ export const LayerPanel = memo(function LayerPanel() {
                     <circle cx="11" cy="11" r="2" />
                   </svg>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   </svg>
@@ -179,7 +179,7 @@ export const LayerPanel = memo(function LayerPanel() {
                   else itemRefs.current.delete(rowIndex);
                 }}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 text-[length:var(--text-body)] transition',
+                  'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-[length:var(--text-body)] transition',
                   isSelected
                     ? 'border-primary/40 bg-primary-soft shadow-[inset_0_0_0_0.5px_var(--primary),_0_1px_3px_rgba(0,0,0,0.06)]'
                     : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background hover:shadow-[var(--shadow-outline)]',
@@ -279,7 +279,7 @@ export const LayerPanel = memo(function LayerPanel() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+                  className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     if (currentIconId) {

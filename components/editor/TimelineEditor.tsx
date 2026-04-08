@@ -552,7 +552,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   }, [bindings, fromState, toState, playhead]);
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/60 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground" role="toolbar" aria-label="Timeline playback controls">
         <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(0)} aria-label="Skip to start">
           <SkipBack className="size-3.5" />

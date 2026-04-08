@@ -89,22 +89,35 @@ export function NavPane() {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
-          navExpanded ? 'w-[200px]' : 'w-14',
+          navExpanded ? 'w-[200px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Projects"
       >
         {/* Header */}
-        <div className="flex h-10 items-center justify-between border-b border-border/40 px-2">
+        <div className={cn('flex h-10 items-center border-b border-border/40', navExpanded ? 'justify-between px-2' : 'justify-center')}>
           {navExpanded && <span className="studio-kicker truncate px-1">Projects</span>}
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
             {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
         </div>
 
+        {/* Vertical label when collapsed */}
+        {!navExpanded && (
+          <button
+            type="button"
+            onClick={toggleNavPane}
+            className="flex flex-1 items-start justify-center pt-3"
+          >
+            <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">
+              Projects
+            </span>
+          </button>
+        )}
+
         {/* Project list */}
-        <ScrollArea className="flex-1">
+        {navExpanded && <ScrollArea className="flex-1">
           <div className="flex flex-col gap-0.5 p-1.5">
             {iconSets.map((iconSet) => (
               <Tooltip key={iconSet.id} delayDuration={navExpanded ? 1000 : 200}>
@@ -116,7 +129,7 @@ export function NavPane() {
                         ? 'bg-primary-soft text-primary shadow-[inset_0_0_0_0.5px_var(--primary)]'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
-                    style={activeIconSetId === iconSet.id ? { fontWeight: 'var(--type-weight-medium)' } : undefined}
+                    style={activeIconSetId === iconSet.id ? { fontWeight: 500 } : undefined}
                   >
                     <button
                       type="button"
@@ -146,7 +159,7 @@ export function NavPane() {
                       ) : navExpanded ? (
                         <>
                           <span className="min-w-0 truncate">{iconSet.name}</span>
-                          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{iconSet.iconCount}</span>
+                          <span className="ml-auto shrink-0 rounded bg-black/[0.06] px-1 text-[10px] text-muted-foreground dark:bg-white/[0.08]">{iconSet.iconCount}</span>
                         </>
                       ) : null}
                     </button>
@@ -211,7 +224,7 @@ export function NavPane() {
               </Tooltip>
             )}
           </div>
-        </ScrollArea>
+        </ScrollArea>}
       </aside>
 
       {/* Delete project dialog */}

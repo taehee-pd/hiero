@@ -232,8 +232,8 @@ export function WeightCurveEditor({
   if (dataPoints.length < 2) return null;
 
   return (
-    <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+    <div className="grid gap-2">
+      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
         Weight Curve
       </Label>
 

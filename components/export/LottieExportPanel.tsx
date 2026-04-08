@@ -80,7 +80,7 @@ export function LottieExportPanel() {
 
   if (!icon) {
     return (
-      <div className="rounded-xl border border-dashed border-border/60 px-4 py-5 text-center">
+      <div className="rounded-lg border border-dashed border-border/60 px-4 py-5 text-center">
         <p className="text-sm text-muted-foreground">Select an icon to export as Lottie.</p>
       </div>
     );

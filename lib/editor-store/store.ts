@@ -90,6 +90,8 @@ export type EditorState = {
   skipNextAutoPublish: boolean;
   /** Studio layout: whether the nav pane is expanded */
   navPaneExpanded: boolean;
+  /** Studio layout: whether the list pane (icon grid) is expanded */
+  listPaneExpanded: boolean;
 };
 
 export type EditorTab = {
@@ -210,6 +212,7 @@ export type EditorActions = {
   resumeHistory(): void;
   commitHistory(label?: string): void;
   toggleNavPane(): void;
+  toggleListPane(): void;
   applyBoolean(mode: BooleanMode): Promise<void>;
   /** Phase N: generate a derived variant (fill/slash/circle/square/badge). */
   applyDerivedVariant(
@@ -308,6 +311,7 @@ const initialState: EditorState = {
   pendingPublishes: [],
   skipNextAutoPublish: false,
   navPaneExpanded: false,
+  listPaneExpanded: true,
 };
 
 let currentState: EditorStore;
@@ -2937,6 +2941,10 @@ function createActions(): EditorActions {
 
     toggleNavPane() {
       editorStoreApi.setState((s) => ({ navPaneExpanded: !s.navPaneExpanded }));
+    },
+
+    toggleListPane() {
+      editorStoreApi.setState((s) => ({ listPaneExpanded: !s.listPaneExpanded }));
     },
 
     async applyBoolean(mode) {

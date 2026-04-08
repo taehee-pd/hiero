@@ -64,7 +64,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search icons, tags, category"
-            className="h-8 rounded-xl border-border/70 bg-background/70 pl-7 text-xs"
+            className="h-8 rounded-lg border-border/70 bg-background/70 pl-7 text-xs"
             aria-label="Search icons"
           />
         </div>
@@ -73,7 +73,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
       <ScrollArea className="workspace-scroll flex-1">
         <div className="flex flex-col gap-0.5 p-3">
           {filteredIcons.length === 0 && (
-            <div className="workspace-empty-state mx-1 rounded-xl px-3 py-5 text-center text-xs text-muted-foreground">
+            <div className="workspace-empty-state mx-1 rounded-lg px-3 py-5 text-center text-xs text-muted-foreground">
               <p className="font-medium text-foreground">No matching icons</p>
               <p className="mt-1 text-muted-foreground">Try a name, id, tag, or category.</p>
             </div>
@@ -84,7 +84,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
               key={icon.id}
               onClick={() => handleSelectIcon(icon.id)}
               className={cn(
-                'flex items-start gap-2 rounded-xl border border-transparent px-3 py-2 text-left text-sm transition-colors',
+                'flex items-start gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-colors',
                 'hover:border-border/70 hover:bg-secondary/50',
                 icon.id === currentIconId
                   ? 'border-primary/25 bg-primary/8 text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]'

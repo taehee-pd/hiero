@@ -48,7 +48,7 @@ export function IconGridItem({
             onOpen();
           }}
           className={cn(
-            'group relative flex flex-col items-center rounded-xl border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
             active
               ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
               : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
@@ -102,7 +102,7 @@ export function IconGridItem({
               )}
             </div>
             <div className="w-full text-center">
-              <p className="truncate text-[length:var(--text-caption)] text-foreground" style={{ fontWeight: 'var(--type-weight-medium)', letterSpacing: '0.01em' }}>
+              <p className="truncate font-medium text-[length:var(--text-caption)] text-foreground">
                 {iconName}
               </p>
             </div>

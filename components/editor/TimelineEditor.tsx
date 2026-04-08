@@ -552,7 +552,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
   }, [bindings, fromState, toState, playhead]);
 
   return (
-    <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/60 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground" role="toolbar" aria-label="Timeline playback controls">
         <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(0)} aria-label="Skip to start">
           <SkipBack className="size-3.5" />
@@ -691,7 +691,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
                 <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
                   {grouped.map((group) => (
                     <div key={group.category}>
-                      <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground/70">
                         {group.category}
                       </p>
                       {group.items.map((item) => {

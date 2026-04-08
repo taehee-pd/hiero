@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { Download, Grid3X3, Import, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Grid3X3, Import, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,7 +34,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const favorites = useEditorStore((s) => s.favorites);
-  const { createBlankIcon, openIconTab, toggleFavorite } = useEditorActions();
+  const listExpanded = useEditorStore((s) => s.listPaneExpanded);
+  const { createBlankIcon, openIconTab, toggleFavorite, toggleListPane } = useEditorActions();
 
   const [query, setQuery] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -107,12 +108,31 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
 
   if (!activeIconSetId) {
     return (
-      <aside className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background" style={{ boxShadow: 'var(--shadow-inset-edge)' }} role="region" aria-label="Icon list">
-        <div className="flex flex-1 items-center justify-center p-6 text-center">
-          <div className="studio-dots rounded-xl border border-dashed border-border/70 px-6 py-8">
-            <p className="text-xs text-muted-foreground" style={{ letterSpacing: '0.01em' }}>Select a project from the sidebar to view its icons.</p>
-          </div>
+      <aside
+        className={cn(
+          'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
+          listExpanded ? 'w-[260px]' : 'w-10',
+        )}
+        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
+        role="region"
+        aria-label="Icon list"
+      >
+        <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
+            {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          </Button>
         </div>
+        {listExpanded ? (
+          <div className="flex flex-1 items-center justify-center p-6 text-center">
+            <div className="studio-dots rounded-lg border border-dashed border-border/70 px-6 py-8">
+              <p className="text-xs text-muted-foreground">Select a project from the sidebar to view its icons.</p>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+            <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
+          </button>
+        )}
       </aside>
     );
   }
@@ -120,7 +140,10 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   return (
     <>
       <aside
-        className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background"
+        className={cn(
+          'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200 overflow-hidden',
+          listExpanded ? 'w-[260px]' : 'w-10',
+        )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Icon list"
@@ -131,40 +154,49 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         }}
       >
         {/* Header */}
-        <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-foreground" style={{ fontWeight: 'var(--type-weight-strong)' }}>{projectName}</p>
-            <p className="text-[10px] text-muted-foreground" style={{ letterSpacing: '0.03125rem' }}>{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
-            <Plus className="size-3" />
+        <div className={cn('flex h-10 items-center gap-2 border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
+            {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-            <Import className="size-3" />
-          </Button>
-          <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleExportAll} aria-label="Export all as ZIP">
-            <Download className="size-3" />
-          </Button>
+          {listExpanded && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-foreground">{projectName}</p>
+                <p className="text-[length:var(--text-caption)] text-muted-foreground">{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
+              </div>
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
+                <Plus className="size-3" />
+              </Button>
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                <Import className="size-3" />
+              </Button>
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleExportAll} aria-label="Export all as ZIP">
+                <Download className="size-3" />
+              </Button>
+            </>
+          )}
         </div>
 
-        {/* Search */}
-        <div className="relative px-2 py-1.5">
-          <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search icons…"
-            className="h-7 rounded-[0.625rem] border-border/70 bg-background/60 pl-7 text-xs"
-            style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}
-          />
-        </div>
+        {listExpanded ? (
+          <>
+            {/* Search */}
+            <div className="relative px-2 py-1.5">
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search icons…"
+                className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
+                style={{ boxShadow: 'var(--shadow-outline)' }}
+              />
+            </div>
 
-        {/* Icon list */}
-        <ScrollArea className="flex-1">
-          <div className="grid grid-cols-3 gap-1 p-2" role="list" aria-label="Icons">
+            {/* Icon list */}
+            <ScrollArea className="flex-1">
+              <div className="grid grid-cols-3 gap-1 p-2" role="list" aria-label="Icons">
             {filtered.length === 0 ? (
               <div className="col-span-3 flex items-center justify-center py-8">
-                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}>
+                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)' }}>
                   {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
                 </p>
               </div>
@@ -194,8 +226,14 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 );
               })
             )}
-          </div>
-        </ScrollArea>
+              </div>
+            </ScrollArea>
+          </>
+        ) : (
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+            <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
+          </button>
+        )}
 
         {/* Hidden file input for SVG import */}
         <input

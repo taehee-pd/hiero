@@ -781,7 +781,7 @@ function WorkspaceView({
         </div>
 
         {iconSets.length === 0 ? (
-          <div className="workspace-empty-state flex flex-col items-center justify-center rounded-xl px-6 py-20 text-center">
+          <div className="workspace-empty-state flex flex-col items-center justify-center rounded-lg px-6 py-20 text-center">
             <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
@@ -971,7 +971,7 @@ function ProjectCard({
 
   return (
     <article
-      className="studio-card group relative flex flex-col rounded-xl text-left transition-all duration-150"
+      className="studio-card group relative flex flex-col rounded-lg text-left transition-all duration-150"
       role="listitem"
     >
       <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -1151,7 +1151,7 @@ function ProjectDetailView({
       >
         <div className="space-y-4 px-2.5 py-3">
           <section>
-            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
               Filter
             </h3>
             <div className="grid gap-0.5">
@@ -1172,7 +1172,7 @@ function ProjectDetailView({
 
           {groups.length > 0 && (
             <section>
-              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Categories
               </h3>
               <div className="grid gap-0.5">
@@ -1191,7 +1191,7 @@ function ProjectDetailView({
 
           <section>
             <div className="mb-1 flex items-center justify-between px-1.5">
-              <h3 className="text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Collections
               </h3>
               <button
@@ -1263,7 +1263,7 @@ function ProjectDetailView({
 
           {selection.length > 0 && (
             <section className="space-y-1.5 rounded-lg border border-border/70 bg-background/60 p-2.5">
-              <p className="text-[length:var(--text-caption)] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[length:var(--text-caption)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Assign category
               </p>
               <Input

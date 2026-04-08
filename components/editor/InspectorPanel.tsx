@@ -405,7 +405,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
           <p className="mt-1 text-[length:var(--text-heading)] font-semibold text-foreground">Nothing selected</p>
         </div>
         <div className="flex flex-1 items-center justify-center px-4">
-          <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+          <div className="workspace-empty-state w-full rounded-lg px-5 py-6 text-left">
             <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
             <p className="mt-2 text-xs text-muted-foreground">
               Layer, style, vector, and transform controls appear only when they are relevant.
@@ -440,7 +440,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           type="button"
                           onClick={() => setCurrentVariant(variant.id)}
                           className={cn(
-                            'flex min-w-0 flex-1 flex-col rounded-xl border px-3 py-2 text-left transition',
+                            'flex min-w-0 flex-1 flex-col rounded-lg border px-3 py-2 text-left transition',
                             isActive
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
                               : 'border-border/70 bg-background/70 text-foreground hover:bg-accent/40',
@@ -460,7 +460,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           size="sm"
                           disabled={isOnlyVariant}
                           onClick={() => removeVariant(currentIcon.id, variant.id)}
-                          className="h-auto rounded-xl px-3 text-xs"
+                          className="h-auto rounded-lg px-3 text-xs"
                         >
                           Remove
                         </Button>
@@ -471,8 +471,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
 
                 {currentVariant ? (
-                  <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Weight</Label>
+                  <div className="grid gap-2">
+                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Weight</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
                         <button
@@ -491,7 +491,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         </button>
                       ))}
                     </div>
-                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Scale</Label>
+                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Scale</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
                         <button
@@ -509,7 +509,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         </button>
                       ))}
                     </div>
-                    <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Variable Value</Label>
+                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variable Value</Label>
                     <div className="flex items-center gap-2">
                       <Slider
                         min={0}
@@ -540,8 +540,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   />
                 ) : null}
 
-                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-                  <Label htmlFor="variant-size-preset" className="text-xs uppercase text-muted-foreground">
+                <Separator />
+                <div className="grid gap-2">
+                  <Label htmlFor="variant-size-preset" className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
                     Preset Size
                   </Label>
                   <div className="flex items-center gap-2">
@@ -549,7 +550,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       value={newVariantSize}
                       onValueChange={(value) => setNewVariantSize(value)}
                     >
-                      <SelectTrigger id="variant-size-preset" className="h-9 min-w-0 flex-1 rounded-xl">
+                      <SelectTrigger id="variant-size-preset" className="h-8 min-w-0 flex-1 rounded-lg">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -565,7 +566,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       size="sm"
                       onClick={handleAddVariant}
                       disabled={!currentIcon || !Number.isFinite(selectedVariantSize) || variantSizeTaken}
-                      className="rounded-xl"
+                      className="rounded-lg"
                     >
                       <Plus className="size-4" />
                       Add Variant
@@ -576,8 +577,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   ) : null}
                 </div>
 
-                <div className="grid gap-2 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-                  <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">Generate Variant Matrix</Label>
+                <Separator />
+                <div className="grid gap-2">
+                  <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Generate Variant Matrix</Label>
                   <div className="grid gap-1">
                     <p className="text-[length:var(--text-label)] text-muted-foreground">Sizes</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -637,31 +639,28 @@ export const InspectorPanel = memo(function InspectorPanel() {
               </Section>
               <Separator />
               <Section title="Components">
-                <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-                  <p className="text-xs text-muted-foreground">Tag selected layers as symbol components.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('badge')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Badge</Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('slash')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Slash</Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('enclosure')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Enclosure</Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(['badge','slash','enclosure'] as const).map((kind) => {
-                      const count = currentIcon?.components?.[kind]?.layerIds.length ?? 0;
-                      return (
-                        <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => currentIcon && removeSymbolComponent(currentIcon.id, kind)} disabled={!currentIcon?.components?.[kind]}>
-                          {kind} ({count}) remove
-                        </Button>
-                      );
-                    })}
-                  </div>
+                <p className="text-xs text-muted-foreground">Tag selected layers as symbol components.</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('badge')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Badge</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('slash')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Slash</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => applyComponentTag('enclosure')} disabled={!currentIcon || selection.layerIds.length === 0}>Tag Enclosure</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {(['badge','slash','enclosure'] as const).map((kind) => {
+                    const count = currentIcon?.components?.[kind]?.layerIds.length ?? 0;
+                    return (
+                      <Button key={kind} type="button" size="sm" variant="ghost" onClick={() => currentIcon && removeSymbolComponent(currentIcon.id, kind)} disabled={!currentIcon?.components?.[kind]}>
+                        {kind} ({count}) remove
+                      </Button>
+                    );
+                  })}
                 </div>
               </Section>
               <Separator />
               <Section title="Derive Variants">
-                <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Generate fill, slash, circle, square, and badge variants from the current variant.
-                  </p>
+                <p className="text-xs text-muted-foreground">
+                  Generate fill, slash, circle, square, and badge variants from the current variant.
+                </p>
                   {currentIcon && currentVariantId ? (
                     <>
                       <div className="flex flex-wrap gap-2">
@@ -714,7 +713,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   ) : (
                     <p className="text-xs text-muted-foreground">Select an icon and variant first.</p>
                   )}
-                </div>
               </Section>
               <Separator />
               <TransitionPanel />
@@ -812,7 +810,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     {currentTopology.layerPairs.map((pair) => (
                       <div
                         key={pair.layerId}
-                        className="rounded-xl border border-border/70 bg-background/70 px-3 py-2"
+                        className="rounded-lg border border-border/70 bg-background/70 px-3 py-2"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-sm font-medium text-foreground">{pair.layerId}</span>
@@ -833,7 +831,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
           {!layer ? (
             !showShapeToolSettings ? (
-              <div className="workspace-empty-state w-full rounded-2xl px-5 py-6 text-left">
+              <div className="workspace-empty-state w-full rounded-lg px-5 py-6 text-left">
                 <p className="text-sm font-medium text-foreground">Choose a layer to inspect it</p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Variant switching stays available here so you can move between size masters before editing.
@@ -848,7 +846,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-white',
+                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-medium uppercase tracking-tight text-white',
                     animationStrategyBadge === 'morph' && 'bg-green-600',
                     animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
                     animationStrategyBadge === 'crossfade' && 'bg-red-500',
@@ -860,7 +858,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               </div>
             ) : null}
             {variableValueInfo ? (
-              <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-xs text-foreground/80">
+              <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-xs text-foreground/80">
                 <span className="font-medium">Variable Value:</span>{' '}
                 <span className="tabular-nums">{variableValueInfo.variableValue.toFixed(2)}</span>
                 {' \u2192 opacity: '}
@@ -884,7 +882,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   variant="outline"
                   disabled={!canMakeClipMask}
                   onClick={handleMakeClipMask}
-                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                  className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
                     <VenetianMask className="size-4" />
@@ -921,7 +919,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         disabled={booleanDisabled}
                         onClick={() => void handleBooleanAction(mode)}
                         className={cn(
-                          'h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40',
+                          'h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40',
                           isPending && 'border-primary/40 text-primary',
                         )}
                       >
@@ -998,7 +996,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   size="sm"
                   variant="outline"
                   onClick={handleReleaseClipMask}
-                  className="h-10 rounded-xl border-border bg-background px-3 text-left transition hover:bg-accent/40"
+                  className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
                     <ScissorsLineDashed className="size-4" />
@@ -1035,8 +1033,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   <ReadOnlyField label="Fill Rule" value={layer.path.fillRule} />
                 )}
                 {layerGeometryStats ? (
-                  <details className="rounded-xl border border-border/70 bg-background/50 px-3 py-2">
-                    <summary className="cursor-pointer text-[length:var(--text-label)] font-semibold uppercase text-[var(--system-gray)]">
+                  <details className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
+                    <summary className="cursor-pointer text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
                       Topology ({layerGeometryStats.subpathCount} subpath{layerGeometryStats.subpathCount === 1 ? '' : 's'}, {layerGeometryStats.pointCount} pts)
                     </summary>
                     <div className="mt-2 grid gap-1.5">
@@ -1079,7 +1077,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             />
             {autoGradientPreview ? (
               <div className="grid gap-1">
-                <span className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+                <span className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
                   Auto-Gradient Preview
                 </span>
                 <div
@@ -1235,7 +1233,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Label className="w-20 shrink-0 text-[length:var(--text-label)] text-[var(--system-gray)]">
+                  <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
                     Type
                   </Label>
                   <div className="flex flex-1 items-center gap-1">
@@ -1836,8 +1834,8 @@ function WeightControlPointsEditor({
   );
 
   return (
-    <div className="grid gap-2 rounded-xl border border-border/70 bg-background/40 p-3">
-      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+    <div className="grid gap-2">
+      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
         Weight Control Points
       </Label>
       <p className="text-xs text-muted-foreground">
@@ -1955,8 +1953,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-[length:var(--text-label)] font-semibold uppercase text-[var(--system-gray)]">
+    <div className="flex flex-col gap-2">
+      <span className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
         {title}
       </span>
       {children}
@@ -2000,12 +1998,12 @@ function ReadOnlyField({
   mono?: boolean;
 }) {
   return (
-    <div className="grid gap-1">
-      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+    <div className="flex items-center gap-2">
+      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
         {label}
       </Label>
       <span
-        className={`truncate rounded-xl border border-border/70 bg-background/60 px-3 py-2 text-xs ${mono ? 'font-mono' : ''} text-foreground`}
+        className={`flex-1 truncate rounded-lg border border-border/70 bg-background/60 px-3 py-1.5 text-xs ${mono ? 'font-mono' : ''} text-foreground`}
       >
         {value}
       </span>
@@ -2039,8 +2037,8 @@ function NumberField({
   );
 
   return (
-    <div className="grid gap-1">
-      <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+    <div className="flex items-center gap-2">
+      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
         {label}
       </Label>
       <Input
@@ -2051,7 +2049,7 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-9 rounded-xl bg-input text-xs"
+        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
     </div>
   );
@@ -2059,7 +2057,7 @@ function NumberField({
 
 function InlineMessage({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+    <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
       {children}
     </div>
   );
@@ -2067,7 +2065,7 @@ function InlineMessage({ children }: { children: React.ReactNode }) {
 
 function InlineStat({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-background/50 px-3 py-2 text-sm font-medium text-foreground/80">
+    <div className="rounded-lg border border-border/70 bg-background/50 px-3 py-2 text-sm font-medium text-foreground/80">
       {children}
     </div>
   );
@@ -2095,8 +2093,8 @@ function AxisField({
   );
 
   return (
-    <div className="flex flex-col gap-1">
-      <Label className="text-[length:var(--text-label)] text-[var(--system-gray)]">{label}</Label>
+    <div className="flex items-center gap-2">
+      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">{label}</Label>
       <Input
         type="text"
         inputMode="decimal"
@@ -2104,7 +2102,7 @@ function AxisField({
         placeholder={placeholder}
         disabled={disabled}
         onChange={handleChange}
-        className="h-8 bg-input text-xs"
+        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
     </div>
   );
@@ -2129,7 +2127,7 @@ function IconNumberField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="flex w-20 shrink-0 items-center gap-1 text-[length:var(--text-label)] text-[var(--system-gray)]">
+      <Label className="flex w-[72px] shrink-0 items-center gap-1 text-[length:var(--text-label)] text-muted-foreground">
         <span className="font-mono text-sm leading-none">{icon}</span>
         <span>{label}</span>
       </Label>
@@ -2143,7 +2141,7 @@ function IconNumberField({
           const num = parseFloat(e.target.value);
           if (!Number.isNaN(num)) onChange(num);
         }}
-        className="h-7 bg-input text-xs"
+        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
     </div>
   );
@@ -2193,11 +2191,11 @@ function SelectField({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Label className="w-20 shrink-0 text-[length:var(--text-label)] text-[var(--system-gray)]">
+      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
         {label}
       </Label>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
-        <SelectTrigger className="h-8 w-full rounded-xl border border-input bg-input/80 px-2 text-xs">
+        <SelectTrigger className="h-8 w-full rounded-lg px-2 text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -2506,9 +2504,9 @@ function PaintField({
   }, [boundedSelectedStopIndex, commitGradient, gradientPaint]);
 
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/35 p-3">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-[length:var(--text-label)] uppercase text-[var(--system-gray)]">
+        <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
           {label}
         </Label>
         <div className="flex items-center gap-1.5">
@@ -2517,7 +2515,7 @@ function PaintField({
             onValueChange={handleModeChange}
           >
             <SelectTrigger
-              className="h-8 min-w-[9rem] rounded-xl border border-input bg-input/80 px-2 text-xs"
+              className="h-8 min-w-[9rem] rounded-lg px-2 text-xs"
               aria-label={`${label} mode`}
             >
               <SelectValue />
@@ -2566,7 +2564,7 @@ function PaintField({
                   ? '#RRGGBB or token name'
                   : 'currentColor / #RRGGBB / token'
               }
-              className="h-9 rounded-xl bg-input font-mono text-xs"
+              className="h-8 rounded-lg bg-input font-mono text-xs"
             />
             {tokenNames.length > 0 && (
               <datalist id={`${label.toLowerCase()}-token-list`}>
@@ -2585,7 +2583,7 @@ function PaintField({
             <div className="relative pt-8">
               <div
                 ref={gradientBarRef}
-                className="relative h-10 rounded-xl border border-border/70 bg-muted/40 shadow-inner"
+                className="relative h-10 rounded-lg border border-border/70 bg-muted/40 shadow-inner"
                 style={{ backgroundImage: buildGradientPreview(gradientPaint.stops) }}
               />
               {gradientPaint.stops.map((stop, index) => {
@@ -2768,7 +2766,7 @@ function GradientInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-[length:var(--text-label)] text-[var(--system-gray)]">{label}</Label>
+      <Label className="text-[length:var(--text-label)] text-muted-foreground">{label}</Label>
       <Input
         type="number"
         value={value}

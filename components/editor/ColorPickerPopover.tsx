@@ -85,7 +85,7 @@ export function ColorPickerPopover({
           <button
             type="button"
             className={cn(
-              'h-7 w-7 shrink-0 rounded-[5px] border border-[#e6e6e6] shadow-none transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'h-7 w-7 shrink-0 rounded-sm border border-border/70 shadow-none transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               disabled && 'pointer-events-none opacity-50',
             )}
             style={{ backgroundColor: value, ...style }}
@@ -120,7 +120,7 @@ export function ColorPickerPopover({
             if (e.key === 'Escape') setHexDraft(null);
           }}
           disabled={disabled}
-          className="h-7 w-full min-w-0 rounded-[5px] border border-[#e6e6e6] bg-transparent pl-4 pr-1.5 font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
+          className="h-7 w-full min-w-0 rounded-sm border border-border/70 bg-transparent pl-4 pr-1.5 font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
           spellCheck={false}
           autoComplete="off"
         />
@@ -141,7 +141,7 @@ export function ColorPickerPopover({
               if (e.key === 'Escape') setOpacityDraft(null);
             }}
             disabled={disabled}
-            className="h-7 w-full rounded-[5px] border border-[#e6e6e6] bg-transparent pl-1.5 pr-5 text-center font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
+            className="h-7 w-full rounded-sm border border-border/70 bg-transparent pl-1.5 pr-5 text-center font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
           />
           <span className="pointer-events-none absolute right-1.5 text-[10px] text-muted-foreground/60">
             %

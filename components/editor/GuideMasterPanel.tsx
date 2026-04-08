@@ -160,7 +160,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
         <Button
           variant="ghost"
           size="icon-sm"
-          className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+          className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
           onClick={onClose}
           aria-label="Close guide panel"
         >
@@ -170,7 +170,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
       <ScrollArea className="workspace-scroll flex-1">
         <div className="flex flex-col gap-4 p-2.5">
-          <section className="rounded-2xl border border-border/70 bg-background/70 p-3">
+          <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-foreground">New guide master</p>
@@ -216,7 +216,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border/70 bg-background/70 p-3">
+          <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-foreground">Guide library</p>
@@ -228,7 +228,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
             </div>
             <div className="mt-3 flex flex-col gap-3">
               {groupedMasters.length === 0 ? (
-                <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
+                <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
                   No guide masters
                 </div>
               ) : null}
@@ -248,7 +248,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                           type="button"
                           onClick={() => setSelectedMasterId(master.id)}
                           className={cn(
-                            'w-full rounded-xl border px-3 py-3 text-left transition',
+                            'w-full rounded-lg border px-3 py-3 text-left transition',
                             isSelected
                               ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
                               : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
@@ -278,7 +278,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border/70 bg-background/70 p-3">
+          <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             {selectedMaster ? (
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -293,7 +293,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       variant="ghost"
                       size="icon-sm"
                       className={cn(
-                        'workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground',
+                        'workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground',
                         guidesVisible && 'bg-primary/10 text-primary',
                       )}
                       onClick={toggleGuidesVisible}
@@ -304,7 +304,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground"
+                      className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
                       onClick={() => handleDuplicateMaster(selectedMaster)}
                       aria-label="Duplicate guide master"
                     >
@@ -336,7 +336,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive"
+                        className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
                         onClick={() => handleDeleteMaster(selectedMaster)}
                         aria-label="Delete guide master"
                       >
@@ -387,7 +387,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">Guide items</p>
@@ -422,7 +422,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
                   <div className="mt-3 space-y-3">
                     {selectedMaster.items.length === 0 ? (
-                      <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
+                      <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
                         No guide items
                       </div>
                     ) : null}
@@ -440,7 +440,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                 </div>
               </div>
             ) : (
-              <div className="workspace-empty-state rounded-xl px-3 py-6 text-center text-xs text-muted-foreground">
+              <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
                 Select a guide master to edit it
               </div>
             )}
@@ -461,7 +461,7 @@ function GuideItemCard({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+    <div className="rounded-lg border border-border/70 bg-background/80 p-3">
       <div className="flex items-center justify-between gap-3">
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
           {item.kind}
@@ -469,7 +469,7 @@ function GuideItemCard({
         <Button
           variant="ghost"
           size="icon-sm"
-          className="workspace-tool-button h-8 w-8 rounded-xl text-muted-foreground hover:text-destructive"
+          className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
           onClick={onRemove}
           aria-label="Remove guide item"
         >
@@ -651,7 +651,7 @@ function TextField({
 
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2">
+    <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
       <p className="text-sm uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>

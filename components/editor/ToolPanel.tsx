@@ -329,7 +329,7 @@ export const ToolPanel = memo(function ToolPanel({
       </Tooltip>
 
       {!isDock && guidePanelOpen ? (
-        <p className="px-2 text-[length:var(--text-label)] uppercase text-muted-foreground" style={{ fontWeight: 'var(--type-weight-strong)', letterSpacing: '0.03125rem' }}>
+        <p className="px-2 text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
           Guides visible: {guidesVisible ? 'yes' : 'no'}
         </p>
       ) : null}

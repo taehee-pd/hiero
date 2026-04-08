@@ -133,8 +133,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         {/* Header */}
         <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-foreground" style={{ fontWeight: 'var(--type-weight-strong)' }}>{projectName}</p>
-            <p className="text-[10px] text-muted-foreground" style={{ letterSpacing: '0.03125rem' }}>{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
+            <p className="truncate text-xs font-semibold text-foreground">{projectName}</p>
+            <p className="text-[length:var(--text-caption)] text-muted-foreground">{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
           </div>
           <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
             <Plus className="size-3" />
@@ -154,7 +154,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search icons…"
-            className="h-7 rounded-[0.625rem] border-border/70 bg-background/60 pl-7 text-xs"
+            className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
             style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}
           />
         </div>

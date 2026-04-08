@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
+import { Separator } from '@/components/kibo-ui/separator';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
@@ -148,8 +149,8 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
           const disabled = isDrawPreset && !hasDrawEligibleLayers;
           return (
-            <button key={preset.key} type="button" className={`rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
-              <p className="text-[10px] font-medium leading-tight">{preset.label}</p>
+            <button key={preset.key} type="button" className={`rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
+              <p className="text-[length:var(--text-caption)] font-medium leading-tight">{preset.label}</p>
             </button>
           );
         })}
@@ -162,7 +163,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
         <div className="flex items-center gap-1" role="toolbar" aria-label="Playback speed">
           {SPEEDS.map((value) => (
-            <button key={value} type="button" className={`h-6 rounded px-1.5 text-[10px] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
+            <button key={value} type="button" className={`h-6 rounded px-1.5 text-[length:var(--text-caption)] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
               {value}x
             </button>
           ))}
@@ -174,8 +175,9 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           <DrawOrderEditor iconId={iconId} layers={variant.layers} />
         ) : null}
 
-        <div className="space-y-2 border-t border-border/30 pt-3">
-          <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">Saved Effects</p>
+        <Separator />
+        <div className="space-y-2">
+          <p className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Saved Effects</p>
           {savedEffects.length === 0 ? (
             <p className="text-xs text-muted-foreground">No saved effects yet.</p>
           ) : (
@@ -195,7 +197,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 </div>
                 {/* UX-F1: Inline easing editor replaces window.prompt() */}
                 {editingEffectId === effect.id && (
-                  <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-2">
+                  <div className="mt-2 flex items-center gap-2 border-t border-border/40 pt-2">
                     <EasingPicker
                       value={typeof effect.easing === 'string' ? effect.easing : (effect.easing ?? 'linear')}
                       onSelect={(val) => handleEasingChange(effect.id, val)}
@@ -205,7 +207,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 )}
                 {/* H7: Palette editor for variableColor effects */}
                 {effect.kind === 'variableColor' && (
-                  <div className="mt-2 space-y-1.5 border-t border-border/50 pt-2">
+                  <div className="mt-2 space-y-1.5 border-t border-border/40 pt-2">
                     <p className="text-xs font-medium text-muted-foreground">Color Palette</p>
                     <div className="space-y-1">
                       {(effect.palette ?? []).map((color, index) => (
@@ -468,8 +470,8 @@ function DrawOrderEditor({
   if (layerEntries.length < 2) return null;
 
   return (
-    <div className="space-y-1.5 border-t border-border/30 pt-3">
-      <p className="text-[length:var(--text-label)] font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="space-y-1.5 border-t border-border/40 pt-3">
+      <p className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
         Draw Order
       </p>
       <div className="space-y-1">

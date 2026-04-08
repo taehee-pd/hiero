@@ -322,7 +322,7 @@ export function Toolbar() {
               {/* UX-F8: Unsaved changes indicator with relative timestamp */}
               <Badge
                 variant="outline"
-                className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-wide ${
+                className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-tight ${
                   isDirty
                     ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 shadow-[inset_0_0_0_0.5px_rgba(217,170,0,0.12)] dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
                     : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
@@ -668,8 +668,8 @@ function ToolbarButton({
 function ShortcutRow({ label, shortcut }: { label: string; shortcut: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/60 px-3 py-1.5" style={{ boxShadow: 'var(--shadow-outline)' }}>
-      <span style={{ fontWeight: 'var(--type-weight-default)' }}>{label}</span>
-      <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs" style={{ letterSpacing: '0.03125rem' }}>
+      <span>{label}</span>
+      <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs">
         {shortcut}
       </span>
     </div>

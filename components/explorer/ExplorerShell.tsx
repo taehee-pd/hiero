@@ -1151,7 +1151,7 @@ function ProjectDetailView({
       >
         <div className="space-y-4 px-2.5 py-3">
           <section>
-            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
               Filter
             </h3>
             <div className="grid gap-0.5">
@@ -1172,7 +1172,7 @@ function ProjectDetailView({
 
           {groups.length > 0 && (
             <section>
-              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Categories
               </h3>
               <div className="grid gap-0.5">
@@ -1191,7 +1191,7 @@ function ProjectDetailView({
 
           <section>
             <div className="mb-1 flex items-center justify-between px-1.5">
-              <h3 className="text-[length:var(--text-label)] font-semibold uppercase tracking-wider text-[var(--system-gray)]">
+              <h3 className="text-[length:var(--text-label)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Collections
               </h3>
               <button
@@ -1263,7 +1263,7 @@ function ProjectDetailView({
 
           {selection.length > 0 && (
             <section className="space-y-1.5 rounded-lg border border-border/70 bg-background/60 p-2.5">
-              <p className="text-[length:var(--text-caption)] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[length:var(--text-caption)] font-semibold uppercase tracking-tight text-muted-foreground">
                 Assign category
               </p>
               <Input

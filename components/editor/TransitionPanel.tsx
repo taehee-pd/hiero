@@ -6,6 +6,7 @@ import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
+import { Separator } from '@/components/kibo-ui/separator';
 import { Slider } from '@/components/kibo-ui/slider';
 import { toast } from '@/components/ui/use-toast';
 import {
@@ -410,96 +411,97 @@ export const TransitionPanel = memo(function TransitionPanel() {
     <section className="grid gap-3">
       {/* Header */}
       <div>
-        <p className="text-sm font-semibold text-foreground">Transition Preview</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[length:var(--text-heading)] font-semibold text-foreground">Transition Preview</p>
+        <p className="text-[length:var(--text-label)] text-muted-foreground">
           Preview how icons transition at runtime. Select source and target,
           choose a strategy, and inspect layer bindings.
         </p>
       </div>
 
-      {/* Endpoint pickers + strategy form */}
-      <div className="grid gap-3 rounded-xl border border-dashed border-border/70 bg-muted/15 p-3">
-        <LockedSourceEndpoint
-          iconName={currentIcon.name}
-          variants={srcVariants}
-          selectedVariantId={srcVariantId}
-          onVariantChange={setSrcVariantId}
+      {/* Endpoint pickers */}
+      <LockedSourceEndpoint
+        iconName={currentIcon.name}
+        variants={srcVariants}
+        selectedVariantId={srcVariantId}
+        onVariantChange={setSrcVariantId}
+      />
+      <CrossIconEndpointPicker
+        label="Target"
+        iconEntries={iconEntries}
+        selectedIconId={tgtIconId}
+        onIconChange={(id) => { setTgtIconId(id); setTgtVariantId(''); }}
+        variants={tgtVariants}
+        selectedVariantId={tgtVariantId}
+        onVariantChange={setTgtVariantId}
+      />
+
+      <Separator />
+
+      {/* Strategy + Easing */}
+      <div className="grid grid-cols-2 gap-2">
+        <StrategySelect
+          value={formStrategy}
+          onChange={setFormStrategy}
         />
-        <CrossIconEndpointPicker
-          label="Target"
-          iconEntries={iconEntries}
-          selectedIconId={tgtIconId}
-          onIconChange={(id) => { setTgtIconId(id); setTgtVariantId(''); }}
-          variants={tgtVariants}
-          selectedVariantId={tgtVariantId}
-          onVariantChange={setTgtVariantId}
-        />
-
-        {/* Strategy + Easing */}
-        <div className="grid grid-cols-2 gap-2">
-          <StrategySelect
-            value={formStrategy}
-            onChange={setFormStrategy}
-          />
-          <div className="grid gap-1.5">
-            <Label className="text-xs uppercase text-muted-foreground">Easing</Label>
-            <EasingPicker value={formEasing} onSelect={setFormEasing} />
-          </div>
-        </div>
-
-        {/* Strategy hint */}
-        <p className="text-[10px] leading-snug text-muted-foreground/70">
-          {STRATEGY_HINTS[formStrategy]}
-        </p>
-
-        {/* Direction — applicable to replace and lineAnimation */}
-        {showDirection && (
-          <div className="grid gap-1.5">
-            <Label className="text-xs uppercase text-muted-foreground">Direction</Label>
-            <Select
-              value={formDirection ?? 'automatic'}
-              onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
-            >
-              <SelectTrigger className="h-9 rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DIRECTION_OPTIONS.map((d) => (
-                  <SelectItem key={d.value} value={d.value}>
-                    {d.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Duration */}
         <div className="grid gap-1.5">
-          <Label className="text-xs uppercase text-muted-foreground">Duration (ms)</Label>
-          <Input
-            type="number"
-            min="0"
-            step="10"
-            value={formDuration}
-            onChange={(event) => setFormDuration(event.target.value)}
-          />
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Easing</Label>
+          <EasingPicker value={formEasing} onSelect={setFormEasing} />
         </div>
-
-        {/* Compatibility badge */}
-        {compatibility ? <CompatibilityBadge status={compatibility} /> : null}
-
-        {/* Preview button */}
-        <Button
-          type="button"
-          size="sm"
-          onClick={beginPreview}
-          disabled={!isPreviewable || (formStrategy === 'strictMorph' && compatibility?.tone === 'red')}
-          className="rounded-xl"
-        >
-          Preview Transition
-        </Button>
       </div>
+
+      {/* Strategy hint */}
+      <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
+        {STRATEGY_HINTS[formStrategy]}
+      </p>
+
+      {/* Direction — applicable to replace and lineAnimation */}
+      {showDirection && (
+        <div className="grid gap-1.5">
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Direction</Label>
+          <Select
+            value={formDirection ?? 'automatic'}
+            onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
+          >
+            <SelectTrigger className="h-8 rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DIRECTION_OPTIONS.map((d) => (
+                <SelectItem key={d.value} value={d.value}>
+                  {d.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Duration */}
+      <div className="grid gap-1.5">
+        <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Duration (ms)</Label>
+        <Input
+          type="number"
+          min="0"
+          step="10"
+          value={formDuration}
+          onChange={(event) => setFormDuration(event.target.value)}
+          className="h-8 rounded-lg"
+        />
+      </div>
+
+      {/* Compatibility badge */}
+      {compatibility ? <CompatibilityBadge status={compatibility} /> : null}
+
+      {/* Preview button */}
+      <Button
+        type="button"
+        size="sm"
+        onClick={beginPreview}
+        disabled={!isPreviewable || (formStrategy === 'strictMorph' && compatibility?.tone === 'red')}
+        className="rounded-lg"
+      >
+        Preview Transition
+      </Button>
 
       {/* Layer bindings (read-only) */}
       {sourceSnapshot && targetSnapshot && (
@@ -550,13 +552,13 @@ function PreviewPlaybackControls({
   const pct = Math.round((preview.progress ?? 0) * 100);
 
   return (
-    <div className="grid gap-2 rounded-xl border border-border/70 bg-muted/15 p-3">
+    <div className="grid gap-2">
       <div className="flex items-center gap-2">
         <Button
           type="button"
           size="icon-sm"
           variant="outline"
-          className="rounded-xl"
+          className="rounded-lg"
           onClick={onTogglePlayback}
         >
           {preview.playing ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -565,7 +567,7 @@ function PreviewPlaybackControls({
           type="button"
           size="icon-sm"
           variant="outline"
-          className="rounded-xl"
+          className="rounded-lg"
           onClick={onRestart}
         >
           <RotateCcw className="size-4" />
@@ -584,7 +586,7 @@ function PreviewPlaybackControls({
           value={String(preview.speed ?? 1)}
           onValueChange={(v) => onSpeedChange(Number.parseFloat(v))}
         >
-          <SelectTrigger className="h-9 w-20 rounded-xl">
+          <SelectTrigger className="h-8 w-20 rounded-lg">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -633,7 +635,7 @@ function CollapsibleSection({
         }
         <span className="font-semibold text-foreground">{title}</span>
         {subtitle && collapsed && (
-          <span className="ml-auto truncate text-[10px] text-muted-foreground/70">{subtitle}</span>
+          <span className="ml-auto truncate text-[length:var(--text-caption)] text-muted-foreground/70">{subtitle}</span>
         )}
       </button>
       {!collapsed && (
@@ -1067,7 +1069,7 @@ function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-[0.16em]',
+        'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-tight',
         status.tone === 'green' && 'bg-emerald-500/10 text-emerald-600',
         status.tone === 'yellow' && 'bg-amber-500/10 text-amber-700',
         status.tone === 'orange' && 'bg-orange-500/10 text-orange-600',
@@ -1092,9 +1094,9 @@ function StrategySelect({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-xs uppercase text-muted-foreground">Strategy</Label>
+      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Strategy</Label>
       <Select value={value} onValueChange={(v) => onChange(v as RuntimeTransitionIntent['strategy'])}>
-        <SelectTrigger className="h-9 rounded-xl">
+        <SelectTrigger className="h-8 rounded-lg">
           <SelectValue>
             {STRATEGY_LABELS[value]}
           </SelectValue>
@@ -1127,21 +1129,21 @@ function LockedSourceEndpoint({
   onVariantChange: (id: string) => void;
 }) {
   return (
-    <fieldset className="grid gap-2 rounded-lg border border-border/40 p-2.5">
-      <legend className="px-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <fieldset className="grid gap-2">
+      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground">
         Source
       </legend>
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
-          <Label className="text-xs uppercase text-muted-foreground">Icon</Label>
-          <div className="flex h-9 items-center rounded-xl border border-input bg-muted/30 px-3 text-sm text-foreground">
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Icon</Label>
+          <div className="flex h-8 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
             {iconName}
           </div>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-xs uppercase text-muted-foreground">Variant</Label>
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variant</Label>
           <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
-            <SelectTrigger className="h-9 rounded-xl">
+            <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select variant..." />
             </SelectTrigger>
             <SelectContent>
@@ -1177,15 +1179,15 @@ function CrossIconEndpointPicker({
   onVariantChange: (id: string) => void;
 }) {
   return (
-    <fieldset className="grid gap-2 rounded-lg border border-border/40 p-2.5">
-      <legend className="px-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <fieldset className="grid gap-2">
+      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground">
         {label}
       </legend>
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
-          <Label className="text-xs uppercase text-muted-foreground">Icon</Label>
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Icon</Label>
           <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
-            <SelectTrigger className="h-9 rounded-xl">
+            <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select icon..." />
             </SelectTrigger>
             <SelectContent>
@@ -1199,9 +1201,9 @@ function CrossIconEndpointPicker({
           </Select>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-xs uppercase text-muted-foreground">Variant</Label>
+          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variant</Label>
           <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
-            <SelectTrigger className="h-9 rounded-xl">
+            <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select variant..." />
             </SelectTrigger>
             <SelectContent>

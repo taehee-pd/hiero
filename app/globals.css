@@ -137,6 +137,9 @@
 
   /* ── Dimension Tokens ── */
   --toolbar-height: 38px;
+  --field-height-sm: 28px;
+  --field-height-md: 32px;
+  --field-height-lg: 36px;
 
   /* ── Vibrancy Backgrounds (wire-* classes, ExplorerShell) ── */
   --bg-sidebar: rgba(246, 246, 246, 0.72);
@@ -394,10 +397,10 @@
   /* ── Text sizes ── */
   --text-xs: 0.5625rem;
   --text-xs--line-height: 0.875rem;
-  --text-xs--letter-spacing: 0.03125rem;
+  --text-xs--letter-spacing: 0.01em;
   --text-sm: 0.6875rem;
   --text-sm--line-height: 1rem;
-  --text-sm--letter-spacing: 0.03125rem;
+  --text-sm--letter-spacing: 0.01em;
   --text-base: 0.8125rem;
   --text-base--line-height: 1.375rem;
   --text-base--letter-spacing: -0.015625rem;
@@ -596,7 +599,7 @@
     font-size: 0.5625rem;
     line-height: 0.875rem;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.03125rem;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
     color: var(--muted-foreground);
   }
@@ -613,7 +616,7 @@
     font-size: 0.5625rem;
     line-height: 0.875rem;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.03125rem;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
   }
 
@@ -649,7 +652,7 @@
     font-size: 0.5625rem;
     line-height: 0.875rem;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.03125rem;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
     color: var(--muted-foreground);
   }
@@ -668,7 +671,7 @@
     font-size: 0.5625rem;
     line-height: 0.875rem;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.03125rem;
+    letter-spacing: 0.01em;
     color: var(--foreground);
   }
 
@@ -1299,7 +1302,7 @@
     flex-direction: column;
     gap: 8px;
     border-bottom: 1px solid var(--border-separator);
-    padding: 10px 10px 8px;
+    padding: 10px 12px 8px;
   }
 
   .wire-sidebar-title-stack {
@@ -1335,7 +1338,7 @@
     padding: 0.2rem 0.45rem;
     font-size: 11px;
     line-height: 16px;
-    letter-spacing: 0.045em;
+    letter-spacing: 0.01em;
   }
 
   .wire-title {
@@ -1343,7 +1346,7 @@
     font-size: 12px;
     line-height: 18px;
     font-weight: 550;
-    letter-spacing: -0.03px;
+    letter-spacing: -0.01em;
   }
 
   .wire-tab-row {
@@ -1364,8 +1367,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 22px;
-    border-radius: 6px;
+    min-height: 28px;
+    border-radius: var(--radius-md);
     padding: 0 8px;
     font-size: 11px;
     line-height: 16px;
@@ -1406,9 +1409,9 @@
     height: 28px;
     align-items: center;
     padding: 0 2px;
-    font-size: 10px;
+    font-size: var(--text-label);
     line-height: 16px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--foreground);
   }
 
@@ -1490,9 +1493,10 @@
 
   .wire-input,
   .wire-color {
-    min-height: 24px;
+    min-height: var(--field-height-md);
+    width: 100%;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--bg-content) 94%, transparent);
     padding: 0 8px;
     font-size: 11px;
@@ -1513,12 +1517,12 @@
 
   .wire-mini-button {
     display: inline-flex;
-    min-height: 22px;
+    min-height: var(--field-height-md);
     align-items: center;
     justify-content: center;
     gap: 4px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--bg-content) 94%, transparent);
     padding: 0 8px;
     font-size: 11px;
@@ -1704,10 +1708,10 @@
   }
 
   .wire-label {
-    font-size: 10px;
+    font-size: var(--text-label);
     line-height: 14px;
-    font-weight: 550;
-    letter-spacing: 0.05em;
+    font-weight: 500;
+    letter-spacing: 0.01em;
     color: var(--foreground-tertiary);
     text-transform: uppercase;
     padding-bottom: 2px;
@@ -1803,7 +1807,7 @@
   .wire-command [data-slot='command-shortcut'],
   .wire-command [cmdk-group-heading] {
     font-size: 10px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.01em;
   }
 
   .wireframe-editor .workspace-canvas-shell {

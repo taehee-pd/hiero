@@ -102,7 +102,7 @@ export function IconGridItem({
               )}
             </div>
             <div className="w-full text-center">
-              <p className="truncate text-[length:var(--text-caption)] text-foreground" style={{ fontWeight: 'var(--type-weight-medium)', letterSpacing: '0.01em' }}>
+              <p className="truncate font-medium text-[length:var(--text-caption)] text-foreground">
                 {iconName}
               </p>
             </div>

@@ -327,7 +327,6 @@ export function Toolbar() {
                     ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 shadow-[inset_0_0_0_0.5px_rgba(217,170,0,0.12)] dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
                     : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
                 }`}
-                style={{ fontWeight: 'var(--type-weight-medium)' }}
               >
                 {isDirty
                   ? 'Unsaved changes'
@@ -475,8 +474,7 @@ export function Toolbar() {
           <ToolbarGroup>
             <Badge
               variant="outline"
-              className="min-w-[3.75rem] rounded-full px-2 py-0.5 text-[length:var(--text-label)]"
-              style={{ fontWeight: 'var(--type-weight-medium)' }}
+              className="min-w-[3.75rem] rounded-full px-2 py-0.5 font-medium text-[length:var(--text-label)]"
             >
               {Math.round(zoom * 100)}%
             </Badge>
@@ -515,8 +513,8 @@ export function Toolbar() {
       {/* E-2: Inline error toast replacing window.alert() */}
       {toolbarError && (
         <div
-          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300"
-          style={{ fontWeight: 'var(--type-weight-medium)', boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }}
+          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm font-medium text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300"
+          style={{ boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }}
           role="alert"
           aria-live="assertive"
         >
@@ -603,7 +601,7 @@ export function Toolbar() {
         >
           <div
             className="rounded-2xl border border-border/50 bg-background/90 px-6 py-3 text-2xl text-foreground backdrop-blur-sm"
-            style={{ fontWeight: 'var(--type-weight-default)', boxShadow: 'var(--shadow-lg)', animation: 'zoom-overlay-fade 900ms ease-out forwards' }}
+            style={{ boxShadow: 'var(--shadow-lg)', animation: 'zoom-overlay-fade 900ms ease-out forwards' }}
           >
             {zoomOverlay}
           </div>

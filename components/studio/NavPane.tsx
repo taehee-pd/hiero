@@ -116,7 +116,7 @@ export function NavPane() {
                         ? 'bg-primary-soft text-primary shadow-[inset_0_0_0_0.5px_var(--primary)]'
                         : 'text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
-                    style={activeIconSetId === iconSet.id ? { fontWeight: 'var(--type-weight-medium)' } : undefined}
+                    style={activeIconSetId === iconSet.id ? { fontWeight: 500 } : undefined}
                   >
                     <button
                       type="button"

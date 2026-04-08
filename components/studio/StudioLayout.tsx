@@ -105,7 +105,7 @@ export function StudioLayout() {
           ) : (
             <div className="studio-dots flex flex-1 items-center justify-center">
               <div className="rounded-2xl border border-border/70 bg-background/80 px-8 py-6 text-center backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-outline)' }}>
-                <p className="text-sm text-muted-foreground" style={{ fontWeight: 'var(--type-weight-medium)', letterSpacing: '-0.01em' }}>
+                <p className="text-sm font-medium tracking-tight text-muted-foreground">
                   {activeIconSetId ? 'Select an icon to start editing' : 'Select a project to get started'}
                 </p>
               </div>

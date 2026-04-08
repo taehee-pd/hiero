@@ -110,7 +110,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       <aside className="flex w-[260px] shrink-0 flex-col border-r border-border/70 bg-background" style={{ boxShadow: 'var(--shadow-inset-edge)' }} role="region" aria-label="Icon list">
         <div className="flex flex-1 items-center justify-center p-6 text-center">
           <div className="studio-dots rounded-xl border border-dashed border-border/70 px-6 py-8">
-            <p className="text-xs text-muted-foreground" style={{ letterSpacing: '0.01em' }}>Select a project from the sidebar to view its icons.</p>
+            <p className="text-xs text-muted-foreground">Select a project from the sidebar to view its icons.</p>
           </div>
         </div>
       </aside>
@@ -155,7 +155,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search icons…"
             className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
-            style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}
+            style={{ boxShadow: 'var(--shadow-outline)' }}
           />
         </div>
 
@@ -164,7 +164,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           <div className="grid grid-cols-3 gap-1 p-2" role="list" aria-label="Icons">
             {filtered.length === 0 ? (
               <div className="col-span-3 flex items-center justify-center py-8">
-                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)', letterSpacing: '0.01em' }}>
+                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)' }}>
                   {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
                 </p>
               </div>

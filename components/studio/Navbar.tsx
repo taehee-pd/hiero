@@ -329,7 +329,7 @@ export function Navbar() {
 
       {/* Error toast */}
       {toolbarError && (
-        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300" style={{ fontWeight: 'var(--type-weight-medium)', boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }} role="alert" aria-live="assertive">
+        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm font-medium text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300" style={{ boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }} role="alert" aria-live="assertive">
           {toolbarError}
         </div>
       )}

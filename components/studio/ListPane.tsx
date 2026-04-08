@@ -111,23 +111,27 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
-          listExpanded ? 'w-[260px]' : 'w-12',
+          listExpanded ? 'w-[260px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Icon list"
       >
-        <div className="flex h-10 items-center border-b border-border/40 px-2">
+        <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
           <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
             {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
         </div>
-        {listExpanded && (
+        {listExpanded ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center">
             <div className="studio-dots rounded-lg border border-dashed border-border/70 px-6 py-8">
               <p className="text-xs text-muted-foreground">Select a project from the sidebar to view its icons.</p>
             </div>
           </div>
+        ) : (
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+            <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
+          </button>
         )}
       </aside>
     );
@@ -138,7 +142,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200 overflow-hidden',
-          listExpanded ? 'w-[260px]' : 'w-12',
+          listExpanded ? 'w-[260px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
@@ -150,7 +154,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         }}
       >
         {/* Header */}
-        <div className="flex h-10 items-center gap-2 border-b border-border/40 px-2">
+        <div className={cn('flex h-10 items-center gap-2 border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
           <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
             {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
@@ -173,7 +177,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           )}
         </div>
 
-        {listExpanded && (
+        {listExpanded ? (
           <>
             {/* Search */}
             <div className="relative px-2 py-1.5">
@@ -225,6 +229,10 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               </div>
             </ScrollArea>
           </>
+        ) : (
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+            <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
+          </button>
         )}
 
         {/* Hidden file input for SVG import */}

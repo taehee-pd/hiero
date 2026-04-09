@@ -170,7 +170,7 @@ export function NavPane() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="hidden size-5 shrink-0 group-hover/item:flex data-[state=open]:flex focus-visible:flex"
+                            className="-ml-2 w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/item:ml-0 group-hover/item:w-5 group-hover/item:overflow-visible group-hover/item:opacity-100 data-[state=open]:ml-0 data-[state=open]:w-5 data-[state=open]:overflow-visible data-[state=open]:opacity-100 focus-visible:ml-0 focus-visible:w-5 focus-visible:overflow-visible focus-visible:opacity-100"
                             aria-label={`Actions for ${iconSet.name}`}
                           >
                             <MoreHorizontal className="size-3" />

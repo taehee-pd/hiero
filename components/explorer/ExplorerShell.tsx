@@ -1362,6 +1362,7 @@ function ProjectDetailView({
                   iconName={icon.name}
                   svg={svg}
                   active={active}
+                  selected={false}
                   favorite={favorite}
                   onOpen={() => {
                     editorStore.getState().setCurrentIcon(icon.id);
@@ -1370,7 +1371,8 @@ function ProjectDetailView({
                     }
                   }}
                   onToggleFavorite={() => onToggleFavorite(icon.id)}
-                  onToggleSelection={() => onToggleSelection(icon.id)}
+                  onSelect={() => onToggleSelection(icon.id)}
+                  onShiftClick={() => onToggleSelection(icon.id)}
                   onDuplicate={() => {
                     editorStore.getState().duplicateIcon(icon.id);
                   }}

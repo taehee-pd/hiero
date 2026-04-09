@@ -89,7 +89,7 @@ export function NavPane() {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
-          navExpanded ? 'w-[200px]' : 'w-10',
+          navExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
@@ -105,16 +105,16 @@ export function NavPane() {
 
         {/* Vertical label when collapsed */}
         {!navExpanded && (
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={toggleNavPane}
-            className="h-auto flex-1 justify-center rounded-none pt-3"
+            className="flex flex-1 items-start justify-center pt-3"
             aria-label="Expand projects sidebar"
           >
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">
               Projects
             </span>
-          </Button>
+          </button>
         )}
 
         {/* Project list */}
@@ -125,12 +125,11 @@ export function NavPane() {
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      'group/item flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-all duration-[160ms]',
+                      'group/item flex h-7 items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
                       activeIconSetId === iconSet.id
-                        ? 'bg-primary-soft text-primary shadow-[inset_0_0_0_0.5px_var(--primary)]'
+                        ? 'bg-muted/50 text-foreground font-medium'
                         : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
-                    style={activeIconSetId === iconSet.id ? { fontWeight: 500 } : undefined}
                   >
                     <button
                       type="button"
@@ -170,7 +169,7 @@ export function NavPane() {
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            className="-ml-2 w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/item:ml-0 group-hover/item:w-5 group-hover/item:overflow-visible group-hover/item:opacity-100 data-[state=open]:ml-0 data-[state=open]:w-5 data-[state=open]:overflow-visible data-[state=open]:opacity-100 focus-visible:ml-0 focus-visible:w-5 focus-visible:overflow-visible focus-visible:opacity-100"
+                            className="h-5 -ml-2 w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/item:ml-0 group-hover/item:w-5 group-hover/item:overflow-visible group-hover/item:opacity-100 data-[state=open]:ml-0 data-[state=open]:w-5 data-[state=open]:overflow-visible data-[state=open]:opacity-100 focus-visible:ml-0 focus-visible:w-5 focus-visible:overflow-visible focus-visible:opacity-100"
                             aria-label={`Actions for ${iconSet.name}`}
                           >
                             <MoreHorizontal className="size-3" />

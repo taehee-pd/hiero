@@ -92,6 +92,8 @@ export type EditorState = {
   navPaneExpanded: boolean;
   /** Studio layout: whether the list pane (icon grid) is expanded */
   listPaneExpanded: boolean;
+  /** Multi-select: icon IDs selected in the grid (separate from currentIconId) */
+  selectedIconIds: string[];
 };
 
 export type EditorTab = {
@@ -213,6 +215,9 @@ export type EditorActions = {
   commitHistory(label?: string): void;
   toggleNavPane(): void;
   toggleListPane(): void;
+  setSelectedIconIds(ids: string[]): void;
+  toggleIconSelection(iconId: string): void;
+  clearIconSelection(): void;
   applyBoolean(mode: BooleanMode): Promise<void>;
   /** Phase N: generate a derived variant (fill/slash/circle/square/badge). */
   applyDerivedVariant(
@@ -312,6 +317,7 @@ const initialState: EditorState = {
   skipNextAutoPublish: false,
   navPaneExpanded: false,
   listPaneExpanded: true,
+  selectedIconIds: [],
 };
 
 let currentState: EditorStore;
@@ -1192,6 +1198,7 @@ function createActions(): EditorActions {
           ),
           openTabs: nextTabs,
           activeTabId: nextActiveTabId,
+          selectedIconIds: s.selectedIconIds.filter((id) => id !== iconId),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
           pointMarquee: null,
@@ -2945,6 +2952,23 @@ function createActions(): EditorActions {
 
     toggleListPane() {
       editorStoreApi.setState((s) => ({ listPaneExpanded: !s.listPaneExpanded }));
+    },
+
+    setSelectedIconIds(ids) {
+      editorStoreApi.setState({ selectedIconIds: ids });
+    },
+
+    toggleIconSelection(iconId) {
+      editorStoreApi.setState((s) => {
+        const set = new Set(s.selectedIconIds);
+        if (set.has(iconId)) set.delete(iconId);
+        else set.add(iconId);
+        return { selectedIconIds: [...set] };
+      });
+    },
+
+    clearIconSelection() {
+      editorStoreApi.setState({ selectedIconIds: [] });
     },
 
     async applyBoolean(mode) {

@@ -139,6 +139,9 @@ const editorActions = {
   commitHistory: editorStore.getState().commitHistory,
   toggleNavPane: editorStore.getState().toggleNavPane,
   toggleListPane: editorStore.getState().toggleListPane,
+  setSelectedIconIds: editorStore.getState().setSelectedIconIds,
+  toggleIconSelection: editorStore.getState().toggleIconSelection,
+  clearIconSelection: editorStore.getState().clearIconSelection,
 };
 
 export function useEditorActions() {

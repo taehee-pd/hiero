@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Blend,
-  Check,
   ChevronDown,
   Copy,
   Crosshair,
@@ -394,7 +393,7 @@ function LeftSidebar({
   onRenameState: (oldId: string, newId: string) => void;
   onDuplicateState: (sourceId: string, newId: string) => void;
 }) {
-  const [copied, setCopied] = useState(false);
+
   return (
     <aside className="wire-sidebar wire-sidebar-left">
       <div className="wire-sidebar-block wire-sidebar-head">
@@ -403,22 +402,6 @@ function LeftSidebar({
             <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
             <ChevronDown className="size-3 text-black/45" />
           </div>
-          <Button
-            variant="ghost"
-            className="wire-sidebar-subtitle-action"
-            aria-label="Copy icon slug"
-            onClick={() => {
-              if (currentIcon) {
-                navigator.clipboard.writeText(slugify(currentIcon.name)).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }).catch(() => {});
-              }
-            }}
-          >
-            <span>{currentIcon ? slugify(currentIcon.name) : 'select-an-icon'}</span>
-            {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-          </Button>
         </div>
 
         <EditorSidebarTabs
@@ -449,25 +432,21 @@ function LeftSidebar({
                   aria-selected={row.layer.id === selectedLayerId}
                   data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
                   className="wire-layer-row"
+                  onClick={() => onSelectLayer(row.layer.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') onSelectLayer(row.layer.id); }}
+                  tabIndex={0}
                 >
-                  <Button
-                    variant="ghost"
-                    className="min-w-0 flex-1 justify-start rounded-none px-0 text-left"
-                    onClick={() => onSelectLayer(row.layer.id)}
-                  >
-                    <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
-                      <span className="wire-layer-name">{row.layer.id}</span>
-                      {/* Role label removed — internal property, not user-facing */}
-                      {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
-                    </div>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                  <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
+                    <span className="wire-layer-name">{row.layer.id}</span>
+                    {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
+                  </div>
+                  <button
+                    type="button"
                     className="wire-row-control"
-                    onClick={() =>
-                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false)
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false);
+                    }}
                     aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
                   >
                     {row.layer.visible === false ? (
@@ -475,7 +454,7 @@ function LeftSidebar({
                     ) : (
                       <Eye className="size-3.5" />
                     )}
-                  </Button>
+                  </button>
                 </div>
               ))}
               </div>

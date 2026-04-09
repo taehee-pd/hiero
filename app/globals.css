@@ -1472,10 +1472,12 @@
     width: 100%;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 4px 4px 4px 10px;
+    border-radius: 8px;
     text-align: left;
     font-size: 11px;
     line-height: 16px;
+    cursor: pointer;
   }
 
   .wire-layer-row[data-active='true'],
@@ -1491,6 +1493,7 @@
 
   .wire-layer-line {
     display: flex;
+    flex: 1;
     min-width: 0;
     align-items: center;
     gap: 4px;
@@ -1521,11 +1524,19 @@
 
   .wire-row-control {
     display: inline-flex;
-    height: 14px;
-    width: 14px;
+    height: auto;
+    width: auto;
+    padding: 0;
     align-items: center;
     justify-content: center;
     color: var(--foreground-tertiary);
+    opacity: 0.5;
+    background: transparent !important;
+    transition: opacity 0.15s;
+  }
+
+  .wire-row-control:hover {
+    opacity: 1;
   }
 
   .wire-inline-form {

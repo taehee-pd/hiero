@@ -105,15 +105,16 @@ export function NavPane() {
 
         {/* Vertical label when collapsed */}
         {!navExpanded && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={toggleNavPane}
-            className="flex flex-1 items-start justify-center pt-3"
+            className="h-auto flex-1 justify-center rounded-none pt-3"
+            aria-label="Expand projects sidebar"
           >
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">
               Projects
             </span>
-          </button>
+          </Button>
         )}
 
         {/* Project list */}
@@ -127,7 +128,7 @@ export function NavPane() {
                       'group/item flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-all duration-[160ms]',
                       activeIconSetId === iconSet.id
                         ? 'bg-primary-soft text-primary shadow-[inset_0_0_0_0.5px_var(--primary)]'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
+                        : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
                     style={activeIconSetId === iconSet.id ? { fontWeight: 500 } : undefined}
                   >
@@ -166,13 +167,14 @@ export function NavPane() {
                     {navExpanded && renamingId !== iconSet.id && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-accent group-hover/item:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="hidden size-5 shrink-0 group-hover/item:flex data-[state=open]:flex focus-visible:flex"
                             aria-label={`Actions for ${iconSet.name}`}
                           >
                             <MoreHorizontal className="size-3" />
-                          </button>
+                          </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" side="right">
                           <DropdownMenuItem onSelect={() => handleStartRename(iconSet)}>
@@ -211,14 +213,14 @@ export function NavPane() {
             ) : (
               <Tooltip delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     onClick={() => setInlineNew(true)}
-                    className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs text-muted-foreground transition-all duration-[160ms] hover:border-border hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]"
+                    className="h-auto w-full justify-start gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs text-foreground/70 transition-all duration-[160ms] hover:border-border hover:text-foreground hover:shadow-[var(--shadow-outline)]"
                   >
                     <Plus className="size-3.5 shrink-0" />
                     {navExpanded && <span>New Project</span>}
-                  </button>
+                  </Button>
                 </TooltipTrigger>
                 {!navExpanded && <TooltipContent side="right">New Project</TooltipContent>}
               </Tooltip>

@@ -498,11 +498,11 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                     ) : (
                       <div className="grid grid-cols-2 gap-1 p-2 sm:grid-cols-3">
                         {figmaComponents.map((c) => (
-                          <button
+                          <Button
                             key={c.nodeId}
-                            type="button"
+                            variant="outline"
                             disabled={figmaImporting === c.nodeId || busy}
-                            className="flex flex-col items-center gap-1.5 rounded-lg border border-border/50 p-2 text-center transition hover:bg-accent disabled:opacity-50"
+                            className="h-auto flex-col items-center gap-1.5 rounded-lg border-border/50 p-2 text-center transition hover:bg-accent"
                             onClick={() => void importFigmaComponent(c.nodeId, c.name)}
                           >
                             {c.thumbnailUrl ? (
@@ -526,7 +526,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                             {figmaImporting === c.nodeId && (
                               <Loader2 className="size-3 animate-spin text-muted-foreground" />
                             )}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}

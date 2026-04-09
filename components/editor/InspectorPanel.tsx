@@ -436,11 +436,11 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
                     return (
                       <div key={variant.id} className="flex items-stretch gap-2">
-                        <button
-                          type="button"
+                        <Button
+                          variant="outline"
                           onClick={() => setCurrentVariant(variant.id)}
                           className={cn(
-                            'flex min-w-0 flex-1 flex-col rounded-lg border px-3 py-2 text-left transition',
+                            'h-auto min-w-0 flex-1 flex-col items-start rounded-lg px-3 py-2 text-left transition',
                             isActive
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_22%,transparent)]'
                               : 'border-border/70 bg-background/70 text-foreground hover:bg-accent/40',
@@ -453,7 +453,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           <span className="truncate font-mono text-[length:var(--text-label)] text-muted-foreground">
                             {formatVariantViewBox(variant)}
                           </span>
-                        </button>
+                        </Button>
                         <Button
                           type="button"
                           variant="outline"
@@ -475,38 +475,40 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Weight</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
-                        <button
+                        <Button
                           key={weight}
-                          type="button"
+                          variant="outline"
+                          size="sm"
                           title={weight}
                           onClick={() => handlePatchVariant({ weight })}
                           className={cn(
-                            'rounded-lg border px-2 py-1 text-[length:var(--text-label)] font-medium',
+                            'h-auto rounded-lg px-2 py-1 text-[length:var(--text-label)] font-medium',
                             currentVariant.weight === weight
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground'
-                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                              : 'border-border/70 bg-background text-foreground/70 hover:text-foreground',
                           )}
                         >
                           {WEIGHT_ABBREVIATIONS[weight]}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Scale</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
-                        <button
+                        <Button
                           key={scale}
-                          type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => handlePatchVariant({ scale })}
                           className={cn(
-                            'rounded-lg border px-2 py-1 text-xs font-medium',
+                            'h-auto rounded-lg px-2 py-1 text-xs font-medium',
                             currentVariant.scale === scale
                               ? 'border-primary/40 bg-primary/[0.08] text-foreground'
-                              : 'border-border/70 bg-background text-muted-foreground hover:text-foreground',
+                              : 'border-border/70 bg-background text-foreground/70 hover:text-foreground',
                           )}
                         >
                           {scale}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variable Value</Label>
@@ -584,14 +586,15 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     <p className="text-[length:var(--text-label)] text-muted-foreground">Sizes</p>
                     <div className="flex flex-wrap gap-1.5">
                       {VARIANT_SIZE_PRESETS.map((size) => (
-                        <button
+                        <Button
                           key={size}
-                          type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => toggleMatrixSize(size)}
-                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixSizes.includes(size) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                          className={cn('h-auto rounded-lg px-2 py-1 text-xs', matrixSizes.includes(size) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
                         >
                           {size}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -599,15 +602,16 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     <p className="text-[length:var(--text-label)] text-muted-foreground">Weights</p>
                     <div className="flex flex-wrap gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
-                        <button
+                        <Button
                           key={weight}
-                          type="button"
+                          variant="outline"
+                          size="sm"
                           title={weight}
                           onClick={() => toggleMatrixWeight(weight)}
-                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixWeights.includes(weight) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                          className={cn('h-auto rounded-lg px-2 py-1 text-xs', matrixWeights.includes(weight) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
                         >
                           {WEIGHT_ABBREVIATIONS[weight]}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -615,14 +619,15 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     <p className="text-[length:var(--text-label)] text-muted-foreground">Scales</p>
                     <div className="flex flex-wrap gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
-                        <button
+                        <Button
                           key={scale}
-                          type="button"
+                          variant="outline"
+                          size="sm"
                           onClick={() => toggleMatrixScale(scale)}
-                          className={cn('rounded-lg border px-2 py-1 text-xs', matrixScales.includes(scale) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
+                          className={cn('h-auto rounded-lg px-2 py-1 text-xs', matrixScales.includes(scale) ? 'border-primary/40 bg-primary/[0.08]' : 'border-border/70')}
                         >
                           {scale}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>

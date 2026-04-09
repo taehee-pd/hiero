@@ -243,18 +243,18 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       const isActive = activeMasterId === master.id;
 
                       return (
-                        <button
+                        <Button
                           key={master.id}
-                          type="button"
+                          variant="outline"
                           onClick={() => setSelectedMasterId(master.id)}
                           className={cn(
-                            'w-full rounded-lg border px-3 py-3 text-left transition',
+                            'h-auto w-full rounded-lg px-3 py-3 text-left transition',
                             isSelected
                               ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
                               : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
                           )}
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex w-full items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-foreground">
                                 {master.name}
@@ -269,7 +269,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                               </span>
                             ) : null}
                           </div>
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>

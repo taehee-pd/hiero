@@ -4,6 +4,7 @@ import { memo, useMemo, useState } from 'react';
 import { Search, Shapes } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import { Input } from '@/components/kibo-ui/input';
+import { Button } from '@/components/kibo-ui/button';
 import {
   useIconList,
   useEditorStore,
@@ -80,11 +81,12 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
           )}
 
           {filteredIcons.map((icon) => (
-            <button
+            <Button
               key={icon.id}
+              variant="ghost"
               onClick={() => handleSelectIcon(icon.id)}
               className={cn(
-                'flex items-start gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-colors',
+                'h-auto w-full items-start gap-2 rounded-lg border border-transparent px-3 py-2 text-left text-sm transition-colors',
                 'hover:border-border/70 hover:bg-secondary/50',
                 icon.id === currentIconId
                   ? 'border-primary/25 bg-primary/8 text-foreground shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_18%,transparent)]'
@@ -96,7 +98,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
                 <span className="block truncate text-[length:var(--text-body)] font-medium">{icon.name}</span>
                 <span className="block truncate text-[length:var(--text-label)] text-muted-foreground">{icon.id}</span>
               </span>
-            </button>
+            </Button>
           ))}
         </div>
       </ScrollArea>

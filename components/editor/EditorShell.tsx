@@ -634,7 +634,7 @@ function CanvasDock({
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
                 onBlur={() => commitZoomInput({ closeMenu: false })}
-                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30"
+                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
               />
@@ -1510,7 +1510,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             {currentIcon?.meta?.derivedSpecs && currentIcon.meta.derivedSpecs.length > 0 &&
               currentVariantId &&
               currentIcon.meta.derivedSpecs.some((s) => s.baseVariantId === currentVariantId) && (
-              <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+              <div className="flex items-center gap-2 border-b px-3 py-1.5 text-xs status-warning-surface">
                 <span>This variant has derived variants. Changes may require re-derivation.</span>
                 <Button
                   variant="ghost"
@@ -1723,7 +1723,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       {/* F-7: Save success flash */}
       {saveSuccess && (
         <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-800 shadow-lg"
+          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-success-surface"
           role="status"
           aria-live="polite"
         >
@@ -1734,7 +1734,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       {/* REMAINING-4: Export loading indicator */}
       {exporting && (
         <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 shadow-lg"
+          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-info-surface"
           role="status"
           aria-live="polite"
         >
@@ -1748,8 +1748,8 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         <div
           className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
             exportMessage.includes('failed')
-              ? 'border-red-200 bg-red-50 text-red-800'
-              : 'border-green-200 bg-green-50 text-green-800'
+              ? 'status-error-surface'
+              : 'status-success-surface'
           }`}
           role="status"
           aria-live="polite"

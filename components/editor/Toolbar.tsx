@@ -324,7 +324,7 @@ export function Toolbar() {
                 variant="outline"
                 className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-tight ${
                   isDirty
-                    ? 'border-amber-300/70 bg-amber-50/80 text-amber-700 shadow-[inset_0_0_0_0.5px_rgba(217,170,0,0.12)] dark:border-amber-500/40 dark:bg-amber-900/20 dark:text-amber-400'
+                    ? 'status-warning-surface shadow-[inset_0_0_0_0.5px_var(--border-warning)]'
                     : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
                 }`}
               >
@@ -513,8 +513,8 @@ export function Toolbar() {
       {/* E-2: Inline error toast replacing window.alert() */}
       {toolbarError && (
         <div
-          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border border-red-200 bg-red-50 px-5 py-2 text-sm font-medium text-red-800 dark:border-red-500/40 dark:bg-red-900/20 dark:text-red-300"
-          style={{ boxShadow: '0 0 0 1px rgba(220,38,38,0.08), 0 4px 12px rgba(220,38,38,0.08)' }}
+          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface"
+          style={{ boxShadow: 'var(--shadow-error)' }}
           role="alert"
           aria-live="assertive"
         >

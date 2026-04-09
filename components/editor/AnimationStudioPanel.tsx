@@ -149,7 +149,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
           const disabled = isDrawPreset && !hasDrawEligibleLayers;
           return (
-            <Button key={preset.key} variant="outline" className={`h-auto rounded-lg border-border/60 px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
+            <Button key={preset.key} variant="outline" className={`h-auto rounded-lg border-border/60 px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
               <p className="text-[length:var(--text-caption)] font-medium leading-tight">{preset.label}</p>
             </Button>
           );

@@ -15,3 +15,4 @@ desktop/artifacts/
 
 # Claude Code worktrees (temporary)
 .claude/worktrees/
+.gstack/

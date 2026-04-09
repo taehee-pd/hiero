@@ -118,7 +118,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         aria-label="Icon list"
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
             {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
         </div>
@@ -155,7 +155,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       >
         {/* Header */}
         <div className={cn('flex h-10 items-center gap-2 border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
             {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
           {listExpanded && (
@@ -164,14 +164,14 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 <p className="truncate text-xs font-semibold text-foreground">{projectName}</p>
                 <p className="text-[length:var(--text-caption)] text-muted-foreground">{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
               </div>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
-                <Plus className="size-3" />
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
+                <Plus className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-                <Import className="size-3" />
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                <Import className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleExportAll} aria-label="Export all as ZIP">
-                <Download className="size-3" />
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleExportAll} aria-label="Export all as ZIP">
+                <Download className="size-3.5" />
               </Button>
             </>
           )}
@@ -186,6 +186,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search icons…"
+                aria-label="Search icons"
                 className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
                 style={{ boxShadow: 'var(--shadow-outline)' }}
               />

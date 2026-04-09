@@ -98,7 +98,7 @@ export function NavPane() {
         {/* Header */}
         <div className={cn('flex h-10 items-center border-b border-border/40', navExpanded ? 'justify-between px-2' : 'justify-center')}>
           {navExpanded && <span className="studio-kicker truncate px-1">Projects</span>}
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
             {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
         </div>

@@ -147,7 +147,7 @@ export function MorphReadinessIndicator({
             <button
               type="button"
               onClick={() => onChangeStrategy('replace')}
-              className="cursor-pointer rounded border border-amber-200 bg-yellow-50 px-2 py-1 text-center text-[11px] font-medium text-yellow-800 hover:bg-yellow-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="cursor-pointer rounded border px-2 py-1 text-center text-[11px] font-medium status-warning-surface hover:opacity-80 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               Switch to crossfade
             </button>
@@ -158,7 +158,7 @@ export function MorphReadinessIndicator({
             <button
               type="button"
               onClick={() => onChangeStrategy('bestGuessMorph')}
-              className="cursor-pointer rounded border border-green-300 bg-green-50 px-2 py-1 text-center text-[11px] font-medium text-green-800 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              className="cursor-pointer rounded border px-2 py-1 text-center text-[11px] font-medium status-success-surface hover:opacity-80 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               Try best-guess morph instead
             </button>
@@ -200,14 +200,14 @@ function TopologyWarnings({ incompatibilities, details }: TopologyWarningsProps)
 
   return (
     <div
-      className="rounded-md border border-red-200 bg-red-50 p-2 text-xs"
+      className="rounded-md border p-2 text-xs status-error-surface"
       role="alert"
       aria-live="polite"
     >
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full cursor-pointer items-center gap-1 font-medium text-red-800 hover:text-red-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        className="flex w-full cursor-pointer items-center gap-1 font-medium hover:opacity-80 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <span className={`transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}>
           ▶

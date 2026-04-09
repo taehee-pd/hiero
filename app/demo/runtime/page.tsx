@@ -64,7 +64,7 @@ export default function RuntimeDemoPage() {
             size={72}
             color="#2563eb"
           />
-          <p className="text-sm text-gray-500">State: {home.state}</p>
+          <p className="text-sm text-muted-foreground">State: {home.state}</p>
         </section>
       </div>
 
@@ -91,7 +91,7 @@ export default function RuntimeDemoPage() {
           Export Home → Runtime JSON
         </button>
         {exportResult && (
-          <pre className="max-w-xl overflow-auto rounded bg-gray-100 p-4 text-xs dark:bg-gray-900">
+          <pre className="max-w-xl overflow-auto rounded bg-muted p-4 text-xs">
             {exportResult}
           </pre>
         )}

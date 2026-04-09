@@ -48,7 +48,7 @@ export function IconGridItem({
             onOpen();
           }}
           className={cn(
-            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
             active
               ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
               : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
@@ -87,7 +87,7 @@ export function IconGridItem({
           <button
             type="button"
             onClick={onOpen}
-            className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
             aria-label={`Open ${iconName}`}
           >
             <div className="flex aspect-square w-full items-center justify-center rounded-md">

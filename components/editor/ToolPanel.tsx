@@ -142,7 +142,7 @@ export const ToolPanel = memo(function ToolPanel({
                         ? 'workspace-tool-button h-11 w-11 rounded-lg border border-border/70 bg-background/90 px-0'
                         : 'workspace-nav-button h-10 px-3 py-2',
                       !isDock && (isShapeTool || isSelectEntry) && isActive && 'rounded-r-sm',
-                      tool.disabled && !isGuideEntry && 'opacity-40',
+                      tool.disabled && !isGuideEntry && 'opacity-50',
                     )}
                   >
                     <span className={cn('flex items-center gap-2', isDock && 'gap-0')}>

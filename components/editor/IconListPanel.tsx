@@ -71,7 +71,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
         </div>
       </div>
 
-      <ScrollArea className="workspace-scroll flex-1">
+      <ScrollArea className="flex-1">
         <div className="flex flex-col gap-0.5 p-3">
           {filteredIcons.length === 0 && (
             <div className="workspace-empty-state mx-1 rounded-lg px-3 py-5 text-center text-xs text-muted-foreground">

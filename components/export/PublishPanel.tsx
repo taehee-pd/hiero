@@ -257,7 +257,7 @@ function ConnectionBadge({ status }: { status: ConnectionStatus }) {
   }
   if (status === 'disconnected') {
     return (
-      <Badge variant="outline" className="text-[9px] py-0 text-amber-600 border-amber-200">
+      <Badge variant="outline" className="text-[9px] py-0 status-warning-surface">
         disconnected
       </Badge>
     );

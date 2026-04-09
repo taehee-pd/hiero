@@ -492,7 +492,7 @@ export function ExplorerShell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={openImportIntoNewProject}
             >
               <Import className="size-3.5" />
@@ -501,7 +501,7 @@ export function ExplorerShell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={createIconSet}
             >
               <Plus className="size-3.5" />
@@ -514,7 +514,7 @@ export function ExplorerShell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={handleCreateBlankIcon}
             >
               <Plus className="size-3.5" />
@@ -523,7 +523,7 @@ export function ExplorerShell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-ring/60"
+              className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={openImportIntoCurrentProject}
             >
               <Import className="size-3.5" />
@@ -768,7 +768,7 @@ function WorkspaceView({
   onDeleteRecent?: (id: string) => void;
 }) {
   return (
-    <ScrollArea className="workspace-scroll flex-1">
+    <ScrollArea className="flex-1">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -1023,7 +1023,7 @@ function ProjectCard({
       <button
         type="button"
         onClick={onOpen}
-        className="flex flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        className="flex flex-col text-left focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <div className="studio-preview flex aspect-[4/3] items-center justify-center overflow-hidden rounded-t-xl border-b border-border/70">
           {thumbnailIcons.length > 0 ? (
@@ -1304,7 +1304,7 @@ function ProjectDetailView({
           {/* Sync label removed — sync settings are no longer on IconSet */}
         </div>
 
-        <ScrollArea className="workspace-scroll h-full">
+        <ScrollArea className="h-full">
           <div
             className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
             role="list"
@@ -1412,7 +1412,7 @@ function SidebarButton({
       <button
         type="button"
         onClick={onClick}
-        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <span className="truncate">{label}</span>
       </button>

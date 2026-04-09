@@ -140,10 +140,11 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   /* ---------------------------------------------------------------- */
   const handleGridPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only left button, and only on the grid background (not on an item)
+      // Only left button, only on grid background (not on an item or scrollbar)
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
       if (target.closest('article[data-icon-id]')) return;
+      if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
 
       e.preventDefault();
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -210,7 +211,6 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     [],
   );
 
-  const projectName = project?.meta.name ?? 'Untitled';
   const iconCount = icons.length;
 
   if (!activeIconSetId) {

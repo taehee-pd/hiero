@@ -1548,7 +1548,7 @@ function createActions(): EditorActions {
     },
 
     setCurrentState(id) {
-      editorStoreApi.setState((s) => ({ currentStateId: id }));
+      editorStoreApi.setState({ currentStateId: id });
     },
 
     addState(iconId, stateId) {

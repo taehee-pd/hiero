@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
 import { Check, Copy, Grid3X3, Heart, Trash2 } from 'lucide-react';
 import {
@@ -72,6 +72,13 @@ export function IconGridItem({
     [onOpen, onSelect, onShiftClick],
   );
 
+  useEffect(() => {
+    const state = clickState.current;
+    return () => {
+      if (state.timer) clearTimeout(state.timer);
+    };
+  }, []);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -119,7 +126,6 @@ export function IconGridItem({
             </button>
           </div>
 
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
           <div
             className="flex w-full flex-col items-center gap-2 rounded-md cursor-pointer"
             onClick={handleClick}

@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { editorStore } from '@/lib/editor-store/store';
+
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { cn } from '@/lib/utils';
 

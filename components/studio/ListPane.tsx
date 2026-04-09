@@ -129,9 +129,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             </div>
           </div>
         ) : (
-          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+          <Button variant="ghost" onClick={toggleListPane} className="h-auto flex-1 justify-center rounded-none pt-3" aria-label="Expand icons sidebar">
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
-          </button>
+          </Button>
         )}
       </aside>
     );
@@ -230,9 +230,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             </ScrollArea>
           </>
         ) : (
-          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3">
+          <Button variant="ghost" onClick={toggleListPane} className="h-auto flex-1 justify-center rounded-none pt-3" aria-label="Expand icons sidebar">
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
-          </button>
+          </Button>
         )}
 
         {/* Hidden file input for SVG import */}

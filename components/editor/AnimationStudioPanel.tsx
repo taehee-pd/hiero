@@ -149,9 +149,9 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
           const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
           const disabled = isDrawPreset && !hasDrawEligibleLayers;
           return (
-            <button key={preset.key} type="button" className={`rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
+            <Button key={preset.key} variant="outline" className={`h-auto rounded-lg border-border/60 px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-35 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
               <p className="text-[length:var(--text-caption)] font-medium leading-tight">{preset.label}</p>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -163,9 +163,9 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
         <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
         <div className="flex items-center gap-1" role="toolbar" aria-label="Playback speed">
           {SPEEDS.map((value) => (
-            <button key={value} type="button" className={`h-6 rounded px-1.5 text-[length:var(--text-caption)] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
+            <Button key={value} variant="ghost" size="sm" className={`h-6 rounded px-1.5 text-[length:var(--text-caption)] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground/70 hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
               {value}x
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -481,26 +481,28 @@ function DrawOrderEditor({
             <div key={layer.id} className="flex items-center gap-2">
               <span className="flex-1 truncate text-xs text-foreground">{layer.id}</span>
               <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  className="flex h-5 w-5 items-center justify-center rounded text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-5 text-[10px] text-foreground/70 hover:text-foreground"
                   onClick={() => setOrder(layer.id, order - 1)}
                   disabled={order <= 1}
                   aria-label={`Decrease draw order for ${layer.id}`}
                 >
                   ▲
-                </button>
+                </Button>
                 <span className="flex h-5 w-5 items-center justify-center rounded bg-muted text-[10px] font-semibold tabular-nums">
                   {order}
                 </span>
-                <button
-                  type="button"
-                  className="flex h-5 w-5 items-center justify-center rounded text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-5 text-[10px] text-foreground/70 hover:text-foreground"
                   onClick={() => setOrder(layer.id, order + 1)}
                   aria-label={`Increase draw order for ${layer.id}`}
                 >
                   ▼
-                </button>
+                </Button>
               </div>
             </div>
           );

@@ -624,9 +624,9 @@ function CollapsibleSection({
 }) {
   return (
     <div className="mt-3 rounded-lg border border-border/40">
-      <button
-        type="button"
-        className="flex w-full items-center gap-1.5 px-2.5 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+      <Button
+        variant="ghost"
+        className="h-auto w-full justify-start gap-1.5 rounded-none px-2.5 py-2 text-left text-xs font-medium text-foreground/70 hover:text-foreground"
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
       >
         {collapsed
@@ -637,7 +637,7 @@ function CollapsibleSection({
         {subtitle && collapsed && (
           <span className="ml-auto truncate text-[length:var(--text-caption)] text-muted-foreground/70">{subtitle}</span>
         )}
-      </button>
+      </Button>
       {!collapsed && (
         <div className="border-t border-border/30 px-2.5 pb-2.5 pt-2">
           {children}
@@ -745,9 +745,10 @@ function BindingStrategyDisplay({
         </span>
 
         {displayStrategy === 'morph' && info.readiness && (
-          <button
-            type="button"
-            className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto gap-0.5 px-1 py-0 text-[10px] text-foreground/70 hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); setShowDetails((v) => !v); }}
           >
             <span className="font-medium">{Math.round(info.readiness.score * 100)}%</span>
@@ -756,13 +757,14 @@ function BindingStrategyDisplay({
             ) : (
               <ChevronRight className="size-2.5" />
             )}
-          </button>
+          </Button>
         )}
 
         {info.strategies.length > 1 && !isPreserved && (
-          <button
-            type="button"
-            className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto gap-0.5 px-1 py-0 text-[10px] text-foreground/70 hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); setShowSubpaths((v) => !v); }}
           >
             <span>{info.strategies.length} subpaths</span>
@@ -771,7 +773,7 @@ function BindingStrategyDisplay({
             ) : (
               <ChevronRight className="size-2.5" />
             )}
-          </button>
+          </Button>
         )}
       </div>
 

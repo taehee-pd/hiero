@@ -69,6 +69,7 @@ import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Input } from '@/components/kibo-ui/input';
+import { Button } from '@/components/kibo-ui/button';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorPickerPopover } from './ColorPickerPopover';
@@ -252,9 +253,9 @@ function StatesSection({
             }
           }}
         />
-        <button type="button" className="wire-mini-button" onClick={handleAdd}>
+        <Button variant="outline" size="sm" className="wire-mini-button" onClick={handleAdd}>
           Add
-        </button>
+        </Button>
       </div>
 
       {stateIds.length === 0 ? (
@@ -281,8 +282,8 @@ function StatesSection({
                 onBlur={() => commitRename(stateId)}
               />
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 data-active={stateId === currentStateId ? 'true' : 'false'}
                 className="wire-list-row flex-1"
                 onClick={() => onSelectState(stateId)}
@@ -297,25 +298,27 @@ function StatesSection({
                     default
                   </span>
                 )}
-              </button>
+              </Button>
             )}
             <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
-              <button
-                type="button"
-                className="rounded p-0.5 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-5 text-muted-foreground hover:text-foreground"
                 aria-label={`Duplicate ${stateId}`}
                 onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
               >
                 <Copy className="size-3" />
-              </button>
-              <button
-                type="button"
-                className="rounded p-0.5 text-muted-foreground hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-5 text-muted-foreground hover:text-destructive"
                 aria-label={`Delete ${stateId}`}
                 onClick={() => setDeleteTarget(stateId)}
               >
                 <X className="size-3" />
-              </button>
+              </Button>
             </div>
           </div>
         ))
@@ -400,8 +403,8 @@ function LeftSidebar({
             <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
             <ChevronDown className="size-3 text-black/45" />
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             className="wire-sidebar-subtitle-action"
             aria-label="Copy icon slug"
             onClick={() => {
@@ -415,7 +418,7 @@ function LeftSidebar({
           >
             <span>{currentIcon ? slugify(currentIcon.name) : 'select-an-icon'}</span>
             {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-          </button>
+          </Button>
         </div>
 
         <EditorSidebarTabs
@@ -447,9 +450,9 @@ function LeftSidebar({
                   data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
                   className="wire-layer-row"
                 >
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 text-left"
+                  <Button
+                    variant="ghost"
+                    className="min-w-0 flex-1 justify-start rounded-none px-0 text-left"
                     onClick={() => onSelectLayer(row.layer.id)}
                   >
                     <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
@@ -457,9 +460,10 @@ function LeftSidebar({
                       {/* Role label removed — internal property, not user-facing */}
                       {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
                     </div>
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     className="wire-row-control"
                     onClick={() =>
                       onToggleLayerVisibility(row.layer.id, row.layer.visible === false)
@@ -471,7 +475,7 @@ function LeftSidebar({
                     ) : (
                       <Eye className="size-3.5" />
                     )}
-                  </button>
+                  </Button>
                 </div>
               ))}
               </div>
@@ -491,16 +495,16 @@ function LeftSidebar({
                 step="1"
                 className="wire-input"
               />
-              <button type="button" className="wire-mini-button" onClick={onCreateVariant}>
+              <Button variant="outline" size="sm" className="wire-mini-button" onClick={onCreateVariant}>
                 Add
-              </button>
+              </Button>
             </div>
             {variants.map((variant) => {
               const isDerived = variant.id.includes('.');
               return (
-                <button
+                <Button
                   key={variant.id}
-                  type="button"
+                  variant="ghost"
                   data-active={variant.id === currentVariantId ? 'true' : 'false'}
                   className="wire-list-row"
                   onClick={() => onSelectVariant(variant.id)}
@@ -511,7 +515,7 @@ function LeftSidebar({
                       derived
                     </span>
                   )}
-                </button>
+                </Button>
               );
             })}
 
@@ -589,9 +593,10 @@ function CanvasDock({
         {TOOL_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
-            <button
+            <Button
               key={item.tool}
-              type="button"
+              variant="ghost"
+              size="icon-sm"
               data-active={activeTool === item.tool ? 'true' : 'false'}
               className="wire-dock-icon"
               onClick={() => onToolSelect(item.tool)}
@@ -599,17 +604,17 @@ function CanvasDock({
               aria-label={item.label}
             >
               <Icon className="size-4" />
-            </button>
+            </Button>
           );
         })}
       </div>
 
       <Popover open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
         <PopoverTrigger asChild>
-          <button type="button" className="wire-zoom-trigger" aria-label="Canvas zoom controls">
+          <Button variant="ghost" className="wire-zoom-trigger" aria-label="Canvas zoom controls">
             <span>{formatZoomPercent(zoom)}</span>
             <ChevronDown className="size-3.5" />
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent
           side="top"
@@ -636,62 +641,63 @@ function CanvasDock({
             </form>
 
             <div className="flex flex-col py-1.5">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom * 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom in</span>
                 <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd +</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom / 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom out</span>
                 <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd -</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction('fit')}
               >
                 <span className="min-w-0 flex-1">Zoom to fit</span>
                 <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">
                   Shift 1
                 </span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(0.5)}
               >
                 <span className="min-w-0 flex-1">Zoom to 50%</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(1)}
               >
                 <span className="min-w-0 flex-1">Zoom to 100%</span>
                 <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd 0</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+              </Button>
+              <Button
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(2)}
               >
                 <span className="min-w-0 flex-1">Zoom to 200%</span>
-              </button>
+              </Button>
             </div>
           </div>
         </PopoverContent>
       </Popover>
 
       <div className="wire-dock-group">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           data-active={snapEnabled ? 'true' : 'false'}
           aria-pressed={snapEnabled}
           aria-label="Toggle snap"
@@ -700,9 +706,10 @@ function CanvasDock({
           title="Toggle snap"
         >
           <Crosshair className="size-4" />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           data-active={guidesVisible ? 'true' : 'false'}
           aria-pressed={guidesVisible}
           aria-label="Toggle guides"
@@ -711,7 +718,7 @@ function CanvasDock({
           title="Toggle guides"
         >
           <Sparkles className="size-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1022,9 +1029,9 @@ function RightSidebar({
                   <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
                 </div>
                 <div className="pt-2">
-                  <button type="button" className="wire-mini-button" onClick={onDeleteVariant}>
+                  <Button variant="outline" size="sm" className="wire-mini-button" onClick={onDeleteVariant}>
                     Delete size
-                  </button>
+                  </Button>
                 </div>
               </>
             )
@@ -1438,14 +1445,15 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
 
       <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/* Mobile/tablet sidebar toggle */}
-        <button
-          type="button"
-          className="fixed left-3 top-3 z-40 flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background shadow-sm lg:hidden"
+        <Button
+          variant="outline"
+          size="icon-sm"
+          className="fixed left-3 top-3 z-40 size-9 rounded-lg lg:hidden"
           onClick={() => setLeftSidebarOpen((v) => !v)}
           aria-label={leftSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
           {leftSidebarOpen ? <X className="size-4" /> : <Menu className="size-4" />}
-        </button>
+        </Button>
 
         {/* Left sidebar overlay for md breakpoint */}
         {leftSidebarOpen && (
@@ -1468,7 +1476,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         </div>
 
         {/* Layer panel — always visible at all breakpoints */}
-        <div>
+        <div className="flex min-h-0">
           <LeftSidebar
             leftTab={leftTab}
             onLeftTabChange={setLeftTab}
@@ -1504,10 +1512,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
               currentIcon.meta.derivedSpecs.some((s) => s.baseVariantId === currentVariantId) && (
               <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
                 <span>This variant has derived variants. Changes may require re-derivation.</span>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   disabled={isDeriving}
-                  className="ml-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="ml-auto h-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
                   onClick={async () => {
                     if (!currentIcon || !currentVariantId || isDeriving) return;
                     const specs = currentIcon.meta?.derivedSpecs?.filter(
@@ -1520,7 +1529,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                   }}
                 >
                   {isDeriving ? 'Deriving…' : 'Re-derive'}
-                </button>
+                </Button>
               </div>
             )}
             {currentIcon && currentVariant ? (
@@ -1530,22 +1539,24 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 <p className="wire-title">No active icon</p>
                 <p className="wire-empty-note mt-1">Create a new icon or import an SVG to begin.</p>
                 <div className="mt-3 flex items-center justify-center gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="wire-mini-button"
                     onClick={handleCreateBlankIcon}
                   >
                     <Plus className="size-3.5" />
                     New icon
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="wire-mini-button"
                     onClick={() => setImportDialogOpen(true)}
                   >
                     <FolderOpen className="size-3.5" />
                     Import
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

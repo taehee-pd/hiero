@@ -1286,6 +1286,7 @@
 
   .wire-sidebar-left {
     width: 220px;
+    height: 100%;
     font-size: 12px;
   }
 

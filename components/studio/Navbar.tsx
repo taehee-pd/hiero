@@ -214,8 +214,8 @@ export function Navbar() {
             aria-label="Contour logo"
             style={{
               display: 'inline-block',
-              height: 16,
-              width: Math.round(16 * (2144 / 408)),
+              height: 12,
+              width: Math.round(12 * (2144 / 408)),
               maskImage: 'url(/contour_wordmark.svg)',
               maskSize: 'contain',
               maskRepeat: 'no-repeat',

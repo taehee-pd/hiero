@@ -208,6 +208,22 @@ export function Navbar() {
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 bg-background px-3" style={{ fontFamily: 'var(--font-system)', boxShadow: 'var(--shadow-outline)' }}>
         {/* Left: project name + save status */}
         <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="shrink-0 bg-foreground"
+            role="img"
+            aria-label="Contour logo"
+            style={{
+              display: 'inline-block',
+              height: 12,
+              width: Math.round(12 * (2144 / 408)),
+              maskImage: 'url(/contour_wordmark.svg)',
+              maskSize: 'contain',
+              maskRepeat: 'no-repeat',
+              WebkitMaskImage: 'url(/contour_wordmark.svg)',
+              WebkitMaskSize: 'contain',
+              WebkitMaskRepeat: 'no-repeat',
+            }}
+          />
           <p className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</p>
           <Badge
             variant="outline"

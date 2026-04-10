@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Download, Grid3X3, Import, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Import, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,17 +29,48 @@ function filterIcons(icons: ListIcon[], query: string): ListIcon[] {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Marquee hit-testing helper                                        */
+/* ------------------------------------------------------------------ */
+function rectsIntersect(
+  a: { left: number; top: number; right: number; bottom: number },
+  b: { left: number; top: number; right: number; bottom: number },
+) {
+  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+}
+
+type MarqueeDrag = {
+  startX: number;
+  startY: number;
+  baseSelectedIds: string[];
+  mode: 'replace' | 'toggle';
+};
+
 export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const favorites = useEditorStore((s) => s.favorites);
+  const selectedIconIds = useEditorStore((s) => s.selectedIconIds);
   const listExpanded = useEditorStore((s) => s.listPaneExpanded);
-  const { createBlankIcon, openIconTab, toggleFavorite, toggleListPane } = useEditorActions();
+  const {
+    createBlankIcon,
+    openIconTab,
+    toggleFavorite,
+    toggleListPane,
+    setSelectedIconIds,
+    toggleIconSelection,
+    clearIconSelection,
+  } = useEditorActions();
 
   const [query, setQuery] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Marquee state (local — only selectedIconIds goes to the store)
+  const [marqueeRect, setMarqueeRect] = useState<{ left: number; top: number; right: number; bottom: number } | null>(null);
+  const marqueeDragRef = useRef<MarqueeDrag | null>(null);
 
   const icons = useMemo(
     () =>
@@ -54,8 +85,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
 
   const filtered = useMemo(() => filterIcons(icons, query), [icons, query]);
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
+  const selectedSet = useMemo(() => new Set(selectedIconIds), [selectedIconIds]);
 
-  const handleSelectIcon = useCallback(
+  const handleOpenIcon = useCallback(
     (iconId: string) => {
       editorStore.getState().setCurrentIcon(iconId);
       if (activeIconSetId) {
@@ -88,10 +120,10 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const handleSvgFileDrop = useCallback(
     async (files: FileList) => {
       const MAX_FILES = 50;
-      const MAX_FILE_SIZE = 512 * 1024; // 512 KB per file
+      const MAX_FILE_SIZE = 512 * 1024;
       const svgFiles = Array.from(files).filter(isSvgFile).slice(0, MAX_FILES);
       for (const file of svgFiles) {
-        if (file.size > MAX_FILE_SIZE) continue; // skip oversized files
+        if (file.size > MAX_FILE_SIZE) continue;
         const content = await file.text();
         const name = file.name.replace(/\.svg$/i, '');
         const importedIcon = createImportedIcon(content, { sourceName: name });
@@ -103,7 +135,82 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     [],
   );
 
-  const projectName = project?.meta.name ?? 'Untitled';
+  /* ---------------------------------------------------------------- */
+  /*  Marquee drag handlers                                           */
+  /* ---------------------------------------------------------------- */
+  const handleGridPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only left button, only on grid background (not on an item or scrollbar)
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('article[data-icon-id]')) return;
+      if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
+
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+      const base = e.shiftKey || e.metaKey ? [...editorStore.getState().selectedIconIds] : [];
+      if (!e.shiftKey && !e.metaKey) clearIconSelection();
+
+      marqueeDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        baseSelectedIds: base,
+        mode: e.shiftKey || e.metaKey ? 'toggle' : 'replace',
+      };
+    },
+    [clearIconSelection],
+  );
+
+  const handleGridPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const drag = marqueeDragRef.current;
+      if (!drag) return;
+
+      const left = Math.min(drag.startX, e.clientX);
+      const top = Math.min(drag.startY, e.clientY);
+      const right = Math.max(drag.startX, e.clientX);
+      const bottom = Math.max(drag.startY, e.clientY);
+
+      setMarqueeRect({ left, top, right, bottom });
+
+      // Hit-test all icon items
+      if (!gridRef.current) return;
+      const items = gridRef.current.querySelectorAll<HTMLElement>('article[data-icon-id]');
+      const hitIds: string[] = [];
+
+      items.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        if (rectsIntersect({ left, top, right, bottom }, rect)) {
+          const id = item.getAttribute('data-icon-id');
+          if (id) hitIds.push(id);
+        }
+      });
+
+      if (drag.mode === 'toggle') {
+        const baseSet = new Set(drag.baseSelectedIds);
+        for (const id of hitIds) {
+          if (baseSet.has(id)) baseSet.delete(id);
+          else baseSet.add(id);
+        }
+        setSelectedIconIds([...baseSet]);
+      } else {
+        setSelectedIconIds(hitIds);
+      }
+    },
+    [setSelectedIconIds],
+  );
+
+  const handleGridPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!marqueeDragRef.current) return;
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      marqueeDragRef.current = null;
+      setMarqueeRect(null);
+    },
+    [],
+  );
+
   const iconCount = icons.length;
 
   if (!activeIconSetId) {
@@ -111,14 +218,14 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
-          listExpanded ? 'w-[260px]' : 'w-10',
+          listExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
         aria-label="Icon list"
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
+          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
             {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           </Button>
         </div>
@@ -129,9 +236,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             </div>
           </div>
         ) : (
-          <Button variant="ghost" onClick={toggleListPane} className="h-auto flex-1 justify-center rounded-none pt-3" aria-label="Expand icons sidebar">
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3" aria-label="Expand icons sidebar">
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
-          </Button>
+          </button>
         )}
       </aside>
     );
@@ -142,7 +249,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       <aside
         className={cn(
           'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200 overflow-hidden',
-          listExpanded ? 'w-[260px]' : 'w-10',
+          listExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
         role="region"
@@ -155,25 +262,26 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       >
         {/* Header */}
         <div className={cn('flex h-10 items-center gap-2 border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-md" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
-            {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          </Button>
-          {listExpanded && (
+          {listExpanded ? (
             <>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-foreground">{projectName}</p>
-                <p className="text-[length:var(--text-caption)] text-muted-foreground">{iconCount} icon{iconCount === 1 ? '' : 's'}</p>
-              </div>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleCreateBlankIcon} aria-label="New icon">
-                <Plus className="size-3" />
+              <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
+                <Plus className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-                <Import className="size-3" />
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                <Import className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-md" onClick={handleExportAll} aria-label="Export all as ZIP">
-                <Download className="size-3" />
+              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleExportAll} aria-label="Export all as ZIP">
+                <Download className="size-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
+                <ChevronLeft className="size-3.5" />
               </Button>
             </>
+          ) : (
+            <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
+              <ChevronRight className="size-3.5" />
+            </Button>
           )}
         </div>
 
@@ -186,53 +294,69 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search icons…"
+                aria-label="Search icons"
                 className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
                 style={{ boxShadow: 'var(--shadow-outline)' }}
               />
             </div>
 
-            {/* Icon list */}
-            <ScrollArea className="flex-1">
-              <div className="grid grid-cols-3 gap-1 p-2" role="list" aria-label="Icons">
-            {filtered.length === 0 ? (
-              <div className="col-span-3 flex items-center justify-center py-8">
-                <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)' }}>
-                  {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
-                </p>
-              </div>
-            ) : (
-              filtered.map((icon) => {
-                const iconDef = project?.icons[icon.id];
-                const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
-                const svg =
-                  iconDef && firstVariantId
-                    ? exportSvgString(iconDef, firstVariantId, firstVariantId, project?.tokenSet?.colors)
-                    : '';
+            {/* Icon grid with marquee support */}
+            <ScrollArea
+              className="flex-1"
+              onPointerDown={handleGridPointerDown}
+              onPointerMove={handleGridPointerMove}
+              onPointerUp={handleGridPointerUp}
+            >
+              <div
+                ref={gridRef}
+                className="grid grid-cols-3 content-start gap-1 p-2"
+                role="list"
+                aria-label="Icons"
+              >
+                {filtered.length === 0 ? (
+                  <div className="col-span-3 flex items-center justify-center py-8">
+                    <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)' }}>
+                      {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
+                    </p>
+                  </div>
+                ) : (
+                  filtered.map((icon) => {
+                    const iconDef = project?.icons[icon.id];
+                    const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
+                    const svg =
+                      iconDef && firstVariantId
+                        ? exportSvgString(iconDef, firstVariantId, firstVariantId, project?.tokenSet?.colors)
+                        : '';
 
-                return (
-                  <IconGridItem
-                    key={icon.id}
-                    iconId={icon.id}
-                    iconName={icon.name}
-                    svg={svg}
-                    active={currentIconId === icon.id}
-                    favorite={favoritesSet.has(icon.id)}
-                    onOpen={() => handleSelectIcon(icon.id)}
-                    onToggleFavorite={() => toggleFavorite(icon.id)}
-                    onToggleSelection={() => handleSelectIcon(icon.id)}
-                    onDuplicate={() => editorStore.getState().duplicateIcon(icon.id)}
-                    onDelete={() => editorStore.getState().removeIcon(icon.id)}
-                  />
-                );
-              })
-            )}
+                    return (
+                      <IconGridItem
+                        key={icon.id}
+                        iconId={icon.id}
+                        iconName={icon.name}
+                        svg={svg}
+                        active={currentIconId === icon.id}
+                        selected={selectedSet.has(icon.id)}
+                        favorite={favoritesSet.has(icon.id)}
+                        onOpen={() => handleOpenIcon(icon.id)}
+                        onSelect={() => {
+                          clearIconSelection();
+                          setSelectedIconIds([icon.id]);
+                        }}
+                        onShiftClick={() => toggleIconSelection(icon.id)}
+                        onToggleFavorite={() => toggleFavorite(icon.id)}
+                        onDuplicate={() => editorStore.getState().duplicateIcon(icon.id)}
+                        onDelete={() => editorStore.getState().removeIcon(icon.id)}
+                      />
+                    );
+                  })
+                )}
               </div>
             </ScrollArea>
           </>
         ) : (
-          <Button variant="ghost" onClick={toggleListPane} className="h-auto flex-1 justify-center rounded-none pt-3" aria-label="Expand icons sidebar">
+          <button type="button" onClick={toggleListPane} className="flex flex-1 items-start justify-center pt-3" aria-label="Expand icons sidebar">
             <span className="text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground [writing-mode:vertical-lr]">Icons</span>
-          </Button>
+          </button>
         )}
 
         {/* Hidden file input for SVG import */}
@@ -248,6 +372,19 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           }}
         />
       </aside>
+
+      {/* Marquee overlay */}
+      {marqueeRect && (
+        <div
+          className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
+          style={{
+            left: marqueeRect.left,
+            top: marqueeRect.top,
+            width: marqueeRect.right - marqueeRect.left,
+            height: marqueeRect.bottom - marqueeRect.top,
+          }}
+        />
+      )}
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
     </>

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Blend,
-  Check,
   ChevronDown,
   Copy,
   Crosshair,
@@ -394,7 +393,7 @@ function LeftSidebar({
   onRenameState: (oldId: string, newId: string) => void;
   onDuplicateState: (sourceId: string, newId: string) => void;
 }) {
-  const [copied, setCopied] = useState(false);
+
   return (
     <aside className="wire-sidebar wire-sidebar-left">
       <div className="wire-sidebar-block wire-sidebar-head">
@@ -403,22 +402,6 @@ function LeftSidebar({
             <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
             <ChevronDown className="size-3 text-black/45" />
           </div>
-          <Button
-            variant="ghost"
-            className="wire-sidebar-subtitle-action"
-            aria-label="Copy icon slug"
-            onClick={() => {
-              if (currentIcon) {
-                navigator.clipboard.writeText(slugify(currentIcon.name)).then(() => {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }).catch(() => {});
-              }
-            }}
-          >
-            <span>{currentIcon ? slugify(currentIcon.name) : 'select-an-icon'}</span>
-            {copied ? <Check className="size-3 text-green-600" /> : <Copy className="size-3" />}
-          </Button>
         </div>
 
         <EditorSidebarTabs
@@ -449,25 +432,21 @@ function LeftSidebar({
                   aria-selected={row.layer.id === selectedLayerId}
                   data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
                   className="wire-layer-row"
+                  onClick={() => onSelectLayer(row.layer.id)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') onSelectLayer(row.layer.id); }}
+                  tabIndex={0}
                 >
-                  <Button
-                    variant="ghost"
-                    className="min-w-0 flex-1 justify-start rounded-none px-0 text-left"
-                    onClick={() => onSelectLayer(row.layer.id)}
-                  >
-                    <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
-                      <span className="wire-layer-name">{row.layer.id}</span>
-                      {/* Role label removed — internal property, not user-facing */}
-                      {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
-                    </div>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                  <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
+                    <span className="wire-layer-name">{row.layer.id}</span>
+                    {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
+                  </div>
+                  <button
+                    type="button"
                     className="wire-row-control"
-                    onClick={() =>
-                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false)
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false);
+                    }}
                     aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
                   >
                     {row.layer.visible === false ? (
@@ -475,7 +454,7 @@ function LeftSidebar({
                     ) : (
                       <Eye className="size-3.5" />
                     )}
-                  </Button>
+                  </button>
                 </div>
               ))}
               </div>
@@ -634,7 +613,7 @@ function CanvasDock({
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
                 onBlur={() => commitZoomInput({ closeMenu: false })}
-                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30"
+                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
               />
@@ -1510,7 +1489,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             {currentIcon?.meta?.derivedSpecs && currentIcon.meta.derivedSpecs.length > 0 &&
               currentVariantId &&
               currentIcon.meta.derivedSpecs.some((s) => s.baseVariantId === currentVariantId) && (
-              <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
+              <div className="flex items-center gap-2 border-b px-3 py-1.5 text-xs status-warning-surface">
                 <span>This variant has derived variants. Changes may require re-derivation.</span>
                 <Button
                   variant="ghost"
@@ -1723,7 +1702,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       {/* F-7: Save success flash */}
       {saveSuccess && (
         <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-800 shadow-lg"
+          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-success-surface"
           role="status"
           aria-live="polite"
         >
@@ -1734,7 +1713,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       {/* REMAINING-4: Export loading indicator */}
       {exporting && (
         <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800 shadow-lg"
+          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-info-surface"
           role="status"
           aria-live="polite"
         >
@@ -1748,8 +1727,8 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         <div
           className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
             exportMessage.includes('failed')
-              ? 'border-red-200 bg-red-50 text-red-800'
-              : 'border-green-200 bg-green-50 text-green-800'
+              ? 'status-error-surface'
+              : 'status-success-surface'
           }`}
           role="status"
           aria-live="polite"

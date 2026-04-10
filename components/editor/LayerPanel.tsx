@@ -110,7 +110,7 @@ export const LayerPanel = memo(function LayerPanel() {
         </div>
         <span className="workspace-badge">{rows.length}</span>
       </div>
-      <ScrollArea className="workspace-scroll flex-1">
+      <ScrollArea className="flex-1">
         {/* UX-F4: Keyboard navigable layer list */}
         <div
           ref={listRef}
@@ -185,7 +185,7 @@ export const LayerPanel = memo(function LayerPanel() {
                     : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background hover:shadow-[var(--shadow-outline)]',
                   isFocused && !isSelected && 'ring-1 ring-primary/30',
                   // J7: Dim layers that are inactive at the current variableValue
-                  hasVariableValue && !isVarActive && 'opacity-40',
+                  hasVariableValue && !isVarActive && 'opacity-50',
                 )}
                 onClick={() => {
                   setFocusedIndex(rowIndex);
@@ -218,7 +218,7 @@ export const LayerPanel = memo(function LayerPanel() {
                   )}
                 />
                 <span className="ml-2 size-2.5 shrink-0" />
-                <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-40')}>
+                <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-50')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (
                       <Link2 className="size-3 shrink-0 text-muted-foreground" />

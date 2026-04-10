@@ -381,7 +381,7 @@ function TransitionWarningCard({
   return (
     <div
       className={`rounded-lg border p-3 text-xs ${
-        hasError ? 'border-amber-500 bg-amber-50' : 'border-amber-400 bg-yellow-50'
+        'status-warning-surface'
       }`}
       role="alert"
       aria-live="polite"
@@ -389,13 +389,13 @@ function TransitionWarningCard({
       {/* Header */}
       <div className={`flex items-center gap-1.5 ${collapsed ? '' : 'mb-2'}`}>
         <span className="text-sm">&#x26A0;</span>
-        <span className="flex-1 font-semibold text-amber-800">
+        <span className="flex-1 font-semibold">
           Geometry Change Breaks Transition
         </span>
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="cursor-pointer rounded px-1 py-0.5 text-[11px] text-amber-800 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+          className="cursor-pointer rounded px-1 py-0.5 text-[11px] hover:bg-background-warning focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           {collapsed ? 'Show' : 'Hide'}
         </button>
@@ -404,12 +404,12 @@ function TransitionWarningCard({
       {!collapsed && (
         <>
           {/* Transition info */}
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] text-amber-900">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px]">
             <span>Transition:</span>
-            <span className="rounded bg-amber-200 px-1.5 py-px font-mono text-[10px]">
+            <span className="rounded bg-background-warning-alt/20 px-1.5 py-px font-mono text-[10px]">
               {fromTo}
             </span>
-            <span className="rounded bg-amber-300 px-1.5 py-px font-mono text-[10px]">
+            <span className="rounded bg-background-warning-alt/30 px-1.5 py-px font-mono text-[10px]">
               {strategyLabel}
             </span>
           </div>
@@ -419,11 +419,11 @@ function TransitionWarningCard({
             {warnings.map((w, i) => (
               <div
                 key={i}
-                className="flex items-start gap-1.5 text-[11px] text-amber-900"
+                className="flex items-start gap-1.5 text-[11px]"
               >
                 <span
                   className={`mt-1 inline-block size-1.5 shrink-0 rounded-full ${
-                    w.severity === 'error' ? 'bg-red-500' : 'bg-amber-500'
+                    w.severity === 'error' ? 'bg-destructive' : 'bg-border-warning'
                   }`}
                 />
                 <span>{w.issue}</span>
@@ -437,7 +437,7 @@ function TransitionWarningCard({
               <button
                 type="button"
                 onClick={() => onDowngradeStrategy(transitionId, 'replace')}
-                className="cursor-pointer rounded bg-amber-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="cursor-pointer rounded bg-border-warning px-2.5 py-1 text-[11px] font-medium text-foreground-fixed-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 Downgrade to crossfade
               </button>
@@ -446,7 +446,7 @@ function TransitionWarningCard({
               <button
                 type="button"
                 onClick={onDismiss}
-                className="cursor-pointer rounded border border-amber-600 px-2.5 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                className="cursor-pointer rounded border border-border-warning px-2.5 py-1 text-[11px] font-medium hover:bg-background-warning focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 Dismiss
               </button>

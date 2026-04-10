@@ -105,14 +105,10 @@
   --lighter-800: rgba(255, 255, 255, 0.90);
   --lighter-900: rgba(255, 255, 255, 0.95);
 
-  /* ── System Colors (used by inspector labels & explorer) ── */
-  --system-blue: #007AFF;
-  --system-gray: #8E8E93;
-
   /* ── System Typography Stacks ── */
   --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Helvetica Neue', sans-serif;
 
-  /* ── Spacing Scale (8px base grid) ── */
+  /* ── Spacing Scale (4‑pt base grid, clamp for responsive) ── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -121,11 +117,15 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* ── Typography Scale ── */
-  --text-heading: 13px;
-  --text-body: 13px;
-  --text-label: 11px;
-  --text-caption: 10px;
+  /* ── Typography Scale (clamp for display density) ── */
+  --text-heading: clamp(12px, 0.8125rem, 14px);
+  --text-body: clamp(12px, 0.8125rem, 14px);
+  --text-label: clamp(10px, 0.6875rem, 12px);
+  --text-caption: clamp(9px, 0.625rem, 11px);
+
+  /* ── Timing ── */
+  --duration-fast: 120ms;
+  --duration-normal: 160ms;
 
   /* ── Shadow Levels (multi-layer, sub-0.1 opacity — ElevenLabs-inspired) ── */
   --shadow-inset-edge: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -134,12 +134,20 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
   --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.10);
+  --shadow-stage: 0 12px 40px rgba(0, 0, 0, 0.10);
+  --shadow-error: 0 0 0 1px rgba(220, 38, 38, 0.08), 0 4px 12px rgba(220, 38, 38, 0.08);
 
-  /* ── Dimension Tokens ── */
-  --toolbar-height: 38px;
-  --field-height-sm: 28px;
-  --field-height-md: 32px;
-  --field-height-lg: 36px;
+  /* ── Dimension Tokens (clamp for comfortable touch/click targets) ── */
+  --toolbar-height: clamp(36px, 2.375rem, 40px);
+  --field-height-sm: clamp(26px, 1.75rem, 30px);
+  --field-height-md: clamp(30px, 2rem, 34px);
+  --field-height-lg: clamp(34px, 2.25rem, 38px);
+
+  /* ── Section Spacing (editor panels, inspector) ── */
+  --section-gap: clamp(4px, 0.375rem, 8px);
+  --section-padding-x: clamp(10px, 0.75rem, 14px);
+  --section-padding-y: clamp(8px, 0.625rem, 12px);
+  --field-gap: clamp(4px, 0.375rem, 6px);
 
   /* ── Vibrancy Backgrounds (wire-* classes, ExplorerShell) ── */
   --bg-sidebar: rgba(246, 246, 246, 0.72);
@@ -377,6 +385,8 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.22);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.28);
   --shadow-panel: 0 12px 32px rgba(0, 0, 0, 0.24);
+  --shadow-stage: 0 12px 40px rgba(0, 0, 0, 0.28);
+  --shadow-error: 0 0 0 1px rgba(248, 113, 113, 0.12), 0 4px 12px rgba(248, 113, 113, 0.08);
 }
 
 /* ══════════════════════════════════════════════════
@@ -460,6 +470,21 @@
 
   /* ── Accent Soft ── */
   --color-primary-soft: var(--primary-soft);
+
+  /* ── Status colors (semantic surfaces) ── */
+  --color-background-danger: var(--background-danger);
+  --color-background-warning: var(--background-warning);
+  --color-background-warning-alt: var(--background-warning-alt);
+  --color-background-success: var(--background-success);
+  --color-background-highlight: var(--background-highlight);
+  --color-foreground-danger: var(--foreground-danger);
+  --color-foreground-warning: var(--foreground-warning);
+  --color-foreground-success: var(--foreground-success);
+  --color-foreground-highlight: var(--foreground-highlight);
+  --color-foreground-fixed-white: var(--foreground-fixed-white);
+  --color-border-danger: var(--border-danger);
+  --color-border-warning: var(--border-warning);
+  --color-border-success: var(--border-success);
 
   /* ── Primitive: Blue (used by components via Tailwind utilities) ── */
   --color-blue-100: var(--blue-100);
@@ -563,6 +588,18 @@
   .dark .swift-surface {
     background: color-mix(in srgb, var(--background) 96%, white 4%);
   }
+
+  /* Reduced-motion: collapse all transitions to instant */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -570,6 +607,31 @@
    ══════════════════════════════════════════════════ */
 
 @layer components {
+  /* ── Status Surfaces ── */
+  .status-error-surface {
+    border-color: var(--border-danger);
+    background: var(--background-danger);
+    color: var(--foreground-danger);
+  }
+
+  .status-warning-surface {
+    border-color: var(--border-warning);
+    background: var(--background-warning);
+    color: var(--foreground-warning);
+  }
+
+  .status-success-surface {
+    border-color: var(--border-success);
+    background: var(--background-success);
+    color: var(--foreground-success);
+  }
+
+  .status-info-surface {
+    border-color: var(--border-selected);
+    background: var(--background-highlight);
+    color: var(--foreground-highlight);
+  }
+
   .studio-panel {
     background: var(--card);
     border: 1px solid var(--border);
@@ -583,7 +645,7 @@
     border: 1px solid var(--border);
     background: var(--card);
     box-shadow: var(--shadow-outline);
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
   }
 
   .studio-card:hover {
@@ -697,7 +759,7 @@
   .workspace-tool-button {
     border: 1px solid transparent;
     background: transparent;
-    transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+    transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease, color var(--duration-fast) ease;
   }
 
   .workspace-tool-button:hover {
@@ -720,29 +782,6 @@
   .workspace-tool-button:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
-  }
-
-  .workspace-scroll {
-    scrollbar-color: var(--border-secondary) transparent;
-    scrollbar-width: thin;
-  }
-
-  .workspace-scroll ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .workspace-scroll ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .workspace-scroll ::-webkit-scrollbar-thumb {
-    background: var(--border-secondary);
-    border-radius: 999px;
-  }
-
-  .workspace-scroll ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted-foreground);
   }
 
   .workspace-coming-soon {
@@ -769,10 +808,10 @@
 
   .workspace-stage {
     border: 1px solid var(--border);
-    background: white;
+    background: var(--background);
     box-shadow:
       var(--shadow-inset-edge),
-      0 12px 40px var(--darker-200);
+      var(--shadow-stage);
   }
 
   .dark .workspace-stage {
@@ -808,7 +847,7 @@
     background: var(--card);
     padding: 0.9rem;
     box-shadow: var(--shadow-outline);
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
   }
 
   .workspace-insight-card:hover {
@@ -831,7 +870,7 @@
     padding: 0.72rem 0.9rem;
     text-align: left;
     box-shadow: var(--shadow-outline);
-    transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
   }
 
   .workspace-nav-button:hover {
@@ -871,6 +910,7 @@
       radial-gradient(circle at 86% 8%, rgba(6, 142, 160, 0.16), transparent 24%),
       linear-gradient(180deg, #ebe1cf 0%, #ddd1bd 100%);
     color: var(--editor-ink);
+    --editor-stage-bg: #fffdf8;
   }
 
   .dark .editor-lab {
@@ -886,6 +926,7 @@
       radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 24%),
       radial-gradient(circle at 86% 8%, rgba(64, 177, 188, 0.12), transparent 22%),
       linear-gradient(180deg, #14110f 0%, #0e0c0a 100%);
+    --editor-stage-bg: #15110d;
   }
 
   .editor-surface {
@@ -949,7 +990,7 @@
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 82%, transparent);
     padding: 0 0.85rem;
-    transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+    transition: border-color var(--duration-normal) ease, transform var(--duration-normal) ease, background var(--duration-normal) ease;
   }
 
   .editor-command-button:hover {
@@ -980,7 +1021,7 @@
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--editor-muted);
-    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .editor-segment-button:hover {
@@ -1039,7 +1080,7 @@
     border: 1px solid transparent;
     background: transparent;
     color: var(--editor-muted);
-    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .editor-rail-button:hover {
@@ -1094,7 +1135,7 @@
     padding: 0 0.85rem;
     font-family: var(--editor-ui-font);
     font-size: 0.875rem;
-    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .editor-toggle-button[data-active='true'] {
@@ -1113,7 +1154,7 @@
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 88%, transparent);
     padding: 0.8rem 0.9rem;
-    transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, transform var(--duration-normal) ease;
   }
 
   .editor-list-row:hover,
@@ -1141,7 +1182,7 @@
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--editor-muted);
-    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .editor-chip[data-active='true'] {
@@ -1159,7 +1200,7 @@
     border-radius: 0.65rem;
     border: 1px solid transparent;
     color: var(--editor-muted);
-    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .editor-icon-button:hover {
@@ -1247,13 +1288,13 @@
 
   .editor-lab .workspace-stage {
     border: 1px solid color-mix(in srgb, var(--editor-border-strong) 72%, transparent);
-    background: #fffdf8;
+    background: var(--editor-stage-bg);
     box-shadow: 0 26px 80px rgba(25, 20, 16, 0.16);
   }
 
   .dark .editor-lab .workspace-stage {
     border-color: rgba(255, 248, 240, 0.08);
-    background: #15110d;
+    background: var(--editor-stage-bg);
     box-shadow: 0 26px 80px rgba(0, 0, 0, 0.42);
   }
 
@@ -1399,30 +1440,30 @@
   }
 
   .wire-section {
-    padding: 6px 12px 14px;
+    padding: var(--section-padding-y) var(--section-padding-x);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--section-gap);
   }
 
   .wire-section-header {
     display: flex;
-    height: 28px;
+    height: var(--field-height-sm);
     align-items: center;
     padding: 0 2px;
     font-size: var(--text-caption);
     line-height: 16px;
-    font-weight: 400;
-    letter-spacing: 0.01em;
+    font-weight: var(--type-weight-strong);
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--foreground-tertiary);
+    color: var(--foreground-secondary);
   }
 
   /* Top border on non-first section headers (e.g., "States" after "Sizes") */
   .wire-section-header:not(:first-child) {
     border-top: 1px solid var(--border-subtle);
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: var(--space-3);
+    padding-top: var(--space-2);
   }
 
   .wire-layer-row,
@@ -1431,10 +1472,12 @@
     width: 100%;
     align-items: center;
     gap: 6px;
-    padding: 6px 12px;
+    padding: 4px 4px 4px 10px;
+    border-radius: 8px;
     text-align: left;
     font-size: 11px;
     line-height: 16px;
+    cursor: pointer;
   }
 
   .wire-layer-row[data-active='true'],
@@ -1450,6 +1493,7 @@
 
   .wire-layer-line {
     display: flex;
+    flex: 1;
     min-width: 0;
     align-items: center;
     gap: 4px;
@@ -1480,36 +1524,50 @@
 
   .wire-row-control {
     display: inline-flex;
-    height: 14px;
-    width: 14px;
+    height: auto;
+    width: auto;
+    padding: 0;
     align-items: center;
     justify-content: center;
     color: var(--foreground-tertiary);
+    opacity: 0.5;
+    background: transparent !important;
+    transition: opacity 0.15s;
+  }
+
+  .wire-row-control:hover {
+    opacity: 1;
   }
 
   .wire-inline-form {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px;
-    padding: 6px 12px;
+    gap: var(--field-gap);
+    padding: var(--field-gap) var(--section-padding-x);
   }
 
   .wire-input,
   .wire-color {
     min-height: var(--field-height-sm);
     width: 100%;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-level-2);
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--bg-content) 94%, transparent);
-    padding: 0 8px;
-    font-size: 11px;
+    padding: 0 var(--space-2);
+    font-size: var(--text-label);
     line-height: 16px;
     color: var(--foreground);
     outline: none;
+    transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
   }
 
   .wire-color {
     padding: 2px;
+  }
+
+  .wire-input:hover,
+  .wire-color:hover {
+    border-color: var(--border-level-3);
   }
 
   .wire-input:focus,
@@ -1538,8 +1596,8 @@
   }
 
   .wire-mini-button:focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
   }
 
   .wire-canvas-shell {
@@ -1629,10 +1687,10 @@
     width: 260px;
     padding: 0;
     border-radius: 16px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: rgba(28, 28, 30, 0.96);
     color: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
   }
 
   .wire-zoom-panel {
@@ -1713,25 +1771,25 @@
   .wire-label {
     font-size: var(--text-caption);
     line-height: 14px;
-    font-weight: 400;
-    letter-spacing: 0.01em;
+    font-weight: var(--type-weight-medium);
+    letter-spacing: 0.02em;
     color: var(--foreground-tertiary);
     text-transform: uppercase;
-    padding-bottom: 2px;
+    padding-bottom: var(--space-1);
   }
 
   .wire-label + .wire-label,
   .wire-field + .wire-label,
   .grid + .wire-label {
-    margin-top: 10px;
-    padding-top: 10px;
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
     border-top: 1px solid var(--border-subtle);
   }
 
   .wire-field {
     display: grid;
-    gap: 4px;
-    padding-top: 6px;
+    gap: var(--field-gap);
+    padding-top: var(--field-gap);
   }
 
   .wire-field-name {
@@ -1750,8 +1808,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding-top: 6px;
+    gap: var(--space-3);
+    padding-top: var(--field-gap);
   }
 
   .wire-range {
@@ -1820,7 +1878,7 @@
 
   .wireframe-editor .workspace-stage {
     border: 1px solid rgba(0, 0, 0, 0.05);
-    background: #ffffff;
+    background: var(--background);
     box-shadow: none;
   }
 

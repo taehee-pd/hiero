@@ -1958,11 +1958,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+    <div className="flex flex-col gap-[var(--section-gap)]">
+      <span className="text-[length:var(--text-label)] font-semibold uppercase tracking-wide text-foreground-secondary">
         {title}
       </span>
-      {children}
+      <div className="flex flex-col gap-[var(--field-gap)]">
+        {children}
+      </div>
     </div>
   );
 }

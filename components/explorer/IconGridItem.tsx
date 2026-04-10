@@ -1,8 +1,8 @@
 'use client';
 
-import type { MouseEventHandler } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 
-import { Check, Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
+import { Check, Copy, Grid3X3, Heart, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,64 +18,106 @@ export function IconGridItem({
   iconName,
   svg,
   active,
+  selected,
   favorite,
   onOpen,
+  onSelect,
+  onShiftClick,
   onToggleFavorite,
-  onToggleSelection,
   onDuplicate,
   onDelete,
 }: {
   iconId: string;
   iconName: string;
   svg: string;
+  /** Whether this icon is currently opened in the editor */
   active: boolean;
+  /** Whether this icon is in the multi-select set */
+  selected: boolean;
   favorite: boolean;
   onOpen: () => void;
+  onSelect: () => void;
+  onShiftClick: () => void;
   onToggleFavorite: () => void;
-  onToggleSelection: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
 }) {
+  const clickState = useRef<{ timer: ReturnType<typeof setTimeout> | null; count: number }>({ timer: null, count: 0 });
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      const state = clickState.current;
+      state.count += 1;
+
+      if (state.count === 2) {
+        // Double click — open in editor
+        if (state.timer) clearTimeout(state.timer);
+        state.timer = null;
+        state.count = 0;
+        onOpen();
+        return;
+      }
+
+      const isShift = e.shiftKey || e.metaKey;
+      state.timer = setTimeout(() => {
+        state.count = 0;
+        state.timer = null;
+        if (isShift) {
+          onShiftClick();
+        } else {
+          onSelect();
+        }
+      }, 300);
+    },
+    [onOpen, onSelect, onShiftClick],
+  );
+
+  useEffect(() => {
+    const state = clickState.current;
+    return () => {
+      if (state.timer) clearTimeout(state.timer);
+    };
+  }, []);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <article
           role="listitem"
           tabIndex={0}
+          data-icon-id={iconId}
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
             onOpen();
           }}
           className={cn(
-            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-            active
+            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            selected
               ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
-              : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
+              : active
+                ? 'border-transparent bg-muted/50'
+                : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >
-          <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          {/* Selection checkbox */}
+          <div
+            className={cn(
+              'absolute right-1.5 top-1.5 flex gap-0.5 transition-opacity',
+              selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+            )}
+          >
             <button
               type="button"
-              onClick={onToggleFavorite}
-              aria-label={favorite ? `Unfavorite ${iconName}` : `Favorite ${iconName}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShiftClick();
+              }}
+              aria-pressed={selected}
+              aria-label={selected ? `Deselect ${iconName}` : `Select ${iconName}`}
               className={cn(
                 'flex size-5 items-center justify-center rounded-md transition',
-                favorite
-                  ? 'bg-rose-500/10 text-rose-500'
-                  : 'bg-background/80 text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Heart className={cn('size-3', favorite && 'fill-current')} />
-            </button>
-            <button
-              type="button"
-              onClick={onToggleSelection}
-              aria-pressed={active}
-              aria-label={active ? `Deselect ${iconName}` : `Select ${iconName}`}
-              className={cn(
-                'flex size-5 items-center justify-center rounded-md transition',
-                active
+                selected
                   ? 'bg-primary/15 text-primary'
                   : 'bg-background/80 text-muted-foreground hover:text-foreground',
               )}
@@ -84,11 +126,9 @@ export function IconGridItem({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={onOpen}
-            className="flex w-full flex-col items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-            aria-label={`Open ${iconName}`}
+          <div
+            className="flex w-full flex-col items-center gap-2 rounded-md cursor-pointer"
+            onClick={handleClick}
           >
             <div className="flex aspect-square w-full items-center justify-center rounded-md">
               {svg ? (
@@ -106,7 +146,7 @@ export function IconGridItem({
                 {iconName}
               </p>
             </div>
-          </button>
+          </div>
         </article>
       </ContextMenuTrigger>
       <ContextMenuContent>

@@ -168,7 +168,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
         </Button>
       </div>
 
-      <ScrollArea className="workspace-scroll flex-1">
+      <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-2.5">
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">

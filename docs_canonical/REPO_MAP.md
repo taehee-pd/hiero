@@ -14,7 +14,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/`: Next.js App Router entrypoints, API routes, and global app setup.
 - `components/`: React UI, split into product surfaces (`editor/`, `explorer/`, `studio/`, `export/`, `persistence/`, `runtime/`) and shared UI (`ui/`, `kibo-ui/`).
 - `lib/`: domain logic and non-route code.
-- `packages/contour-cli/`: `@contour/cli` command-line tool for icon operations.
+- `packages/coniva-cli/`: `@contour/cli` command-line tool for icon operations.
 - `figma-plugin/`: Figma plugin for exporting to Contour.
 - `scripts/`: repository-level helper scripts, including icon compilation and validation.
 - `tests/`: Bun test suites (102+ files), snapshots, fixtures, and helpers.
@@ -29,7 +29,9 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/editor/page.tsx`: editor entry (no icon selected).
 - `app/editor/[iconId]/page.tsx`: editor entry (specific icon).
 - `app/layout.tsx`: global app shell, theme setup, `AutoSaveProvider`.
-- `packages/contour-cli/src/bin.ts`: CLI entry point.
+- `app/runtime-demo/page.tsx`: Phase 4 runtime validation demo.
+- `app/demo/runtime/page.tsx`: runtime execution demo.
+- `packages/coniva-cli/src/bin.ts`: CLI entry point.
 - `scripts/compile-icons.ts`: CLI wrapper around the compile/export pipeline.
 - `scripts/compile-from-source.ts`: CI build path from canonical source exports.
 
@@ -43,16 +45,20 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `lib/import/`: SVG import/normalization plus external adapter SDK and built-in adapters for Figma, Lucide, Heroicons, Phosphor, and Material Symbols.
 - `lib/export/`: SVG export, runtime JSON export, Lottie export, compiled package generation, and diffing.
 - `lib/export/adapters/`: platform-specific code generators (React, Swift, Flutter), downgrade rules, storybook generation, and manifest cleanup.
+- `lib/animation/`: runtime effect player and built-in effect presets.
 - `lib/compiler-contracts/`: compiled artifact types and validators.
 - `lib/runtime-core/`: unified autoMorph with automatic strategy selection and intrinsic interpolation (Sederberg 1993), morph interpolation (intrinsicStrict/strict/bestGuess/crossIcon), arc-to-cubic conversion, topology detection, open-path guards, easing (cubic-bezier/spring/steps), scheduling, draw execution, effect playback, state-machine behavior, and cubic weight interpolation.
 - `lib/runtime-dom/`, `lib/runtime-react/`, `lib/runtime-sdk/`: runtime and rendering layers for exported icons.
 - `lib/persistence/`: IndexedDB adapter, persistence manager, and auto-save hook.
 - `lib/live-sync/`: real-time publish transport with connectors.
 - `lib/install-config/`: installation configuration for icon packages.
+- `lib/integrations/`: GitHub API client and icon sync orchestration.
 - `lib/sync-service/`: GitHub PR sync orchestrator, conflict detection, analytics.
 - `lib/sync-service/connectors/`: local-directory, git-pr, and npm-registry delivery connectors.
 - `lib/sync-source/`: source-of-truth export, reconstruction, and guardrails.
+- `lib/sync-ui/`: UI layer for sync operations (state, hooks, analytics).
 - `lib/platform/`: web platform bridge and route helpers.
+- `lib/rendering/`: layer style resolution and auto-gradient generation.
 - `app/api/import/`: server-side adapter import routes (Figma, Heroicons, Lucide, Material Symbols, Phosphor).
 - `app/api/publish-npm/`: npm publish proxy route.
 - `app/api/github-sync/`: GitHub PR sync route.

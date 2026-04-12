@@ -1,20 +1,19 @@
 # Icon Schema
 
-**Status:** Proposed product-model rewrite
-**Primary future files:** `lib/schema/types.ts`
+**Status:** Active
+**Primary files:** `lib/schema/types.ts`
 
 ## Overview
 
-This spec defines the reviewed product direction for Contour's icon schema.
+This spec defines Contour's icon schema.
 
-The old model treated a single icon as a container for many authored states. The reviewed direction rejects that model.
-
-The new model is:
+The core model is:
 
 - a `Workspace` contains `IconSet`s
 - an `IconSet` contains atomic `Icon`s
-- an `Icon` contains meaningful `Variant`s only, such as size or style families
-- animation happens at runtime as icon-to-icon transitions, not as many authored states inside one icon
+- an `Icon` contains meaningful `Variant`s (size or style families) and optional `transitions`
+- animation happens at runtime as icon-to-icon transitions
+- States remain as compatibility fields in the schema and are actively used in the UI. Phase R3 shipped full state management UI (add, rename, duplicate, delete).
 
 This keeps the authoring model closer to the intended SF Symbols-inspired product direction while making React code publishing clearer.
 
@@ -22,14 +21,13 @@ This keeps the authoring model closer to the intended SF Symbols-inspired produc
 
 - make each icon an atomic authored unit
 - keep only variants that belong to the icon itself
-- remove per-icon multi-state authoring from the product contract
 - keep enough geometry and topology information for runtime transition algorithms
+- support states as compatibility fields for UI workflows
 
 ## Non-Goals
 
 - this schema does not treat Figma as an equal source of truth
 - this schema does not encode release targets or repo publish config
-- this schema does not require authored state-to-state transitions inside a single icon
 
 ## Types
 
@@ -68,6 +66,7 @@ type Icon = {
   tags?: string[];
   customGuides?: GuideItem[];
   variants: Record<string, Variant>;
+  transitions?: Record<string, Transition>;  // icon-level transition definitions
   effects?: Record<string, Effect>;  // includes 'draw' kind with DrawConfig
   components?: Record<string, SymbolComponent>;
   meta?: {
@@ -77,10 +76,7 @@ type Icon = {
 };
 ```
 
-Important rule:
-
-- an `Icon` is not a state machine
-- transitions are resolved between icons at runtime
+The `transitions` field holds icon-level transition definitions. The `Transition` type is defined in `lib/schema/types.ts`.
 
 ### Variant
 
@@ -95,6 +91,8 @@ type Variant = {
   weight?: SymbolWeight;
   scale?: SymbolScale;
   style?: 'outline' | 'fill' | 'slash' | 'circle' | 'square' | 'badge' | string;
+  defaultState?: string;
+  states?: Record<string, State>;
   layers: Record<string, Layer>;
   topology?: TopologyContract;
   variableValue?: number;
@@ -112,11 +110,11 @@ type Variant = {
 };
 ```
 
-Important rule:
+States remain as compatibility fields in the schema and are actively used in the UI. Phase R3 shipped full state management UI (add, rename, duplicate, delete). The `State` and `LayerSnapshot` types are defined in `lib/schema/types.ts`.
 
-- variants exist for intrinsic icon families, not interaction states
+Variants exist for intrinsic icon families such as size and style:
+
 - examples: `16`, `20`, `24`, `outline`, `fill`
-- examples that should not exist as authored variants: `hover`, `pressed`, `open`, `closed`
 
 ### Layer
 
@@ -125,6 +123,7 @@ type Layer = {
   id: string;
   role?: 'primary' | 'secondary' | 'tertiary' | string;
   visible?: boolean;
+  drawOrder?: number;
   clipPathLayerId?: string;
   isClipMask?: boolean;
   groupId?: string;
@@ -215,18 +214,11 @@ Allowed variant families:
 - style family, for example fill vs outline
 - deterministic derived forms, for example slash or badge
 
-Disallowed authored variant families:
-
-- hover
-- pressed
-- focused
-- open vs closed interaction states
-
-Those should be modeled as separate icons with runtime transitions between them.
+Interaction states (hover, pressed, focused, open/closed) are typically modeled as separate icons with runtime transitions between them, though per-variant states remain available via the `states` field for compatibility workflows.
 
 ### Runtime Transition Readiness
 
-Even though the schema no longer stores per-icon authored states, it should preserve the information needed for runtime transition quality:
+The schema preserves the information needed for runtime transition quality:
 
 - layer roles
 - path topology

@@ -16,7 +16,56 @@ lists its props/variants to ensure the Figma design system covers all states.
 
 ## 1. Layout Shells
 
-### ExplorerShell
+### StudioLayout *(Primary)*
+
+Single-screen workspace combining navigation, icon list, and embedded editor (Sanity Studio-style). This is the main layout rendered at `/`.
+
+| Prop/State | Variants |
+|------------|----------|
+| navPaneExpanded | `true` · `false` |
+| listPaneExpanded | `true` · `false` |
+| hasActiveIcon | `true` (shows embedded editor) · `false` (shows empty state) |
+| breakpoint | `mobile` (hamburger drawer) · `tablet` · `desktop` (all panes) |
+
+Components: `components/studio/StudioLayout.tsx`
+
+#### Navbar
+
+Top navigation bar with project name, save status, breadcrumbs, and action buttons.
+
+| Prop/State | Variants |
+|------------|----------|
+| projectName | string |
+| saveStatus | `saved` · `saving` · `unsaved` |
+| theme | `light` · `dark` |
+
+Components: `components/studio/Navbar.tsx`
+
+#### NavPane
+
+Workspace/project sidebar (~200px).
+
+| Prop/State | Variants |
+|------------|----------|
+| expanded | `true` · `false` |
+| projects | list of icon sets |
+
+Components: `components/studio/NavPane.tsx`
+
+#### ListPane
+
+Icon grid/list view (~260px) for current project.
+
+| Prop/State | Variants |
+|------------|----------|
+| expanded | `true` · `false` |
+| searchActive | `true` · `false` |
+| selectionCount | `0` · `1+` |
+| viewMode | `grid` · `list` |
+
+Components: `components/studio/ListPane.tsx`
+
+### ExplorerShell *(Legacy — superseded by StudioLayout)*
 
 Top-level explorer layout with header, optional sidebar, content area, optional right panel.
 
@@ -47,7 +96,7 @@ Top-level editor layout with title bar, toolbar, left sidebar, canvas, right sid
 
 | Prop/State | Variants |
 |------------|----------|
-| platform | `desktop` (traffic lights + drag region) · `web` (slim) |
+| platform | `web` (slim) |
 | tabs | Array of `{ id, label, isDirty, isActive }` |
 | explorerTab | Always present |
 
@@ -239,7 +288,7 @@ Shown when no layer is selected.
 | Icon name | TextInput | Editable |
 | State | Select | Dropdown of state IDs |
 | Size | NumericInput | With "px" unit |
-| Rendering mode | Select | 5 options (see below) |
+| Rendering mode | Select | 4 options (Monochrome · Hierarchical · Palette · Multicolor) |
 | Guide master | ReadOnlyLabel | Name + on/off |
 | Delete state | DestructiveButton | With confirm |
 | Delete variant | DestructiveButton | With confirm |
@@ -349,7 +398,7 @@ Per-property editor within a binding.
 | To state | Select | State IDs |
 | Source icon/variant/state | 3× Select | Cross-icon mode only |
 | Target icon/variant/state | 3× Select | Cross-icon mode only |
-| Strategy | Select | strictMorph · bestGuessMorph · customMorph · bestGuessCrossfade · crossfade |
+| Strategy | Select | auto · strictMorph · bestGuessMorph · crossIconMorph · lineAnimation · replace |
 | Duration | NumericInput | ms |
 | Easing | Select + EasingPickerPopover | Preset + custom |
 | Direction | Select | automatic · downUp · upUp · offUp |
@@ -600,8 +649,8 @@ Figma design system covers every permutation.
 
 | Context | Options |
 |---------|---------|
-| Rendering mode | Monochrome · Hierarchical · Palette · Multicolor · AutoGradient |
-| Transition strategy | strictMorph · bestGuessMorph · customMorph · bestGuessCrossfade · crossfade |
+| Rendering mode | Monochrome · Hierarchical · Palette · Multicolor |
+| Transition strategy | auto · strictMorph · bestGuessMorph · crossIconMorph · lineAnimation · replace |
 | Transition direction | automatic · downUp · upUp · offUp |
 | Playback speed | 0.25× · 0.5× · 1× · 2× |
 | Semver bump | patch · minor · major |

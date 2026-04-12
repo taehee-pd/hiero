@@ -26,7 +26,7 @@ codebase, specs, and commit history.
 | 1 | Runtime Export (R1) | 2026-03-18 | Draw annotation, variable draw, magic replace, diagnostics | — |
 | 2 | Runtime Execution (R2-R3) | 2026-03-18 | Draw executor, replace strategy, effect scheduler, DOM renderer | — |
 | 3 | Runtime React (R4) | 2026-03-18 | ContourIcon, useSyncExternalStore, demo page | — |
-| 4 | CI/CD & Ops | 2026-03-18 | Web/desktop CI, coverage, Prettier, ESLint strict, signing | — |
+| 4 | CI/CD & Ops | 2026-03-18 | Web CI (4 workflows), coverage, Prettier, ESLint strict | — |
 | 5 | Platform & Adapters (R5-R6) | 2026-03-19 | Platform profiles, React adapter, Storybook, manifests | — |
 | 6 | Sync & Distribution (R7) | 2026-03-19 | SyncTarget schema, GitHub PR connector, local directory sync | — |
 | 7 | Cross-Platform (R8) | 2026-03-19 | Swift, Flutter, Web Component adapters | — |

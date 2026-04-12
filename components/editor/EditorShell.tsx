@@ -7,16 +7,17 @@ import {
   Blend,
   ChevronDown,
   Copy,
-  Crosshair,
   Eye,
   EyeOff,
   FolderOpen,
   Loader2,
+  Magnet,
   Menu,
   MousePointer2,
+  Pencil,
   PenTool,
   Plus,
-  Sparkles,
+  Ruler,
   Square,
   X,
 } from 'lucide-react';
@@ -42,6 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
@@ -86,9 +88,9 @@ type DeleteIntent =
 type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
-  { tool: 'select', label: 'Select', icon: MousePointer2 },
-  { tool: 'shape', label: 'Shape', icon: Square },
-  { tool: 'pen', label: 'Pen', icon: PenTool },
+  { tool: 'select', label: 'Select', icon: MousePointer2, shortcut: 'V' },
+  { tool: 'shape', label: 'Shape', icon: Square, shortcut: 'U' },
+  { tool: 'pen', label: 'Pen', icon: PenTool, shortcut: 'P' },
 ] as const;
 
 const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
@@ -348,6 +350,68 @@ function StatesSection({
   );
 }
 
+function InlineEditableTitle({
+  value,
+  onCommit,
+  className,
+}: {
+  value: string;
+  onCommit: (newValue: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cancelledRef = useRef(false);
+
+  const startEditing = useCallback(() => {
+    setDraft(value);
+    cancelledRef.current = false;
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }, [value]);
+
+  const commit = useCallback(() => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onCommit(trimmed);
+    setEditing(false);
+  }, [draft, value, onCommit]);
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className={`h-6 min-w-0 w-full rounded-md border border-border bg-background px-1.5 text-sm font-semibold tracking-tight text-foreground outline-none focus:ring-1 focus:ring-ring ${className ?? ''}`}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') {
+            cancelledRef.current = true;
+            setEditing(false);
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      className={`group/edit flex min-w-0 items-center gap-0 rounded-md px-1 py-0.5 hover:bg-accent hover:gap-1 transition-all ${className ?? ''}`}
+      onClick={startEditing}
+    >
+      <span className="truncate text-sm font-semibold tracking-tight">{value}</span>
+      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-all group-hover/edit:opacity-100 w-0 group-hover/edit:w-3" />
+    </button>
+  );
+}
+
 function LeftSidebar({
   leftTab,
   onLeftTabChange,
@@ -358,6 +422,7 @@ function LeftSidebar({
   selectedLayerId,
   onSelectLayer,
   onToggleLayerVisibility,
+  onRenameIcon,
   variants,
   currentVariantId,
   onSelectVariant,
@@ -380,6 +445,7 @@ function LeftSidebar({
   selectedLayerId: string | null;
   onSelectLayer: (layerId: string) => void;
   onToggleLayerVisibility: (layerId: string, visible: boolean) => void;
+  onRenameIcon: (value: string) => void;
   variants: Variant[];
   currentVariantId: string | null;
   onSelectVariant: (variantId: string) => void;
@@ -399,8 +465,10 @@ function LeftSidebar({
       <div className="wire-sidebar-block wire-sidebar-head">
         <div className="wire-sidebar-title-stack">
           <div className="wire-sidebar-title-row">
-            <h1 className="wire-title">{currentIcon?.name ?? 'No icon selected'}</h1>
-            <ChevronDown className="size-3 text-black/45" />
+            <InlineEditableTitle
+              value={currentIcon?.name ?? 'No icon selected'}
+              onCommit={onRenameIcon}
+            />
           </div>
         </div>
 
@@ -572,18 +640,21 @@ function CanvasDock({
         {TOOL_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
-            <Button
-              key={item.tool}
-              variant="ghost"
-              size="icon-sm"
-              data-active={activeTool === item.tool ? 'true' : 'false'}
-              className="wire-dock-icon"
-              onClick={() => onToolSelect(item.tool)}
-              title={item.label}
-              aria-label={item.label}
-            >
-              <Icon className="size-4" />
-            </Button>
+            <Tooltip key={item.tool}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-active={activeTool === item.tool ? 'true' : 'false'}
+                  className="wire-dock-icon"
+                  onClick={() => onToolSelect(item.tool)}
+                  aria-label={item.label}
+                >
+                  <Icon className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{item.label} ({item.shortcut})</TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -674,30 +745,38 @@ function CanvasDock({
       </Popover>
 
       <div className="wire-dock-group">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          data-active={snapEnabled ? 'true' : 'false'}
-          aria-pressed={snapEnabled}
-          aria-label="Toggle snap"
-          className="wire-dock-icon"
-          onClick={onToggleSnap}
-          title="Toggle snap"
-        >
-          <Crosshair className="size-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          data-active={guidesVisible ? 'true' : 'false'}
-          aria-pressed={guidesVisible}
-          aria-label="Toggle guides"
-          className="wire-dock-icon"
-          onClick={onToggleGuides}
-          title="Toggle guides"
-        >
-          <Sparkles className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              data-active={snapEnabled ? 'true' : 'false'}
+              aria-pressed={snapEnabled}
+              aria-label="Toggle snap"
+              className="wire-dock-icon"
+              onClick={onToggleSnap}
+            >
+              <Magnet className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Snap {snapEnabled ? 'On' : 'Off'}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              data-active={guidesVisible ? 'true' : 'false'}
+              aria-pressed={guidesVisible}
+              aria-label="Toggle guides"
+              className="wire-dock-icon"
+              onClick={onToggleGuides}
+            >
+              <Ruler className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Guides {guidesVisible ? 'On' : 'Off'}</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -710,6 +789,7 @@ function RightSidebar({
   currentIcon,
   currentVariant,
   onRenameIcon,
+  onRenameLayer,
   onPatchVariant,
   onPatchSelectedLayer,
   onPatchSelectedLayerStyle,
@@ -724,6 +804,7 @@ function RightSidebar({
   currentIcon: Icon | null;
   currentVariant: Variant | null;
   onRenameIcon: (value: string) => void;
+  onRenameLayer: (oldId: string, newId: string) => void;
   onPatchVariant: (patch: VariantEditorPatch) => void;
   onPatchSelectedLayer: (patch: Partial<Layer>) => void;
   onPatchSelectedLayerStyle: (patch: Partial<Layer['style']>) => void;
@@ -755,6 +836,16 @@ function RightSidebar({
   return (
     <aside className="wire-sidebar wire-sidebar-right">
       <div className="wire-sidebar-block wire-sidebar-head">
+        <InlineEditableTitle
+          value={selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
+          onCommit={(newValue) => {
+            if (selectedLayer) {
+              onRenameLayer(selectedLayer.id, newValue);
+            } else {
+              onRenameIcon(newValue);
+            }
+          }}
+        />
         <EditorSidebarTabs
           ariaLabel="Right sidebar"
           value={rightTab}
@@ -764,9 +855,6 @@ function RightSidebar({
             { value: 'animation', label: 'Animation' },
           ]}
         />
-        <div className="wire-panel-title">
-          {selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
-        </div>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
@@ -1062,6 +1150,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     patchVariant,
     removeVariant,
     renameIcon,
+    renameLayer,
     setCurrentIcon,
     setCurrentVariant,
     setCurrentState,
@@ -1465,6 +1554,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             layerRows={layerRows}
             selectedLayerId={selectedLayerId}
             onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
+            onRenameIcon={handleRenameIcon}
             onToggleLayerVisibility={(layerId, visible) => {
               if (!currentIcon) return;
               patchLayer(currentIcon.id, layerId, { visible });
@@ -1566,6 +1656,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           currentIcon={currentIcon}
           currentVariant={currentVariant}
           onRenameIcon={handleRenameIcon}
+          onRenameLayer={(oldId, newId) => currentIcon && renameLayer(currentIcon.id, oldId, newId)}
           onPatchVariant={handlePatchVariant}
           onPatchSelectedLayer={handlePatchSelectedLayer}
           onPatchSelectedLayerStyle={handlePatchSelectedLayerStyle}

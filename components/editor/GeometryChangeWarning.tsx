@@ -437,7 +437,7 @@ function TransitionWarningCard({
               <button
                 type="button"
                 onClick={() => onDowngradeStrategy(transitionId, 'replace')}
-                className="cursor-pointer rounded bg-yellow-500 px-2.5 py-1 text-[11px] font-medium text-foreground-fixed-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                className="cursor-pointer rounded bg-border-warning px-2.5 py-1 text-[11px] font-medium text-foreground-fixed-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 Downgrade to crossfade
               </button>

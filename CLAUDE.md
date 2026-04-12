@@ -65,12 +65,14 @@ lib/
 ├── export/             # Runtime JSON, Lottie, compiled icons, React codegen, adapters
 ├── persistence/        # IndexedDB adapter, persistence manager, auto-save
 ├── live-sync/          # Real-time publish transport
-├── sync-service/       # GitHub PR sync + connectors (local-dir, git-pr, npm)
+├── sync-service/       # GitHub PR sync + connectors (local-dir, adapter-pr, npm)
+├── sync-ui/            # UI layer for sync operations (state, hooks, analytics)
+├── integrations/       # GitHub API client and icon sync orchestration
 ├── install-config/     # Installation configuration for icon packages
 ├── rendering/          # Layer style resolution, auto-gradient
 ├── platform/           # Web platform bridge and route helpers
 ├── compiler-contracts/ # Export format types and validators
-└── animation/          # Animation utilities
+└── animation/          # Effect player and built-in presets
 
 components/
 ├── editor/           # EditorShell, Canvas, LayerPanel, TransitionPanel, TimelineEditor
@@ -82,11 +84,11 @@ components/
 ├── ui/               # shadcn/ui components (57 files)
 └── kibo-ui/          # kibo-ui re-exports + color-picker
 
-packages/contour-cli/  # @contour/cli command-line tool
+packages/coniva-cli/   # @contour/cli command-line tool
 figma-plugin/         # Figma plugin for exporting to Contour
 specs/                # Spec-kit documentation (21 specs)
 docs_canonical/       # Canonical reference docs (TASKS, ARCHITECTURE, DESIGN, etc.)
-tests/                # Bun test files (102+ tests)
+tests/                # Bun test files (103+ tests)
 ```
 
 ## Key Conventions

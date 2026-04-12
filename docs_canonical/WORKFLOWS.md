@@ -9,22 +9,11 @@ Standard local web workflow:
 3. Open the explorer at `http://localhost:3000`.
 4. Navigate to `/editor` for the editor surface.
 
-Desktop local workflow:
-
-1. Run `corepack pnpm desktop:dev` from the repository root.
-2. If a Next dev server is already running on port 3000, the desktop helper reuses it.
-3. Otherwise, the helper starts the web dev server and then launches Electrobun.
-
 ## Build Processes
 
 Web build:
 
 - `corepack pnpm build`
-
-Desktop build:
-
-- `corepack pnpm desktop:build`: static-export the Next app, stage the output into `desktop/.generated/mainview`, then run the Electrobun build.
-- `corepack pnpm desktop:dist`: same flow, but build distribution/installable artifacts.
 
 Compile/export pipeline:
 
@@ -55,29 +44,12 @@ Import-adapter flow:
 
 ## Deployment and Release
 
-Desktop release flow exists in-repo:
-
-- `bun run desktop/scripts/release.ts --version <semver> --notes "<notes>"`
-- `bun run desktop/scripts/validate-latest-json.ts [--file <path>]`
-
-The release script:
-
-- bumps `desktop/package.json`
-- rebuilds the static export
-- stages the Electrobun mainview bundle
-- runs the desktop distribution build
-- validates the generated `latest.json` manifest schema before writing it
-- writes `desktop/artifacts/latest.json`
-
-Signing and notarization expectations live in `desktop/SIGNING.md`.
-
-Registry distribution flow also exists in-repo:
+Registry distribution flow exists in-repo:
 
 - Delivery mode: `SyncTarget.deliveryMode === 'npm-registry'`
 - Connector: `lib/sync-service/connectors/npm-connector.ts`
-- Desktop publish path: `lib/platform/bridge.ts` `npmPublish(...)`
 - Web publish path: `app/api/publish-npm/route.ts`
-- Token storage: `lib/platform/keychain.ts`
+- Token: server-side via `NPM_PUBLISH_TOKEN` env var
 
 ## CI/CD Status
 
@@ -87,12 +59,10 @@ Repository CI workflows are present under `.github/workflows/`:
 - `icons-post-merge-build.yml`: validates and compiles merged source files on `main`.
 - `icons-package-release.yml`: builds/validates icon package artifacts on `main` changes and supports manual npm publish dispatch.
 - `web-app-ci.yml`: runs formatter, type-check, lint, Phase A coverage, coverage threshold enforcement, and `build` for shared web/runtime path changes.
-- `desktop-ci.yml`: runs formatter, type-check, lint, Phase A tests, and `desktop:build` for desktop changes plus the shared root paths that feed the desktop export.
-
 Practical implication:
 
 - compile/export and package verification is automated for icon-pipeline changes
-- web application and desktop app CI now have dedicated workflows
+- web application CI has a dedicated workflow
 - the Phase A runtime/export surface has a scoped LCOV threshold gate via `scripts/check-coverage.ts`
 - local build and test verification still matters for areas outside the current CI slice or formatter scope
 
@@ -126,10 +96,10 @@ Observed repository practice favors targeted verification:
 
 - module/unit tests with `bun test`
 - snapshot coverage for deterministic exports and runtime rendering
-- manual or scripted desktop build verification for desktop-specific changes
 - `corepack pnpm build` for application build checks
 
 ## Known Conflicts / Notes
 
 - Repository lint and test entrypoints are explicitly defined in root scripts (`lint`, `test`).
-- Legacy docs describe release and build steps well for desktop, but there is no equivalent committed web deployment pipeline.
+- Desktop distribution was removed in Phase R1. The `desktop/` directory retains build artifacts only.
+- There is no committed web deployment pipeline — web builds are verified by CI but deployment is manual.

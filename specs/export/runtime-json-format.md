@@ -1,18 +1,13 @@
 # Runtime JSON Format
 
-**Status:** Proposed product-model rewrite
-**Primary future files:** `lib/export/export-runtime-json.ts`
+**Status:** Active
+**Primary files:** `lib/export/export-runtime-json.ts`
 
 ## Overview
 
 The runtime JSON format is the export boundary between Contour authoring data and runtime icon behavior in product code.
 
-The old format assumed variants contained states and transitions. The reviewed direction changes that:
-
-- variants contain authored geometry and style families
-- runtime transitions are icon-to-icon concerns
-
-So the runtime export should describe:
+The runtime export describes:
 
 - icon metadata
 - authored variants
@@ -23,7 +18,6 @@ So the runtime export should describe:
 
 - export deterministic icon payloads for React runtime consumption
 - preserve the geometry needed for morphing and line animation
-- stop depending on per-icon authored state machines
 
 ## Types
 
@@ -53,7 +47,7 @@ type RuntimeVariantPayload = {
     viewBox: [number, number, number, number];
     style?: string;
   };
-  layers: Record<string, RuntimeLayer>;
+  layers: RuntimeLayer[];
   topology?: RuntimeTopologyContract;
   effects?: Record<string, RuntimeEffect>;
   draw?: RuntimeDrawAnnotation;
@@ -61,10 +55,12 @@ type RuntimeVariantPayload = {
 };
 ```
 
-### RuntimeTransitionPayload
+### RuntimeTransition
+
+Note: the actual type name in the codebase is `RuntimeTransition`, not `RuntimeTransitionPayload`.
 
 ```typescript
-type RuntimeTransitionPayload = {
+type RuntimeTransition = {
   fromIconId: string;
   toIconId: string;
   fromVariantId: string;
@@ -121,13 +117,9 @@ Runtime export should preserve:
 - topology data needed for transition quality
 - variant identity such as size and style family
 
-### What should disappear
+### Compatibility Fields
 
-The new export format should not require:
-
-- `defaultState`
-- `states`
-- transition references between authored states
+Note: `states` and `transitions` fields are still present in the export types for compatibility. The export format does not require them for core rendering, but they are preserved when present in the source data.
 
 ### Determinism
 

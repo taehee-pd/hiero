@@ -22,8 +22,8 @@ The following phases from the original plan have been implemented:
 
 | Feature | Summary |
 |---------|---------|
-| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@contour/cli` (`packages/contour-cli/`), PublishPanel, ReleasePanel |
-| Figma Plugin Import | `figma-plugin/export-to-contour/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
+| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@contour/cli` (`packages/coniva-cli/`), PublishPanel, ReleasePanel |
+| Figma Plugin Import | `figma-plugin/export-to-coniva/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
 | Studio Layout Revamp | Sanity Studio-style single screen: `NavPane`, `ListPane`, embedded editor in `StudioLayout.tsx` |
 | Stagger Ordering Fix | Transition resolver stagger ordering ranks corrected |
 | Post-Review Bug Fixes | 13 bugs fixed from Codex adversarial review (rename key conflicts, duplicate command palette, layout issues) |

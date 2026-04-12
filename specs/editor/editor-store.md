@@ -1,39 +1,27 @@
 # Editor Store
 
-**Status:** Proposed product-model rewrite
-**Primary future files:** `lib/editor-store/store.ts`, `lib/editor-store/types.ts`
+**Status:** Active
+**Primary files:** `lib/editor-store/store.ts`, `lib/editor-store/types.ts`
 
 ## Overview
 
-This spec defines the reviewed editor-store direction after the product-model change.
+This spec defines the editor store architecture.
 
-The old store centered heavily on:
-
-- `currentStateId`
-- authored state CRUD inside a variant
-- state-based transition preview
-
-The reviewed direction removes per-icon multi-state authoring from the product contract.
-
-The new store should center on:
+The store centers on:
 
 - workspace and icon-set management
-- current icon and current variant selection
+- current icon, current variant, and current state selection
 - layer editing
 - variant management for size and style families
-- previewing runtime icon-to-icon transitions without making them authored state documents
+- state management (add, rename, duplicate, delete)
+- previewing runtime icon-to-icon transitions
 
 ## Goals
 
 - keep the editor focused on icon authoring
-- remove state-management complexity that no longer belongs in the product
+- support state management as an active editing workflow
 - preserve transition preview as a runtime-facing capability
 - simplify tab, selection, and mutation logic
-
-## Non-Goals
-
-- the editor store should not own an authored many-states-per-icon workflow
-- the editor store should not preserve old state CRUD purely for compatibility
 
 ## Core State
 
@@ -48,6 +36,7 @@ type EditorState = {
   lastSavedAt: number | null;
   currentIconId: string | null;
   currentVariantId: string | null;
+  currentStateId: string | null;
   selectedIconGuideIndex: number | null;
   selection: SelectionState;
   activeSnapGuides: SnapTarget[];
@@ -70,18 +59,17 @@ type EditorState = {
 };
 ```
 
-Important difference:
-
-- `currentStateId` should not remain a first-class product concept
+`currentStateId` remains a first-class field in EditorState and is actively used for state selection in the UI.
 
 ### TransitionPreview
 
 ```typescript
 type TransitionPreview = {
-  fromIconId: string;
-  toIconId: string;
-  fromVariantId: string;
-  toVariantId: string;
+  transitionId: string;
+  baseIconId: string;
+  baseVariantId: string;
+  targetIconId: string;
+  targetVariantId: string;
   progress: number;
   resolvedTransition: ResolvedTransition;
   interpolatedValues: InterpolatedValues;
@@ -133,15 +121,13 @@ The editor should still support:
 
 But these previews should resolve runtime transition behavior, not mutate authored state records.
 
-## Removed Product Concepts
+### Additional Actions
 
-The reviewed product direction should remove:
+Additional actions not listed here include effects management (`addEffect`, `removeEffect`, `patchEffect`), guide masters (`addGuideMaster`, `updateGuideMaster`, `removeGuideMaster`), collections, sync targets, boolean operations, icon tabs (`openIconTab`, `closeIconTab`), variant matrix generation, undo/redo infrastructure (`pauseHistory`, `resumeHistory`, `commitHistory`).
 
-- add state
-- rename state
-- duplicate state
-- current state selection as a core editing primitive
-- state-to-state transition CRUD as a core authoring feature
+## State Management
+
+State CRUD actions are active: `addState()`, `removeState()`, `renameState()`, `duplicateState()`, `setCurrentState()`. These were shipped as part of Phase R3 and remain first-class editor operations.
 
 ## Behavior
 
@@ -151,13 +137,12 @@ Any mutation to icons, variants, or layers marks the store dirty until saved.
 
 ### Undo/Redo
 
-Undo/redo stays important, but should operate over:
+Undo/redo stays important and operates over:
 
 - icon edits
 - variant edits
 - layer edits
-
-not over state-machine authoring flows that no longer belong in the product.
+- state edits
 
 ### Transition Preview Boundary
 

@@ -40,7 +40,7 @@ Observed naming patterns:
 
 ## Formatting Guidance
 
-The repository uses Prettier with the configuration in `.prettierrc.json`. Run `corepack pnpm format` to format, or `corepack pnpm format:check` to verify. The Prettier rollout is scoped primarily to CI/tooling and new runtime files; some legacy files may not yet be fully formatted.
+The repository uses Prettier with the configuration in `.prettierrc.json` (`semi: true`, `singleQuote: true`, `trailingComma: "all"`, `printWidth: 100`). Run `corepack pnpm format` to format, or `corepack pnpm format:check` to verify. The Prettier format scripts are currently scoped to specific files (`web-app-ci.yml`, `check-coverage.ts`, `.prettierrc.json`, `package.json`, `pnpm-lock.yaml`); most source files are not yet covered.
 
 ## Import and Export Preferences
 

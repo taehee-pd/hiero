@@ -1,20 +1,79 @@
 # UI Screens
 
 **Status:** Specification (complete screen inventory for Figma design & implementation)
-**Primary files:** `components/explorer/ExplorerShell.tsx`, `components/editor/EditorShell.tsx`
+**Primary files:** `components/studio/StudioLayout.tsx`, `components/editor/EditorShell.tsx`
 
 ---
 
 ## Overview
 
-Contour has two primary screens (Explorer and Editor) and a set of modal/sheet
-overlays for import, export, and sync operations. This spec documents every
-screen, sub-view, panel state, and dialog required for a complete Figma design
-file, ensuring no user flows are missing.
+Contour uses a single-screen StudioLayout (similar to Sanity Studio) as the
+primary workspace at `/`. The StudioLayout combines a navigation sidebar, icon
+list pane, and embedded editor into one unified screen. The legacy Explorer shell
+and the standalone Editor route (`/editor/[iconId]`) still exist as alternative
+entry points but are no longer the default UI. Modal/sheet overlays handle
+import, export, and sync operations. This spec documents every screen, sub-view,
+panel state, and dialog required for a complete Figma design file, ensuring no
+user flows are missing.
 
 ---
 
-## Screen 1: Explorer (`/`)
+## Screen 0: Studio Workspace (`/`) — Primary
+
+The single-screen workspace that combines navigation, icon list, and embedded
+editor. This is the default landing experience, modelled after tools like Sanity
+Studio where the entire workflow lives in one layout.
+
+**Primary files:** `components/studio/StudioLayout.tsx`, `components/studio/NavPane.tsx`, `components/studio/ListPane.tsx`, `components/studio/Navbar.tsx`
+
+### 0A. Full Studio Layout
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Navbar: [project-name] · Saved 2m ago        [Import] [Export] [?] │
+├───────────┬──────────────┬───────────────────────────────────────────┤
+│ NavPane   │ ListPane     │  Embedded EditorShell                     │
+│ ~200px    │ ~260px       │  (full editor when icon selected)         │
+│           │              │                                           │
+│ Workspace │ [🔍 Search]  │  ┌─ Canvas ──────────────────────────┐   │
+│           │              │  │                                    │   │
+│ Projects  │ ┌────┐┌────┐│  │     ┌────────────────┐            │   │
+│ ├ My Icons│ │ ◻  ││ ◻  ││  │     │   Icon Canvas  │            │   │
+│ ├ Arrows  │ │home││gear││  │     │   (SVG)        │            │   │
+│ ├ Nav Set │ └────┘└────┘│  │     └────────────────┘            │   │
+│           │ ┌────┐┌────┐│  │                                    │   │
+│ Settings  │ │ ◻  ││ ◻  ││  └────────────────────────────────────┘   │
+│           │ │star││bell││                                           │
+│           │ └────┘└────┘│  ┌─ Right Sidebar (Inspect/Animation) ┐   │
+│           │              │  │  (same as Screen 2 panels)         │   │
+│           │              │  └────────────────────────────────────┘   │
+├───────────┴──────────────┴───────────────────────────────────────────┤
+│  Status Bar (optional)                                                │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Components
+
+| Component | Width | Purpose |
+|-----------|-------|---------|
+| **Navbar** | full width | Top bar — project name, save status, global actions |
+| **NavPane** | ~200px | Workspace/project sidebar — switch between icon sets, settings |
+| **ListPane** | ~260px | Icon grid with search, filter, multi-select |
+| **EditorShell** | remaining | Embedded editor — appears when an icon is selected |
+
+**States:**
+- No icon selected — EditorShell shows empty/welcome state
+- Icon selected — full editor with canvas, left sidebar (layers/variants), right sidebar (inspect/animation)
+- Multiple icons selected in ListPane — bulk action bar visible
+- NavPane collapsed — more room for ListPane + Editor
+
+---
+
+## Screen 1: Explorer (`/explorer`) — Legacy (superseded by StudioLayout)
+
+> **Legacy:** This screen has been superseded by Screen 0 (StudioLayout) as the
+> primary UI. It remains available at `/explorer` for standalone project
+> management workflows.
 
 The workspace-level project management screen.
 
@@ -111,6 +170,11 @@ Appears as a collapsible right panel or sheet.
 ---
 
 ## Screen 2: Editor (`/editor/[iconId]`)
+
+> **Note:** The editor is primarily accessed as the embedded panel inside
+> StudioLayout (Screen 0). The standalone route at `/editor/[iconId]` still
+> exists as an alternative focused editing mode without the NavPane/ListPane
+> chrome.
 
 The core icon authoring screen.
 
@@ -669,11 +733,27 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 
 ---
 
+## Screen 11: Runtime Demo (`/runtime-demo`, `/demo/runtime`)
+
+Standalone demo pages that render icons using the Contour runtime outside of
+the editor context. Useful for testing runtime transitions, embedding previews,
+and validating compiled icon output.
+
+- `/runtime-demo` — primary runtime demo route
+- `/demo/runtime` — alternative path (alias)
+
+---
+
 ## User Flow Coverage Matrix
 
 | Flow | Screen(s) | Entry Point |
 |------|-----------|-------------|
-| First launch (empty workspace) | 1A (empty) | App start |
+| First launch (studio) | 0A (empty) | App start (`/`) |
+| Browse projects (studio) | 0A NavPane | NavPane sidebar |
+| Select icon (studio) | 0A ListPane → Editor | Click icon in ListPane |
+| Search icons (studio) | 0A ListPane | ListPane search bar |
+| Runtime demo | 11 | `/runtime-demo` or `/demo/runtime` |
+| First launch (legacy explorer) | 1A (empty) | `/explorer` |
 | Create icon set | 1A → dialog | "+ New Set" button |
 | Browse icon sets | 1A | Default view |
 | Enter icon set | 1A → 1B | Click set card |
@@ -725,9 +805,10 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 
 ```typescript
 type ScreenId =
-  | 'explorer-workspace'      // 1A
-  | 'explorer-project'        // 1B
-  | 'explorer-publish'        // 1C
+  | 'studio-workspace'        // 0A (primary)
+  | 'explorer-workspace'      // 1A (legacy)
+  | 'explorer-project'        // 1B (legacy)
+  | 'explorer-publish'        // 1C (legacy)
   | 'editor-full'             // 2A
   | 'editor-layers-tab'       // 2B
   | 'editor-variants-tab'     // 2C
@@ -744,13 +825,20 @@ type ScreenId =
   | 'color-picker'            // 7
   | 'shortcuts-dialog'        // 8
   | 'install-config'          // 9
-  | 'confirm-dialog';         // 10
+  | 'confirm-dialog'          // 10
+  | 'runtime-demo';           // 11
 ```
 
 ### Panel Visibility Rules
 
 ```typescript
 type PanelVisibility = {
+  // Studio-level panels (Screen 0)
+  navPane: boolean;      // workspace/project sidebar (~200px)
+  listPane: boolean;     // icon grid with search (~260px)
+  navbar: boolean;       // top bar — always visible in studio
+
+  // Editor-level panels (embedded in Screen 0 or standalone Screen 2)
   leftSidebar: 'layers' | 'variants';
   rightSidebar: 'inspect' | 'animation';
   inspectContent:
@@ -758,7 +846,7 @@ type PanelVisibility = {
     | 'layer'            // single layer selected
     | 'multi-layer';     // multiple layers selected
   canvasDock: boolean;   // always visible in editor
-  bulkActionBar: boolean; // visible when multi-selected in explorer
+  bulkActionBar: boolean; // visible when multi-selected in list pane or explorer
   statusHud: boolean;    // visible in editor
 };
 ```

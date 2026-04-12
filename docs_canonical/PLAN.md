@@ -8,7 +8,7 @@
 
 ## 1. Product Assessment
 
-Contour is an Contour with animation capabilities comparable to SF Symbols.
+Contour is an icon design studio with animation capabilities comparable to SF Symbols.
 The **authoring engine is mature** — 23 shipped phases cover vector editing, 14 animation
 track types, morph/trim/crossfade transitions, derived variants, weight interpolation,
 and cross-icon morphing. The **export backend is complete** — Lottie, Runtime JSON, SVG,
@@ -30,10 +30,9 @@ React/Swift/Flutter adapters, and npm registry publishing all have working imple
 - 4 import adapters (Lucide, Heroicons, Phosphor, Material Symbols) with batch import
 - Export adapters for React, Swift, Flutter with downgrade rules
 - Sync pipeline: Git PR connector with conflict detection, diff engine, CI validation
-- NPM registry connector with dry-run, keychain token storage, web proxy
-- 101 test files covering runtime, export, import, sync, editor, schema
-- Desktop shell (Electrobun) with native menus, file I/O, keychain, RPC bridge
-- CI/CD: 5 GitHub Actions workflows (web, desktop, icon validation, post-merge, package release)
+- NPM registry connector with dry-run, server-side token proxy
+- 103 test files covering runtime, export, import, sync, editor, schema
+- CI/CD: 4 GitHub Actions workflows (web-app, icon validation, post-merge, package release)
 
 ---
 
@@ -41,8 +40,8 @@ React/Swift/Flutter adapters, and npm registry publishing all have working imple
 
 ### G1 — Web Persistence (Critical)
 
-**Problem:** The Zustand editor store is in-memory only. On page refresh, all work is lost.
-Desktop users can save to disk via the Electrobun bridge, but web users have zero persistence.
+**Problem:** The custom editor store (built on `useSyncExternalStore`) is in-memory only. On page refresh, all work is lost.
+Web users have zero persistence.
 
 **Why it matters:** No developer will recommend a tool where work disappears on refresh.
 
@@ -58,7 +57,7 @@ interface PersistenceAdapter {
   delete(id: string): Promise<void>
 }
 ```
-Implementations: `IndexedDBAdapter` (web), `FileSystemAdapter` (desktop via bridge).
+Implementation: `IndexedDBAdapter` (web).
 Wire into `lib/editor-store/store.ts` — the store calls `adapter.save()` on commit.
 
 **Step 2 — IndexedDB project storage**
@@ -76,7 +75,6 @@ Show "Recent Projects" with timestamps, rename, delete actions.
 **Files to create:**
 - `lib/persistence/adapter.ts` — interface
 - `lib/persistence/indexeddb-adapter.ts` — web implementation
-- `lib/persistence/filesystem-adapter.ts` — desktop wrapper (calls existing bridge)
 
 **Files to change:**
 - `lib/editor-store/store.ts` — add persistence adapter injection + auto-save
@@ -118,15 +116,14 @@ In `components/explorer/ExplorerShell.tsx`:
 - Wire `useEditorActions()` for CRUD operations
 
 **Step 3 — Wire store actions for sync targets** *(eng review: extract to sync slice)*
-Create `lib/editor-store/sync-store.ts` as a Zustand slice:
+Add sync target actions to the custom store (`useSyncExternalStore`-based):
 ```ts
 addSyncTarget(target: SyncTarget): void
 updateSyncTarget(id: string, patch: Partial<SyncTarget>): void
 removeSyncTarget(id: string): void
 executeSyncTarget(id: string): Promise<void>
 ```
-Compose with main store via Zustand slicing. Keeps sync/publish domain
-separate from the 91-action editing store.
+Keeps sync/publish domain scoped within the editor store actions.
 
 **Step 5 — Platform-specific form fields in SyncTargetPanel**
 In `components/export/SyncTargetPanel.tsx`:
@@ -188,8 +185,7 @@ File: `app/api/import/figma/route.ts`
 
 Server-side proxy for Figma REST API. Unlike GitHub/npm (org-level tokens),
 Figma PATs are per-user — each designer accesses their own files:
-- Desktop: token stored in platform keychain via `lib/platform/keychain.ts`
-- Web: token passed per-request from client (stored in session/localStorage)
+- Token passed per-request from client (stored in session/localStorage)
 - Proxy forwards token in `Authorization: Bearer` header to Figma API
 - Endpoints: `GET /api/import/figma/components?fileKey=X&query=Y`
 - Endpoints: `GET /api/import/figma/svg?fileKey=X&nodeId=Y`
@@ -278,49 +274,9 @@ Desktop: OS keychain. Web: server-side env var.
 
 ---
 
-### G5 — Desktop Distribution (Partially shipped)
+### G5 — Desktop Distribution (Removed)
 
-Status: partially shipped 2026-03-28 — signing prerequisites, release command ergonomics, and manifest/artifact checks are hardened in-repo, but producing a real signed installer still depends on external credentials and release hosting.
-
-**Problem:** The desktop app builds successfully in dev mode
-(`desktop/build/dev-macos-arm64/Contour-dev.app`) but no signed, distributable
-installer exists. Auto-update infrastructure is configured but untested.
-
-**Why it matters:** Desktop is the only path to file-based persistence today.
-Without a downloadable installer, users can't save their work.
-
-**Technical plan:**
-
-**Step 1 — Code signing setup**
-- Obtain Apple Developer Team ID + certificate
-- Configure `ELECTROBUN_BUILD_ENV=stable` for production builds
-- Set signing identity in `desktop/electrobun.config.ts`
-- Test notarization flow end-to-end
-
-**Step 2 — Build production installer**
-```bash
-pnpm desktop:dist
-```
-- Verify `desktop/artifacts/latest.json` schema via `validate-latest-json.ts`
-- Verify `.app` bundle launches clean on fresh macOS install
-- Test file association (`.contour.json` double-click opens app)
-
-**Step 3 — Auto-update endpoint**
-- Host `latest.json` at `CONTOUR_RELEASE_BASE_URL`
-- Verify Electrobun update check + download flow
-- Test upgrade path from dev → stable
-
-**Step 4 — Distribution channel**
-- GitHub Releases (attach .dmg or .zip to release)
-- Landing page download link
-- `desktop/SIGNING.md` documents the full process
-
-**Files to change:**
-- `desktop/electrobun.config.ts` — signing identity
-- `desktop/scripts/release.ts` — verify production flow
-- CI: add release workflow for tagged builds
-
-**Dependencies:** Apple Developer account required.
+Status: **removed** — Phase R1 removed the Electrobun desktop shell. Contour is now web-only. Persistence is handled via IndexedDB (shipped in R2). The `desktop/` directory retains only build artifacts and can be cleaned up.
 
 ---
 
@@ -403,13 +359,13 @@ inline styles bypassing design system, missing focus rings.
                     │Critical │  (IndexedDB + adapter)
                     └────┬────┘
                          │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-         ┌─────────┐ ┌─────────┐ ┌─────────┐
-         │   G2    │ │   G3    │ │   G5    │
-         │ Export  │ │ Figma   │ │Desktop  │
-         │ UI Wire│ │ Import  │ │ Distro  │
-         └────┬────┘ └─────────┘ └─────────┘
+              ┌──────────┴──────────┐
+              ▼                     ▼
+         ┌─────────┐          ┌─────────┐
+         │   G2    │          │   G3    │
+         │ Export  │          │ Figma   │
+         │ UI Wire│          │ Import  │
+         └────┬────┘          └─────────┘
               │
               ▼
          ┌─────────┐
@@ -426,8 +382,7 @@ inline styles bypassing design system, missing focus rings.
 ```
 
 **Recommended order:**
-1. **G5** (desktop distro) — finish signed distribution and hosted release path
-2. **G7** (accessibility) — continue the broader audit-driven pass
+1. **G7** (accessibility) — continue the broader audit-driven pass
 
 ---
 
@@ -450,8 +405,7 @@ These features are fully implemented and wired into the UI:
 | Runtime React component (`ContourIcon`) | Complete | `lib/runtime-react/` |
 | Lottie export engine | Complete | `lib/export/export-lottie.ts` |
 | NPM publish backend | Complete | `lib/sync-service/connectors/npm-connector.ts` |
-| CI/CD (5 workflows) | Complete | `.github/workflows/` |
-| Desktop shell (dev mode) | Complete | `desktop/` |
+| CI/CD (4 workflows) | Complete | `.github/workflows/` |
 
 ---
 
@@ -469,7 +423,7 @@ This section reconciles TASKS.md phase statuses with actual codebase state:
 | I–L (Animation/Inspect) | Completed | Fully shipped and wired | None |
 
 **Remaining open tasks from TASKS.md:**
-- None. Forward-looking product work is now tracked as G5 and the remaining G7 accessibility backlog.
+- None. Forward-looking product work is the remaining G7 accessibility backlog.
 
 ---
 
@@ -480,18 +434,15 @@ This section reconciles TASKS.md phase statuses with actual codebase state:
 ```
 ┌─────────────────────┐
 │   Editor Store      │
-│   (Zustand)         │
+│ (useSyncExternalStore)│
 │                     │
 │   commit() ─────────┼──► PersistenceAdapter.save()
 │   loadProject() ◄───┼──── PersistenceAdapter.load()
 └─────────────────────┘
          │
-         ├── IndexedDBAdapter (web)
-         │     └── idb: projects table
-         │         { id, name, data, updatedAt }
-         │
-         └── FileSystemAdapter (desktop)
-               └── Electrobun bridge: readFile/writeFile
+         └── IndexedDBAdapter (web)
+               └── idb: projects table
+                   { id, name, data, updatedAt }
 ```
 
 ### Export UI Architecture (G2) *(eng review: modal dialog, not sidebar tab)*
@@ -760,15 +711,6 @@ Contour App
 │   │   │   ├── [NEW] D-EXP-2: Preview canvas (lottie-web, feature-flagged)
 │   │   │   └── Download .json button
 │
-├── Desktop Shell (Electrobun)
-│   ├── Title Tab Bar (existing)
-│   │   ├── Document tabs
-│   │   ├── Traffic light buttons (macOS)
-│   │   └── [NEW] Publish countdown badge (G4, mirrors explorer badge)
-│   ├── Native menus (File, Edit, View, Help)
-│   ├── Recent projects (from filesystem)
-│   └── File associations (.contour.json, .icophone.json)
-│
 ├── Runtime Demos (existing)
 │   ├── /demo/runtime
 │   └── /runtime-demo
@@ -845,8 +787,6 @@ described in §2. The IA above shows exactly where each screen lives.
 Existing variables unchanged:
 - `GITHUB_SYNC_TOKEN` — GitHub PR sync (server-side)
 - `NPM_PUBLISH_TOKEN` — npm registry publish (server-side)
-- `CONTOUR_RELEASE_BASE_URL` — desktop auto-update endpoint
-- `ELECTROBUN_BUILD_ENV` — desktop build mode (stable/dev)
 
 ---
 
@@ -856,7 +796,6 @@ Existing variables unchanged:
 |------|--------|--------|
 | `lib/persistence/adapter.ts` | G1 | **Create** — persistence interface |
 | `lib/persistence/indexeddb-adapter.ts` | G1 | **Create** — web persistence |
-| `lib/persistence/filesystem-adapter.ts` | G1 | **Create** — desktop persistence |
 | `lib/editor-store/store.ts` | G1 | **Modify** — add persistence adapter injection + auto-save |
 | `lib/editor-store/sync-store.ts` | G2, G4 | **Create** — sync CRUD, pendingPublish, cancelPendingPublish |
 | `components/explorer/ExplorerShell.tsx` | G1, G2, G4 | **Modify** — recent projects, mount SyncTargetPanel, countdown |
@@ -898,8 +837,7 @@ Existing variables unchanged:
 | `npm-connector.ts` | G4 | Full publish logic — just wire to UI |
 | `auto-publish.ts` | G4 | Debounce/cancel logic — just wire to store state |
 | `keychain.ts` | G3, G4 | Token storage abstraction — reuse for Figma PAT |
-| `lib/platform/bridge.ts` | G1, G5 | Desktop file I/O — wrap as FileSystemAdapter |
-| Electrobun release scripts | G5 | `release.ts`, `validate-latest-json.ts` — just execute |
+| `lib/platform/bridge.ts` | — | Web-only environment abstraction |
 | `diffCompiledIcons()` | G4 | Changelog generation — wire to version management UI |
 
 ## 14. Failure Modes

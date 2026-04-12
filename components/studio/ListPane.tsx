@@ -339,6 +339,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                         favorite={favoritesSet.has(icon.id)}
                         onOpen={() => handleOpenIcon(icon.id)}
                         onSelect={() => {
+                          handleOpenIcon(icon.id);
                           clearIconSelection();
                           setSelectedIconIds([icon.id]);
                         }}

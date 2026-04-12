@@ -8,7 +8,7 @@ This repository is a Next.js web application for icon design and animation autho
 
 - Studio surface: `app/page.tsx` renders `components/studio/StudioLayout.tsx` — a Sanity Studio-style single-screen workspace combining navigation, icon list, and embedded editor.
 - Editor surface: `app/editor/page.tsx` and `app/editor/[iconId]/page.tsx` render the focused authoring workspace.
-- Demo surface: `app/demo/runtime/page.tsx` renders runtime execution demos.
+- Demo surface: `app/demo/runtime/page.tsx` and `app/runtime-demo/page.tsx` render runtime execution demos.
 
 ## Core Module Boundaries
 
@@ -44,13 +44,18 @@ All higher layers depend on this model.
 
 These modules support the editor UI but do not define the canonical document shape.
 
+### Additional Rendering and Animation
+
+- `lib/rendering/`: layer style resolution (`resolve-layer-style.ts`) and auto-gradient generation (`auto-gradient.ts`).
+- `lib/animation/`: runtime effect player (`effect-player.ts`) and built-in effect presets (`presets.ts`).
+
 ### Import and Export
 
 - `lib/import/`: converts SVG input into schema-compliant icon data and
   hosts the external adapter SDK plus built-in source adapters
   (Lucide, Heroicons, Phosphor, Material Symbols, Figma).
-- `app/api/import/figma/route.ts`: Figma import API (PAT per-request, never stored).
-- `figma-plugin/export-to-contour/`: Figma plugin for exporting components to Contour.
+- `app/api/import/`: API routes for all import adapters (Figma, Heroicons, Lucide, Material Symbols, Phosphor). Figma PAT is per-request, never stored.
+- `figma-plugin/export-to-coniva/`: Figma plugin for exporting components to Contour.
 - `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
 - `lib/export/`: produces SVG, runtime JSON, Lottie JSON, compiled icon
   artifacts, package manifests, change diffs, and generated component outputs.
@@ -64,9 +69,9 @@ These modules support the editor UI but do not define the canonical document sha
 
 ### Distribution
 
-- `lib/live-sync/`: real-time publish transport with local-directory, git-pr, and npm-registry connectors.
+- `lib/live-sync/`: real-time publish transport, dev server, file watcher, incremental rebuild, and output writer.
 - `lib/install-config/`: installation configuration for icon packages.
-- `packages/contour-cli/`: `@contour/cli` command-line tool for icon operations.
+- `packages/coniva-cli/`: `@contour/cli` command-line tool for icon operations.
 - `components/export/PublishPanel.tsx`: UI for Lane 1 live sync publishing.
 - `components/export/ReleasePanel.tsx`: UI for Lane 2 versioned releases.
 
@@ -94,6 +99,14 @@ The sync service (`lib/sync-service/`) is a layered module:
 | `analytics.ts` | Structured observability: 10 events, pluggable sinks, debug mode, timeline diagnostics |
 | `permissions.ts` | Least-privilege audit, preflight permission checks, token format validation |
 | `feature-flags.ts` | Environment-variable-based rollout control (kill switch, dry-run, repo allow-list) |
+
+#### Additional Sync Modules
+
+- `lib/sync-service/connectors/`: delivery connectors — `local-directory-connector.ts`, `adapter-pr-connector.ts`, `npm-connector.ts`.
+- `lib/sync-service/npm-publish-client.ts`: npm registry publish client.
+- `lib/sync-service/auto-publish.ts`: debounced auto-publish scheduler.
+- `lib/sync-ui/`: UI layer for sync operations — `sync-state.ts`, `use-sync-pr.ts`, `analytics.ts`.
+- `lib/integrations/github/`: GitHub API client and icon sync orchestration.
 
 **Error handling boundary:** Steps 1-6 of the sync pipeline are read-only. Steps 7-10 mutate the remote and are individually wrapped with typed error classification. Partial failures (e.g., branch created but PR creation failed) report the orphan branch in the error response.
 
@@ -162,7 +175,7 @@ Contour is a web-only application. Platform abstraction is minimal:
 - `lib/sync-service/auto-publish.ts`: debounced auto-publish scheduler/cancel manager
 - `lib/live-sync/publish-transport.ts`: real-time publish transport
 - `lib/install-config/`: installation configuration for icon packages
-- `packages/contour-cli/`: `@contour/cli` CLI for CI integration
+- `packages/coniva-cli/`: `@contour/cli` CLI for CI integration
 - `components/export/PublishPanel.tsx`: Lane 1 live sync UI
 - `components/export/ReleasePanel.tsx`: Lane 2 versioned release UI
 

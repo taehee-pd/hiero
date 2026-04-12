@@ -87,14 +87,21 @@ export function Navbar() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameEditCancelledRef = useRef(false);
 
   const startEditingName = useCallback(() => {
     setEditingNameValue(projectName);
+    nameEditCancelledRef.current = false;
     setIsEditingName(true);
     setTimeout(() => nameInputRef.current?.select(), 0);
   }, [projectName]);
 
   const commitNameEdit = useCallback(() => {
+    if (nameEditCancelledRef.current) {
+      nameEditCancelledRef.current = false;
+      setIsEditingName(false);
+      return;
+    }
     const trimmed = editingNameValue.trim();
     if (trimmed && trimmed !== projectName && activeIconSetId) {
       editorStore.getState().renameIconSet(activeIconSetId, trimmed);
@@ -324,7 +331,10 @@ export function Navbar() {
               onBlur={commitNameEdit}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') commitNameEdit();
-                if (e.key === 'Escape') setIsEditingName(false);
+                if (e.key === 'Escape') {
+                  nameEditCancelledRef.current = true;
+                  setIsEditingName(false);
+                }
               }}
             />
           ) : (

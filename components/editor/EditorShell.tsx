@@ -362,14 +362,21 @@ function InlineEditableTitle({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelledRef = useRef(false);
 
   const startEditing = useCallback(() => {
     setDraft(value);
+    cancelledRef.current = false;
     setEditing(true);
     setTimeout(() => inputRef.current?.select(), 0);
   }, [value]);
 
   const commit = useCallback(() => {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
     const trimmed = draft.trim();
     if (trimmed && trimmed !== value) onCommit(trimmed);
     setEditing(false);
@@ -385,7 +392,10 @@ function InlineEditableTitle({
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') commit();
-          if (e.key === 'Escape') setEditing(false);
+          if (e.key === 'Escape') {
+            cancelledRef.current = true;
+            setEditing(false);
+          }
         }}
       />
     );

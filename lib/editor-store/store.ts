@@ -2599,6 +2599,8 @@ function createActions(): EditorActions {
           ...buildWorkspaceState(s.workspace, iconSetId, { previousState: s, keepTabs: true }),
           openTabs: validTabs,
           activeTabId: activeTab,
+          // Clear multi-select when switching icon sets to prevent cross-set selection leaks
+          selectedIconIds: [],
         };
       });
     },

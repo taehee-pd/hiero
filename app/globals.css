@@ -1611,7 +1611,16 @@
     overflow: hidden;
     border: 1px solid var(--border-subtle);
     border-radius: 0;
-    background: color-mix(in srgb, var(--bg-content) 92%, var(--background-secondary));
+    background-color: oklch(0.21 0.006 260);
+  }
+
+  :root[class~="dark"] .wire-canvas-area,
+  .dark .wire-canvas-area {
+    background-color: oklch(0.21 0.006 260);
+  }
+
+  :root:not(.dark) .wire-canvas-area {
+    background-color: oklch(0.94 0.006 260);
   }
 
   .wire-canvas-empty {

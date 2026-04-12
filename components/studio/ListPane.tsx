@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Download, Import, Plus, Search } from 'lucide-react';
+import { ArrowDownToLine, ChevronLeft, ChevronRight, FolderInput, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { editorStore } from '@/lib/editor-store/store';
@@ -225,9 +226,25 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         aria-label="Icon list"
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label={listExpanded ? 'Collapse icon list' : 'Expand icon list'}>
-            {listExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          </Button>
+          {listExpanded ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
+                  <ChevronLeft className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Collapse</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
+                  <ChevronRight className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand</TooltipContent>
+            </Tooltip>
+          )}
         </div>
         {listExpanded ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center">
@@ -265,23 +282,48 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           {listExpanded ? (
             <>
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
-                <Plus className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-                <Import className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleExportAll} aria-label="Export all as ZIP">
-                <Download className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
-                <ChevronLeft className="size-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
+                    <Plus className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">New Icon</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                    <FolderInput className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Import Icons</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleExportAll} aria-label="Export all as ZIP">
+                    <ArrowDownToLine className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Export All</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
+                    <ChevronLeft className="size-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Collapse</TooltipContent>
+              </Tooltip>
             </>
           ) : (
-            <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
-              <ChevronRight className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
+                  <ChevronRight className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand</TooltipContent>
+            </Tooltip>
           )}
         </div>
 

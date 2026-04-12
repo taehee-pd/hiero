@@ -2,19 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ChevronDown,
   Download,
   FilePlus2,
   FolderOpen,
-  HelpCircle,
   Import,
+  Keyboard,
+  Monitor,
   Moon,
-  Plus,
+  Pencil,
+  Redo2,
   Save,
   Search,
   Sun,
   FileJson,
   Package,
   Square,
+  Undo2,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import {
@@ -35,6 +39,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -75,9 +83,24 @@ export function Navbar() {
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Contour');
   const isDirty = useEditorStore((s) => s.isDirty);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
-  const currentIconName = useEditorStore((s) =>
-    s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
-  );
+  const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingNameValue, setEditingNameValue] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const startEditingName = useCallback(() => {
+    setEditingNameValue(projectName);
+    setIsEditingName(true);
+    setTimeout(() => nameInputRef.current?.select(), 0);
+  }, [projectName]);
+
+  const commitNameEdit = useCallback(() => {
+    const trimmed = editingNameValue.trim();
+    if (trimmed && trimmed !== projectName && activeIconSetId) {
+      editorStore.getState().renameIconSet(activeIconSetId, trimmed);
+    }
+    setIsEditingName(false);
+  }, [editingNameValue, projectName, activeIconSetId]);
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [lottieSheetOpen, setLottieSheetOpen] = useState(false);
@@ -205,26 +228,115 @@ export function Navbar() {
 
   return (
     <>
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-border/70 bg-background px-3" style={{ fontFamily: 'var(--font-system)', boxShadow: 'var(--shadow-outline)' }}>
-        {/* Left: project name + save status */}
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span
-            className="shrink-0 bg-foreground"
-            role="img"
-            aria-label="Contour logo"
-            style={{
-              display: 'inline-block',
-              height: 12,
-              width: Math.round(12 * (2144 / 408)),
-              maskImage: 'url(/contour_wordmark.svg)',
-              maskSize: 'contain',
-              maskRepeat: 'no-repeat',
-              WebkitMaskImage: 'url(/contour_wordmark.svg)',
-              WebkitMaskSize: 'contain',
-              WebkitMaskRepeat: 'no-repeat',
-            }}
-          />
-          <p className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</p>
+      <header className="flex h-10 shrink-0 items-center gap-1.5 border-b border-border/70 bg-background px-2" style={{ fontFamily: 'var(--font-system)', boxShadow: 'var(--shadow-outline)' }}>
+        {/* Left: main menu + project name + save status */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent"
+                aria-label="Main menu"
+              >
+                <span
+                  className="shrink-0 bg-foreground"
+                  role="img"
+                  aria-label="Contour logo"
+                  style={{
+                    display: 'inline-block',
+                    height: 12,
+                    width: Math.round(12 * (2144 / 408)),
+                    maskImage: 'url(/contour_wordmark.svg)',
+                    maskSize: 'contain',
+                    maskRepeat: 'no-repeat',
+                    WebkitMaskImage: 'url(/contour_wordmark.svg)',
+                    WebkitMaskSize: 'contain',
+                    WebkitMaskRepeat: 'no-repeat',
+                  }}
+                />
+                <ChevronDown className="size-3 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={6} className="w-56">
+              {/* File */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><FilePlus2 className="size-4" />File</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={handleNewProject}><FilePlus2 className="size-4" />New Project</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleOpenProject()}><FolderOpen className="size-4" />Open Project</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => void handleSave()}><Save className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><Import className="size-4" />Import Icons</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {/* Edit */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Undo2 className="size-4" />Edit</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={undo}><Undo2 className="size-4" />Undo<DropdownMenuShortcut>⌘Z</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={redo}><Redo2 className="size-4" />Redo<DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut></DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              {/* Export */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Download className="size-4" />Export</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}><Download className="size-4" />SVG Package</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}><Download className="size-4" />React Library</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}><FileJson className="size-4" />Lottie JSON</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}><Package className="size-4" />Distribution</DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+
+              {/* View / Preferences */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Monitor className="size-4" />View</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {mounted && (
+                    <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+                      {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                      {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onSelect={() => setCommandOpen(true)}><Search className="size-4" />Search Icons<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+
+              <DropdownMenuSeparator />
+
+              {/* Help */}
+              <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}><Keyboard className="size-4" />Keyboard Shortcuts<DropdownMenuShortcut>?</DropdownMenuShortcut></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setCommandOpen(true)}><Search className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {isEditingName ? (
+            <input
+              ref={nameInputRef}
+              className="h-6 min-w-0 max-w-[200px] truncate rounded-md border border-border bg-background px-1.5 text-sm font-semibold tracking-tight text-foreground outline-none focus:ring-1 focus:ring-ring"
+              value={editingNameValue}
+              onChange={(e) => setEditingNameValue(e.target.value)}
+              onBlur={commitNameEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitNameEdit();
+                if (e.key === 'Escape') setIsEditingName(false);
+              }}
+            />
+          ) : (
+            <button
+              className="group flex min-w-0 items-center gap-0 rounded-md px-1 py-0.5 hover:bg-accent hover:gap-1 transition-all"
+              onClick={startEditingName}
+            >
+              <span className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</span>
+              <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 w-0 group-hover:w-3" />
+            </button>
+          )}
+
           <Badge
             variant="outline"
             className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-tight ${
@@ -235,30 +347,12 @@ export function Navbar() {
           >
             {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}
           </Badge>
-          {currentIconName && (
-            <span className="truncate text-xs text-muted-foreground">/ {currentIconName}</span>
-          )}
         </div>
 
         <div className="flex-1" />
 
-        {/* Right: actions */}
-        <div className="flex items-center gap-1">
-          {/* File menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="File menu">
-                <FilePlus2 className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleNewProject}><FilePlus2 className="size-4" />New Project</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleOpenProject()}><FolderOpen className="size-4" />Open Project</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><Import className="size-4" />Import Icons</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
+        {/* Right: quick actions */}
+        <div className="flex items-center gap-0.5">
           {/* Save */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -269,27 +363,11 @@ export function Navbar() {
             <TooltipContent side="bottom">Save (Cmd/Ctrl+S)</TooltipContent>
           </Tooltip>
 
-          {/* Export menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Export" disabled={exporting}>
-                <Download className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleExportSvgPackage}><Download className="size-4" />SVG Package</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportReactLibrary}><Download className="size-4" />React Library</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}><FileJson className="size-4" />Lottie JSON</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}><Package className="size-4" />Distribution</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           {/* Undo/Redo */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Undo" onClick={undo}>
-                <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" /></svg>
+                <Undo2 className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Undo (Cmd/Ctrl+Z)</TooltipContent>
@@ -297,7 +375,7 @@ export function Navbar() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Redo" onClick={redo}>
-                <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" /></svg>
+                <Redo2 className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Redo (Shift+Cmd/Ctrl+Z)</TooltipContent>
@@ -311,34 +389,6 @@ export function Navbar() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>
-          </Tooltip>
-
-          {/* Theme toggle — defer until mounted to avoid hydration mismatch */}
-          {mounted && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="h-7 w-7 rounded-lg"
-                  aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                >
-                  {resolvedTheme === 'dark' ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Help */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Keyboard shortcuts" onClick={() => setShortcutsOpen(true)}>
-                <HelpCircle className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Shortcuts (?)</TooltipContent>
           </Tooltip>
         </div>
       </header>

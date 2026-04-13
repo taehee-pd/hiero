@@ -808,6 +808,28 @@ function withLegacyWorkspaceView(workspace: Workspace): Workspace {
   };
 }
 
+/**
+ * Rewrites ID-based layer references inside a cloned layer so that a clone
+ * group (paste / duplicate of a mask + masked-layer set) stays internally
+ * self-contained instead of pointing back at the originals.
+ *
+ * The only layer-to-layer id reference in the schema today is
+ * `clipPathLayerId` (see `lib/schema/types.ts:180`). `groupId` is a free-form
+ * grouping key rather than a layer id, so it is intentionally left alone.
+ * `isClipMask` is a boolean flag and needs no remapping. If new reference
+ * fields are added to `Layer`, extend this helper in lockstep and add a
+ * regression test alongside `tests/paste-clone-clip-remap.test.ts`.
+ */
+function remapLayerReferences(
+  layer: Layer,
+  idMap: Map<string, string>,
+): Layer {
+  if (!layer.clipPathLayerId) return layer;
+  const remapped = idMap.get(layer.clipPathLayerId);
+  if (!remapped) return layer;
+  return { ...layer, clipPathLayerId: remapped };
+}
+
 function replaceVariantLayers(
   icon: Icon,
   variantId: string,
@@ -2973,6 +2995,13 @@ function createActions(): EditorActions {
         const nextLayers = { ...variant.layers };
         const usedIds = new Set(Object.keys(nextLayers));
         const newIds: string[] = [];
+        // First pass: allocate fresh ids and build an old → new id map so we
+        // can rewrite intra-clipboard references (e.g. `clipPathLayerId`) in
+        // the second pass. Without this, a pasted mask + masked-layer pair
+        // still points at the original mask, which breaks the self-contained
+        // paste contract described in the PR #128 review (P1).
+        const idMap = new Map<string, string>();
+        const cloned: Layer[] = [];
         for (const clipLayer of s.layerClipboard) {
           let candidate = `${clipLayer.id}-copy`;
           let n = 1;
@@ -2981,8 +3010,15 @@ function createActions(): EditorActions {
             candidate = `${clipLayer.id}-copy-${n}`;
           }
           usedIds.add(candidate);
-          nextLayers[candidate] = { ...(JSON.parse(JSON.stringify(clipLayer)) as Layer), id: candidate };
-          newIds.push(candidate);
+          idMap.set(clipLayer.id, candidate);
+          cloned.push(JSON.parse(JSON.stringify(clipLayer)) as Layer);
+        }
+        for (let i = 0; i < cloned.length; i++) {
+          const clone = cloned[i]!;
+          const newId = idMap.get(clone.id)!;
+          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+          nextLayers[newId] = remapped;
+          newIds.push(newId);
         }
 
         return {
@@ -3015,6 +3051,13 @@ function createActions(): EditorActions {
         const nextLayers = { ...variant.layers };
         const usedIds = new Set(Object.keys(nextLayers));
         const newIds: string[] = [];
+        // First pass: allocate fresh ids for every selected layer so the
+        // second pass can remap intra-selection references. Same rationale
+        // as `pasteLayers` above: duplicating a mask together with its
+        // masked layers must produce a self-contained copy whose clip
+        // references point at the new mask, not the original.
+        const idMap = new Map<string, string>();
+        const srcLayers: Layer[] = [];
         for (const srcId of selectedIds) {
           const src = variant.layers[srcId];
           if (!src) continue;
@@ -3025,8 +3068,15 @@ function createActions(): EditorActions {
             candidate = `${srcId}-copy-${n}`;
           }
           usedIds.add(candidate);
-          nextLayers[candidate] = { ...(JSON.parse(JSON.stringify(src)) as Layer), id: candidate };
-          newIds.push(candidate);
+          idMap.set(srcId, candidate);
+          srcLayers.push(src);
+        }
+        for (const src of srcLayers) {
+          const newId = idMap.get(src.id)!;
+          const clone = JSON.parse(JSON.stringify(src)) as Layer;
+          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+          nextLayers[newId] = remapped;
+          newIds.push(newId);
         }
         if (newIds.length === 0) return s;
 

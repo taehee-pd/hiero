@@ -40,7 +40,7 @@ const DIRECTION_OPTIONS: Array<{ value: NonNullable<RuntimeTransitionIntent['dir
  * docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md). These map onto
  * `TransitionStagger['mode']` via {@link PLAYBACK_MODE_TO_STAGGER}.
  */
-type PlaybackMode = 'byLayer' | 'wholeSymbol' | 'individually';
+export type PlaybackMode = 'byLayer' | 'wholeSymbol' | 'individually';
 
 const PLAYBACK_MODE_OPTIONS: Array<{ value: PlaybackMode; label: string; hint: string }> = [
   { value: 'byLayer', label: 'By Layer', hint: 'Staggered — 40 ms between layers (default).' },
@@ -59,6 +59,50 @@ const PLAYBACK_MODE_DEFAULT_STAGGER_MS: Record<PlaybackMode, number> = {
   wholeSymbol: 0,
   individually: 0,
 };
+
+/**
+ * Default `perLayerMs` for every stagger mode surfaced by the Animate panel.
+ * The three "primary" SF Symbols 7 modes (`linear` / `simultaneous` /
+ * `individually`) inherit their defaults from {@link PLAYBACK_MODE_DEFAULT_STAGGER_MS}
+ * so the Playback Mode pills stay authoritative. The Advanced disclosure
+ * modes (`from-center` / `from-edges` / `random`) always use a non-zero
+ * interval — otherwise, flipping an override to one of these while the
+ * playback mode is `Whole Symbol` or `Individually` would set
+ * `perLayerMs = 0` and produce no visible stagger at all.
+ */
+export const STAGGER_MODE_DEFAULT_MS: Record<TransitionStagger['mode'], number> = {
+  linear: 40,
+  simultaneous: 0,
+  individually: 0,
+  'from-center': 40,
+  'from-edges': 40,
+  random: 40,
+};
+
+/**
+ * Pure resolver for the effective `TransitionStagger` — extracted so
+ * `tests/transition-stagger-override.test.ts` can assert the PR #128 P2
+ * fix (advanced stagger override must always produce a non-zero
+ * `perLayerMs` even when the playback mode is `Whole Symbol` or
+ * `Individually`).
+ */
+export function resolveEffectiveStagger(options: {
+  playbackMode: PlaybackMode;
+  advancedOpen: boolean;
+  advancedStaggerOverride: TransitionStagger['mode'] | 'inherit';
+}): { mode: TransitionStagger['mode']; perLayerMs: number } {
+  const { playbackMode, advancedOpen, advancedStaggerOverride } = options;
+  const baseStaggerMode = PLAYBACK_MODE_TO_STAGGER[playbackMode];
+  const isOverridden = advancedOpen && advancedStaggerOverride !== 'inherit';
+  const mode: TransitionStagger['mode'] = isOverridden
+    ? advancedStaggerOverride
+    : baseStaggerMode;
+  const perLayerMs = isOverridden
+    ? STAGGER_MODE_DEFAULT_MS[mode]
+    : PLAYBACK_MODE_DEFAULT_STAGGER_MS[playbackMode];
+  return { mode, perLayerMs };
+}
+
 
 /**
  * Advanced stagger modes — surfaced only inside the Advanced disclosure.
@@ -312,13 +356,18 @@ export const TransitionPanel = memo(function TransitionPanel() {
       advancedOpen && strategyOverride !== 'auto' ? strategyOverride : 'auto';
 
     // §2.5: map the playback-mode pill to a stagger mode. The Advanced
-    // disclosure can still escape into `from-center` / `from-edges` / `random`
-    // for power users.
-    const baseStaggerMode = PLAYBACK_MODE_TO_STAGGER[formPlaybackMode];
-    const effectiveStaggerMode: TransitionStagger['mode'] =
-      advancedOpen && advancedStaggerOverride !== 'inherit'
-        ? advancedStaggerOverride
-        : baseStaggerMode;
+    // disclosure can still escape into `from-center` / `from-edges` /
+    // `random` for power users. When an Advanced stagger override is
+    // active, `resolveEffectiveStagger` derives `perLayerMs` from the
+    // *effective* stagger mode rather than from the playback-mode default,
+    // otherwise picking `from-center` while playback is `Whole Symbol`
+    // (default `perLayerMs = 0`) would collapse the override into a
+    // simultaneous start — see PR #128 P2 feedback.
+    const staggerConfig = resolveEffectiveStagger({
+      playbackMode: formPlaybackMode,
+      advancedOpen,
+      advancedStaggerOverride,
+    });
 
     const config: TransitionConfig = {
       id: `preview-${srcIconId}:${srcVariantId}-to-${tgtIconId}:${tgtVariantId}`,
@@ -326,10 +375,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
       durationMs,
       easing: formEasing,
       direction: formDirection,
-      stagger: {
-        mode: effectiveStaggerMode,
-        perLayerMs: PLAYBACK_MODE_DEFAULT_STAGGER_MS[formPlaybackMode],
-      },
+      stagger: staggerConfig,
       layerBindings: buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, effectiveStrategy),
     };
 

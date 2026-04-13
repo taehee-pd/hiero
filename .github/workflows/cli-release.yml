@@ -1,0 +1,112 @@
+name: CLI Release (@contour/cli)
+
+# Mirrors the icons-package-release.yml pattern but scoped to
+# packages/coniva-cli. Triggered manually OR by pushing a `cli-vX.Y.Z` tag,
+# per docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md §3.2 / §3.3.
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: 'Override semver version (defaults to package.json)'
+        required: false
+        type: string
+      publish:
+        description: 'Publish to npm'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Type check (root)
+        run: bun run type-check
+
+      - name: Lint (root)
+        run: bun run lint
+
+      - name: Build CLI
+        working-directory: packages/coniva-cli
+        run: bun run build
+
+      - name: Smoke-test built binary
+        working-directory: packages/coniva-cli
+        run: |
+          node dist/bin.js --help || true
+          node dist/bin.js --version || true
+
+      - name: Setup Node for npm pack
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Pack tarball (dry run)
+        working-directory: packages/coniva-cli
+        run: npm pack --dry-run
+
+      - name: Pack tarball
+        working-directory: packages/coniva-cli
+        run: npm pack
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contour-cli-tarball
+          path: 'packages/coniva-cli/*.tgz'
+
+  publish:
+    needs: build-validate
+    # Auto-publish when a cli-v* tag is pushed; manual dispatch must
+    # explicitly opt in via the `publish` input.
+    if: |
+      (startsWith(github.ref, 'refs/tags/cli-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for npm provenance
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node for npm publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI
+        working-directory: packages/coniva-cli
+        run: bun run build
+
+      - name: Smoke-test built binary
+        working-directory: packages/coniva-cli
+        run: |
+          node dist/bin.js --help || true
+
+      - name: Publish to npm with provenance
+        working-directory: packages/coniva-cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

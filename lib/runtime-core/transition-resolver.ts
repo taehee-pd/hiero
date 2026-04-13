@@ -669,6 +669,10 @@ function computeDelay(
   }
 
   if (transition.stagger) {
+    if (transition.stagger.mode === 'simultaneous') {
+      // "Whole Symbol" — every layer starts at t=0. perLayerMs is ignored.
+      return 0;
+    }
     if (transition.stagger.mode === 'individually') {
       // Each layer completes its full animation before the next begins.
       // Use the binding's own duration (or the transition's duration) as the interval.
@@ -718,6 +722,7 @@ function computeStaggerOrder(
           const rightId = bindings[right]?.toLayer?.id ?? bindings[right]?.fromLayer?.id ?? String(right);
           return hashString(leftId) - hashString(rightId);
         });
+      case 'simultaneous':
       case 'individually':
       case 'linear':
       default:

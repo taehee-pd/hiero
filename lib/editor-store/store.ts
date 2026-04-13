@@ -3115,7 +3115,13 @@ function createActions(): EditorActions {
 
         const nextKeys = [...keys];
         nextKeys.splice(srcIdx, 1);
-        nextKeys.splice(clamped, 0, layerId);
+        // The caller passes a target index from the ORIGINAL array (the drop
+        // target row's position before removal). When the source was above the
+        // target, the splice above shifts every later index down by one, so we
+        // need to decrement the insertion point to land the layer in the
+        // slot the user actually pointed at.
+        const insertAt = srcIdx < clamped ? clamped - 1 : clamped;
+        nextKeys.splice(insertAt, 0, layerId);
         const nextLayers: Record<string, Layer> = {};
         for (const k of nextKeys) {
           const layer = variant.layers[k];

@@ -580,11 +580,15 @@ function LeftSidebar({
                         <ContextMenuItem
                           onSelect={() => {
                             if (!currentIcon) return;
-                            editorStore.getState().duplicateLayersToVariant?.(
-                              currentIcon.id,
-                              variant.id,
-                              variant.id,
-                            );
+                            // Create a new variant with the same size but a
+                            // fresh id; addVariant clones layers + topology
+                            // via sourceVariantId. Using the same size is
+                            // intentional — users "duplicate" to branch
+                            // iterations at the same resolution.
+                            editorStore.getState().addVariant?.(currentIcon.id, {
+                              size: variant.size,
+                              sourceVariantId: variant.id,
+                            });
                           }}
                         >
                           <Copy className="size-4" />

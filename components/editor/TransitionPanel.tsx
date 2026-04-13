@@ -8,25 +8,19 @@ import { Label } from '@/components/kibo-ui/label';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Separator } from '@/components/kibo-ui/separator';
 import { Slider } from '@/components/kibo-ui/slider';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from '@/components/ui/use-toast';
 import {
+  autoMorph,
   interpolateTransitionValues,
   resolveTransition,
   TransitionScheduler,
-  computeReadiness,
-  canonicalizeLayerPath,
-  classifySubPathStrategies,
-  strictMorph,
-  bestGuessMorph,
 } from '@/lib/runtime-core';
-import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
-import type { SubPathStrategyResult } from '@/lib/runtime-core/topology-detection';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { RuntimeTransitionIntent, LayerBinding, LayerSnapshot } from '@/lib/schema/types';
+import type { RuntimeTransitionIntent, LayerBinding, LayerSnapshot, TransitionStagger } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
-import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -41,45 +35,70 @@ const DIRECTION_OPTIONS: Array<{ value: NonNullable<RuntimeTransitionIntent['dir
   { value: 'offUp', label: 'Off → Up' },
 ];
 
-/** Human-readable display labels for each strategy. */
-const STRATEGY_LABELS: Record<RuntimeTransitionIntent['strategy'], string> = {
-  auto: 'Auto',
-  strictMorph: 'Strict Morph',
-  bestGuessMorph: 'Best Guess',
-  crossIconMorph: 'Cross-Icon Morph',
-  lineAnimation: 'Line Animation',
-  replace: 'Replace',
-};
+/**
+ * Playback mode — the three SF Symbols 7 patterns (see §2.5 of
+ * docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md). These map onto
+ * `TransitionStagger['mode']` via {@link PLAYBACK_MODE_TO_STAGGER}.
+ */
+type PlaybackMode = 'byLayer' | 'wholeSymbol' | 'individually';
 
-/** Short descriptions shown below the strategy selector. */
-const STRATEGY_HINTS: Record<RuntimeTransitionIntent['strategy'], string> = {
-  auto: 'Automatically selects the best morph strategy for the given shapes.',
-  strictMorph: 'Requires identical path topology.',
-  bestGuessMorph: 'Fuzzy topology matching with readiness scoring.',
-  crossIconMorph: 'Arc-length uniform sampling — works across any shapes.',
-  lineAnimation: 'Trim / path-length keyframe tracks.',
-  replace: 'Instant swap with directional crossfade.',
-};
-
-const STRATEGY_OPTIONS: RuntimeTransitionIntent['strategy'][] = [
-  'auto',
-  'strictMorph',
-  'bestGuessMorph',
-  'crossIconMorph',
-  'lineAnimation',
-  'replace',
+const PLAYBACK_MODE_OPTIONS: Array<{ value: PlaybackMode; label: string; hint: string }> = [
+  { value: 'byLayer', label: 'By Layer', hint: 'Staggered — 40 ms between layers (default).' },
+  { value: 'wholeSymbol', label: 'Whole Symbol', hint: 'Every layer starts at the same instant.' },
+  { value: 'individually', label: 'Individually', hint: 'Each layer finishes before the next begins.' },
 ];
+
+const PLAYBACK_MODE_TO_STAGGER: Record<PlaybackMode, TransitionStagger['mode']> = {
+  byLayer: 'linear',
+  wholeSymbol: 'simultaneous',
+  individually: 'individually',
+};
+
+const PLAYBACK_MODE_DEFAULT_STAGGER_MS: Record<PlaybackMode, number> = {
+  byLayer: 40,
+  wholeSymbol: 0,
+  individually: 0,
+};
+
+/**
+ * Advanced stagger modes — surfaced only inside the Advanced disclosure.
+ * Existing projects that already use one of these load correctly and the
+ * Advanced panel lets power users pick them back up.
+ */
+const ADVANCED_STAGGER_OPTIONS: Array<{ value: TransitionStagger['mode']; label: string }> = [
+  { value: 'from-center', label: 'From center' },
+  { value: 'from-edges', label: 'From edges' },
+  { value: 'random', label: 'Random' },
+];
+
+/**
+ * Strategy override values used only in the Advanced disclosure. The UI
+ * otherwise always writes `strategy: 'auto'` to the schema. See §2.2.
+ */
+const STRATEGY_OVERRIDE_OPTIONS: Array<{ value: RuntimeTransitionIntent['strategy']; label: string }> = [
+  { value: 'auto', label: 'Auto (recommended)' },
+  { value: 'strictMorph', label: 'Force — Strict morph' },
+  { value: 'bestGuessMorph', label: 'Force — Best guess' },
+  { value: 'crossIconMorph', label: 'Force — Cross-icon morph' },
+  { value: 'lineAnimation', label: 'Force — Line animation' },
+  { value: 'replace', label: 'Force — Replace (crossfade)' },
+];
+
+/**
+ * Human-readable tier names returned by {@link autoMorph}. Used for the
+ * "Engine chose" read-only pill in the Advanced disclosure (§2.3).
+ */
+const AUTO_MORPH_TIER_LABELS: Record<string, string> = {
+  identity: 'Identity (no morph needed)',
+  intrinsicStrict: 'Intrinsic strict',
+  bestGuess: 'Best guess',
+  pointSampled: 'Point-sampled (cross-icon)',
+  fallback: 'Fallback (crossfade)',
+};
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type CompatibilityTone = 'green' | 'yellow' | 'orange' | 'red';
-
-type CompatibilityStatus = {
-  tone: CompatibilityTone;
-  label: string;
-};
 
 type ActivePreview = {
   intentId: string;
@@ -91,6 +110,10 @@ type ActivePreview = {
   resolved: ReturnType<typeof resolveTransition>;
 };
 
+const DEBUG_OVERLAY_ENABLED =
+  typeof process !== 'undefined' &&
+  process.env?.NEXT_PUBLIC_CONTOUR_DEBUG === '1';
+
 // ---------------------------------------------------------------------------
 // TransitionPanel — main exported component
 // ---------------------------------------------------------------------------
@@ -98,9 +121,11 @@ type ActivePreview = {
 /**
  * TransitionPanel — runtime-resolved icon-to-icon transition preview.
  *
- * The user selects source and target icon+variant, chooses a strategy,
- * and previews the resolved transition. Layer binding readiness and
- * per-subpath strategy breakdowns are shown read-only.
+ * Reorganized per docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md §2 to mirror
+ * SF Symbols 7's three-tier hierarchy (Animation → Playback Mode → Timing
+ * → Preview). The morph strategy is always `auto` — `autoMorph()` selects
+ * the best tier internally — and any manual override lives behind a
+ * collapsed "Advanced" disclosure.
  */
 export const TransitionPanel = memo(function TransitionPanel() {
   const currentIcon = useEditorStore((s) =>
@@ -124,14 +149,21 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [tgtVariantId, setTgtVariantId] = useState('');
 
   // --- Form state ---
-  const [formStrategy, setFormStrategy] = useState<RuntimeTransitionIntent['strategy']>('auto');
+  // The UI never writes anything but `auto` — see §2.2. A power-user override
+  // lives in the Advanced disclosure (§2.3) and only takes effect there.
   const [formDuration, setFormDuration] = useState('240');
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
+  const [formPlaybackMode, setFormPlaybackMode] = useState<PlaybackMode>('byLayer');
+
+  // --- Advanced disclosure state (§2.3) ---
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [strategyOverride, setStrategyOverride] = useState<RuntimeTransitionIntent['strategy']>('auto');
+  const [advancedStaggerOverride, setAdvancedStaggerOverride] =
+    useState<TransitionStagger['mode'] | 'inherit'>('inherit');
 
   // --- Preview state ---
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
-  const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const schedulerRef = useRef<TransitionScheduler | null>(null);
 
   // --- Derived lists ---
@@ -173,11 +205,22 @@ export const TransitionPanel = memo(function TransitionPanel() {
     return variant ? variantToSnapshot(variant) : null;
   }, [projectIcons, tgtIconId, tgtVariantId]);
 
-  // --- Compatibility ---
-  const compatibility = useMemo((): CompatibilityStatus | null => {
+  // --- Engine readout ---
+  // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
+  // power users can see which tier `autoMorph()` would pick for the first
+  // shared layer of the current source/target pair.
+  const engineChoseTier = useMemo<string | null>(() => {
     if (!sourceSnapshot || !targetSnapshot) return null;
-    return getCompatibilityStatus(sourceSnapshot, targetSnapshot, formStrategy);
-  }, [sourceSnapshot, targetSnapshot, formStrategy]);
+    const sharedId = Object.keys(sourceSnapshot.layers).find(
+      (id) => Boolean(targetSnapshot.layers[id]),
+    );
+    if (!sharedId) return 'fallback';
+    const fromD = sourceSnapshot.layers[sharedId]?.path?.d;
+    const toD = targetSnapshot.layers[sharedId]?.path?.d;
+    if (!fromD || !toD) return 'fallback';
+    const result = autoMorph(fromD, toD);
+    return result?.selectedStrategy ?? 'fallback';
+  }, [sourceSnapshot, targetSnapshot]);
 
   // --- Scheduler lifecycle ---
   const stopScheduler = useCallback(() => {
@@ -262,13 +305,32 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const durationMs = Number.parseInt(formDuration, 10);
     if (!Number.isFinite(durationMs) || durationMs <= 0) return;
 
+    // §2.2: the UI always writes `auto`; an Advanced override is only honored
+    // when the disclosure is open AND the user has actually picked something
+    // other than `auto`.
+    const effectiveStrategy: RuntimeTransitionIntent['strategy'] =
+      advancedOpen && strategyOverride !== 'auto' ? strategyOverride : 'auto';
+
+    // §2.5: map the playback-mode pill to a stagger mode. The Advanced
+    // disclosure can still escape into `from-center` / `from-edges` / `random`
+    // for power users.
+    const baseStaggerMode = PLAYBACK_MODE_TO_STAGGER[formPlaybackMode];
+    const effectiveStaggerMode: TransitionStagger['mode'] =
+      advancedOpen && advancedStaggerOverride !== 'inherit'
+        ? advancedStaggerOverride
+        : baseStaggerMode;
+
     const config: TransitionConfig = {
       id: `preview-${srcIconId}:${srcVariantId}-to-${tgtIconId}:${tgtVariantId}`,
-      strategy: formStrategy,
+      strategy: effectiveStrategy,
       durationMs,
       easing: formEasing,
       direction: formDirection,
-      layerBindings: buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, formStrategy),
+      stagger: {
+        mode: effectiveStaggerMode,
+        perLayerMs: PLAYBACK_MODE_DEFAULT_STAGGER_MS[formPlaybackMode],
+      },
+      layerBindings: buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, effectiveStrategy),
     };
 
     let resolved: ReturnType<typeof resolveTransition>;
@@ -299,16 +361,19 @@ export const TransitionPanel = memo(function TransitionPanel() {
     startScheduler(nextPreview, 0, nextPreview.speed);
   }, [
     activePreview?.speed,
+    advancedOpen,
+    advancedStaggerOverride,
     applyPreviewFrame,
     formDirection,
     formDuration,
     formEasing,
-    formStrategy,
+    formPlaybackMode,
     setSelectedTransitionId,
     sourceSnapshot,
     srcIconId,
     srcVariantId,
     startScheduler,
+    strategyOverride,
     targetSnapshot,
     tgtIconId,
     tgtVariantId,
@@ -376,39 +441,26 @@ export const TransitionPanel = memo(function TransitionPanel() {
     };
   }, [setTransitionPreview, stopScheduler]);
 
-  const toggleBindingExpand = useCallback((key: string) => {
-    setExpandedBindings((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }, []);
-
   // --- Guard ---
   if (!currentIcon || !currentVariant) {
     return null;
   }
 
   const isPreviewable = sourceSnapshot !== null && targetSnapshot !== null;
-  const isBindingsExpanded = expandedBindings.has('preview');
-  const showDirection = formStrategy === 'replace' || formStrategy === 'lineAnimation';
 
   return (
     <section className="grid gap-3">
       {/* Header */}
       <div>
-        <p className="text-[length:var(--text-heading)] font-semibold text-foreground">Transition Preview</p>
+        <p className="text-[length:var(--text-heading)] font-semibold text-foreground">
+          Transition
+        </p>
         <p className="text-[length:var(--text-label)] text-muted-foreground">
-          Preview how icons transition at runtime. Select source and target,
-          choose a strategy, and inspect layer bindings.
+          Pick a target icon — Contour automatically picks the best morph.
         </p>
       </div>
 
-      {/* Endpoint pickers — source → target */}
+      {/* 1. Animation — source → target endpoints */}
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
         <LockedSourceEndpoint
           iconName={currentIcon.name}
@@ -435,86 +487,102 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
       <Separator />
 
-      {/* Strategy + Easing */}
+      {/* 2. Playback Mode (§2.5) */}
+      <div className="grid gap-1.5">
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          Playback mode
+        </Label>
+        <ToggleGroup
+          type="single"
+          size="sm"
+          variant="outline"
+          value={formPlaybackMode}
+          onValueChange={(value) => {
+            if (value) setFormPlaybackMode(value as PlaybackMode);
+          }}
+          className="h-8 w-full justify-stretch rounded-md border border-border/70"
+        >
+          {PLAYBACK_MODE_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option.value}
+              value={option.value}
+              aria-label={option.label}
+              className="flex-1 text-[length:var(--text-label)]"
+            >
+              {option.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
+          {PLAYBACK_MODE_OPTIONS.find((o) => o.value === formPlaybackMode)?.hint}
+        </p>
+      </div>
+
+      {/* 3. Timing — duration + easing + direction */}
       <div className="grid grid-cols-2 gap-2">
-        <StrategySelect
-          value={formStrategy}
-          onChange={setFormStrategy}
-        />
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Easing</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+            Duration (ms)
+          </Label>
+          <Input
+            type="number"
+            min="0"
+            step="10"
+            value={formDuration}
+            onChange={(event) => setFormDuration(event.target.value)}
+            className="h-8 rounded-lg"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+            Easing
+          </Label>
           <EasingPicker value={formEasing} onSelect={setFormEasing} />
         </div>
       </div>
-
-      {/* Strategy hint */}
-      <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
-        {STRATEGY_HINTS[formStrategy]}
-      </p>
-
-      {/* Direction — applicable to replace and lineAnimation */}
-      {showDirection && (
-        <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Direction</Label>
-          <Select
-            value={formDirection ?? 'automatic'}
-            onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
-          >
-            <SelectTrigger className="h-8 rounded-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DIRECTION_OPTIONS.map((d) => (
-                <SelectItem key={d.value} value={d.value}>
-                  {d.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Duration */}
       <div className="grid gap-1.5">
-        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Duration (ms)</Label>
-        <Input
-          type="number"
-          min="0"
-          step="10"
-          value={formDuration}
-          onChange={(event) => setFormDuration(event.target.value)}
-          className="h-8 rounded-lg"
-        />
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          Direction
+        </Label>
+        <Select
+          value={formDirection ?? 'automatic'}
+          onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
+        >
+          <SelectTrigger className="h-8 rounded-lg">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DIRECTION_OPTIONS.map((d) => (
+              <SelectItem key={d.value} value={d.value}>
+                {d.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Compatibility badge */}
-      {compatibility ? <CompatibilityBadge status={compatibility} /> : null}
-
-      {/* Preview button */}
+      {/* 4. Preview */}
       <Button
         type="button"
         size="sm"
         onClick={beginPreview}
-        disabled={!isPreviewable || (formStrategy === 'strictMorph' && compatibility?.tone === 'red')}
+        disabled={!isPreviewable}
         className="rounded-lg"
       >
-        Preview Transition
+        Preview transition
       </Button>
 
-      {/* Layer bindings (read-only) */}
-      {sourceSnapshot && targetSnapshot && (
-        <CollapsibleSection
-          title={`Layer Bindings (${Object.keys(sourceSnapshot.layers).length} source → ${Object.keys(targetSnapshot.layers).length} target)`}
-          collapsed={!isBindingsExpanded}
-          onToggle={() => toggleBindingExpand('preview')}
-        >
-          <ReadOnlyLayerBindingList
-            sourceSnapshot={sourceSnapshot}
-            targetSnapshot={targetSnapshot}
-            strategy={formStrategy}
-          />
-        </CollapsibleSection>
-      )}
+      {/* 5. Advanced disclosure (§2.3) */}
+      <AdvancedDisclosure
+        open={advancedOpen}
+        onOpenChange={setAdvancedOpen}
+        engineChoseTier={engineChoseTier}
+        strategyOverride={strategyOverride}
+        onStrategyOverrideChange={setStrategyOverride}
+        advancedStaggerOverride={advancedStaggerOverride}
+        onAdvancedStaggerOverrideChange={setAdvancedStaggerOverride}
+        playbackMode={formPlaybackMode}
+      />
 
       {/* Playback controls */}
       {activePreview ? (
@@ -526,9 +594,116 @@ export const TransitionPanel = memo(function TransitionPanel() {
           onSpeedChange={handleSpeedChange}
         />
       ) : null}
+
+      {/* §2.4: dev-only debug overlay */}
+      {DEBUG_OVERLAY_ENABLED && engineChoseTier ? (
+        <div className="rounded-md border border-dashed border-amber-400/60 bg-amber-50/60 px-2 py-1 text-[10px] font-mono text-amber-900 dark:bg-amber-900/20 dark:text-amber-100">
+          debug · engine: {AUTO_MORPH_TIER_LABELS[engineChoseTier] ?? engineChoseTier}
+          {' · '}playback: {formPlaybackMode}
+          {advancedOpen && strategyOverride !== 'auto'
+            ? ` · override: ${strategyOverride}`
+            : ''}
+        </div>
+      ) : null}
     </section>
   );
 });
+
+// ---------------------------------------------------------------------------
+// AdvancedDisclosure (§2.3)
+// ---------------------------------------------------------------------------
+
+function AdvancedDisclosure({
+  open,
+  onOpenChange,
+  engineChoseTier,
+  strategyOverride,
+  onStrategyOverrideChange,
+  advancedStaggerOverride,
+  onAdvancedStaggerOverrideChange,
+  playbackMode,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  engineChoseTier: string | null;
+  strategyOverride: RuntimeTransitionIntent['strategy'];
+  onStrategyOverrideChange: (next: RuntimeTransitionIntent['strategy']) => void;
+  advancedStaggerOverride: TransitionStagger['mode'] | 'inherit';
+  onAdvancedStaggerOverrideChange: (next: TransitionStagger['mode'] | 'inherit') => void;
+  playbackMode: PlaybackMode;
+}) {
+  return (
+    <details
+      className="rounded-lg border border-border/60 bg-background/40 px-2 py-1.5 text-[length:var(--text-label)]"
+      open={open}
+      onToggle={(event) => {
+        const next = (event.currentTarget as HTMLDetailsElement).open;
+        if (next !== open) onOpenChange(next);
+      }}
+    >
+      <summary className="flex cursor-pointer items-center gap-1 select-none text-muted-foreground hover:text-foreground">
+        {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+        <span>Advanced</span>
+      </summary>
+      <div className="mt-2 grid gap-2 px-1">
+        <div className="grid gap-1">
+          <Label className="text-[10px] font-medium text-muted-foreground">Engine chose</Label>
+          <span className="inline-flex w-fit items-center rounded-full bg-muted/50 px-2 py-0.5 font-mono text-[10px] text-foreground/80">
+            {engineChoseTier
+              ? AUTO_MORPH_TIER_LABELS[engineChoseTier] ?? engineChoseTier
+              : 'Select source and target to compute'}
+          </span>
+        </div>
+        <div className="grid gap-1">
+          <Label className="text-[10px] font-medium text-muted-foreground">
+            Strategy override
+          </Label>
+          <Select
+            value={strategyOverride}
+            onValueChange={(v) => onStrategyOverrideChange(v as RuntimeTransitionIntent['strategy'])}
+          >
+            <SelectTrigger className="h-7 rounded-md text-[length:var(--text-label)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STRATEGY_OVERRIDE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[10px] text-muted-foreground/70">
+            Forced strategies still fall back silently if the paths can&rsquo;t support them.
+          </p>
+        </div>
+        <div className="grid gap-1">
+          <Label className="text-[10px] font-medium text-muted-foreground">
+            Stagger override
+          </Label>
+          <Select
+            value={advancedStaggerOverride}
+            onValueChange={(v) => onAdvancedStaggerOverrideChange(v as TransitionStagger['mode'] | 'inherit')}
+          >
+            <SelectTrigger className="h-7 rounded-md text-[length:var(--text-label)]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="inherit">
+                Inherit from playback mode ({playbackMode})
+              </SelectItem>
+              {ADVANCED_STAGGER_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </details>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // PreviewPlaybackControls
@@ -604,382 +779,8 @@ function PreviewPlaybackControls({
 }
 
 // ---------------------------------------------------------------------------
-// CollapsibleSection
+// Layer binding helper
 // ---------------------------------------------------------------------------
-
-function CollapsibleSection({
-  title,
-  subtitle,
-  collapsed,
-  onToggle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  collapsed: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-3 rounded-lg border border-border/40">
-      <Button
-        variant="ghost"
-        className="h-auto w-full justify-start gap-1.5 rounded-none px-2.5 py-2 text-left text-xs font-medium text-foreground/70 hover:text-foreground"
-        onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      >
-        {collapsed
-          ? <ChevronRight className="size-3.5 shrink-0" />
-          : <ChevronDown className="size-3.5 shrink-0" />
-        }
-        <span className="font-semibold text-foreground">{title}</span>
-        {subtitle && collapsed && (
-          <span className="ml-auto truncate text-[length:var(--text-caption)] text-muted-foreground/70">{subtitle}</span>
-        )}
-      </Button>
-      {!collapsed && (
-        <div className="border-t border-border/30 px-2.5 pb-2.5 pt-2">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Per-binding strategy analysis (read-only)
-// ---------------------------------------------------------------------------
-
-type BindingStrategyOverall = 'morph' | 'trim' | 'crossfade' | 'preserved';
-
-type BindingStrategyInfo = {
-  strategies: SubPathStrategyResult[];
-  readiness: MorphReadiness | null;
-  overallStrategy: BindingStrategyOverall;
-};
-
-function computeBindingStrategy(
-  binding: LayerBinding,
-  fromSnapshot: LayerSnapshot | undefined,
-  toSnapshot: LayerSnapshot | undefined,
-): BindingStrategyInfo {
-  const defaultResult: BindingStrategyInfo = {
-    strategies: [],
-    readiness: null,
-    overallStrategy: 'crossfade',
-  };
-
-  if (!fromSnapshot || !toSnapshot) return defaultResult;
-
-  const fromLayer = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId] : undefined;
-  const toLayer = binding.toLayerId ? toSnapshot.layers[binding.toLayerId] : undefined;
-
-  if (!fromLayer || !toLayer) return defaultResult;
-
-  const fromCanon = canonicalizeLayerPath(fromLayer);
-  const toCanon = canonicalizeLayerPath(toLayer);
-
-  if (!fromCanon || !toCanon) return defaultResult;
-
-  const strategies = classifySubPathStrategies(fromCanon.stats, toCanon.stats);
-  const readiness = computeReadiness(fromLayer, toLayer);
-
-  let overallStrategy: BindingStrategyOverall;
-  if (strategies.length === 0) {
-    overallStrategy = 'crossfade';
-  } else {
-    const hasCrossfade = strategies.some((s) => s.strategy === 'crossfade');
-    const hasTrim = strategies.some((s) => s.strategy === 'trim');
-    if (hasCrossfade) {
-      overallStrategy = 'crossfade';
-    } else if (hasTrim) {
-      overallStrategy = 'trim';
-    } else {
-      overallStrategy = 'morph';
-    }
-  }
-
-  return { strategies, readiness, overallStrategy };
-}
-
-const STRATEGY_BADGE_STYLES: Record<BindingStrategyOverall, { bg: string; text: string; label: string }> = {
-  morph: { bg: 'bg-emerald-500/15', text: 'text-emerald-600', label: 'morph' },
-  trim: { bg: 'bg-amber-500/15', text: 'text-amber-700', label: 'trim' },
-  crossfade: { bg: 'bg-red-500/15', text: 'text-red-600', label: 'crossfade' },
-  preserved: { bg: 'bg-blue-500/15', text: 'text-blue-600', label: 'preserved' },
-};
-
-function BindingStrategyDisplay({
-  binding,
-  fromSnapshot,
-  toSnapshot,
-  isPreserved,
-}: {
-  binding: LayerBinding;
-  fromSnapshot: LayerSnapshot | undefined;
-  toSnapshot: LayerSnapshot | undefined;
-  isPreserved: boolean;
-}) {
-  const info = useMemo(
-    () => computeBindingStrategy(binding, fromSnapshot, toSnapshot),
-    [binding, fromSnapshot, toSnapshot],
-  );
-  const [showDetails, setShowDetails] = useState(false);
-  const [showSubpaths, setShowSubpaths] = useState(false);
-
-  const displayStrategy: BindingStrategyOverall = isPreserved ? 'preserved' : info.overallStrategy;
-  const badge = STRATEGY_BADGE_STYLES[displayStrategy];
-
-  return (
-    <div className="grid gap-1">
-      <div className="flex items-center gap-1.5">
-        <span
-          className={cn(
-            'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
-            badge.bg,
-            badge.text,
-          )}
-        >
-          {badge.label}
-        </span>
-
-        {displayStrategy === 'morph' && info.readiness && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-auto gap-0.5 px-1 py-0 text-[10px] text-foreground/70 hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); setShowDetails((v) => !v); }}
-          >
-            <span className="font-medium">{Math.round(info.readiness.score * 100)}%</span>
-            {showDetails ? (
-              <ChevronDown className="size-2.5" />
-            ) : (
-              <ChevronRight className="size-2.5" />
-            )}
-          </Button>
-        )}
-
-        {info.strategies.length > 1 && !isPreserved && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-auto gap-0.5 px-1 py-0 text-[10px] text-foreground/70 hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); setShowSubpaths((v) => !v); }}
-          >
-            <span>{info.strategies.length} subpaths</span>
-            {showSubpaths ? (
-              <ChevronDown className="size-2.5" />
-            ) : (
-              <ChevronRight className="size-2.5" />
-            )}
-          </Button>
-        )}
-      </div>
-
-      {showDetails && info.readiness && (
-        <div className="ml-1 grid gap-0.5 border-l-2 border-emerald-500/30 pl-2 text-[10px] text-muted-foreground">
-          <span>Command compatibility: {Math.round(info.readiness.commandCompatibility * 100)}%</span>
-          <span>Subpath compatibility: {Math.round(info.readiness.subpathCompatibility * 100)}%</span>
-          <span>BBox similarity: {Math.round(info.readiness.bboxSimilarity * 100)}%</span>
-          <span>Centroid similarity: {Math.round(info.readiness.centroidSimilarity * 100)}%</span>
-        </div>
-      )}
-
-      {showSubpaths && info.strategies.length > 1 && (
-        <div className="ml-1 grid gap-0.5 border-l-2 border-border/50 pl-2 text-[10px] text-muted-foreground">
-          {info.strategies.map((sp, i) => {
-            const spBadge = STRATEGY_BADGE_STYLES[sp.strategy as BindingStrategyOverall] ?? STRATEGY_BADGE_STYLES.crossfade;
-            return (
-              <div key={i} className="flex items-center gap-1">
-                <span className="font-mono text-foreground/70">#{sp.fromIndex}</span>
-                <span
-                  className={cn(
-                    'inline-flex rounded-full px-1 py-px text-[9px] font-semibold leading-none',
-                    spBadge.bg,
-                    spBadge.text,
-                  )}
-                >
-                  {sp.strategy}
-                </span>
-                <span className="truncate">{sp.reason.split(' -- ')[0]}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ReadOnlyLayerBindingList
-// ---------------------------------------------------------------------------
-
-function ReadOnlyLayerBindingList({
-  sourceSnapshot,
-  targetSnapshot,
-  strategy,
-}: {
-  sourceSnapshot: LayerSnapshot;
-  targetSnapshot: LayerSnapshot;
-  strategy: RuntimeTransitionIntent['strategy'];
-}) {
-  const bindings = useMemo(
-    () => buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, strategy),
-    [sourceSnapshot, targetSnapshot, strategy],
-  );
-
-  if (bindings.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        No layer bindings could be generated.
-      </p>
-    );
-  }
-
-  return (
-    <div className="mt-2 grid gap-1.5">
-      {bindings.map((binding, index) => {
-        const isPreserved = Boolean(
-          binding.fromLayerId &&
-          binding.toLayerId &&
-          binding.fromLayerId === binding.toLayerId,
-        ) && strategy === 'replace';
-
-        const isAdded = !binding.fromLayerId && binding.toLayerId;
-        const isRemoved = binding.fromLayerId && !binding.toLayerId;
-
-        return (
-          <div
-            key={`${binding.fromLayerId}-${binding.toLayerId}-${index}`}
-            className="grid gap-1.5 rounded-lg border border-border/70 bg-muted/10 p-2"
-          >
-            <div className="flex items-center gap-1.5 text-[length:var(--text-label)]">
-              {isAdded ? (
-                <>
-                  <span className="font-medium text-foreground">{binding.toLayerId}</span>
-                  <span className="inline-flex rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-emerald-600">
-                    new
-                  </span>
-                </>
-              ) : isRemoved ? (
-                <>
-                  <span className="font-medium text-foreground">{binding.fromLayerId}</span>
-                  <span className="inline-flex rounded-full bg-red-500/15 px-1.5 py-0.5 text-[9px] font-semibold leading-none text-red-600">
-                    removed
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="font-medium text-foreground">{binding.fromLayerId ?? '(none)'}</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="font-medium text-foreground">{binding.toLayerId ?? '(none)'}</span>
-                </>
-              )}
-            </div>
-            {!isAdded && !isRemoved && (
-              <BindingStrategyDisplay
-                binding={binding}
-                fromSnapshot={sourceSnapshot}
-                toSnapshot={targetSnapshot}
-                isPreserved={isPreserved}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers — compatibility & bindings
-// ---------------------------------------------------------------------------
-
-function getCompatibilityStatus(
-  fromSnapshot: LayerSnapshot,
-  toSnapshot: LayerSnapshot,
-  strategy: RuntimeTransitionIntent['strategy'],
-): CompatibilityStatus {
-  const bindings = buildDefaultLayerBindings(fromSnapshot, toSnapshot, strategy);
-  if (bindings.length === 0) {
-    return { tone: 'red', label: 'Replace / Fallback' };
-  }
-
-  if (strategy === 'auto') {
-    // For auto strategy, check if any morphing is possible
-    let canMorph = false;
-    for (const binding of bindings) {
-      const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
-      const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
-      if (fromD && toD) {
-        try {
-          strictMorph(fromD, toD);
-          canMorph = true;
-          break;
-        } catch {
-          const morph = bestGuessMorph(fromD, toD);
-          if (morph) { canMorph = true; break; }
-        }
-      }
-    }
-    return canMorph
-      ? { tone: 'green' as const, label: 'Auto (morph detected)' }
-      : { tone: 'yellow' as const, label: 'Auto (will crossfade)' };
-  }
-
-  if (strategy === 'strictMorph') {
-    const allStrict = bindings.every((binding) => {
-      const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
-      const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
-      if (!fromD || !toD) return false;
-      try {
-        strictMorph(fromD, toD);
-        return true;
-      } catch {
-        return false;
-      }
-    });
-    return allStrict
-      ? { tone: 'green', label: 'Strict Morph' }
-      : { tone: 'red', label: 'Replace / Fallback' };
-  }
-
-  if (strategy === 'bestGuessMorph') {
-    let sawBestGuess = false;
-    for (const binding of bindings) {
-      const fromD = binding.fromLayerId ? fromSnapshot.layers[binding.fromLayerId]?.path?.d : undefined;
-      const toD = binding.toLayerId ? toSnapshot.layers[binding.toLayerId]?.path?.d : undefined;
-      if (!fromD || !toD) {
-        return { tone: 'red', label: 'Replace / Fallback' };
-      }
-      try {
-        strictMorph(fromD, toD);
-        continue;
-      } catch {
-        const morph = bestGuessMorph(fromD, toD);
-        if (!morph) {
-          return { tone: 'red', label: 'Replace / Fallback' };
-        }
-        sawBestGuess = true;
-      }
-    }
-
-    return sawBestGuess
-      ? { tone: 'yellow', label: 'Best Guess' }
-      : { tone: 'green', label: 'Strict Morph' };
-  }
-
-  if (strategy === 'crossIconMorph') {
-    return { tone: 'yellow', label: 'Cross-Icon Morph' };
-  }
-
-  if (strategy === 'lineAnimation') {
-    return { tone: 'orange', label: 'Line Animation' };
-  }
-
-  // replace — always works
-  return { tone: 'green', label: 'Replace' };
-}
 
 function buildDefaultLayerBindings(
   fromSnapshot: LayerSnapshot,
@@ -1059,58 +860,6 @@ function buildDefaultLayerBindings(
     }
     return { fromLayerId, toLayerId };
   });
-}
-
-// ---------------------------------------------------------------------------
-// CompatibilityBadge
-// ---------------------------------------------------------------------------
-
-function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold tracking-tight',
-        status.tone === 'green' && 'bg-emerald-500/10 text-emerald-600',
-        status.tone === 'yellow' && 'bg-amber-500/10 text-amber-700',
-        status.tone === 'orange' && 'bg-orange-500/10 text-orange-600',
-        status.tone === 'red' && 'bg-red-500/10 text-red-600',
-      )}
-    >
-      {status.label}
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// StrategySelect — human-readable labels with descriptions
-// ---------------------------------------------------------------------------
-
-function StrategySelect({
-  value,
-  onChange,
-}: {
-  value: RuntimeTransitionIntent['strategy'];
-  onChange: (value: RuntimeTransitionIntent['strategy']) => void;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Strategy</Label>
-      <Select value={value} onValueChange={(v) => onChange(v as RuntimeTransitionIntent['strategy'])}>
-        <SelectTrigger className="h-8 rounded-lg">
-          <SelectValue>
-            {STRATEGY_LABELS[value]}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {STRATEGY_OPTIONS.map((option) => (
-            <SelectItem key={option} value={option}>
-              {STRATEGY_LABELS[option]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------

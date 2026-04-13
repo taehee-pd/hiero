@@ -1,27 +1,44 @@
 {
   "name": "@contour/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Contour CLI — repo-native icon authoring for host repositories",
+  "author": "taehee-pd <j.taehee@icloud.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/coniva-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/taehee-pd/icon-authoring-tool.git",
+    "directory": "packages/coniva-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/taehee-pd/icon-authoring-tool/issues"
+  },
   "bin": {
     "contour": "./dist/bin.js"
   },
   "engines": {
-    "node": ">=18",
-    "bun": ">=1.0"
+    "node": ">=18"
   },
   "keywords": [
     "contour",
     "icons",
+    "icon-authoring",
     "cli",
-    "icon-authoring"
+    "svg",
+    "design-system"
   ],
   "type": "module",
-  "license": "MIT",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "bun build src/bin.ts --outfile dist/bin.js --target node",
-    "prepare": "bun run build"
+    "prepare": "bun run build",
+    "prepublishOnly": "bun run build"
   }
 }

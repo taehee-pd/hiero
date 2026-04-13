@@ -632,7 +632,24 @@ function LeftSidebar({
                 <span>Layers · {currentVariant ? formatVariantLabel(currentVariant) : '—'}</span>
               </div>
               {layerRows.length === 0 ? (
-                <div className="wire-empty-note">No layers</div>
+                // R6 / UX-3.4: actionable empty state for the layer list.
+                <div className="wire-empty-note grid gap-2 px-1 py-2" role="status">
+                  <p className="font-medium text-foreground">No layers yet</p>
+                  <p className="text-[10px] leading-snug text-muted-foreground">
+                    Draw a path or drop an SVG to get started.
+                  </p>
+                  <ul className="grid gap-1 text-[10px] text-muted-foreground">
+                    <li className="flex items-center gap-1.5">
+                      <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">P</kbd>
+                      <span>Pen tool</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">U</kbd>
+                      <span>Shape tool</span>
+                    </li>
+                    <li className="text-muted-foreground/70">or drag an SVG file onto the canvas</li>
+                  </ul>
+                </div>
               ) : (
                 <LayerRowsList
                   layerRows={layerRows}
@@ -1641,6 +1658,25 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // R6 / UX-3.2: Canvas empty state dispatches these custom events because
+  // Canvas.tsx doesn't own the dialog state. Bridge them here.
+  useEffect(() => {
+    const openCommand = () => setCommandOpen(true);
+    const openImport = () => setImportDialogOpen(true);
+    const newIcon = () => {
+      const id = createBlankIcon();
+      if (id && activeIconSetId) openIconTab(activeIconSetId, id);
+    };
+    window.addEventListener('contour:open-command', openCommand as EventListener);
+    window.addEventListener('contour:import-svg', openImport as EventListener);
+    window.addEventListener('contour:new-icon', newIcon as EventListener);
+    return () => {
+      window.removeEventListener('contour:open-command', openCommand as EventListener);
+      window.removeEventListener('contour:import-svg', openImport as EventListener);
+      window.removeEventListener('contour:new-icon', newIcon as EventListener);
+    };
+  }, [activeIconSetId, createBlankIcon, openIconTab]);
 
   // Auto-select the first visible layer only when switching icons/states
   // (not when user explicitly clears selection via Escape or empty-canvas click)

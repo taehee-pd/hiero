@@ -129,6 +129,14 @@ export function Toolbar() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [distributionSheetOpen, setDistributionSheetOpen] = useState(false);
 
+  // R6 / UX-2.5: open the shortcuts cheat sheet when the global `?`
+  // keybinding fires (`handleEditorKeyDown` dispatches the custom event).
+  useEffect(() => {
+    const handler = () => setShortcutsOpen(true);
+    window.addEventListener('contour:open-shortcuts', handler as EventListener);
+    return () => window.removeEventListener('contour:open-shortcuts', handler as EventListener);
+  }, []);
+
   const runNewProject = useCallback(() => {
     clearCurrentProjectPath();
     resetPersistenceForNewProject();

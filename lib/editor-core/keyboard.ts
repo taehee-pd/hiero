@@ -48,6 +48,23 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   const key = e.key.toLowerCase();
   const mod = e.metaKey || e.ctrlKey;
 
+  // R6 / UX-2.5: `?` opens the keyboard-shortcuts cheat sheet. We don't call
+  // the dialog directly from here — the Navbar / Toolbar dialog state lives
+  // inside their components. A custom event keeps this handler UI-agnostic.
+  // Dispatch on `globalThis` because in the browser it aliases `window` and
+  // in Bun's test runtime `window` is undefined but `globalThis.dispatchEvent`
+  // still works.
+  if (!mod && !e.altKey && (e.key === '?' || (e.shiftKey && key === '/'))) {
+    e.preventDefault();
+    const target = globalThis as unknown as {
+      dispatchEvent?: (event: Event) => boolean;
+    };
+    if (typeof target.dispatchEvent === 'function') {
+      target.dispatchEvent(new CustomEvent('contour:open-shortcuts'));
+    }
+    return;
+  }
+
   // Layer reorder shortcuts (Figma-parity): ⌘↑/⌘↓ move one step, ⌘⌥↑/⌘⌥↓ move to top/bottom.
   if (mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {

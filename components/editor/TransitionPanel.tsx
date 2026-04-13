@@ -571,6 +571,16 @@ export const TransitionPanel = memo(function TransitionPanel() {
       >
         Preview transition
       </Button>
+      {/* R6 / UX-3.3: inline guidance when no target is picked yet. */}
+      {!isPreviewable ? (
+        <p
+          className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70"
+          role="status"
+        >
+          Pick a target icon + variant above to render a preview. You can also
+          press <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd> to search icons by name.
+        </p>
+      ) : null}
 
       {/* 5. Advanced disclosure (§2.3) */}
       <AdvancedDisclosure

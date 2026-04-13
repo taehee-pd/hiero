@@ -926,9 +926,48 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         </div>
       ) : null}
 
+      {/* R6 / UX-3.2: editor empty state with actionable CTAs. */}
       {(!icon || !variant || !currentState) && (
-        <div className="workspace-empty-state absolute px-6 py-5 text-sm text-muted-foreground">
-          No icon selected
+        <div
+          className="workspace-empty-state absolute flex max-w-sm flex-col items-center gap-3 rounded-2xl px-8 py-7 text-center text-sm text-muted-foreground"
+          role="status"
+        >
+          <p className="text-base font-semibold text-foreground">No icon selected</p>
+          <p className="text-[length:var(--text-label)] leading-snug text-muted-foreground">
+            Pick an icon from the list on the left, or start a new one.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            <button
+              type="button"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('contour:new-icon'));
+              }}
+            >
+              New icon
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('contour:import-svg'));
+              }}
+            >
+              Import existing SVG
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('contour:open-command'));
+              }}
+            >
+              Search icons
+              <span className="ml-1 rounded-sm border border-border/60 bg-muted px-1 font-mono text-[9px] leading-none text-muted-foreground">
+                ⌘K
+              </span>
+            </button>
+          </div>
         </div>
       )}
 

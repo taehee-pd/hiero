@@ -163,6 +163,15 @@ export function Navbar() {
     return () => { if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current); };
   }, []);
 
+  // R6 / UX-2.5: `?` key globally opens the keyboard-shortcuts cheat sheet.
+  // `handleEditorKeyDown` in lib/editor-core/keyboard.ts dispatches a custom
+  // event so this handler stays UI-agnostic.
+  useEffect(() => {
+    const handler = () => setShortcutsOpen(true);
+    window.addEventListener('contour:open-shortcuts', handler as EventListener);
+    return () => window.removeEventListener('contour:open-shortcuts', handler as EventListener);
+  }, []);
+
   const showToolbarError = useCallback((message: string) => {
     setToolbarError(message);
     if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);

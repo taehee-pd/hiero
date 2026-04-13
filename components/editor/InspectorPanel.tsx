@@ -472,7 +472,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
                 {currentVariant ? (
                   <div className="grid gap-2">
-                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Weight</Label>
+                    <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Weight</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_WEIGHT_OPTIONS.map((weight) => (
                         <Button
@@ -492,7 +492,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         </Button>
                       ))}
                     </div>
-                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Scale</Label>
+                    <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Scale</Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {SYMBOL_SCALE_OPTIONS.map((scale) => (
                         <Button
@@ -511,7 +511,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                         </Button>
                       ))}
                     </div>
-                    <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variable Value</Label>
+                    <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Variable Value</Label>
                     <div className="flex items-center gap-2">
                       <Slider
                         min={0}
@@ -544,7 +544,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
                 <Separator />
                 <div className="grid gap-2">
-                  <Label htmlFor="variant-size-preset" className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+                  <Label htmlFor="variant-size-preset" className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
                     Preset Size
                   </Label>
                   <div className="flex items-center gap-2">
@@ -581,7 +581,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
                 <Separator />
                 <div className="grid gap-2">
-                  <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Generate Variant Matrix</Label>
+                  <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Generate Variant Matrix</Label>
                   <div className="grid gap-1">
                     <p className="text-[length:var(--text-label)] text-muted-foreground">Sizes</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -851,7 +851,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-medium uppercase tracking-tight text-white',
+                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-medium tracking-tight text-white',
                     animationStrategyBadge === 'morph' && 'bg-green-600',
                     animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
                     animationStrategyBadge === 'crossfade' && 'bg-red-500',
@@ -892,8 +892,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   <span className="flex w-full items-center gap-2.5">
                     <VenetianMask className="size-4" />
                     <span className="flex flex-col items-start leading-none">
-                      <span className="text-sm font-semibold uppercase">
-                        Make Clipping Mask
+                      <span className="text-sm font-semibold">
+                        Make clipping mask
                       </span>
                       <span className="mt-1 text-xs font-normal text-muted-foreground">
                         {activeMaskLayer
@@ -935,7 +935,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                             <Icon className="size-4" />
                           )}
                           <span className="flex flex-col items-start leading-none">
-                            <span className="text-sm font-semibold uppercase">
+                            <span className="text-sm font-semibold">
                               {label}
                             </span>
                             <span className="mt-1 text-xs font-normal text-muted-foreground">
@@ -1006,8 +1006,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   <span className="flex w-full items-center gap-2.5">
                     <ScissorsLineDashed className="size-4" />
                     <span className="flex flex-col items-start leading-none">
-                      <span className="text-sm font-semibold uppercase">
-                        Release Clipping Mask
+                      <span className="text-sm font-semibold">
+                        Release clipping mask
                       </span>
                       <span className="mt-1 text-xs font-normal text-muted-foreground">
                         {layer?.isClipMask
@@ -1039,7 +1039,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 )}
                 {layerGeometryStats ? (
                   <details className="rounded-lg border border-border/70 bg-background/50 px-3 py-2">
-                    <summary className="cursor-pointer text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+                    <summary className="cursor-pointer text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
                       Topology ({layerGeometryStats.subpathCount} subpath{layerGeometryStats.subpathCount === 1 ? '' : 's'}, {layerGeometryStats.pointCount} pts)
                     </summary>
                     <div className="mt-2 grid gap-1.5">
@@ -1082,7 +1082,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             />
             {autoGradientPreview ? (
               <div className="grid gap-1">
-                <span className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+                <span className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
                   Auto-Gradient Preview
                 </span>
                 <div
@@ -1840,7 +1840,7 @@ function WeightControlPointsEditor({
 
   return (
     <div className="grid gap-2">
-      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+      <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
         Weight Control Points
       </Label>
       <p className="text-xs text-muted-foreground">
@@ -1959,7 +1959,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-[var(--section-gap)]">
-      <span className="text-[length:var(--text-label)] font-semibold uppercase tracking-wide text-foreground-secondary">
+      <span className="text-[length:var(--text-label)] font-semibold tracking-wide text-foreground-secondary">
         {title}
       </span>
       <div className="flex flex-col gap-[var(--field-gap)]">
@@ -2513,7 +2513,7 @@ function PaintField({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
           {label}
         </Label>
         <div className="flex items-center gap-1.5">

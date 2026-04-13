@@ -444,7 +444,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
           onChange={setFormStrategy}
         />
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Easing</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Easing</Label>
           <EasingPicker value={formEasing} onSelect={setFormEasing} />
         </div>
       </div>
@@ -457,7 +457,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
       {/* Direction — applicable to replace and lineAnimation */}
       {showDirection && (
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Direction</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Direction</Label>
           <Select
             value={formDirection ?? 'automatic'}
             onValueChange={(v) => setFormDirection(v as RuntimeTransitionIntent['direction'])}
@@ -478,7 +478,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
       {/* Duration */}
       <div className="grid gap-1.5">
-        <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Duration (ms)</Label>
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Duration (ms)</Label>
         <Input
           type="number"
           min="0"
@@ -1071,7 +1071,7 @@ function CompatibilityBadge({ status }: { status: CompatibilityStatus }) {
   return (
     <span
       className={cn(
-        'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold uppercase tracking-tight',
+        'inline-flex rounded-full px-2.5 py-1 text-[length:var(--text-label)] font-semibold tracking-tight',
         status.tone === 'green' && 'bg-emerald-500/10 text-emerald-600',
         status.tone === 'yellow' && 'bg-amber-500/10 text-amber-700',
         status.tone === 'orange' && 'bg-orange-500/10 text-orange-600',
@@ -1096,7 +1096,7 @@ function StrategySelect({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Strategy</Label>
+      <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Strategy</Label>
       <Select value={value} onValueChange={(v) => onChange(v as RuntimeTransitionIntent['strategy'])}>
         <SelectTrigger className="h-8 rounded-lg">
           <SelectValue>
@@ -1132,18 +1132,18 @@ function LockedSourceEndpoint({
 }) {
   return (
     <fieldset className="grid gap-2">
-      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground">
+      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground">
         Source
       </legend>
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Icon</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Icon</Label>
           <div className="flex h-8 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
             {iconName}
           </div>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variant</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Variant</Label>
           <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
             <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select variant..." />
@@ -1182,12 +1182,12 @@ function CrossIconEndpointPicker({
 }) {
   return (
     <fieldset className="grid gap-2">
-      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground">
+      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground">
         {label}
       </legend>
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Icon</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Icon</Label>
           <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
             <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select icon..." />
@@ -1203,7 +1203,7 @@ function CrossIconEndpointPicker({
           </Select>
         </div>
         <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Variant</Label>
+          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Variant</Label>
           <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
             <SelectTrigger className="h-8 rounded-lg">
               <SelectValue placeholder="Select variant..." />

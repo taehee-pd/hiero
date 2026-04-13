@@ -210,7 +210,7 @@ function CustomTracksEditor({
   return (
     <div className="mt-2 grid gap-2">
       <div className="flex items-center justify-between">
-        <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Custom Tracks</Label>
+        <Label className="text-[length:var(--text-caption)] text-muted-foreground">Custom tracks</Label>
         <Button
           type="button" size="sm" variant="outline"
           className="h-6 gap-1 rounded-lg text-[length:var(--text-caption)]"

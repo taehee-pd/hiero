@@ -308,21 +308,168 @@ changelog coherent:
 
 ---
 
-## 6. Open Questions
+## 6. Resolved Questions
 
-1. **Final scope name** — `@contour/cli` vs `@coniva/cli`? The package directory
-   name (`coniva-cli`) and the manifest name (`@contour/cli`) currently disagree.
-2. **Merge TransitionPanel + AnimationStudioPanel, or keep two tabs?** WWDC 337
-   suggests one unified surface. Confirm with the designer before deleting
-   `AnimationStudioPanel.tsx`.
-3. **Dev-debug overlay opt-in** — env var, query param, or a hidden keyboard
-   shortcut? `NEXT_PUBLIC_CONTOUR_DEBUG` is the least-magic option but requires a
-   rebuild to toggle.
+1. **Final scope name** — ship as **`@contour/cli`**. The product is Contour, so the
+   manifest name wins. The package directory stays `packages/coniva-cli/` for now
+   (renaming the directory is a separate, non-blocking cleanup tracked out of band).
+2. **Merge TransitionPanel + AnimationStudioPanel, or keep two tabs?** — **Merge
+   them.** WWDC 337 endorses a single unified Animate surface. `AnimationStudioPanel`
+   collapses into the new `AnimatePanel`'s "Animation" section per §2.6.
+3. **Dev-debug overlay opt-in** — **Retain the current
+   `NEXT_PUBLIC_CONTOUR_DEBUG` env-var gate.** A rebuild to toggle is acceptable
+   for a diagnostics-only surface, and the env var keeps the overlay out of the
+   production bundle entirely.
 
 ---
 
-## 7. References
+## 7. Design Audit — Full-Workspace Findings
 
+This section records the end-to-end walkthrough audit of the Studio workspace and
+the fixes that land alongside the Animate panel revamp. Items are grouped by the
+same regions the audit walked (Far-Left Strip → Left Sidebar → Middle Panel →
+Canvas → Right Panel). Severity is preserved from the audit.
+
+### 7.0 Global — Remove all-caps styling from the entire app
+
+**Severity:** High. **Scope:** app-wide, not panel-local.
+
+The audit repeatedly flagged all-caps eyebrow/label styling as a hierarchy
+problem: section headers, field labels, and group labels all use the same
+`font-semibold uppercase tracking-tight text-muted-foreground` recipe, which
+collapses three different hierarchy levels into one visual style and also
+shouts at the user. The fix is blanket: **delete all-caps styling from the app
+entirely.**
+
+Actions:
+
+- Remove `text-transform: uppercase` from every rule in `app/globals.css` —
+  specifically the `.studio-kicker`, `.studio-chip`, `.workspace-kicker`,
+  `.editor-eyebrow`, `.editor-field-label`, `.wire-section-header`, and
+  `.wire-label` classes. (`app/globals.css:665, 682, 718, 964, 974, 1458, 1786`)
+- Strip every `uppercase` Tailwind utility from `components/editor/**`,
+  `components/explorer/**`, and `components/export/**`. Replace with plain
+  sentence-case labels — the existing `font-medium tracking-tight
+  text-muted-foreground` recipe is enough hierarchy without shouting.
+- Rewrite literal `ALL-CAPS` strings in the UI to sentence case: "CONTOUR" →
+  "Contour", "SIZES" → "Sizes", "STATES" → "States", "SAVED EFFECTS" → "Saved
+  effects", "24PX" → "24 px", "LAYER" / "POSITION" / "DOCUMENT" / "SOURCE ICON"
+  / "VARIANT" / "STRATEGY" / "EASING" → sentence-case equivalents. Keep unit
+  suffixes lowercase (`px`, `deg`, `ms`).
+- Add a repo-level lint guard: a Bun test that greps `components/` and
+  `app/globals.css` for `text-transform:\s*uppercase` and
+  `className="[^"]*\buppercase\b"` and fails if any match is found. This
+  prevents regressions from PRs that copy-paste the old recipe.
+
+Acceptance: `grep -rn "uppercase" components/ app/globals.css` returns zero
+matches outside of (a) semantic uppercase in user data such as hex color inputs
+and (b) code comments explaining why we removed it.
+
+### 7.1 Far-Left Strip — Project Navigation
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| No tooltip / aria-label on the collapse/expand arrow | Med | Wrap the collapse button in `<Tooltip>` from `components/ui/tooltip.tsx` with dynamic copy (`"Open projects"` / `"Close projects"`) and set `aria-label` / `aria-expanded`. |
+
+### 7.2 Left Sidebar — Icon Grid
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| Double-click on icon tiles has no defined behavior | High | Bind double-click to inline rename (Figma/Finder parity). Single-click continues to open the icon. |
+| Checkmark shows in both selected and unselected states | Med | Fix the checkbox component so the unselected state renders no glyph. Reuse the shadcn `Checkbox` primitive. |
+| Search bar has no clear (X) button; no zero-results empty state | Med | Add an X clear button inside the `Input` and render "No icons match {query}" when the filtered list is empty. |
+| ZIP download button triggers a silent instant download | Crit | Route through a new export dialog (or at minimum a toast confirming the download started). Offer format/size options and style the ZIP button distinctly from non-destructive icon-only buttons. |
+| Relationship between sidebar ZIP and the Contour menu Export submenu is unexplained | Med | Consolidate all export actions under a single "Export" entry point. If both exist, label them unambiguously ("Quick ZIP" vs "Full Export Options"). |
+
+### 7.3 Middle Panel — Layers & Variants
+
+**Structural change:** merge the Layers and Variants tabs into a single pane
+with a draggable divider — Variants at the top, Layers at the bottom. This
+resolves three separate audit findings about hierarchy and tab redundancy.
+
+**Layers tab**
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| Layer rows lack a shape-type glyph | Med | Prepend a small type icon (path / rect / group / etc.) to each layer row. |
+| Layer order can't be dragged | High | Add drag-to-reorder with a blue insertion-line drop indicator. Keyboard: `⌘↑` / `⌘↓` move one step; `⌘⌥↑` / `⌘⌥↓` move to top/bottom. |
+| "24PX" group label is static, not collapsible | Med | Resolved by the variants/layers merge above. |
+| No right-click context menu on layers | High | Right-click menu: Rename, Duplicate, Delete, Move to Group. |
+| Row height ~22 px is too tight | Med | Bump to 28 px with ≥2 px vertical padding. |
+
+**Variants tab**
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| Sizes input pre-filled "32" is ambiguous | Med | Empty value with placeholder `"32"` and a visible label "New size (px)". |
+| "24px" chip has no remove affordance | High | Right-click menu on size chips: Resize, Duplicate, Delete. |
+| "default" state label appears twice | Med | Replace the redundant badge with a lock icon to signal the baseline is non-removable. List user states below with a remove button. |
+| "SIZES"/"STATES" headers have no hierarchy from group labels | Med | Resolved by the variants/layers merge and by 7.0 (no more all-caps). |
+
+### 7.4 Canvas
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| 2217% default zoom label is disorienting | High | Show the semantic label `Fill` instead of the raw percent for the default fit. |
+| Right-click menu has only Zoom In / Out / Fit to View | High | Expand contextually: with selection → Copy, Paste, Duplicate, Delete, Send to Back/Front; empty → Select All, Paste. |
+| No keyboard shortcuts shown in context menu | Med | Render shortcut hints on each item (e.g., `Zoom In  ⌘+`, `Fit to View  ⌘0`). |
+| Floating toolbar has no tooltips | High | Add `<Tooltip>` to every toolbar button: name, function, shortcut. |
+| Snap/Guides toggles have faint on/off indicators | High | Higher-contrast active state — filled background, not just tint. |
+| Zoom has no +/− buttons | Low | Flank the zoom percent display with +/− buttons. |
+
+### 7.5 Right Panel — Inspect & Animation
+
+**Inspect tab**
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| Fill/Stroke dropdowns have unequal widths | Low | Both dropdowns 50%. |
+| Hex + opacity inputs are visually indistinguishable | High | Prefix hex with `#`, suffix opacity with `%`, add a thin vertical divider. |
+| "Guides: On" is plain text | Med | Replace with a visible toggle switch; move primary control into the canvas toolbar. |
+| No separator between LAYER and POSITION sections | Med | Insert a 1 px horizontal rule; also resolved by 7.0 dropping all-caps headers. |
+| "Role" field is free text | High | Dropdown with defined options (primary / secondary / decorative / none) + a `(?)` tooltip. |
+| Fill/Stroke "Fixed"/"Current" terminology is opaque | High | Convert to a segmented control with clearer labels ("Static" / "Inherited"). |
+| Stroke width has no unit; "Rot" is non-standard | Med | Add `px` suffix to stroke width. Rename "Rot" to "Rotation" with a `°` suffix. |
+| Number spinners have `valuemin=valuemax=0` | Crit | Fix ARIA: X/Y `-9999..9999`, Rotation `0..360`, Stroke `0..100`. Verify keyboard arrow increment works. |
+| "Size" input narrower than "Name"/"Rendering" | Low | Full panel width for single-column fields. |
+| "Delete size" has no destructive styling or confirmation | Crit | Apply danger styling; show a confirm dialog before executing. |
+| "Rendering" dropdown lacks a tooltip | Med | `(?)` tooltip explaining Monochrome vs Multicolor at export. Convert to a segmented control. |
+| "Master" field "None" has no affordance | Low | Either make editable (dropdown) or mute + add tooltip; delete outright if unused. |
+
+**Animation tab** — Merged into the Animate panel revamp from §2. Specific audit
+items folded in:
+
+| Finding | Sev | Fix |
+| --- | --- | --- |
+| Inconsistent header hierarchy for "SAVED EFFECTS" | Med | Promote to a peer section in the new AnimatePanel or fold under "Effects". |
+| Playback controls read as links, not buttons | Med | Add glyphs (play/pause/loop/save) and wrap in visible button borders. |
+| Speed selector row merges visually with playback row | Med | 12–16 px gap, or group them explicitly in a single labeled row. |
+| Preset grid has no categorical grouping | Med | Group presets under Attention / Visibility / Draw sub-headers. |
+| "Draw Slide" orphan in last row | Low | Left-justify; naturally resolved by grouping. |
+| No hover preview of presets | High | Animated thumbnail on hover. |
+| "Draw Reveal"/"Draw Erase" visually muted | Med | Restore full contrast (they are active). |
+| Transition Preview field labels use the same style as section headers | High | Resolved by 7.0 (no more all-caps); field labels become sentence-case 10 px. |
+| "VARIANT" label used twice in Transition Preview | High | Relabel "Source variant" / "Target variant" with a directional `→` between them. Use a structured two-column layout. |
+| "Easing: ease-in-out" is plain text | Med | Dropdown with an arrow indicator (editable) or muted + tooltip (read-only). |
+| "SAVED EFFECTS" empty state wastes vertical space | Low | Auto-hide or collapse to a single muted line. |
+
+### 7.6 Execution notes
+
+- **All-caps removal (§7.0) lands first as an independent commit** on
+  `claude/remove-caps-styling-cqhVp`. It is purely visual and has no runtime
+  risk, so shipping it before the larger Animate panel revamp avoids entangling
+  blast radii.
+- **Regression guard:** the new Bun test that fails on any `uppercase` utility
+  or `text-transform: uppercase` is added in the same commit as the removal, so
+  the lint wall is up before the next PR lands.
+- Remaining §7.1–§7.5 items are carved into follow-up branches (one per region)
+  and are not gated on the all-caps cleanup.
+
+---
+
+## 8. References
+
+- Full-workspace design audit (2026-04-13 walkthrough) — inlined as §7
 - WWDC 2025 session 337 — *What's new in SF Symbols 7*
   (https://developer.apple.com/videos/play/wwdc2025/337/)
 - `lib/runtime-core/auto-morph.ts:42-104` — existing automatic cascade

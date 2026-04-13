@@ -167,7 +167,7 @@ export const ToolPanel = memo(function ToolPanel({
                     {!isDock && tool.disabled && !isGuideEntry ? (
                       <span className="workspace-coming-soon">Soon</span>
                     ) : !isDock ? (
-                      <span className="text-[length:var(--text-label)] font-mono uppercase text-muted-foreground">
+                      <span className="text-[length:var(--text-label)] font-mono text-muted-foreground">
                         {tool.shortcut}
                       </span>
                     ) : null}
@@ -329,7 +329,7 @@ export const ToolPanel = memo(function ToolPanel({
       </Tooltip>
 
       {!isDock && guidePanelOpen ? (
-        <p className="px-2 text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
+        <p className="px-2 text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
           Guides visible: {guidesVisible ? 'yes' : 'no'}
         </p>
       ) : null}

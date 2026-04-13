@@ -177,7 +177,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
         <Separator />
         <div className="space-y-2">
-          <p className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">Saved Effects</p>
+          <p className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Saved effects</p>
           {savedEffects.length === 0 ? (
             <p className="text-xs text-muted-foreground">No saved effects yet.</p>
           ) : (
@@ -471,8 +471,8 @@ function DrawOrderEditor({
 
   return (
     <div className="space-y-1.5 border-t border-border/40 pt-3">
-      <p className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
-        Draw Order
+      <p className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+        Draw order
       </p>
       <div className="space-y-1">
         {layerEntries.map((layer) => {

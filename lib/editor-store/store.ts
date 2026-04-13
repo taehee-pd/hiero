@@ -94,6 +94,8 @@ export type EditorState = {
   listPaneExpanded: boolean;
   /** Multi-select: icon IDs selected in the grid (separate from currentIconId) */
   selectedIconIds: string[];
+  /** Layer clipboard: used by copy/paste on the canvas context menu and shortcuts */
+  layerClipboard: Layer[];
 };
 
 export type EditorTab = {
@@ -210,6 +212,11 @@ export type EditorActions = {
   upsertSymbolComponent(iconId: string, component: SymbolComponent): void;
   removeSymbolComponent(iconId: string, kind: SymbolComponent['kind']): void;
   removeSelectedLayers(): void;
+  duplicateSelectedLayers(): void;
+  copySelectedLayers(): void;
+  pasteLayers(): void;
+  reorderSelectedLayers(direction: 'up' | 'down' | 'front' | 'back'): void;
+  moveLayerToIndex(layerId: string, index: number): void;
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
@@ -318,6 +325,7 @@ const initialState: EditorState = {
   navPaneExpanded: false,
   listPaneExpanded: true,
   selectedIconIds: [],
+  layerClipboard: [],
 };
 
 let currentState: EditorStore;
@@ -2932,6 +2940,192 @@ function createActions(): EditorActions {
           },
           activeSnapGuides: [],
           pointMarquee: null,
+        };
+      });
+    },
+
+    copySelectedLayers() {
+      const s = editorStoreApi.getState();
+      if (!s.project || !s.currentIconId || !s.currentVariantId) return;
+      const icon = s.project.icons[s.currentIconId];
+      const variant = icon?.variants[s.currentVariantId];
+      if (!icon || !variant) return;
+      const selectedIds = Array.from(new Set(s.selection.layerIds));
+      const clipboard = selectedIds
+        .map((id) => variant.layers[id])
+        .filter((layer): layer is Layer => Boolean(layer))
+        .map((layer) => JSON.parse(JSON.stringify(layer)) as Layer);
+      editorStoreApi.setState({ layerClipboard: clipboard });
+    },
+
+    pasteLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        if (s.layerClipboard.length === 0) return s;
+
+        const nextLayers = { ...variant.layers };
+        const usedIds = new Set(Object.keys(nextLayers));
+        const newIds: string[] = [];
+        for (const clipLayer of s.layerClipboard) {
+          let candidate = `${clipLayer.id}-copy`;
+          let n = 1;
+          while (usedIds.has(candidate)) {
+            n += 1;
+            candidate = `${clipLayer.id}-copy-${n}`;
+          }
+          usedIds.add(candidate);
+          nextLayers[candidate] = { ...(JSON.parse(JSON.stringify(clipLayer)) as Layer), id: candidate };
+          newIds.push(candidate);
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+          selection: {
+            layerIds: newIds,
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+        };
+      });
+    },
+
+    duplicateSelectedLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const selectedIds = Array.from(new Set(s.selection.layerIds));
+        if (selectedIds.length === 0) return s;
+
+        const nextLayers = { ...variant.layers };
+        const usedIds = new Set(Object.keys(nextLayers));
+        const newIds: string[] = [];
+        for (const srcId of selectedIds) {
+          const src = variant.layers[srcId];
+          if (!src) continue;
+          let candidate = `${srcId}-copy`;
+          let n = 1;
+          while (usedIds.has(candidate)) {
+            n += 1;
+            candidate = `${srcId}-copy-${n}`;
+          }
+          usedIds.add(candidate);
+          nextLayers[candidate] = { ...(JSON.parse(JSON.stringify(src)) as Layer), id: candidate };
+          newIds.push(candidate);
+        }
+        if (newIds.length === 0) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+          selection: {
+            layerIds: newIds,
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+        };
+      });
+    },
+
+    reorderSelectedLayers(direction) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const selected = new Set(s.selection.layerIds);
+        if (selected.size === 0) return s;
+
+        const keys = Object.keys(variant.layers);
+        const selectedKeys = keys.filter((k) => selected.has(k));
+        const unselectedKeys = keys.filter((k) => !selected.has(k));
+        if (selectedKeys.length === 0) return s;
+
+        let nextKeys: string[];
+        if (direction === 'front') {
+          nextKeys = [...unselectedKeys, ...selectedKeys];
+        } else if (direction === 'back') {
+          nextKeys = [...selectedKeys, ...unselectedKeys];
+        } else {
+          nextKeys = [...keys];
+          const delta = direction === 'up' ? -1 : 1;
+          const indices = selectedKeys
+            .map((k) => keys.indexOf(k))
+            .sort((a, b) => (delta < 0 ? a - b : b - a));
+          for (const idx of indices) {
+            const target = idx + delta;
+            if (target < 0 || target >= nextKeys.length) continue;
+            const tmp = nextKeys[idx]!;
+            nextKeys[idx] = nextKeys[target]!;
+            nextKeys[target] = tmp;
+          }
+        }
+
+        const nextLayers: Record<string, Layer> = {};
+        for (const k of nextKeys) {
+          const layer = variant.layers[k];
+          if (layer) nextLayers[k] = layer;
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+        };
+      });
+    },
+
+    moveLayerToIndex(layerId, index) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const keys = Object.keys(variant.layers);
+        const srcIdx = keys.indexOf(layerId);
+        if (srcIdx < 0) return s;
+        const clamped = Math.max(0, Math.min(keys.length - 1, index));
+        if (srcIdx === clamped) return s;
+
+        const nextKeys = [...keys];
+        nextKeys.splice(srcIdx, 1);
+        nextKeys.splice(clamped, 0, layerId);
+        const nextLayers: Record<string, Layer> = {};
+        for (const k of nextKeys) {
+          const layer = variant.layers[k];
+          if (layer) nextLayers[k] = layer;
+        }
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
         };
       });
     },

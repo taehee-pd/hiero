@@ -1,7 +1,17 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpToLine,
+  ClipboardPaste,
+  Copy,
+  Maximize2,
+  MousePointerSquareDashed,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -25,6 +35,8 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
@@ -786,6 +798,44 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
   }, []);
 
+  const handleCopy = useCallback(() => {
+    editorStore.getState().copySelectedLayers?.();
+  }, []);
+
+  const handlePaste = useCallback(() => {
+    editorStore.getState().pasteLayers?.();
+  }, []);
+
+  const handleDuplicate = useCallback(() => {
+    editorStore.getState().duplicateSelectedLayers?.();
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    editorStore.getState().removeSelectedLayers?.();
+  }, []);
+
+  const handleSendToFront = useCallback(() => {
+    editorStore.getState().reorderSelectedLayers?.('front');
+  }, []);
+
+  const handleSendToBack = useCallback(() => {
+    editorStore.getState().reorderSelectedLayers?.('back');
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    const state = editorStore.getState();
+    if (!state.currentIconId || !state.currentVariantId) return;
+    const icon = state.project?.icons[state.currentIconId];
+    const variant = icon?.variants[state.currentVariantId];
+    if (!variant) return;
+    const layerIds = Object.keys(variant.layers);
+    state.setSelection?.({ layerIds, pointIds: [] });
+  }, []);
+
+  const hasSelection = selection.layerIds.length > 0;
+  const layerClipboardLength = useEditorStore((s) => s.layerClipboard.length);
+  const hasClipboard = layerClipboardLength > 0;
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -899,18 +949,74 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       )}
     </div>
       </ContextMenuTrigger>
-      <ContextMenuContent>
+      <ContextMenuContent className="w-56">
+        {hasSelection ? (
+          <>
+            <ContextMenuItem onSelect={handleCopy}>
+              <Copy className="size-4" />
+              Copy
+              <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handlePaste} disabled={!hasClipboard}>
+              <ClipboardPaste className="size-4" />
+              Paste
+              <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handleDuplicate}>
+              <Copy className="size-4" />
+              Duplicate
+              <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem
+              onSelect={handleDeleteSelected}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="size-4" />
+              Delete
+              <ContextMenuShortcut>⌫</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onSelect={handleSendToFront}>
+              <ArrowUpToLine className="size-4" />
+              Send to Front
+              <ContextMenuShortcut>⌘⌥↑</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handleSendToBack}>
+              <ArrowDownToLine className="size-4" />
+              Send to Back
+              <ContextMenuShortcut>⌘⌥↓</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        ) : (
+          <>
+            <ContextMenuItem onSelect={handleSelectAll}>
+              <MousePointerSquareDashed className="size-4" />
+              Select All
+              <ContextMenuShortcut>⌘A</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onSelect={handlePaste} disabled={!hasClipboard}>
+              <ClipboardPaste className="size-4" />
+              Paste
+              <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuItem onSelect={handleZoomIn}>
           <ZoomIn className="size-4" />
           Zoom In
+          <ContextMenuShortcut>⌘+</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onSelect={handleZoomOut}>
           <ZoomOut className="size-4" />
           Zoom Out
+          <ContextMenuShortcut>⌘-</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onSelect={handleFitCanvas}>
           <Maximize2 className="size-4" />
           Fit to View
+          <ContextMenuShortcut>⌘0</ContextMenuShortcut>
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

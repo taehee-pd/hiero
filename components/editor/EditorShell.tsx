@@ -6,11 +6,15 @@ import { useRouter } from 'next/navigation';
 import {
   Blend,
   ChevronDown,
+  Circle,
   Copy,
   Eye,
   EyeOff,
+  Folder,
   FolderOpen,
+  HelpCircle,
   Loader2,
+  Lock,
   Magnet,
   Menu,
   MousePointer2,
@@ -18,7 +22,9 @@ import {
   PenTool,
   Plus,
   Ruler,
+  Spline,
   Square,
+  Trash2,
   X,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -71,6 +77,22 @@ import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-co
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
 import { Input } from '@/components/kibo-ui/input';
 import { Button } from '@/components/kibo-ui/button';
+import { Switch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Separator } from '@/components/ui/separator';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorPickerPopover } from './ColorPickerPopover';
@@ -81,7 +103,6 @@ import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { ListPane } from '@/components/studio/ListPane';
 import { cn } from '@/lib/utils';
 
-type LeftTab = 'layers' | 'variants';
 type RightTab = 'inspect' | 'animation';
 type DeleteIntent =
   | { type: 'variant'; id: string };
@@ -100,6 +121,20 @@ const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'multicolor', label: 'Multicolor' },
 ];
 
+const RENDERING_MODE_TOOLTIP =
+  'Rendering mode controls color interpretation at export. Monochrome: single-color icon. Hierarchical: primary/secondary weighting. Palette: tokenized palette colors. Multicolor: preserves all fill colors.';
+
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '__none__', label: 'None' },
+  { value: 'primary', label: 'Primary' },
+  { value: 'secondary', label: 'Secondary' },
+  { value: 'tertiary', label: 'Tertiary' },
+  { value: 'decorative', label: 'Decorative' },
+];
+
+const ROLE_TOOLTIP =
+  'Role drives theming layering: primary → main stroke/fill, secondary → supporting detail, tertiary → background, decorative → ignored at export.';
+
 function slugify(value: string) {
   return (
     value
@@ -114,6 +149,18 @@ function formatVariantLabel(variant: { name?: string; size: number }) {
   const name = variant.name?.trim();
   if (!name || name === String(variant.size)) return `${variant.size}px`;
   return `${name} ${variant.size}px`;
+}
+
+function getLayerShapeIcon(layer: Layer): React.ComponentType<{ className?: string }> {
+  if (layer.isClipMask) return Folder;
+  const d = layer.path?.d ?? '';
+  if (!d) return Square;
+  // Heuristic: infer shape from the first few path commands.
+  if (/^\s*M[^A-Za-z]*Z/i.test(d) && /[CcQqSsTtAa]/.test(d)) return Circle;
+  if (/[Aa]/.test(d)) return Circle;
+  if (/[Cc]/.test(d)) return Spline;
+  if (/^\s*M[^A-Za-z]*H[^A-Za-z]*V[^A-Za-z]*H[^A-Za-z]*Z/i.test(d)) return Square;
+  return Spline;
 }
 
 function scaleViewBox(
@@ -178,7 +225,7 @@ function TinyLabel({ children }: { children: React.ReactNode }) {
   return <p className="wire-label">{children}</p>;
 }
 
-function RowField({ label, children }: { label: string; children: React.ReactNode }) {
+function RowField({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="wire-field">
       <span className="wire-field-name">{label}</span>
@@ -187,9 +234,6 @@ function RowField({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function PropertyValue({ children }: { children: React.ReactNode }) {
-  return <span className="wire-property-value">{children}</span>;
-}
 
 /* ToolRail removed — search/import actions moved to sidebar head */
 
@@ -264,65 +308,76 @@ function StatesSection({
           No states. Add states to define different appearances (e.g. default, hover, active).
         </p>
       ) : (
-        stateIds.map((stateId) => (
-          <div key={stateId} className="group flex items-center">
-            {renamingId === stateId ? (
-              <Input
-                className="wire-input mx-3 my-0.5 h-7 text-xs"
-                value={renameValue}
-                autoFocus
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitRename(stateId);
-                  } else if (e.key === 'Escape') {
-                    setRenamingId(null);
-                  }
-                }}
-                onBlur={() => commitRename(stateId)}
-              />
-            ) : (
-              <Button
-                variant="ghost"
-                data-active={stateId === currentStateId ? 'true' : 'false'}
-                className="wire-list-row flex-1"
-                onClick={() => onSelectState(stateId)}
-                onDoubleClick={() => {
-                  setRenamingId(stateId);
-                  setRenameValue(stateId);
-                }}
-              >
-                <span>{stateId}</span>
-                {stateId === currentVariant?.defaultState && (
-                  <span className="ml-auto rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
-                    default
-                  </span>
-                )}
-              </Button>
-            )}
-            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="size-5 text-muted-foreground hover:text-foreground"
-                aria-label={`Duplicate ${stateId}`}
-                onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
-              >
-                <Copy className="size-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="size-5 text-muted-foreground hover:text-destructive"
-                aria-label={`Delete ${stateId}`}
-                onClick={() => setDeleteTarget(stateId)}
-              >
-                <X className="size-3" />
-              </Button>
+        stateIds.map((stateId) => {
+          const isDefault = stateId === currentVariant?.defaultState;
+          return (
+            <div key={stateId} className="group flex items-center">
+              {renamingId === stateId ? (
+                <Input
+                  className="wire-input mx-3 my-0.5 h-7 text-xs"
+                  value={renameValue}
+                  autoFocus
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitRename(stateId);
+                    } else if (e.key === 'Escape') {
+                      setRenamingId(null);
+                    }
+                  }}
+                  onBlur={() => commitRename(stateId)}
+                />
+              ) : (
+                <Button
+                  variant="ghost"
+                  data-active={stateId === currentStateId ? 'true' : 'false'}
+                  className="wire-list-row flex-1"
+                  onClick={() => onSelectState(stateId)}
+                  onDoubleClick={() => {
+                    if (isDefault) return;
+                    setRenamingId(stateId);
+                    setRenameValue(stateId);
+                  }}
+                >
+                  {isDefault ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center text-muted-foreground/80">
+                          <Lock className="size-3" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">Default state is locked and cannot be removed or renamed.</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  <span>{stateId}</span>
+                </Button>
+              )}
+              {isDefault ? null : (
+                <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-5 text-muted-foreground hover:text-foreground"
+                    aria-label={`Duplicate ${stateId}`}
+                    onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
+                  >
+                    <Copy className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-5 text-muted-foreground hover:text-destructive"
+                    aria-label={`Delete ${stateId}`}
+                    onClick={() => setDeleteTarget(stateId)}
+                  >
+                    <X className="size-3" />
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
-        ))
+          );
+        })
       )}
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -413,8 +468,6 @@ function InlineEditableTitle({
 }
 
 function LeftSidebar({
-  leftTab,
-  onLeftTabChange,
   workspaceName,
   currentIcon,
   currentVariant,
@@ -436,8 +489,6 @@ function LeftSidebar({
   onRenameState,
   onDuplicateState,
 }: {
-  leftTab: LeftTab;
-  onLeftTabChange: (tab: LeftTab) => void;
   workspaceName: string;
   currentIcon: Icon | null;
   currentVariant: Variant | null;
@@ -471,115 +522,294 @@ function LeftSidebar({
             />
           </div>
         </div>
-
-        <EditorSidebarTabs
-          ariaLabel="Left sidebar"
-          value={leftTab}
-          onChange={onLeftTabChange}
-          options={[
-            { value: 'layers', label: 'Layers' },
-            { value: 'variants', label: 'Variants' },
-          ]}
-        />
       </div>
 
-      <ScrollArea className="min-h-0 flex-1">
-        {leftTab === 'layers' ? (
-          <div key="layers" role="tabpanel" aria-label="Layers" className="wire-section animate-in fade-in duration-150">
-            <div className="wire-section-header">
-              <span>{currentVariant ? formatVariantLabel(currentVariant) : 'Variant'}</span>
-            </div>
-            {layerRows.length === 0 ? (
-              <div className="wire-empty-note">No layers</div>
-            ) : (
-              <div role="listbox" aria-label="Layers">
-              {layerRows.map((row) => (
-                <div
-                  key={row.layer.id}
-                  role="option"
-                  aria-selected={row.layer.id === selectedLayerId}
-                  data-active={row.layer.id === selectedLayerId ? 'true' : 'false'}
-                  className="wire-layer-row"
-                  onClick={() => onSelectLayer(row.layer.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') onSelectLayer(row.layer.id); }}
-                  tabIndex={0}
-                >
-                  <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
-                    <span className="wire-layer-name">{row.layer.id}</span>
-                    {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="wire-row-control"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLayerVisibility(row.layer.id, row.layer.visible === false);
-                    }}
-                    aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
-                  >
-                    {row.layer.visible === false ? (
-                      <EyeOff className="size-3.5" />
-                    ) : (
-                      <Eye className="size-3.5" />
-                    )}
-                  </button>
-                </div>
-              ))}
+      <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
+        <ResizablePanel defaultSize={38} minSize={18} maxSize={70}>
+          <ScrollArea className="h-full">
+            <div role="region" aria-label="Variants" className="wire-section animate-in fade-in duration-150">
+              <div className="wire-section-header">
+                <span>Variants</span>
               </div>
-            )}
-          </div>
-        ) : (
-          <div key="variants" role="tabpanel" aria-label="Variants" className="wire-section animate-in fade-in duration-150">
-            <div className="wire-section-header">
-              <span>Sizes</span>
-            </div>
-            <div className="wire-inline-form">
-              <Input
-                value={newVariantSize}
-                onChange={(event) => onNewVariantSizeChange(event.target.value)}
-                type="number"
-                min="1"
-                step="1"
-                className="wire-input"
-              />
-              <Button variant="outline" size="sm" className="wire-mini-button" onClick={onCreateVariant}>
-                Add
-              </Button>
-            </div>
-            {variants.map((variant) => {
-              const isDerived = variant.id.includes('.');
-              return (
-                <Button
-                  key={variant.id}
-                  variant="ghost"
-                  data-active={variant.id === currentVariantId ? 'true' : 'false'}
-                  className="wire-list-row"
-                  onClick={() => onSelectVariant(variant.id)}
-                >
-                  <span>{formatVariantLabel(variant)}</span>
-                  {isDerived && (
-                    <span className="ml-auto rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
-                      derived
-                    </span>
-                  )}
+              <label className="wire-label-inline flex items-center gap-2 px-0.5 text-[10px] text-muted-foreground">
+                <span className="min-w-[70px]">New size (px)</span>
+                <Input
+                  value={newVariantSize}
+                  onChange={(event) => onNewVariantSizeChange(event.target.value)}
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="32"
+                  aria-label="New variant size in pixels"
+                  className="wire-input flex-1"
+                />
+                <Button variant="outline" size="sm" className="wire-mini-button" onClick={onCreateVariant}>
+                  Add
                 </Button>
-              );
-            })}
+              </label>
+              <div className="wire-section-header">
+                <span>Sizes</span>
+              </div>
+              <div className="flex flex-wrap gap-1 px-0.5">
+                {variants.map((variant) => {
+                  const isDerived = variant.id.includes('.');
+                  const isCurrent = variant.id === currentVariantId;
+                  return (
+                    <ContextMenu key={variant.id}>
+                      <ContextMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => onSelectVariant(variant.id)}
+                          data-active={isCurrent ? 'true' : 'false'}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition',
+                            isCurrent
+                              ? 'border-primary bg-primary/10 text-foreground shadow-[0_0_0_1px_var(--primary)]'
+                              : 'border-border/70 bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground',
+                          )}
+                        >
+                          <span>{formatVariantLabel(variant)}</span>
+                          {isDerived ? (
+                            <span className="rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
+                              derived
+                            </span>
+                          ) : null}
+                        </button>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem onSelect={() => onSelectVariant(variant.id)}>
+                          <Pencil className="size-4" />
+                          Resize
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onSelect={() => {
+                            if (!currentIcon) return;
+                            editorStore.getState().duplicateLayersToVariant?.(
+                              currentIcon.id,
+                              variant.id,
+                              variant.id,
+                            );
+                          }}
+                        >
+                          <Copy className="size-4" />
+                          Duplicate
+                        </ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onSelect={() => {
+                            if (!currentIcon) return;
+                            editorStore.getState().removeVariant?.(currentIcon.id, variant.id);
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  );
+                })}
+              </div>
 
-            {/* UX-1.4: State management section */}
-            <StatesSection
-              currentVariant={currentVariant}
-              currentStateId={currentStateId}
-              onSelectState={onSelectState}
-              onAddState={onAddState}
-              onRemoveState={onRemoveState}
-              onRenameState={onRenameState}
-              onDuplicateState={onDuplicateState}
-            />
-          </div>
-        )}
-      </ScrollArea>
+              {/* UX-1.4: State management section */}
+              <StatesSection
+                currentVariant={currentVariant}
+                currentStateId={currentStateId}
+                onSelectState={onSelectState}
+                onAddState={onAddState}
+                onRemoveState={onRemoveState}
+                onRenameState={onRenameState}
+                onDuplicateState={onDuplicateState}
+              />
+            </div>
+          </ScrollArea>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={62} minSize={30}>
+          <ScrollArea className="h-full">
+            <div role="region" aria-label="Layers" className="wire-section animate-in fade-in duration-150">
+              <div className="wire-section-header">
+                <span>Layers · {currentVariant ? formatVariantLabel(currentVariant) : '—'}</span>
+              </div>
+              {layerRows.length === 0 ? (
+                <div className="wire-empty-note">No layers</div>
+              ) : (
+                <LayerRowsList
+                  layerRows={layerRows}
+                  selectedLayerId={selectedLayerId}
+                  onSelectLayer={onSelectLayer}
+                  onToggleLayerVisibility={onToggleLayerVisibility}
+                  currentIconId={currentIcon?.id ?? null}
+                />
+              )}
+            </div>
+          </ScrollArea>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </aside>
+  );
+}
+
+function LayerRowsList({
+  layerRows,
+  selectedLayerId,
+  onSelectLayer,
+  onToggleLayerVisibility,
+  currentIconId,
+}: {
+  layerRows: ReturnType<typeof buildLayerPanelRows>;
+  selectedLayerId: string | null;
+  onSelectLayer: (layerId: string) => void;
+  onToggleLayerVisibility: (layerId: string, visible: boolean) => void;
+  currentIconId: string | null;
+}) {
+  const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
+  const dragSourceIdRef = useRef<string | null>(null);
+
+  return (
+    <div role="listbox" aria-label="Layers" className="relative">
+      {layerRows.map((row, index) => {
+        const isSelected = row.layer.id === selectedLayerId;
+        const isVisible = row.layer.visible !== false;
+        const ShapeIcon = getLayerShapeIcon(row.layer);
+        const isDropTarget = dragTargetIndex === index;
+        return (
+          <ContextMenu key={row.layer.id}>
+            <ContextMenuTrigger asChild>
+              <div
+                role="option"
+                aria-selected={isSelected}
+                data-active={isSelected ? 'true' : 'false'}
+                className="wire-layer-row relative"
+                draggable
+                onClick={() => onSelectLayer(row.layer.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onSelectLayer(row.layer.id);
+                }}
+                tabIndex={0}
+                onDragStart={(e) => {
+                  dragSourceIdRef.current = row.layer.id;
+                  try {
+                    e.dataTransfer.setData('text/contour-layer-id', row.layer.id);
+                  } catch {
+                    // ignore
+                  }
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  if (!dragSourceIdRef.current) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setDragTargetIndex(index);
+                }}
+                onDragLeave={() => {
+                  if (dragTargetIndex === index) setDragTargetIndex(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const sourceId = dragSourceIdRef.current;
+                  dragSourceIdRef.current = null;
+                  setDragTargetIndex(null);
+                  if (!sourceId || sourceId === row.layer.id) return;
+                  editorStore.getState().moveLayerToIndex?.(sourceId, index);
+                }}
+                onDragEnd={() => {
+                  dragSourceIdRef.current = null;
+                  setDragTargetIndex(null);
+                }}
+              >
+                {isDropTarget ? (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-1 top-0 h-[2px] rounded-full bg-primary"
+                  />
+                ) : null}
+                <div
+                  className="wire-layer-line"
+                  style={{ paddingLeft: `${row.depth * 12}px` }}
+                >
+                  <ShapeIcon className="size-3 shrink-0 text-muted-foreground" />
+                  <span className="wire-layer-name">{row.layer.id}</span>
+                  {row.layer.isClipMask ? (
+                    <span className="wire-layer-kind">mask</span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="wire-row-control"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleLayerVisibility(row.layer.id, row.layer.visible === false);
+                  }}
+                  aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
+                >
+                  {row.layer.visible === false ? (
+                    <EyeOff className="size-3.5" />
+                  ) : (
+                    <Eye className="size-3.5" />
+                  )}
+                </button>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="w-52">
+              <ContextMenuItem
+                onSelect={() => {
+                  const newId = window.prompt('Rename layer', row.layer.id);
+                  if (newId && newId !== row.layer.id && currentIconId) {
+                    editorStore.getState().renameLayer?.(currentIconId, row.layer.id, newId);
+                  }
+                }}
+              >
+                <Pencil className="size-4" />
+                Rename
+                <ContextMenuShortcut>F2</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem
+                onSelect={() => {
+                  editorStore.getState().setSelection?.({ layerIds: [row.layer.id], pointIds: [] });
+                  editorStore.getState().duplicateSelectedLayers?.();
+                }}
+              >
+                <Copy className="size-4" />
+                Duplicate
+                <ContextMenuShortcut>⌘D</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onSelect={() => {
+                  editorStore.getState().setSelection?.({ layerIds: [row.layer.id], pointIds: [] });
+                  editorStore.getState().reorderSelectedLayers?.('front');
+                }}
+              >
+                Move to Top
+                <ContextMenuShortcut>⌘⌥↑</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem
+                onSelect={() => {
+                  editorStore.getState().setSelection?.({ layerIds: [row.layer.id], pointIds: [] });
+                  editorStore.getState().reorderSelectedLayers?.('back');
+                }}
+              >
+                Move to Bottom
+                <ContextMenuShortcut>⌘⌥↓</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => {
+                  editorStore.getState().setSelection?.({ layerIds: [row.layer.id], pointIds: [] });
+                  editorStore.getState().removeSelectedLayers?.();
+                }}
+              >
+                <Trash2 className="size-4" />
+                Delete
+                <ContextMenuShortcut>⌫</ContextMenuShortcut>
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+        );
+      })}
+    </div>
   );
 }
 
@@ -863,26 +1093,57 @@ function RightSidebar({
             selectedLayer ? (
               <>
                 <TinyLabel>Layer</TinyLabel>
-                <RowField label="Role">
-                  <Input
-                    key={selectedLayer.id}
-                    defaultValue={selectedLayer.role ?? ''}
-                    onBlur={(event) =>
-                      onPatchSelectedLayer({ role: event.target.value || undefined })
+                <RowField
+                  label={
+                    <span className="flex items-center gap-1">
+                      <span>Role</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            tabIndex={0}
+                            className="inline-flex size-3 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            aria-label="What is Role?"
+                          >
+                            <HelpCircle className="size-3" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[220px]">{ROLE_TOOLTIP}</TooltipContent>
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <Select
+                    value={selectedLayer.role && ROLE_OPTIONS.some((o) => o.value === selectedLayer.role) ? selectedLayer.role : '__none__'}
+                    onValueChange={(next) =>
+                      onPatchSelectedLayer({ role: next === '__none__' ? undefined : next })
                     }
-                    className="wire-input w-full"
-                  />
+                  >
+                    <SelectTrigger className={editorSelectTriggerClassName}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </RowField>
                 <div className="grid grid-cols-2 gap-1.5">
                   <RowField label="Fill">
-                    <Select
-                      value={fillMode}
+                    <ToggleGroup
+                      type="single"
+                      size="sm"
+                      variant="outline"
+                      value={fillMode === 'currentColor' ? 'inherited' : fillMode === 'fixed' ? 'static' : 'none'}
                       onValueChange={(nextMode) => {
+                        if (!nextMode) return;
                         if (nextMode === 'none') {
                           onPatchSelectedLayerStyle({ fill: undefined });
                           return;
                         }
-                        if (nextMode === 'currentColor') {
+                        if (nextMode === 'inherited') {
                           onPatchSelectedLayerStyle({ fill: { mode: 'currentColor' } });
                           return;
                         }
@@ -896,26 +1157,32 @@ function RightSidebar({
                           },
                         });
                       }}
+                      className="h-7 w-full justify-stretch rounded-md border border-border/70"
                     >
-                      <SelectTrigger className={editorSelectTriggerClassName}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="fixed">Fixed</SelectItem>
-                        <SelectItem value="currentColor">Current</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <ToggleGroupItem value="none" aria-label="No fill" className="flex-1 text-[length:var(--text-label)]">
+                        None
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="static" aria-label="Static fill" className="flex-1 text-[length:var(--text-label)]">
+                        Static
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="inherited" aria-label="Inherited fill" className="flex-1 text-[length:var(--text-label)]">
+                        Inherited
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </RowField>
                   <RowField label="Stroke">
-                    <Select
-                      value={strokeMode}
+                    <ToggleGroup
+                      type="single"
+                      size="sm"
+                      variant="outline"
+                      value={strokeMode === 'currentColor' ? 'inherited' : strokeMode === 'fixed' ? 'static' : 'none'}
                       onValueChange={(nextMode) => {
+                        if (!nextMode) return;
                         if (nextMode === 'none') {
                           onPatchSelectedLayerStyle({ stroke: undefined });
                           return;
                         }
-                        if (nextMode === 'currentColor') {
+                        if (nextMode === 'inherited') {
                           onPatchSelectedLayerStyle({ stroke: { mode: 'currentColor' } });
                           return;
                         }
@@ -929,16 +1196,18 @@ function RightSidebar({
                           },
                         });
                       }}
+                      className="h-7 w-full justify-stretch rounded-md border border-border/70"
                     >
-                      <SelectTrigger className={editorSelectTriggerClassName}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="fixed">Fixed</SelectItem>
-                        <SelectItem value="currentColor">Current</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <ToggleGroupItem value="none" aria-label="No stroke" className="flex-1 text-[length:var(--text-label)]">
+                        None
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="static" aria-label="Static stroke" className="flex-1 text-[length:var(--text-label)]">
+                        Static
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="inherited" aria-label="Inherited stroke" className="flex-1 text-[length:var(--text-label)]">
+                        Inherited
+                      </ToggleGroupItem>
+                    </ToggleGroup>
                   </RowField>
                 </div>
                 {fillMode === 'fixed' && (
@@ -983,27 +1252,49 @@ function RightSidebar({
                 )}
                 <div className="grid grid-cols-[minmax(0,1fr)_88px] gap-1.5">
                   <RowField label="Stroke width">
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={selectedLayer.style.strokeWidth ?? 0}
-                      onChange={(event) =>
-                        onPatchSelectedLayerStyle({
-                          strokeWidth: Number.parseFloat(event.target.value) || 0,
-                        })
-                      }
-                      className="wire-input w-full"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.1"
+                        value={selectedLayer.style.strokeWidth ?? 0}
+                        onChange={(event) =>
+                          onPatchSelectedLayerStyle({
+                            strokeWidth: Number.parseFloat(event.target.value) || 0,
+                          })
+                        }
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={selectedLayer.style.strokeWidth ?? 0}
+                        className="wire-input w-full pr-6"
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                        px
+                      </span>
+                    </div>
                   </RowField>
                   <RowField label="Guides">
-                    <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
+                    <div className="flex h-7 items-center gap-2 px-0.5">
+                      <Switch
+                        checked={guidesVisible}
+                        onCheckedChange={() => {
+                          editorStore.getState().toggleGuidesVisible?.();
+                        }}
+                        aria-label="Toggle guides visibility"
+                      />
+                      <span className="text-[10px] text-muted-foreground">{guidesVisible ? 'On' : 'Off'}</span>
+                    </div>
                   </RowField>
                 </div>
+                <Separator className="my-1" />
                 <TinyLabel>Position</TinyLabel>
                 <div className="grid grid-cols-3 gap-1.5">
                   <RowField label="X">
                     <Input
                       type="number"
+                      min={-9999}
+                      max={9999}
                       step="0.5"
                       value={selectedLayer.transform?.x ?? 0}
                       onChange={(event) =>
@@ -1011,12 +1302,17 @@ function RightSidebar({
                           x: Number.parseFloat(event.target.value) || 0,
                         })
                       }
+                      aria-valuemin={-9999}
+                      aria-valuemax={9999}
+                      aria-valuenow={selectedLayer.transform?.x ?? 0}
                       className="wire-input w-full"
                     />
                   </RowField>
                   <RowField label="Y">
                     <Input
                       type="number"
+                      min={-9999}
+                      max={9999}
                       step="0.5"
                       value={selectedLayer.transform?.y ?? 0}
                       onChange={(event) =>
@@ -1024,21 +1320,34 @@ function RightSidebar({
                           y: Number.parseFloat(event.target.value) || 0,
                         })
                       }
+                      aria-valuemin={-9999}
+                      aria-valuemax={9999}
+                      aria-valuenow={selectedLayer.transform?.y ?? 0}
                       className="wire-input w-full"
                     />
                   </RowField>
-                  <RowField label="Rot">
-                    <Input
-                      type="number"
-                      step="1"
-                      value={selectedLayer.transform?.rotate ?? 0}
-                      onChange={(event) =>
-                        onPatchSelectedLayerTransform({
-                          rotate: Number.parseFloat(event.target.value) || 0,
-                        })
-                      }
-                      className="wire-input w-full"
-                    />
+                  <RowField label="Rotation">
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={360}
+                        step="1"
+                        value={selectedLayer.transform?.rotate ?? 0}
+                        onChange={(event) =>
+                          onPatchSelectedLayerTransform({
+                            rotate: Number.parseFloat(event.target.value) || 0,
+                          })
+                        }
+                        aria-valuemin={0}
+                        aria-valuemax={360}
+                        aria-valuenow={selectedLayer.transform?.rotate ?? 0}
+                        className="wire-input w-full pr-5"
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                        °
+                      </span>
+                    </div>
                   </RowField>
                 </div>
               </>
@@ -1053,50 +1362,110 @@ function RightSidebar({
                     className="wire-input w-full"
                   />
                 </RowField>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <RowField label="Size">
+                <RowField label="Size">
+                  <div className="relative">
                     <Input
                       type="number"
-                      min="1"
+                      min={1}
+                      max={512}
                       step="1"
                       value={currentVariant?.size ?? 0}
                       onChange={(event) =>
                         onPatchVariant({ size: Number.parseFloat(event.target.value) || 24 })
                       }
-                      className="wire-input w-full"
+                      aria-valuemin={1}
+                      aria-valuemax={512}
+                      aria-valuenow={currentVariant?.size ?? 0}
+                      className="wire-input w-full pr-6"
                     />
-                  </RowField>
-                </div>
-                <RowField label="Rendering">
-                  <Select
-                    value={currentVariant?.renderingMode ?? 'monochrome'}
-                    onValueChange={(value) =>
-                      onPatchVariant({ renderingMode: value as RenderingMode })
-                    }
-                  >
-                    <SelectTrigger className={editorSelectTriggerClassName}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RENDERING_MODE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                      px
+                    </span>
+                  </div>
                 </RowField>
+                <RowField
+                  label={
+                    <span className="flex items-center gap-1">
+                      <span>Rendering</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            tabIndex={0}
+                            className="inline-flex size-3 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            aria-label="What is Rendering mode?"
+                          >
+                            <HelpCircle className="size-3" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[240px]">{RENDERING_MODE_TOOLTIP}</TooltipContent>
+                      </Tooltip>
+                    </span>
+                  }
+                >
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    variant="outline"
+                    value={currentVariant?.renderingMode ?? 'monochrome'}
+                    onValueChange={(value) => {
+                      if (value) onPatchVariant({ renderingMode: value as RenderingMode });
+                    }}
+                    className="h-7 w-full justify-stretch rounded-md border border-border/70"
+                  >
+                    {RENDERING_MODE_OPTIONS.map((option) => (
+                      <ToggleGroupItem
+                        key={option.value}
+                        value={option.value}
+                        aria-label={option.label}
+                        className="flex-1 px-1 text-[length:var(--text-label)]"
+                      >
+                        {option.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </RowField>
+                <Separator className="my-1" />
                 <TinyLabel>Guides</TinyLabel>
                 <div className="wire-meta-row">
                   <span className="wire-field-name">Master</span>
-                  <PropertyValue>{guideMasterName ?? 'None'}</PropertyValue>
+                  {guideMasterName ? (
+                    <span className="text-[length:var(--text-label)] text-foreground">
+                      {guideMasterName}
+                    </span>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          tabIndex={0}
+                          className="cursor-default text-[length:var(--text-label)] italic text-muted-foreground/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          None
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-[220px]">
+                        No guide master assigned. Open the Guides panel in the toolbar to attach one.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
                 <div className="wire-meta-row">
                   <span className="wire-field-name">Visible</span>
-                  <PropertyValue>{guidesVisible ? 'On' : 'Off'}</PropertyValue>
+                  <Switch
+                    checked={guidesVisible}
+                    onCheckedChange={() => {
+                      editorStore.getState().toggleGuidesVisible?.();
+                    }}
+                    aria-label="Toggle guides visibility"
+                  />
                 </div>
-                <div className="pt-2">
-                  <Button variant="outline" size="sm" className="wire-mini-button" onClick={onDeleteVariant}>
+                <Separator className="my-2" />
+                <div className="pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="wire-mini-button w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={onDeleteVariant}
+                  >
                     Delete size
                   </Button>
                 </div>
@@ -1166,7 +1535,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     toggleSnap,
   } = useEditorActions();
 
-  const [leftTab, setLeftTab] = useState<LeftTab>('layers');
   const [rightTab, setRightTab] = useState<RightTab>('inspect');
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -1546,8 +1914,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         {/* Layer panel — always visible at all breakpoints */}
         <div className="flex min-h-0">
           <LeftSidebar
-            leftTab={leftTab}
-            onLeftTabChange={setLeftTab}
             workspaceName={projectName}
             currentIcon={currentIcon}
             currentVariant={currentVariant}
@@ -1783,7 +2149,12 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

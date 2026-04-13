@@ -290,11 +290,19 @@ export function Navbar() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger><Download className="size-4" />Export</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}><Download className="size-4" />SVG Package</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}><Download className="size-4" />React Library</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}>
+                    <Download className="size-4" />Quick ZIP (SVG package)
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}><FileJson className="size-4" />Lottie JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}><Package className="size-4" />Distribution</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}>
+                    <Download className="size-4" />React library (.zip)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
+                    <FileJson className="size-4" />Lottie JSON…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}>
+                    <Package className="size-4" />Full distribution options…
+                  </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 

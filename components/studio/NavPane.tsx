@@ -98,9 +98,22 @@ export function NavPane() {
         {/* Header */}
         <div className={cn('flex h-10 items-center border-b border-border/40', navExpanded ? 'justify-between px-2' : 'justify-center')}>
           {navExpanded && <span className="studio-kicker truncate px-1">Projects</span>}
-          <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleNavPane} aria-label={navExpanded ? 'Collapse sidebar' : 'Expand sidebar'}>
-            {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-          </Button>
+          <Tooltip delayDuration={200}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-7 w-7 shrink-0 rounded-lg"
+                onClick={toggleNavPane}
+                aria-label={navExpanded ? 'Close projects' : 'Open projects'}
+                aria-expanded={navExpanded}
+                aria-controls="nav-pane-content"
+              >
+                {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{navExpanded ? 'Close projects' : 'Open projects'}</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Vertical label when collapsed */}
@@ -118,7 +131,7 @@ export function NavPane() {
         )}
 
         {/* Project list */}
-        {navExpanded && <ScrollArea className="flex-1">
+        {navExpanded && <ScrollArea id="nav-pane-content" className="flex-1">
           <div className="flex flex-col gap-0.5 p-1.5">
             {iconSets.map((iconSet) => (
               <Tooltip key={iconSet.id} delayDuration={navExpanded ? 1000 : 200}>

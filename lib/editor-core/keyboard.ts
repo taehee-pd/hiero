@@ -48,6 +48,60 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
   const key = e.key.toLowerCase();
   const mod = e.metaKey || e.ctrlKey;
 
+  // Layer reorder shortcuts (Figma-parity): ⌘↑/⌘↓ move one step, ⌘⌥↑/⌘⌥↓ move to top/bottom.
+  if (mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+      reorderSelectedLayers?: (direction: 'up' | 'down' | 'front' | 'back') => void;
+    };
+    if (state.selection.layerIds.length > 0 && typeof state.reorderSelectedLayers === 'function') {
+      e.preventDefault();
+      const direction =
+        e.altKey
+          ? e.key === 'ArrowUp'
+            ? 'front'
+            : 'back'
+          : e.key === 'ArrowUp'
+            ? 'up'
+            : 'down';
+      state.reorderSelectedLayers(direction);
+      return;
+    }
+  }
+
+  // Layer clipboard shortcuts: ⌘C/⌘V/⌘D/⌘A
+  if (mod && !e.shiftKey && !e.altKey && (key === 'c' || key === 'v' || key === 'd' || key === 'a')) {
+    const state = editorStore.getState() as ReturnType<typeof editorStore.getState> & {
+      copySelectedLayers?: () => void;
+      pasteLayers?: () => void;
+      duplicateSelectedLayers?: () => void;
+      setSelection?: (selection: { layerIds: string[]; pointIds: string[] }) => void;
+    };
+    if (key === 'c' && state.selection.layerIds.length > 0 && typeof state.copySelectedLayers === 'function') {
+      e.preventDefault();
+      state.copySelectedLayers();
+      return;
+    }
+    if (key === 'v' && typeof state.pasteLayers === 'function') {
+      e.preventDefault();
+      state.pasteLayers();
+      return;
+    }
+    if (key === 'd' && state.selection.layerIds.length > 0 && typeof state.duplicateSelectedLayers === 'function') {
+      e.preventDefault();
+      state.duplicateSelectedLayers();
+      return;
+    }
+    if (key === 'a' && state.currentIconId && state.currentVariantId) {
+      const icon = state.project?.icons[state.currentIconId];
+      const variant = icon?.variants[state.currentVariantId];
+      if (variant && typeof state.setSelection === 'function') {
+        e.preventDefault();
+        state.setSelection({ layerIds: Object.keys(variant.layers), pointIds: [] });
+        return;
+      }
+    }
+  }
+
   // Undo / Redo
   if (mod && key === 'z') {
     e.preventDefault();

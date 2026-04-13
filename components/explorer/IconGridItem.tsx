@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 
-import { Check, Copy, Grid3X3, Heart, Trash2 } from 'lucide-react';
+import { Check, Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -26,6 +26,7 @@ export function IconGridItem({
   onToggleFavorite,
   onDuplicate,
   onDelete,
+  onRename,
 }: {
   iconId: string;
   iconName: string;
@@ -41,41 +42,68 @@ export function IconGridItem({
   onToggleFavorite: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  onRename?: (nextName: string) => void;
 }) {
-  const clickState = useRef<{ timer: ReturnType<typeof setTimeout> | null; count: number }>({ timer: null, count: 0 });
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [renameDraft, setRenameDraft] = useState(iconName);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
-      const state = clickState.current;
-      state.count += 1;
-
-      if (state.count === 2) {
-        // Double click — open in editor
-        if (state.timer) clearTimeout(state.timer);
-        state.timer = null;
-        state.count = 0;
-        onOpen();
+      if (renaming) return;
+      const isShift = e.shiftKey || e.metaKey;
+      if (isShift) {
+        if (clickTimerRef.current) {
+          clearTimeout(clickTimerRef.current);
+          clickTimerRef.current = null;
+        }
+        onShiftClick();
         return;
       }
-
-      const isShift = e.shiftKey || e.metaKey;
-      state.timer = setTimeout(() => {
-        state.count = 0;
-        state.timer = null;
-        if (isShift) {
-          onShiftClick();
-        } else {
-          onSelect();
-        }
-      }, 300);
+      // Delay single-click to give onDoubleClick a chance to cancel it.
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        onSelect();
+        onOpen();
+      }, 200);
     },
-    [onOpen, onSelect, onShiftClick],
+    [onOpen, onSelect, onShiftClick, renaming],
   );
 
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (renaming) return;
+      if (e.shiftKey || e.metaKey) return;
+      if (!onRename) return;
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+      }
+      setRenameDraft(iconName);
+      setRenaming(true);
+    },
+    [iconName, onRename, renaming],
+  );
+
+  const commitRename = useCallback(() => {
+    if (!renaming) return;
+    const trimmed = renameDraft.trim();
+    setRenaming(false);
+    if (trimmed && trimmed !== iconName) {
+      onRename?.(trimmed);
+    }
+  }, [renaming, renameDraft, iconName, onRename]);
+
+  const cancelRename = useCallback(() => {
+    setRenaming(false);
+    setRenameDraft(iconName);
+  }, [iconName]);
+
   useEffect(() => {
-    const state = clickState.current;
+    const timerRef = clickTimerRef;
     return () => {
-      if (state.timer) clearTimeout(state.timer);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
@@ -87,9 +115,17 @@ export function IconGridItem({
           tabIndex={0}
           data-icon-id={iconId}
           onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            event.preventDefault();
-            onOpen();
+            if (renaming) return;
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              onOpen();
+              return;
+            }
+            if (event.key === 'F2' && onRename) {
+              event.preventDefault();
+              setRenameDraft(iconName);
+              setRenaming(true);
+            }
           }}
           className={cn(
             'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
@@ -116,19 +152,20 @@ export function IconGridItem({
               aria-pressed={selected}
               aria-label={selected ? `Deselect ${iconName}` : `Select ${iconName}`}
               className={cn(
-                'flex size-5 items-center justify-center rounded-md transition',
+                'flex size-5 items-center justify-center rounded-md border transition',
                 selected
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-background/80 text-muted-foreground hover:text-foreground',
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border/80 bg-background/80 text-transparent hover:text-muted-foreground',
               )}
             >
-              <Check className="size-3" />
+              {selected ? <Check className="size-3" /> : null}
             </button>
           </div>
 
           <div
             className="flex w-full flex-col items-center gap-2 rounded-md cursor-pointer"
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
           >
             <div className="flex aspect-square w-full items-center justify-center rounded-md">
               {svg ? (
@@ -142,9 +179,33 @@ export function IconGridItem({
               )}
             </div>
             <div className="w-full text-center">
-              <p className="truncate font-medium text-[length:var(--text-caption)] text-foreground">
-                {iconName}
-              </p>
+              {renaming ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      commitRename();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      cancelRename();
+                    }
+                  }}
+                  aria-label={`Rename ${iconName}`}
+                  className="w-full rounded-sm border border-border/80 bg-background px-1 py-0.5 text-center text-[length:var(--text-caption)] font-medium text-foreground outline-none focus:border-ring"
+                />
+              ) : (
+                <p className="truncate font-medium text-[length:var(--text-caption)] text-foreground">
+                  {iconName}
+                </p>
+              )}
             </div>
           </div>
         </article>
@@ -154,6 +215,17 @@ export function IconGridItem({
           <Heart className="size-4" />
           {favorite ? 'Unfavorite' : 'Favorite'}
         </ContextMenuItem>
+        {onRename ? (
+          <ContextMenuItem
+            onSelect={() => {
+              setRenameDraft(iconName);
+              setRenaming(true);
+            }}
+          >
+            <Pencil className="size-4" />
+            Rename
+          </ContextMenuItem>
+        ) : null}
         {onDuplicate ? (
           <ContextMenuItem onSelect={onDuplicate}>
             <Copy className="size-4" />

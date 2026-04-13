@@ -11,10 +11,9 @@ import {
   FileJson,
   FilePlus2,
   HelpCircle,
-  ZoomIn,
-  ZoomOut,
   Maximize2,
   Import,
+  Minus,
   Plus,
   Package,
 } from 'lucide-react';
@@ -472,29 +471,36 @@ export function Toolbar() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <Badge
-              variant="outline"
-              className="min-w-[3.75rem] rounded-full px-2 py-0.5 font-medium text-[length:var(--text-label)]"
-            >
-              {Math.round(zoom * 100)}%
-            </Badge>
             <ToolbarButton
-              icon={ZoomOut}
-              label="Zoom Out"
+              icon={Minus}
+              label="Zoom out"
               onClick={handleZoomOut}
               compact
               shortcut="-"
             />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className="min-w-[3.75rem] cursor-default rounded-full px-2 py-0.5 font-medium text-[length:var(--text-label)] tabular-nums"
+                >
+                  {zoom >= 5 ? 'Fill' : `${Math.round(zoom * 100)}%`}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {zoom >= 5 ? `Fill (${Math.round(zoom * 100)}%)` : `${Math.round(zoom * 100)}%`}
+              </TooltipContent>
+            </Tooltip>
             <ToolbarButton
-              icon={ZoomIn}
-              label="Zoom In"
+              icon={Plus}
+              label="Zoom in"
               onClick={handleZoomIn}
               compact
               shortcut="+"
             />
             <ToolbarButton
               icon={Maximize2}
-              label="Fit View"
+              label="Fit view"
               onClick={handleZoomFit}
               compact
               shortcut="0"

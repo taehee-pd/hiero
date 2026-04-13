@@ -1,19 +1,67 @@
 'use client';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Bookmark,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+} from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Separator } from '@/components/kibo-ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';
 import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
 import type { Effect, Layer } from '@/lib/schema/types';
 import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
+import { cn } from '@/lib/utils';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorPickerPopover } from './ColorPickerPopover';
 
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
+
+type PresetCategoryId = 'attention' | 'visibility' | 'draw' | 'color';
+const PRESET_CATEGORY_LABELS: Record<PresetCategoryId, string> = {
+  attention: 'Attention',
+  visibility: 'Visibility',
+  draw: 'Draw',
+  color: 'Color',
+};
+const PRESET_CATEGORY_MAP: Record<string, PresetCategoryId> = {
+  bounce: 'attention',
+  pulse: 'attention',
+  wiggle: 'attention',
+  rotate: 'attention',
+  breathe: 'attention',
+  appear: 'visibility',
+  disappear: 'visibility',
+  drawOn: 'draw',
+  drawOff: 'draw',
+  drawReveal: 'draw',
+  drawErase: 'draw',
+  drawSlide: 'draw',
+  variableColor: 'color',
+};
+
+const PRESET_HOVER_CLASS: Record<string, string> = {
+  bounce: 'group-hover/preset:animate-[asp-bounce_900ms_ease-in-out_infinite]',
+  pulse: 'group-hover/preset:animate-pulse',
+  wiggle: 'group-hover/preset:animate-[asp-wiggle_700ms_ease-in-out_infinite]',
+  rotate: 'group-hover/preset:animate-[spin_1.5s_linear_infinite]',
+  breathe: 'group-hover/preset:animate-[asp-breathe_1800ms_ease-in-out_infinite]',
+  appear: 'group-hover/preset:animate-[asp-appear_900ms_ease-out_infinite]',
+  disappear: 'group-hover/preset:animate-[asp-disappear_900ms_ease-in_infinite]',
+  drawOn: 'group-hover/preset:animate-[asp-draw_1200ms_linear_infinite]',
+  drawOff: 'group-hover/preset:animate-[asp-draw_1200ms_linear_infinite_reverse]',
+  drawReveal: 'group-hover/preset:animate-[asp-draw_1400ms_linear_infinite]',
+  drawErase: 'group-hover/preset:animate-[asp-draw_1400ms_linear_infinite_reverse]',
+  drawSlide: 'group-hover/preset:animate-[asp-slide_1400ms_ease-in-out_infinite]',
+  variableColor: 'group-hover/preset:animate-[asp-hue_1800ms_linear_infinite]',
+};
 
 const EFFECT_KIND_LABELS: Record<string, string> = {
   lineDrawOn: 'Line Draw On',
@@ -135,38 +183,170 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
     [iconId],
   );
 
+  const groupedPresets = useMemo(() => {
+    const groups: Record<PresetCategoryId, typeof PRESET_CARDS> = {
+      attention: [],
+      visibility: [],
+      draw: [],
+      color: [],
+    };
+    for (const preset of PRESET_CARDS) {
+      const cat = PRESET_CATEGORY_MAP[preset.key] ?? 'attention';
+      groups[cat].push(preset);
+    }
+    return groups;
+  }, []);
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
         <p className="text-[length:var(--text-heading)] font-semibold">Effects</p>
         <p className="text-[length:var(--text-label)] text-muted-foreground">
-          Click a preset to preview.{previewLabel ? <> <span className="font-medium text-foreground">{formatEffectKind(previewLabel)}</span></> : null}
+          Hover for a preview, click to run.
+          {previewLabel ? <> <span className="font-medium text-foreground">{formatEffectKind(previewLabel)}</span></> : null}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        {PRESET_CARDS.map((preset) => {
-          const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
-          const disabled = isDrawPreset && !hasDrawEligibleLayers;
+      <div className="space-y-3">
+        {(['attention', 'visibility', 'draw', 'color'] as PresetCategoryId[]).map((category) => {
+          const presetsInCategory = groupedPresets[category];
+          if (presetsInCategory.length === 0) return null;
           return (
-            <Button key={preset.key} variant="outline" className={`h-auto rounded-lg border-border/60 px-2.5 py-1.5 text-left transition-colors duration-100 ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent hover:border-primary/30'}`} onClick={() => !disabled && playPreset(preset.key)} disabled={disabled} title={disabled ? 'Requires open stroked paths' : preset.description}>
-              <p className="text-[length:var(--text-caption)] font-medium leading-tight">{preset.label}</p>
-            </Button>
+            <div key={category} className="space-y-1.5">
+              <p className="px-0.5 text-[10px] font-medium text-muted-foreground">
+                {PRESET_CATEGORY_LABELS[category]}
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {presetsInCategory.map((preset) => {
+                  const isDrawPreset = DRAW_PRESET_KEYS.has(preset.key);
+                  const disabled = isDrawPreset && !hasDrawEligibleLayers;
+                  const hoverAnim = PRESET_HOVER_CLASS[preset.key] ?? 'group-hover/preset:animate-pulse';
+                  return (
+                    <Tooltip key={preset.key}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'group/preset relative flex h-auto items-center gap-2 overflow-hidden rounded-lg border-border/60 px-2.5 py-2 text-left transition-colors duration-100',
+                            disabled
+                              ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                              : 'hover:bg-accent hover:border-primary/30',
+                          )}
+                          onClick={() => !disabled && playPreset(preset.key)}
+                          disabled={disabled}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-primary',
+                              !disabled && hoverAnim,
+                            )}
+                          >
+                            <span className="size-2 rounded-full bg-current" />
+                          </span>
+                          <p className="text-[length:var(--text-caption)] font-medium leading-tight">
+                            {preset.label}
+                          </p>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[220px]">
+                        {disabled ? 'Requires open stroked paths.' : preset.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Animation controls">
-        <Button size="sm" variant="secondary" className="h-7 px-2.5 text-xs" onClick={togglePlay} aria-label="Play animation">Play</Button>
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handlePause} aria-label="Pause animation">Pause</Button>
-        <Button size="sm" variant={loop ? 'default' : 'outline'} className="h-7 px-2.5 text-xs" onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Toggle loop">Loop</Button>
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={handleSave} disabled={!currentEffect.current} aria-label="Save current effect">Save</Button>
-        <div className="flex items-center gap-1" role="toolbar" aria-label="Playback speed">
-          {SPEEDS.map((value) => (
-            <Button key={value} variant="ghost" size="sm" className={`h-6 rounded px-1.5 text-[length:var(--text-caption)] font-medium transition-colors ${speed === value ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'text-foreground/70 hover:text-foreground'}`} onClick={() => { setSpeed(value); playerRef.current?.setSpeed(value); }} aria-pressed={speed === value} aria-label={`Set speed to ${value}x`}>
-              {value}x
-            </Button>
-          ))}
+      <div className="flex flex-col gap-3" role="toolbar" aria-label="Animation controls">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8 w-8 rounded-lg p-0"
+                onClick={togglePlay}
+                aria-label="Play animation"
+              >
+                <Play className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Play</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 rounded-lg p-0"
+                onClick={handlePause}
+                aria-label="Pause animation"
+              >
+                <Pause className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Pause</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant={loop ? 'default' : 'outline'}
+                className="h-8 w-8 rounded-lg p-0"
+                onClick={() => setLoop((v) => !v)}
+                aria-pressed={loop}
+                aria-label="Toggle loop"
+              >
+                {loop ? <Repeat className="size-3.5" /> : <Repeat1 className="size-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{loop ? 'Loop on' : 'Loop off'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 rounded-lg p-0"
+                onClick={handleSave}
+                disabled={!currentEffect.current}
+                aria-label="Save current effect"
+              >
+                <Bookmark className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Save effect</TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="flex items-center gap-2" role="toolbar" aria-label="Playback speed">
+          <span className="text-[10px] font-medium text-muted-foreground">Speed</span>
+          <div className="inline-flex items-center gap-0.5 rounded-md border border-border/70 bg-background p-0.5">
+            {SPEEDS.map((value) => (
+              <Button
+                key={value}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-6 rounded px-2 text-[length:var(--text-caption)] font-medium transition-colors tabular-nums',
+                  speed === value
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'text-foreground/70 hover:text-foreground',
+                )}
+                onClick={() => {
+                  setSpeed(value);
+                  playerRef.current?.setSpeed(value);
+                }}
+                aria-pressed={speed === value}
+                aria-label={`Set speed to ${value}x`}
+              >
+                {value}×
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -177,9 +357,11 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
 
         <Separator />
         <div className="space-y-2">
-          <p className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Saved effects</p>
+          <p className="text-[length:var(--text-heading)] font-semibold">Saved effects</p>
           {savedEffects.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No saved effects yet.</p>
+            <p className="text-[length:var(--text-label)] italic text-muted-foreground/70">
+              No saved effects. Click the bookmark in Playback to add one.
+            </p>
           ) : (
             savedEffects.map((effect) => (
               <div key={effect.id} className="rounded-lg border border-border/70 p-3">
@@ -187,7 +369,15 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                   <div>
                     <p className="text-sm font-medium">{formatEffectKind(effect.kind)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {effect.durationMs}ms • {typeof effect.easing === 'string' ? effect.easing : 'spring'}
+                      {effect.durationMs}ms · easing:{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleEditEasing(effect)}
+                        className="font-mono italic text-foreground/80 underline decoration-dotted underline-offset-2 hover:text-foreground"
+                        aria-label="Edit easing"
+                      >
+                        {typeof effect.easing === 'string' ? effect.easing : 'spring'}
+                      </button>
                     </p>
                   </div>
                   <div className="flex gap-1">

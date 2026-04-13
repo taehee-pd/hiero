@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/kibo-ui/button';
 import { Input } from '@/components/kibo-ui/input';
 import { Label } from '@/components/kibo-ui/label';
@@ -418,22 +418,30 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </p>
       </div>
 
-      {/* Endpoint pickers */}
-      <LockedSourceEndpoint
-        iconName={currentIcon.name}
-        variants={srcVariants}
-        selectedVariantId={srcVariantId}
-        onVariantChange={setSrcVariantId}
-      />
-      <CrossIconEndpointPicker
-        label="Target"
-        iconEntries={iconEntries}
-        selectedIconId={tgtIconId}
-        onIconChange={(id) => { setTgtIconId(id); setTgtVariantId(''); }}
-        variants={tgtVariants}
-        selectedVariantId={tgtVariantId}
-        onVariantChange={setTgtVariantId}
-      />
+      {/* Endpoint pickers — source → target */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        <LockedSourceEndpoint
+          iconName={currentIcon.name}
+          variants={srcVariants}
+          selectedVariantId={srcVariantId}
+          onVariantChange={setSrcVariantId}
+        />
+        <div
+          aria-hidden="true"
+          className="flex size-6 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground"
+        >
+          <ArrowRight className="size-3.5" />
+        </div>
+        <CrossIconEndpointPicker
+          label="Target"
+          iconEntries={iconEntries}
+          selectedIconId={tgtIconId}
+          onIconChange={(id) => { setTgtIconId(id); setTgtVariantId(''); }}
+          variants={tgtVariants}
+          selectedVariantId={tgtVariantId}
+          onVariantChange={setTgtVariantId}
+        />
+      </div>
 
       <Separator />
 
@@ -1131,33 +1139,29 @@ function LockedSourceEndpoint({
   onVariantChange: (id: string) => void;
 }) {
   return (
-    <fieldset className="grid gap-2">
-      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground">
-        Source
-      </legend>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Icon</Label>
-          <div className="flex h-8 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
-            {iconName}
-          </div>
+    <fieldset className="grid gap-1.5 rounded-lg border border-border/60 bg-background/60 p-2">
+      <legend className="px-1.5 text-[10px] font-medium text-muted-foreground">Source</legend>
+      <div className="grid gap-1.5">
+        <Label className="text-[10px] font-medium text-muted-foreground">Source icon</Label>
+        <div className="flex h-8 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
+          {iconName}
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Variant</Label>
-          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
-            <SelectTrigger className="h-8 rounded-lg">
-              <SelectValue placeholder="Select variant..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Select variant...</SelectItem>
-              {variants.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.name || v.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      </div>
+      <div className="grid gap-1.5">
+        <Label className="text-[10px] font-medium text-muted-foreground">Source variant</Label>
+        <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
+          <SelectTrigger className="h-8 rounded-lg">
+            <SelectValue placeholder="Select variant…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Select variant…</SelectItem>
+            {variants.map((v) => (
+              <SelectItem key={v.id} value={v.id}>
+                {v.name || v.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </fieldset>
   );
@@ -1180,44 +1184,41 @@ function CrossIconEndpointPicker({
   selectedVariantId: string;
   onVariantChange: (id: string) => void;
 }) {
+  const qualifier = label.toLowerCase();
   return (
-    <fieldset className="grid gap-2">
-      <legend className="px-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground">
-        {label}
-      </legend>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Icon</Label>
-          <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
-            <SelectTrigger className="h-8 rounded-lg">
-              <SelectValue placeholder="Select icon..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Select icon...</SelectItem>
-              {iconEntries.map((icon) => (
-                <SelectItem key={icon.id} value={icon.id}>
-                  {icon.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-1.5">
-          <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Variant</Label>
-          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
-            <SelectTrigger className="h-8 rounded-lg">
-              <SelectValue placeholder="Select variant..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">Select variant...</SelectItem>
-              {variants.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.name || v.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <fieldset className="grid gap-1.5 rounded-lg border border-border/60 bg-background/60 p-2">
+      <legend className="px-1.5 text-[10px] font-medium text-muted-foreground">{label}</legend>
+      <div className="grid gap-1.5">
+        <Label className="text-[10px] font-medium text-muted-foreground">{qualifier} icon</Label>
+        <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
+          <SelectTrigger className="h-8 rounded-lg">
+            <SelectValue placeholder="Select icon…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Select icon…</SelectItem>
+            {iconEntries.map((icon) => (
+              <SelectItem key={icon.id} value={icon.id}>
+                {icon.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-1.5">
+        <Label className="text-[10px] font-medium text-muted-foreground">{qualifier} variant</Label>
+        <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
+          <SelectTrigger className="h-8 rounded-lg">
+            <SelectValue placeholder="Select variant…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Select variant…</SelectItem>
+            {variants.map((v) => (
+              <SelectItem key={v.id} value={v.id}>
+                {v.name || v.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </fieldset>
   );

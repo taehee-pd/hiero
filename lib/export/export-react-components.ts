@@ -282,10 +282,6 @@ function unionOfNumbers(values: number[]): string {
   return values.sort((a, b) => a - b).join(' | ');
 }
 
-function unionOfStrings(values: string[]): string {
-  return values.map((value) => JSON.stringify(value)).join(' | ');
-}
-
 function unionOfModes(values: CompiledRenderingMode[]): string {
   return values.map((value) => JSON.stringify(value)).join(' | ');
 }

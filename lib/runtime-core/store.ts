@@ -6,7 +6,6 @@ import type {
   RuntimeTransition,
   RuntimeVariantPayload,
 } from '@/lib/export/export-runtime-json';
-import { interpolateColor } from './color';
 import { getEasingFunction } from './easing';
 import { estimateSpringDuration, springProgress } from './spring';
 
@@ -366,12 +365,10 @@ function buildTransitionSnapshot(
   }
 
   // Track-based interpolation
-  const fromLayers = fromState.layers;
   const toLayers = toState.layers;
   const bindings = transition.layerBindings ?? [];
 
   const interpolatedLayers = toLayers.map((toLayer) => {
-    const fromLayer = fromLayers.find((layer) => layer.id === toLayer.id);
     const binding = bindings.find(
       (b) => b.toLayerId === toLayer.id || b.fromLayerId === toLayer.id,
     );

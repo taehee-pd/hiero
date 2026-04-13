@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
-import type { TimelineTrack, Variant, Layer, LayerSnapshot, LayerBinding } from '@/lib/schema/types';
+import type { TimelineTrack, Variant, Layer, LayerBinding } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import type { TransitionPreview } from '@/lib/editor-store/store';
@@ -215,7 +215,7 @@ export function buildTimelineTransitionPreview(
   };
 }
 
-export const TimelineEditor = memo(function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: TransitionConfig; variant: Variant }) {
+export const TimelineEditor = memo(function TimelineEditor({ transition, variant }: { iconId: string; transition: TransitionConfig; variant: Variant }) {
   const { setTransitionPreview } = useEditorActions();
   const preview = useEditorStore((s) => s.transitionPreview);
   const [selected, setSelected] = useState<SelectedKeyframe | null>(null);

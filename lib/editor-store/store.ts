@@ -417,6 +417,10 @@ const temporalState: TemporalState = {
     pastStates.length = 0;
     futureStates.length = 0;
     transactionBase = undefined;
+    // Reset the tracking flag too. Otherwise a stuck-paused history from an
+    // earlier boolean/derive operation (or a test that forgot to resume)
+    // would silently swallow all subsequent mutations.
+    tracking = true;
   },
 
   pause() {

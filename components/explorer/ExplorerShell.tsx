@@ -882,7 +882,6 @@ function WorkspaceView({
 
 function PendingPublishBadge() {
   const pendingPublishes = useEditorStore((s) => s.pendingPublishes);
-  const project = useEditorStore((s) => s.project);
   const { cancelPendingPublish } = useEditorActions();
   const [remainingByTarget, setRemainingByTarget] = useState<Record<string, string>>({});
 

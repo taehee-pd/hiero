@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Blend,
@@ -61,7 +60,6 @@ import type {
   Layer,
   RenderingMode,
   Variant,
-  LayerSnapshot,
 } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
@@ -468,7 +466,6 @@ function InlineEditableTitle({
 }
 
 function LeftSidebar({
-  workspaceName,
   currentIcon,
   currentVariant,
   layerRows,
@@ -489,7 +486,6 @@ function LeftSidebar({
   onRenameState,
   onDuplicateState,
 }: {
-  workspaceName: string;
   currentIcon: Icon | null;
   currentVariant: Variant | null;
   layerRows: ReturnType<typeof buildLayerPanelRows>;
@@ -670,7 +666,6 @@ function LayerRowsList({
     <div role="listbox" aria-label="Layers" className="relative">
       {layerRows.map((row, index) => {
         const isSelected = row.layer.id === selectedLayerId;
-        const isVisible = row.layer.visible !== false;
         const ShapeIcon = getLayerShapeIcon(row.layer);
         const isDropTarget = dragTargetIndex === index;
         return (
@@ -1495,7 +1490,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const viewport = useEditorStore((s) => s.viewport);
-  const selectedTransitionId = useEditorStore((s) => s.selectedTransitionId);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const isDeriving = useEditorStore((s) => s.isDeriving);
   const currentGuideMaster = useEditorStore(selectCurrentGuideMaster);
@@ -1507,9 +1501,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       ? (s.project?.icons[s.currentIconId]?.variants[s.currentVariantId] ?? null)
       : null,
   );
-  const currentSnapshot: LayerSnapshot | null = useMemo(() => {
-    return currentVariant ? variantToSnapshot(currentVariant) : null;
-  }, [currentVariant]);
 
   const {
     addVariant,
@@ -1570,7 +1561,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const selectedLayer = selectedLayerId ? (currentVariant?.layers[selectedLayerId] ?? null) : null;
-  const projectName = project?.meta.name ?? 'Untitled Set';
 
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -1914,7 +1904,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         {/* Layer panel — always visible at all breakpoints */}
         <div className="flex min-h-0">
           <LeftSidebar
-            workspaceName={projectName}
             currentIcon={currentIcon}
             currentVariant={currentVariant}
             layerRows={layerRows}

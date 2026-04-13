@@ -23,7 +23,7 @@ import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
 import type { SubPathStrategyResult } from '@/lib/runtime-core/topology-detection';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { Icon, RuntimeTransitionIntent, LayerBinding, Layer, TransitionStagger, Variant, LayerSnapshot } from '@/lib/schema/types';
+import type { RuntimeTransitionIntent, LayerBinding, LayerSnapshot } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
@@ -33,8 +33,6 @@ import { cn } from '@/lib/utils';
 // ---------------------------------------------------------------------------
 
 const SPEED_OPTIONS = [0.25, 0.5, 1, 2] as const;
-
-const STAGGER_MODES: TransitionStagger['mode'][] = ['linear', 'from-center', 'from-edges', 'random', 'individually'];
 
 const DIRECTION_OPTIONS: Array<{ value: NonNullable<RuntimeTransitionIntent['direction']>; label: string }> = [
   { value: 'automatic', label: 'Automatic' },
@@ -136,9 +134,6 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [expandedBindings, setExpandedBindings] = useState<Set<string>>(new Set());
   const schedulerRef = useRef<TransitionScheduler | null>(null);
 
-  const renderingMode = useEditorStore((s) => s.renderingMode);
-  const tokens = useEditorStore((s) => s.project?.tokenSet?.colors);
-
   // --- Derived lists ---
   const iconEntries = useMemo(
     () => Object.values(projectIcons ?? {}).map((icon) => ({ id: icon.id, name: icon.name })),
@@ -189,11 +184,6 @@ export const TransitionPanel = memo(function TransitionPanel() {
     schedulerRef.current?.cancel();
     schedulerRef.current = null;
   }, []);
-
-  const clearPreview = useCallback(() => {
-    stopScheduler();
-    setTransitionPreview(null);
-  }, [setTransitionPreview, stopScheduler]);
 
   const applyPreviewFrame = useCallback(
     (preview: ActivePreview, progress: number) => {

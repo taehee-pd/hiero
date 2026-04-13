@@ -4,9 +4,7 @@ import type {
   CompiledEffect,
   CompiledIcon,
   CompiledLayer,
-  CompiledLayerBinding,
   CompiledRenderingMode,
-  CompiledTransition,
 } from '@/lib/compiler-contracts';
 import {
   COMPILED_ICON_SCHEMA_URI,
@@ -18,7 +16,6 @@ import type {
   Layer,
   PaintRef,
   Project,
-  TimelineTrack,
 } from '@/lib/schema/types';
 
 export function exportCompiledIcon(project: Project, iconId: string): CompiledIcon {
@@ -208,16 +205,6 @@ function toCompiledEffect(effect: Effect): CompiledEffect | null {
     };
   }
   return compiled;
-}
-
-function cloneCompiledTrack(
-  track: TimelineTrack,
-): NonNullable<CompiledLayerBinding['tracks']>[number] {
-  return {
-    property: track.property,
-    keyframes:
-      [...track.keyframes] as NonNullable<CompiledLayerBinding['tracks']>[number]['keyframes'],
-  };
 }
 
 function computeContentHash(compiled: CompiledIcon): string {

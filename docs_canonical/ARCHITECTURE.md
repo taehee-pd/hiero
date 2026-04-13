@@ -230,8 +230,9 @@ Guardrails (`lib/sync-source/source-of-truth.ts`) enforce this at build time:
 
 ## Known Conflicts / Notes
 
-- Some legacy docs under `docs/plans/` describe runtime/export work as future phases, but all phases are now shipped.
-- The `desktop/` directory retains build artifacts but has no source code; it is no longer part of the active architecture.
+- Legacy docs under `docs/plans/` describe runtime/export work as future phases. All of those phases have since shipped — treat the plans/ directory as a historical archive, and use `docs/plans/STATUS.md` as the entrypoint.
+- The `desktop/` directory retains build artifacts but has no source code; it is no longer part of the active architecture. The `docs/desktop-*.md` deprecation tombstones were removed on 2026-04-13 after they had outlived their purpose.
+- The Animate panel architecture was revamped on 2026-04-13 per `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §2. The morph strategy is now always `auto` in the UI; `autoMorph()` is the single source of truth. Explicit strategies remain in the schema for backward compat and are exposed only through the Animate panel's collapsed Advanced disclosure.
 
 ## Sync Pipeline Known Limitations
 

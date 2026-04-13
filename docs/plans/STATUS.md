@@ -29,5 +29,5 @@ Canonical behavior and contributor guidance live in `docs_canonical/` and take p
 
 - This index is intentionally lightweight and operational.
 - If a plan is fully superseded, keep the original file for provenance and update this table rather than deleting historical context.
-- Desktop architecture docs (`docs/desktop-architecture.md`, `docs/desktop-build.md`, `docs/desktop-release.md`) are **deprecated** as of 2026-04-04 (Phase R1 desktop removal). Retained for history only.
-- All engineering phases (1–8, C–Q, R1–R5) are now shipped. Forward-looking work is tracked in `docs_canonical/NEXT_PHASES.md`.
+- Desktop architecture docs (`docs/desktop-architecture.md`, `docs/desktop-build.md`, `docs/desktop-release.md`) were **deleted on 2026-04-13** after the Phase R1 desktop removal (2026-04-02) had been in effect long enough that the deprecation tombstones served no further purpose. `desktop/` itself retains only build artifacts.
+- All engineering phases (1–8, C–Q, R1–R6) are now shipped. Forward-looking work is tracked in `docs_canonical/NEXT_PHASES.md` (only R7 remains).

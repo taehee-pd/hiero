@@ -91,4 +91,5 @@ Workspace support is implemented in the schema and editor store.
 - Legacy operational docs were normalized to repository-relative links.
 - Product name is `Contour`. Root package metadata uses `contour`.
 - Legacy docs in `docs/plans/` contain historical design material. Use `docs/plans/STATUS.md` as the entrypoint, and treat canonical docs as repository truth.
-- The `desktop/` directory retains build artifacts but is no longer part of the active source architecture.
+- The `desktop/` directory retains build artifacts but is no longer part of the active source architecture. The `docs/desktop-*.md` files were removed on 2026-04-13.
+- Superseded planning docs (`docs_canonical/LAYOUT_REVAMP.md`, `docs_canonical/EXPORT_GAP_PLAN.md`, `docs_canonical/UX_AUDIT_TASKS.md`, `docs_canonical/notion-ia-screens.md`, `docs/IA-REDESIGN.md`) were removed on 2026-04-13 after their scope fully shipped. The archived production-readiness gap analysis lives in `docs_canonical/PLAN.md`.

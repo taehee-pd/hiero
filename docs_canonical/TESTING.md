@@ -93,8 +93,10 @@ Safe working expectation for contributors and agents:
 Testing should be paired with build checks where relevant:
 
 - use `bun test` for logic and output verification
+- use `npx tsc --noEmit` for type verification
+- use `bun run lint` for ESLint enforcement (0 errors + 0 warnings gate)
 - use `corepack pnpm build` for Next.js build validation
-- use `corepack pnpm desktop:build` or `desktop:dist` when changing desktop build or release behavior
+- when touching `packages/coniva-cli/`, also run `cd packages/coniva-cli && bun run build && node dist/bin.js --help` to smoke-test the built binary, and `npm pack --dry-run` to verify the tarball contents
 
 ## Export Adapter Test Expectations
 
@@ -122,6 +124,11 @@ Additional observed coverage areas now include:
   `tests/adapter-material-symbols.test.ts`
 - npm-registry connector, dry-run flow, bump recommendation, and auto-publish manager:
   `tests/npm-connector.test.ts`
+- Animate panel revamp regression (no strategy dropdown, no compatibility
+  badges, no `role="alert"`, Advanced disclosure collapsed by default,
+  SF Symbols 7 hierarchy labels): `tests/transition-panel.test.tsx`
+- Phase R6 navigation (`?` → `contour:open-shortcuts` custom event,
+  Shift+/ fallback, input-suppression): `tests/r6-navigation.test.tsx`
 
 ## Cross-Icon Morphing Test Expectations
 

@@ -1,17 +1,18 @@
 # Tasks
 
-**Last updated:** 2026-04-04
+**Last updated:** 2026-04-13
 **Canonical product name:** Contour
-**Forward-looking roadmap:** See `docs_canonical/PLAN.md` for the production readiness plan.
+**Forward-looking roadmap:** See `docs_canonical/NEXT_PHASES.md` for the
+remaining phases (only R7 is still open).
 
 ---
 
 ## Open Items
 
-The engineering phase backlog is fully shipped.
-There are no remaining unchecked phase items in this file.
-
-Forward-looking work now lives in `docs_canonical/PLAN.md`.
+The engineering phase backlog is fully shipped through 2026-04-13. The one
+remaining forward-looking phase is **R7 — Server-Side Embedding Readiness**,
+partially addressed by the repo-native distribution work. See
+`docs_canonical/NEXT_PHASES.md` for scope.
 
 ---
 
@@ -57,6 +58,11 @@ codebase, specs, and commit history.
 | — | Stagger Ordering Fix | 2026-04-02 | Transition resolver stagger ordering ranks corrected | — |
 | — | Post-Review Bug Fixes | 2026-04-03 | 13 bugs fixed from Codex adversarial review | — |
 | — | Unified autoMorph + Draw Animation | 2026-04-04 | autoMorph (intrinsic interpolation, auto strategy selection), draw effect (trim-based open-path animation), 39 new tests | #100 |
+| — | Remove all-caps styling | 2026-04-13 | App-wide removal of `text-transform: uppercase` + `uppercase` Tailwind utilities; sentence-case labels everywhere | #127 |
+| — | Design audit §7.1–§7.5 | 2026-04-13 | Far-Left Strip tooltips, icon grid double-click rename, Layers+Variants resizable merge, shape glyphs, drag reorder, right-click context menus, canvas contextual menu, Inspect panel segmented controls + ARIA min/max, Animate panel grouped presets + hover previews | #128 |
+| — | Animate Panel Revamp (plan §2) | 2026-04-13 | Strip strategy dropdown + compatibility badges; restructure to Animation → Playback Mode → Timing → Preview → Advanced; `'simultaneous'` stagger mode; dev-only debug overlay; `autoMorph()` is the only public contract | #128 |
+| — | `@contour/cli` deploy prep (plan §3) | 2026-04-13 | Finalize `packages/coniva-cli/package.json` metadata, provenance publish config, new `.github/workflows/cli-release.yml`, CLI README with usage + versioning + limitations | #128 |
+| R6 | Navigation & Discoverability (partial) | 2026-04-13 | `?` opens the shortcuts cheat sheet via global custom event; Canvas / Layer panel / Transition panel empty-state CTAs; `⌘K` command palette verified | #128 |
 
 ---
 
@@ -82,10 +88,8 @@ All major implementations are documented in `/specs/`:
 
 | Domain | Specs |
 |--------|-------|
-| Schema | `icon-schema.md`, `transition-schema.md` |
-| Runtime | `morph-interpolation.md`, `topology-detection.md`, `transition-resolver.md`, `draw-executor.md`, `hybrid-compositor.md` |
-| Editor | `editor-store.md`, `cross-icon-transitions.md` |
-| Export | `runtime-json-format.md`, `repo-native-distribution.md`, `repo-native-workflow.md` |
-| UI | `screens.md`, `components.md` |
-| Runtime | `weight-interpolation-cubic.md` |
-| Schema | `install-config.md` |
+| Schema | `schema/icon-schema.md`, `schema/transition-schema.md`, `schema/install-config.md` |
+| Runtime | `runtime/morph-interpolation.md`, `runtime/topology-detection.md`, `runtime/transition-resolver.md`, `runtime/draw-executor.md`, `runtime/hybrid-compositor.md`, `runtime/weight-interpolation-cubic.md` |
+| Editor | `editor/editor-store.md`, `editor/animation-tab.md`, `editor/cross-icon-transitions.md`, `editor/inspect-tab.md`, `editor/derived-variants.md` |
+| Export | `export/runtime-json-format.md`, `export/repo-native-distribution.md`, `export/lottie-export.md` |
+| UI | `ui/screens.md`, `ui/components.md`, `ui/repo-native-workflow.md` |

@@ -658,11 +658,10 @@
 
   .studio-kicker {
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
     color: var(--muted-foreground);
   }
 
@@ -675,11 +674,10 @@
     background: var(--background-secondary);
     padding: 0.32rem 0.72rem;
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
   }
 
   .studio-dots {
@@ -711,11 +709,10 @@
 
   .workspace-kicker {
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
     color: var(--muted-foreground);
   }
 
@@ -957,21 +954,19 @@
 
   .editor-eyebrow {
     font-family: var(--editor-ui-font);
-    font-size: 0.625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--editor-muted);
   }
 
   .editor-field-label {
     font-family: var(--editor-ui-font);
-    font-size: 0.625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--editor-muted);
   }
 
@@ -1454,8 +1449,7 @@
     font-size: var(--text-caption);
     line-height: 16px;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--foreground-secondary);
   }
 
@@ -1781,9 +1775,8 @@
     font-size: var(--text-caption);
     line-height: 14px;
     font-weight: var(--type-weight-medium);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
     color: var(--foreground-tertiary);
-    text-transform: uppercase;
     padding-bottom: var(--space-1);
   }
 

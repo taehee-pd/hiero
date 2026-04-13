@@ -365,7 +365,7 @@ export function BezierCurveEditor({
             </div>
 
             <div className="mt-2">
-              <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {CURVE_PRESETS.map((preset) => (
                   <Button
@@ -468,7 +468,7 @@ export function BezierCurveEditor({
             </div>
 
             <div className="mt-2">
-              <Label className="text-[length:var(--text-caption)] uppercase text-muted-foreground">Presets</Label>
+              <Label className="text-[length:var(--text-caption)] text-muted-foreground">Presets</Label>
               <div className="mt-1 grid gap-0.5">
                 {SPRING_PRESET_ENTRIES.map(([name, preset]) => (
                   <Button

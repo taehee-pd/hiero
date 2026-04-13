@@ -142,7 +142,7 @@ export function PublishPanel() {
       {showSettings && (
         <div className="rounded-lg border border-border/60 bg-muted/20 p-3 grid gap-2">
           <div className="grid gap-1.5">
-            <Label className="text-[10px] text-muted-foreground uppercase tracking-tight">
+            <Label className="text-[10px] text-muted-foreground tracking-tight">
               Dev server URL
             </Label>
             <Input
@@ -155,7 +155,7 @@ export function PublishPanel() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="text-[10px] text-muted-foreground uppercase tracking-tight">
+            <Label className="text-[10px] text-muted-foreground tracking-tight">
               API secret (optional)
             </Label>
             <Input

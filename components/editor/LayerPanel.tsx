@@ -258,17 +258,17 @@ export const LayerPanel = memo(function LayerPanel() {
                       />
                     ) : null}
                     {isMask ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                         Mask
                       </span>
                     ) : null}
                     {componentKind ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold uppercase text-primary">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                         {componentKind}
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-0.5 text-[length:var(--text-label)] uppercase text-muted-foreground">
+                  <p className="mt-0.5 text-[length:var(--text-label)] text-muted-foreground">
                     {maskLayerId
                       ? `clipped by ${maskLayerId}`
                       : clippedLayerIds.length > 0

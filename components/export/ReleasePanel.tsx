@@ -116,7 +116,7 @@ export function ReleasePanel() {
       {/* Settings */}
       {showSettings && (
         <div className="rounded-lg border border-border/60 bg-muted/20 p-3 grid gap-1.5">
-          <Label className="text-[10px] text-muted-foreground uppercase tracking-tight">
+          <Label className="text-[10px] text-muted-foreground tracking-tight">
             Dev server URL
           </Label>
           <Input
@@ -181,8 +181,8 @@ export function ReleasePanel() {
 
       {/* PR panel — always available as a standalone action */}
       <div className="border-t border-border/40 pt-3">
-        <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-tight">
-          Pull Request
+        <p className="text-[10px] text-muted-foreground mb-2 tracking-tight">
+          Pull request
         </p>
         <SyncPrPanel
           iconSetId={activeIconSetId}

@@ -33,8 +33,8 @@ export function TriggerEditor({
 
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[length:var(--text-label)] uppercase text-muted-foreground">
-        Interaction Triggers
+      <Label className="text-[length:var(--text-label)] text-muted-foreground">
+        Interaction triggers
       </Label>
       <p className="text-[length:var(--text-caption)] text-muted-foreground/70">
         Advisory metadata for generated component code.

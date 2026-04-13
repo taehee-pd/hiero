@@ -691,7 +691,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
                 <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
                   {grouped.map((group) => (
                     <div key={group.category}>
-                      <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground/70">
+                      <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground/70">
                         {group.category}
                       </p>
                       {group.items.map((item) => {

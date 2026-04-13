@@ -6,7 +6,6 @@ import type {
   Layer,
   PaintRef,
   Project,
-  TimelineTrack,
   SpringConfig,
   Variant,
 } from '@/lib/schema/types';
@@ -916,7 +915,6 @@ function buildRuntimeTransitions(
     }
 
     // Build layer bindings with stagger timing
-    const totalBindings = transition.layerBindings?.length ?? 0;
     const layerBindings: RuntimeLayerBinding[] = (transition.layerBindings ?? []).map(
       (binding, index) => {
         const runtimeBinding: RuntimeLayerBinding = {};

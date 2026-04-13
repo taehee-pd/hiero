@@ -68,6 +68,20 @@ Fit view is helpful after switching to a very small or very large icon version.
 - `Cmd/Ctrl + ;`: show or hide guides
 - `Cmd/Ctrl + Shift + ;`: turn snapping on or off
 
+### Help and Search
+
+- `?` (or `Shift + /`): open the keyboard shortcuts cheat sheet
+- `Cmd/Ctrl + K`: open the command palette to search icons or run actions
+
+### Clipboard and Layer Reorder
+
+- `Cmd/Ctrl + C`: copy selected layers
+- `Cmd/Ctrl + V`: paste layers from the clipboard
+- `Cmd/Ctrl + D`: duplicate selected layers
+- `Cmd/Ctrl + A`: select every layer in the current variant
+- `Cmd/Ctrl + ↑` / `Cmd/Ctrl + ↓`: move the selected layer one step
+- `Cmd/Ctrl + Option/Alt + ↑` / `Cmd/Ctrl + Option/Alt + ↓`: move the selected layer to the top or bottom
+
 ### Layer Alignment
 
 With multiple layers selected:

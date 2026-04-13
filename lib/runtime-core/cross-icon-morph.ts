@@ -916,59 +916,6 @@ export function interpolateHandleRotational(
 }
 
 // ---------------------------------------------------------------------------
-// Interpolation helpers
-// ---------------------------------------------------------------------------
-
-/** Epsilon below which anchor points are considered coincident. */
-const ANCHOR_EPSILON = 0.001;
-
-function interpolateSubPath(from: CubicSubPath, to: CubicSubPath, t: number): CubicSubPath {
-  const start = lerpPoint(from.start, to.start, t);
-  const segCount = Math.min(from.segments.length, to.segments.length);
-  const segments: CubicSegment[] = [];
-
-  let prevFromEnd = from.start;
-  let prevToEnd = to.start;
-
-  for (let i = 0; i < segCount; i++) {
-    const fromSeg = from.segments[i]!;
-    const toSeg = to.segments[i]!;
-
-    const interpolatedEnd = lerpPoint(fromSeg.end, toSeg.end, t);
-
-    // Compute anchor for c1 (previous end point interpolated)
-    const c1Anchor = lerpPoint(prevFromEnd, prevToEnd, t);
-    // Compute anchor for c2 (current end point interpolated)
-    const c2Anchor = interpolatedEnd;
-
-    // Fallback: when anchor points are within epsilon distance,
-    // rotational interpolation amplifies errors, so use linear lerp instead.
-    const c1AnchorDist = Math.hypot(
-      prevFromEnd.x - prevToEnd.x,
-      prevFromEnd.y - prevToEnd.y,
-    );
-    const c2AnchorDist = Math.hypot(
-      fromSeg.end.x - toSeg.end.x,
-      fromSeg.end.y - toSeg.end.y,
-    );
-
-    const c1 = c1AnchorDist < ANCHOR_EPSILON
-      ? lerpPoint(fromSeg.c1, toSeg.c1, t)
-      : interpolateHandleRotational(c1Anchor, fromSeg.c1, toSeg.c1, t);
-
-    const c2 = c2AnchorDist < ANCHOR_EPSILON
-      ? lerpPoint(fromSeg.c2, toSeg.c2, t)
-      : interpolateHandleRotational(c2Anchor, fromSeg.c2, toSeg.c2, t);
-
-    segments.push({ c1, c2, end: interpolatedEnd });
-    prevFromEnd = fromSeg.end;
-    prevToEnd = toSeg.end;
-  }
-
-  return { start, segments, closed: from.closed || to.closed };
-}
-
-// ---------------------------------------------------------------------------
 // Serialization
 // ---------------------------------------------------------------------------
 

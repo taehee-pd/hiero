@@ -658,11 +658,10 @@
 
   .studio-kicker {
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
     color: var(--muted-foreground);
   }
 
@@ -675,11 +674,10 @@
     background: var(--background-secondary);
     padding: 0.32rem 0.72rem;
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
   }
 
   .studio-dots {
@@ -711,11 +709,10 @@
 
   .workspace-kicker {
     font-family: var(--type-family-default);
-    font-size: 0.5625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: var(--type-weight-strong);
     letter-spacing: 0.01em;
-    text-transform: uppercase;
     color: var(--muted-foreground);
   }
 
@@ -769,9 +766,10 @@
   }
 
   .workspace-tool-button[data-active='true'] {
-    border-color: var(--border-level-2);
-    background: var(--background-hover);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 18%, var(--background));
     color: var(--foreground);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent);
   }
 
   .workspace-tool-button:disabled {
@@ -957,21 +955,19 @@
 
   .editor-eyebrow {
     font-family: var(--editor-ui-font);
-    font-size: 0.625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--editor-muted);
   }
 
   .editor-field-label {
     font-family: var(--editor-ui-font);
-    font-size: 0.625rem;
-    line-height: 0.875rem;
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
     font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--editor-muted);
   }
 
@@ -1454,8 +1450,7 @@
     font-size: var(--text-caption);
     line-height: 16px;
     font-weight: var(--type-weight-strong);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--foreground-secondary);
   }
 
@@ -1472,7 +1467,9 @@
     width: 100%;
     align-items: center;
     gap: 6px;
-    padding: 4px 4px 4px 10px;
+    min-height: 28px;
+    padding: 5px 4px 5px 10px;
+    margin: 1px 0;
     border-radius: 8px;
     text-align: left;
     font-size: 11px;
@@ -1670,8 +1667,9 @@
   }
 
   .wire-dock-icon[data-active='true'] {
-    background: color-mix(in srgb, var(--primary) 16%, transparent);
-    color: var(--primary);
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent);
   }
 
   .wire-zoom-trigger {
@@ -1781,9 +1779,8 @@
     font-size: var(--text-caption);
     line-height: 14px;
     font-weight: var(--type-weight-medium);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
     color: var(--foreground-tertiary);
-    text-transform: uppercase;
     padding-bottom: var(--space-1);
   }
 
@@ -1996,4 +1993,38 @@
   .type-mono {
     font-family: var(--type-family-mono);
   }
+}
+
+@keyframes asp-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes asp-wiggle {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes asp-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+@keyframes asp-appear {
+  0% { opacity: 0; transform: scale(0.8); }
+  50%, 100% { opacity: 1; transform: scale(1); }
+}
+@keyframes asp-disappear {
+  0%, 50% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+@keyframes asp-draw {
+  0% { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+@keyframes asp-slide {
+  0% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  100% { transform: translateX(-6px); }
+}
+@keyframes asp-hue {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 }

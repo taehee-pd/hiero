@@ -1,6 +1,6 @@
 # Contour — Design Document (Single Source of Truth)
 
-**Last updated:** 2026-04-04
+**Last updated:** 2026-04-13
 **Product:** Contour — Icon design studio with SF Symbols-grade animation capabilities
 **gstack design docs:** `~/.gstack/projects/taehee-pd-contour/`
 
@@ -45,10 +45,11 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 
 ## Engineering Status
 
-All 23 engineering phases (1–8, C–Q) are shipped. See `TASKS.md` for the summary table.
+All 23 engineering phases (1–8, C–Q) and R1–R6 are shipped. See
+`TASKS.md` for the full completion table.
 
-**Production readiness gaps** are tracked in `NEXT_PHASES.md` (R6–R7 remain).
-Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, accessibility) are shipped.
+**Remaining production-readiness phase** is R7 (Server-side embedding
+readiness), tracked in `NEXT_PHASES.md`.
 
 | Key shipped phases | Key deliverable |
 |--------------------|-----------------|
@@ -58,9 +59,14 @@ Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, 
 | P — Import Ecosystem | Heroicons, Phosphor, Material Symbols, Figma adapters + batch import |
 | O — Cubic Weight | Fritsch-Carlson monotone spline, 9-point controls |
 | R1–R5 | Desktop removal, IndexedDB persistence, state CRUD UI, dialog cleanup, a11y pass |
+| R6 | `?` cheat sheet, `⌘K` command palette verified, Canvas/Layer/Transition empty-state CTAs (breadcrumb deferred) |
 | Distribution | Repo-native live-sync, release flow, `@contour/cli`, PublishPanel, ReleasePanel |
 | Studio Layout | Sanity Studio-style single-screen workspace |
 | Figma Import | Figma plugin + API route + import dialog |
+| Remove all-caps | App-wide removal of uppercase styling (PR #127) |
+| Design audit §7 | Tooltips, inline rename, resizable Layers+Variants, shape glyphs, drag reorder, context menus, segmented controls, ARIA min/max on spinners, grouped animation presets (PR #128) |
+| Animate Panel Revamp | SF Symbols 7 hierarchy: Animation → Playback Mode → Timing → Preview → Advanced; `autoMorph()` as the only public contract (PR #128) |
+| `@contour/cli` deploy prep | Provenance publish config, `.github/workflows/cli-release.yml`, CLI README (PR #128) |
 
 ## Security Posture
 
@@ -74,9 +80,8 @@ Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, 
 
 | Document | Purpose |
 |----------|---------|
-| `PLAN.md` | Production readiness plan — gaps, technical specs, full IA |
-| `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
-| `TASKS.md` | Open items + shipped phase summary table |
+| `TASKS.md` | Shipped phase summary table; the authoritative "what's done" list |
+| `NEXT_PHASES.md` | Next phases plan — R1–R6 shipped, R7 remaining |
 | `ARCHITECTURE.md` | System architecture, module boundaries, data flow |
 | `REPO_MAP.md` | Repository structure and key entry points |
 | `TESTING.md` | Test strategy, runner, coverage expectations |
@@ -84,7 +89,6 @@ Phases R1–R5 (desktop removal, web persistence, state UI, prompt replacement, 
 | `STYLEGUIDE.md` | Code conventions, naming, formatting |
 | `IMPORT_ADAPTER_SDK.md` | Import adapter lifecycle and test contract |
 | `SYNC_TROUBLESHOOTING.md` | Sync pipeline error codes and resolution |
-| `UX_AUDIT_TASKS.md` | UX flow audit with severity-ranked tasks |
-| `NEXT_PHASES.md` | Next phases plan — R1–R5 shipped, R6–R7 remaining |
-| `LAYOUT_REVAMP.md` | Studio layout revamp design and implementation |
-| `UX_AUDIT_TASKS.md` | UX flow audit with severity-ranked tasks |
+| `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@contour/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
+| `PLAN.md` | Archived production-readiness plan (all gaps shipped/removed); kept for decision history |
+| `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |

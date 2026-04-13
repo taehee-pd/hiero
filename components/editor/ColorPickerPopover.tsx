@@ -128,8 +128,13 @@ export function ColorPickerPopover({
 
       {/* Opacity input */}
       {onOpacityChange != null && (
-        <div className="relative flex h-7 w-12 shrink-0 items-center">
-          <input
+        <>
+          <span
+            aria-hidden="true"
+            className="h-4 w-px shrink-0 bg-border/70"
+          />
+          <div className="relative flex h-7 w-12 shrink-0 items-center">
+            <input
             type="text"
             value={
               opacityDraft ?? String(Math.round((opacity ?? 1) * 100))
@@ -143,10 +148,11 @@ export function ColorPickerPopover({
             disabled={disabled}
             className="h-7 w-full rounded-sm border border-border/70 bg-transparent pl-1.5 pr-5 text-center font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
           />
-          <span className="pointer-events-none absolute right-1.5 text-[10px] text-muted-foreground/60">
-            %
-          </span>
-        </div>
+            <span className="pointer-events-none absolute right-1.5 text-[10px] text-muted-foreground/60">
+              %
+            </span>
+          </div>
+        </>
       )}
     </div>
   );

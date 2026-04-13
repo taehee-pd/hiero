@@ -4,10 +4,12 @@
 
 Standard local web workflow:
 
-1. Install dependencies with `corepack pnpm install`.
+1. Install dependencies with `corepack pnpm install` (and `bun install` to
+   regenerate `bun.lock`, which CI reads via `bun install --frozen-lockfile`).
 2. Start the web app with `corepack pnpm dev`.
-3. Open the explorer at `http://localhost:3000`.
-4. Navigate to `/editor` for the editor surface.
+3. Open the Studio surface at `http://localhost:3000` (Sanity Studio-style
+   single-screen workspace — `components/studio/StudioLayout.tsx`).
+4. Navigate to `/editor/[iconId]` for the focused editor surface.
 
 ## Build Processes
 
@@ -55,14 +57,17 @@ Registry distribution flow exists in-repo:
 
 Repository CI workflows are present under `.github/workflows/`:
 
+- `web-app-ci.yml`: runs formatter, type-check, lint, Phase A coverage, coverage threshold enforcement, and `build` for shared web/runtime path changes.
 - `icons-pr-validate.yml`: validates sync/export source files and runs targeted test suites on pull requests.
 - `icons-post-merge-build.yml`: validates and compiles merged source files on `main`.
 - `icons-package-release.yml`: builds/validates icon package artifacts on `main` changes and supports manual npm publish dispatch.
-- `web-app-ci.yml`: runs formatter, type-check, lint, Phase A coverage, coverage threshold enforcement, and `build` for shared web/runtime path changes.
+- `cli-release.yml`: `@contour/cli` build + OIDC-provenance npm publish. Triggered by pushing a `cli-v*` tag or by manual `workflow_dispatch`. See `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §3.2 for the full workflow rationale.
+
 Practical implication:
 
 - compile/export and package verification is automated for icon-pipeline changes
 - web application CI has a dedicated workflow
+- `@contour/cli` has a dedicated release workflow with npm provenance
 - the Phase A runtime/export surface has a scoped LCOV threshold gate via `scripts/check-coverage.ts`
 - local build and test verification still matters for areas outside the current CI slice or formatter scope
 
@@ -103,3 +108,4 @@ Observed repository practice favors targeted verification:
 - Repository lint and test entrypoints are explicitly defined in root scripts (`lint`, `test`).
 - Desktop distribution was removed in Phase R1. The `desktop/` directory retains build artifacts only.
 - There is no committed web deployment pipeline — web builds are verified by CI but deployment is manual.
+- Both `pnpm-lock.yaml` and `bun.lock` must stay in sync. After adding or removing any dependency via `pnpm add`/`pnpm remove`, run `bun install` to regenerate `bun.lock`. CI uses `bun install --frozen-lockfile` and will fail if the two lockfiles drift.

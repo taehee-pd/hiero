@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useSyncPr } from '@/lib/sync-ui/use-sync-pr';
 import { isInProgress, canRetry } from '@/lib/sync-ui/sync-state';
 import { SyncDiffPreview } from './SyncDiffPreview';
@@ -183,7 +183,7 @@ export function SyncPrPanel({
           {showDiff && state.iconChanges.length > 0 && state.phase !== 'pr_created' && (
             <div className="rounded-md border p-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">
+                <span className="text-xs font-medium text-muted-foreground tracking-tight">
                   Changed icons
                 </span>
                 <button

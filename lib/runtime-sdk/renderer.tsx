@@ -11,7 +11,6 @@ import type { IconBaseProps, IconFallbackBehavior } from './primitives';
 import {
   DEFAULT_ICON_FALLBACK_BEHAVIOR,
   resolvePaletteColors,
-  resolveRequestedRenderingMode,
   resolveRequestedSize,
   resolveRequestedState,
 } from './primitives';

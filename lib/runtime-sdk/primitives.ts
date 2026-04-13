@@ -229,12 +229,6 @@ function nearestCandidate<T extends { size: number }>(candidates: T[], wanted: n
   }, candidates[0]!);
 }
 
-function modeOrder(mode: CompiledRenderingMode): number {
-  const order: CompiledRenderingMode[] = ['monochrome', 'hierarchical', 'palette', 'multicolor'];
-  const index = order.indexOf(mode);
-  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
-}
-
 function warnDev(message: string): void {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(`[contour-runtime] ${message}`);

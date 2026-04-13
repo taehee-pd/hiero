@@ -1,78 +1,113 @@
 # Animation Tab
 
-**Status:** Implemented
+**Status:** Implemented — revamped per `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §2
 **Files:** `components/editor/AnimationStudioPanel.tsx`, `components/editor/TransitionPanel.tsx`, `components/editor/TimelineEditor.tsx`
 
 ## Overview
 
-The Animation tab remains the main surface for previewing and understanding Contour's animation model.
+The Animation tab is the workspace surface for previewing Contour's runtime
+animation model. It mirrors the SF Symbols 7 information architecture
+(WWDC 2025 session 337) so designers think in terms of *what plays* and *how
+it plays*, not in terms of which morphing algorithm to choose.
 
-The old design assumed state-to-state authoring inside one icon. The reviewed direction rejects that.
+## Three-tier hierarchy
 
-The new direction:
-
-- icons remain atomic authored units
-- variants remain intrinsic icon variants only
-- the Animation tab previews runtime icon-to-icon transitions and effects
-
-## Goals
-
-- keep SF Symbols-inspired animation central
-- expose line animation, morphing, and fallback logic clearly
-- make runtime behavior inspectable without reintroducing authored state machines
-
-## Core Modes
-
-1. **Transition Preview** — icon-to-icon transition preview and strategy explanation
-2. **Effects** — standalone effects that still belong to an icon or variant
-3. **Variable Value** — progressive fill or visibility behavior where applicable
-
-## Architecture
+The panel reads top to bottom as **Animation → Playback Mode → Timing →
+Preview → Advanced**:
 
 ```text
 Animation Tab
-  -> source icon / variant picker
-  -> target icon / variant picker
-  -> runtime strategy analysis
-  -> layer binding breakdown
-  -> timeline-style preview controls
+  1. Animation              (what kind of animation)
+       Transition           (icon → icon, currently the dominant flow)
+       Effects              (Bounce / Pulse / Wiggle / Variable Color / Draw…)
+  2. Playback Mode          (how it plays)
+       By Layer             (staggered, default — 40 ms between layers)
+       Whole Symbol         (every layer at t=0)
+       Individually         (one layer at a time, full duration each)
+  3. Timing                 (duration · easing · direction)
+  4. Preview                (Play / Pause / scrub / speed / replay)
+  5. Advanced ▸             (collapsed by default)
+       Engine chose: …      (read-only pill with autoMorph()'s tier)
+       Strategy override    (auto / strictMorph / bestGuessMorph / …)
+       Stagger override     (from-center / from-edges / random)
 ```
 
-## Runtime Strategy Categories
+The morph algorithm is **always `auto`**. `lib/runtime-core/auto-morph.ts`
+internally cascades through `identity → intrinsicStrict → bestGuess →
+pointSampled → fallback` and the panel never asks the user to pick. Forced
+overrides exist for power users and Claude debugging sessions but live in the
+collapsed Advanced disclosure and still fall back silently if the requested
+algorithm can't run.
 
-The Animation tab should surface these categories explicitly:
+## Playback Mode mapping
 
-- `strict morph`
-- `best guess morph`
-- `line animation`
-- `replace / fallback`
+| Mode label   | `TransitionStagger['mode']` | Default `perLayerMs` |
+|--------------|-----------------------------|----------------------|
+| By Layer     | `linear`                    | 40                   |
+| Whole Symbol | `simultaneous`              | 0                    |
+| Individually | `individually`              | 0 (full layer dur)   |
 
-## Timeline Behavior
+`from-center`, `from-edges`, and `random` remain valid stagger modes in the
+schema but are surfaced only inside the Advanced disclosure. Existing projects
+that already use them load and replay correctly.
 
-Timeline UI should emphasize runtime interpretation, not authored state storage.
+## Effects
 
-Examples:
+Effects (`Bounce`, `Pulse`, `Wiggle`, `Rotate`, `Breathe`, `Appear`,
+`Disappear`, `Variable Color`, `Draw On`, `Draw Off`, `Draw Reveal`,
+`Draw Erase`, `Draw Slide`) live in `AnimationStudioPanel`'s preset grid,
+grouped under **Attention / Visibility / Draw / Color** sub-headers with
+animated CSS hover previews. Disabled draw presets (those that need open
+stroked paths) explain themselves via tooltip; everything else renders at
+full contrast.
 
-- line animation shows trim or path-length style tracks
-- morph shows progress and compatibility, even if keyframes are not directly authored
-- replace shows direction and opacity / motion behavior
+## Acceptance criteria — §2.7
 
-## What Should Be Removed
+1. **No warnings ever appear in the Animate panel.** A grep for `role="alert"`
+   inside `components/editor/TransitionPanel.tsx` returns zero matches.
+2. Opening the panel on any icon pair produces a working preview in one
+   click. No strategy decisions are required.
+3. The hierarchy is **Animation → Playback Mode → Timing → Preview**, with
+   Advanced collapsed by default.
+4. `tests/transition-panel.test.tsx` asserts the strategy dropdown is gone,
+   the Advanced disclosure is collapsed by default, and the Playback Mode
+   labels render.
+5. New transitions persist `strategy: 'auto'`. The resolver routes through
+   `autoMorph()`.
+6. `bun run lint`, `bun test`, `npx tsc --noEmit`, and `pnpm build` all pass.
 
-- source state picker
-- target state picker
-- intra-variant transition scope as a product concept
-- UI copy that implies one icon contains interaction states
+## Removed (do not reintroduce)
 
-## Edge Cases
+- The 6-way `STRATEGY_OPTIONS` dropdown in `TransitionPanel`.
+- `STRATEGY_LABELS`, `STRATEGY_HINTS`, `STRATEGY_OPTIONS` constants.
+- `CompatibilityBadge` and the green/yellow/orange/red `CompatibilityStatus`
+  tones.
+- `BindingStrategyDisplay`, `ReadOnlyLayerBindingList`, `computeBindingStrategy`,
+  and the per-binding readiness percentage display.
+- `MorphReadinessIndicator` mounted by default. It can still exist for
+  debugging but never as a default surface.
+- Source-state / target-state pickers and any UI copy that implies a single
+  icon contains interaction states.
 
-- all-morph case should simplify the UI
-- all-line-animation case should simplify the UI
-- mixed binding cases should show per-layer explanation
-- invalid morph cases must show the fallback, not hide it
+## Dev-only debug overlay (§2.4)
+
+When the build env defines `NEXT_PUBLIC_CONTOUR_DEBUG=1`, a small monospaced
+pill renders inside the panel showing:
+
+```
+debug · engine: <tier> · playback: <mode> · override: <strategy?>
+```
+
+This is a developer affordance only — it never appears in production builds.
+The same information is also exposed (without rendering anything) through the
+existing analytics hook so we can measure how often `autoMorph()` falls
+through to `pointSampled` / `fallback` in the field.
 
 ## Related Specs
 
-- [Transition Schema](../schema/transition-schema.md)
+- [Cross-icon transitions](./cross-icon-transitions.md) — runtime model for
+  icon → icon morph
 - [Editor Store](./editor-store.md)
 - [Transition Resolver](../runtime/transition-resolver.md)
+- [`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md`](../../docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md)
+  — design rationale (§1) and the full implementation plan (§2)

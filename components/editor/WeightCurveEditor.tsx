@@ -233,8 +233,8 @@ export function WeightCurveEditor({
 
   return (
     <div className="grid gap-2">
-      <Label className="text-[length:var(--text-label)] font-medium uppercase tracking-tight text-muted-foreground">
-        Weight Curve
+      <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+        Weight curve
       </Label>
 
       <svg

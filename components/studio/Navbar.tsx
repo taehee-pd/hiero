@@ -163,6 +163,15 @@ export function Navbar() {
     return () => { if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current); };
   }, []);
 
+  // R6 / UX-2.5: `?` key globally opens the keyboard-shortcuts cheat sheet.
+  // `handleEditorKeyDown` in lib/editor-core/keyboard.ts dispatches a custom
+  // event so this handler stays UI-agnostic.
+  useEffect(() => {
+    const handler = () => setShortcutsOpen(true);
+    window.addEventListener('contour:open-shortcuts', handler as EventListener);
+    return () => window.removeEventListener('contour:open-shortcuts', handler as EventListener);
+  }, []);
+
   const showToolbarError = useCallback((message: string) => {
     setToolbarError(message);
     if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
@@ -290,11 +299,19 @@ export function Navbar() {
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger><Download className="size-4" />Export</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}><Download className="size-4" />SVG Package</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}><Download className="size-4" />React Library</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}>
+                    <Download className="size-4" />Quick ZIP (SVG package)
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}><FileJson className="size-4" />Lottie JSON</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}><Package className="size-4" />Distribution</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}>
+                    <Download className="size-4" />React library (.zip)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
+                    <FileJson className="size-4" />Lottie JSON…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}>
+                    <Package className="size-4" />Full distribution options…
+                  </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 

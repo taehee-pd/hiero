@@ -328,7 +328,27 @@ export type SpringConfig = {
 };
 
 export type TransitionStagger = {
-  mode: 'linear' | 'from-center' | 'from-edges' | 'random' | 'individually';
+  /**
+   * Playback mode, mirroring SF Symbols 7's three-way pattern
+   * (see ANIMATE_PANEL_REVAMP_PLAN.md §2.5):
+   *
+   * - `linear` — staggered "By Layer" (default). Layers start in order with
+   *   `perLayerMs` between each.
+   * - `simultaneous` — "Whole Symbol". Every layer starts at t=0; `perLayerMs`
+   *   is ignored.
+   * - `individually` — one layer at a time, sequentially, using the full
+   *   transition duration per layer.
+   * - `from-center` / `from-edges` / `random` — advanced staggers retained
+   *   for power users and existing projects; surfaced only in the Animate
+   *   panel's Advanced disclosure.
+   */
+  mode:
+    | 'linear'
+    | 'simultaneous'
+    | 'from-center'
+    | 'from-edges'
+    | 'random'
+    | 'individually';
   perLayerMs: number;
   easing?: string;
 };

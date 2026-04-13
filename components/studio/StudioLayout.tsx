@@ -47,7 +47,7 @@ export function StudioLayout() {
         }
       }
     }
-  }, [workspace]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [workspace]);
 
   // Load workspace from IndexedDB or sample on first mount
   useEffect(() => {
@@ -77,7 +77,7 @@ export function StudioLayout() {
       editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
     })();
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync URL with pane state (for bookmarkability)
   useEffect(() => {

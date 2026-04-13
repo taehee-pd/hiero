@@ -34,13 +34,13 @@ The new rule:
 
 ## Types
 
-```typescript
-type CompatibilityStatus =
-  | { tone: 'green'; label: 'Strict Morph' }
-  | { tone: 'yellow'; label: 'Best Guess' }
-  | { tone: 'orange'; label: 'Line Animation' }
-  | { tone: 'red'; label: 'Replace / Fallback' };
+The `CompatibilityStatus` union has been **removed** from the user-facing
+panel per `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §2.2 — the editor no
+longer surfaces green/yellow/orange/red morph tones because the morph
+strategy is always automatic. The runtime model below still exists; it just
+lives inside `lib/runtime-core/auto-morph.ts` instead of the panel.
 
+```typescript
 type ActivePreview = {
   fromIconId: string;
   toIconId: string;
@@ -67,11 +67,12 @@ The selection model is icon-centric, not state-centric.
 
 ### Strategy Feedback
 
-The UI should show:
-
-- morph readiness
-- line-animation recommendation
-- fallback recommendation when morphing is invalid
+There is no user-facing strategy feedback. `autoMorph()` runs internally and
+selects the best tier silently. Power users can open the **Advanced**
+disclosure (collapsed by default) to see a read-only "Engine chose: …" pill
+showing which tier was picked, plus an optional manual override that still
+falls back gracefully if the requested algorithm cannot run on the current
+shapes.
 
 ### Preview Playback
 
@@ -96,14 +97,11 @@ When a preview starts:
 
 ### Binding Display
 
-The bindings list should explain layer mapping with runtime language:
-
-- `strict morph`
-- `best guess morph`
-- `line animation`
-- `replace`
-
-It should also show why a fallback was chosen when possible.
+There is no per-binding strategy badge in the panel. Layer matching still
+happens inside `buildDefaultLayerBindings()` (matched by layer id with
+unmatched layers tagged as added/removed), but the user does not see a
+runtime-language readout per row. Debugging that information is available via
+`NEXT_PUBLIC_CONTOUR_DEBUG=1` and the dev-only badge in `TransitionPanel`.
 
 ## Edge Cases
 

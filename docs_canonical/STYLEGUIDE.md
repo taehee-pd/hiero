@@ -30,7 +30,7 @@ Observed naming patterns:
 - Keep geometry, parsing, snapping, and editing mechanics in `lib/editor-core/`.
 - Keep output generation in `lib/export/`.
 - Keep runtime rendering logic in the `lib/runtime-*` packages.
-- Keep desktop-native behavior behind the platform bridge and desktop RPC boundary.
+- Keep platform environment detection behind `lib/platform/bridge.ts` (web-only today; the layer stays so future hosts can slot in without scattering `if (env)` checks).
 
 ## UI and Styling Conventions
 
@@ -48,8 +48,17 @@ The repository uses Prettier with the configuration in `.prettierrc.json` (`semi
 - Use default exports where the framework requires them, such as App Router page/layout modules.
 - Prefer internal alias imports such as `@/lib/...` and `@/components/...` over long relative chains when the file already follows that pattern.
 
+## All-caps styling ban
+
+Per `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §7.0, the repository has
+no `text-transform: uppercase` rules and no `uppercase` Tailwind utility
+usages outside vendored third-party type declarations. New UI must use
+sentence case. The only remaining `text-transform` rule is one
+`lowercase` helper on `.wire-layer-kind` in `app/globals.css`.
+
 ## Known Conflicts / Notes
 
 - A root-level ESLint flat config (`eslint.config.mjs`) exists with `no-explicit-any` and `exhaustive-deps` errors enabled.
 - Prettier is committed at the root (`.prettierrc.json`, `.prettierignore`) and enforced in CI via `format:check`.
 - Product naming uses `Contour` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).
+- `desktop/` retains build artifacts from the pre-R1 Electrobun shell but has no active source code. Do not add new modules there.

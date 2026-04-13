@@ -94,6 +94,8 @@ export type EditorState = {
   listPaneExpanded: boolean;
   /** Multi-select: icon IDs selected in the grid (separate from currentIconId) */
   selectedIconIds: string[];
+  /** Layer clipboard: used by copy/paste on the canvas context menu and shortcuts */
+  layerClipboard: Layer[];
 };
 
 export type EditorTab = {
@@ -210,6 +212,11 @@ export type EditorActions = {
   upsertSymbolComponent(iconId: string, component: SymbolComponent): void;
   removeSymbolComponent(iconId: string, kind: SymbolComponent['kind']): void;
   removeSelectedLayers(): void;
+  duplicateSelectedLayers(): void;
+  copySelectedLayers(): void;
+  pasteLayers(): void;
+  reorderSelectedLayers(direction: 'up' | 'down' | 'front' | 'back'): void;
+  moveLayerToIndex(layerId: string, index: number): void;
   pauseHistory(): void;
   resumeHistory(): void;
   commitHistory(label?: string): void;
@@ -318,6 +325,7 @@ const initialState: EditorState = {
   navPaneExpanded: false,
   listPaneExpanded: true,
   selectedIconIds: [],
+  layerClipboard: [],
 };
 
 let currentState: EditorStore;
@@ -409,6 +417,10 @@ const temporalState: TemporalState = {
     pastStates.length = 0;
     futureStates.length = 0;
     transactionBase = undefined;
+    // Reset the tracking flag too. Otherwise a stuck-paused history from an
+    // earlier boolean/derive operation (or a test that forgot to resume)
+    // would silently swallow all subsequent mutations.
+    tracking = true;
   },
 
   pause() {
@@ -794,6 +806,28 @@ function withLegacyWorkspaceView(workspace: Workspace): Workspace {
       ]),
     ),
   };
+}
+
+/**
+ * Rewrites ID-based layer references inside a cloned layer so that a clone
+ * group (paste / duplicate of a mask + masked-layer set) stays internally
+ * self-contained instead of pointing back at the originals.
+ *
+ * The only layer-to-layer id reference in the schema today is
+ * `clipPathLayerId` (see `lib/schema/types.ts:180`). `groupId` is a free-form
+ * grouping key rather than a layer id, so it is intentionally left alone.
+ * `isClipMask` is a boolean flag and needs no remapping. If new reference
+ * fields are added to `Layer`, extend this helper in lockstep and add a
+ * regression test alongside `tests/paste-clone-clip-remap.test.ts`.
+ */
+function remapLayerReferences(
+  layer: Layer,
+  idMap: Map<string, string>,
+): Layer {
+  if (!layer.clipPathLayerId) return layer;
+  const remapped = idMap.get(layer.clipPathLayerId);
+  if (!remapped) return layer;
+  return { ...layer, clipPathLayerId: remapped };
 }
 
 function replaceVariantLayers(
@@ -2932,6 +2966,226 @@ function createActions(): EditorActions {
           },
           activeSnapGuides: [],
           pointMarquee: null,
+        };
+      });
+    },
+
+    copySelectedLayers() {
+      const s = editorStoreApi.getState();
+      if (!s.project || !s.currentIconId || !s.currentVariantId) return;
+      const icon = s.project.icons[s.currentIconId];
+      const variant = icon?.variants[s.currentVariantId];
+      if (!icon || !variant) return;
+      const selectedIds = Array.from(new Set(s.selection.layerIds));
+      const clipboard = selectedIds
+        .map((id) => variant.layers[id])
+        .filter((layer): layer is Layer => Boolean(layer))
+        .map((layer) => JSON.parse(JSON.stringify(layer)) as Layer);
+      editorStoreApi.setState({ layerClipboard: clipboard });
+    },
+
+    pasteLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        if (s.layerClipboard.length === 0) return s;
+
+        const nextLayers = { ...variant.layers };
+        const usedIds = new Set(Object.keys(nextLayers));
+        const newIds: string[] = [];
+        // First pass: allocate fresh ids and build an old → new id map so we
+        // can rewrite intra-clipboard references (e.g. `clipPathLayerId`) in
+        // the second pass. Without this, a pasted mask + masked-layer pair
+        // still points at the original mask, which breaks the self-contained
+        // paste contract described in the PR #128 review (P1).
+        const idMap = new Map<string, string>();
+        const cloned: Layer[] = [];
+        for (const clipLayer of s.layerClipboard) {
+          let candidate = `${clipLayer.id}-copy`;
+          let n = 1;
+          while (usedIds.has(candidate)) {
+            n += 1;
+            candidate = `${clipLayer.id}-copy-${n}`;
+          }
+          usedIds.add(candidate);
+          idMap.set(clipLayer.id, candidate);
+          cloned.push(JSON.parse(JSON.stringify(clipLayer)) as Layer);
+        }
+        for (let i = 0; i < cloned.length; i++) {
+          const clone = cloned[i]!;
+          const newId = idMap.get(clone.id)!;
+          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+          nextLayers[newId] = remapped;
+          newIds.push(newId);
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+          selection: {
+            layerIds: newIds,
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+        };
+      });
+    },
+
+    duplicateSelectedLayers() {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const selectedIds = Array.from(new Set(s.selection.layerIds));
+        if (selectedIds.length === 0) return s;
+
+        const nextLayers = { ...variant.layers };
+        const usedIds = new Set(Object.keys(nextLayers));
+        const newIds: string[] = [];
+        // First pass: allocate fresh ids for every selected layer so the
+        // second pass can remap intra-selection references. Same rationale
+        // as `pasteLayers` above: duplicating a mask together with its
+        // masked layers must produce a self-contained copy whose clip
+        // references point at the new mask, not the original.
+        const idMap = new Map<string, string>();
+        const srcLayers: Layer[] = [];
+        for (const srcId of selectedIds) {
+          const src = variant.layers[srcId];
+          if (!src) continue;
+          let candidate = `${srcId}-copy`;
+          let n = 1;
+          while (usedIds.has(candidate)) {
+            n += 1;
+            candidate = `${srcId}-copy-${n}`;
+          }
+          usedIds.add(candidate);
+          idMap.set(srcId, candidate);
+          srcLayers.push(src);
+        }
+        for (const src of srcLayers) {
+          const newId = idMap.get(src.id)!;
+          const clone = JSON.parse(JSON.stringify(src)) as Layer;
+          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+          nextLayers[newId] = remapped;
+          newIds.push(newId);
+        }
+        if (newIds.length === 0) return s;
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+          selection: {
+            layerIds: newIds,
+            pointIds: [],
+            guideIndexes: s.selection.guideIndexes ?? [],
+          },
+        };
+      });
+    },
+
+    reorderSelectedLayers(direction) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const selected = new Set(s.selection.layerIds);
+        if (selected.size === 0) return s;
+
+        const keys = Object.keys(variant.layers);
+        const selectedKeys = keys.filter((k) => selected.has(k));
+        const unselectedKeys = keys.filter((k) => !selected.has(k));
+        if (selectedKeys.length === 0) return s;
+
+        let nextKeys: string[];
+        if (direction === 'front') {
+          nextKeys = [...unselectedKeys, ...selectedKeys];
+        } else if (direction === 'back') {
+          nextKeys = [...selectedKeys, ...unselectedKeys];
+        } else {
+          nextKeys = [...keys];
+          const delta = direction === 'up' ? -1 : 1;
+          const indices = selectedKeys
+            .map((k) => keys.indexOf(k))
+            .sort((a, b) => (delta < 0 ? a - b : b - a));
+          for (const idx of indices) {
+            const target = idx + delta;
+            if (target < 0 || target >= nextKeys.length) continue;
+            const tmp = nextKeys[idx]!;
+            nextKeys[idx] = nextKeys[target]!;
+            nextKeys[target] = tmp;
+          }
+        }
+
+        const nextLayers: Record<string, Layer> = {};
+        for (const k of nextKeys) {
+          const layer = variant.layers[k];
+          if (layer) nextLayers[k] = layer;
+        }
+
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
+        };
+      });
+    },
+
+    moveLayerToIndex(layerId, index) {
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
+        const icon = s.project.icons[s.currentIconId];
+        const variant = icon?.variants[s.currentVariantId];
+        if (!icon || !variant) return s;
+        const keys = Object.keys(variant.layers);
+        const srcIdx = keys.indexOf(layerId);
+        if (srcIdx < 0) return s;
+        const clamped = Math.max(0, Math.min(keys.length - 1, index));
+        if (srcIdx === clamped) return s;
+
+        const nextKeys = [...keys];
+        nextKeys.splice(srcIdx, 1);
+        // The caller passes a target index from the ORIGINAL array (the drop
+        // target row's position before removal). When the source was above the
+        // target, the splice above shifts every later index down by one, so we
+        // need to decrement the insertion point to land the layer in the
+        // slot the user actually pointed at.
+        const insertAt = srcIdx < clamped ? clamped - 1 : clamped;
+        nextKeys.splice(insertAt, 0, layerId);
+        const nextLayers: Record<string, Layer> = {};
+        for (const k of nextKeys) {
+          const layer = variant.layers[k];
+          if (layer) nextLayers[k] = layer;
+        }
+        return {
+          project: {
+            ...s.project,
+            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+            icons: {
+              ...s.project.icons,
+              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
+            },
+          },
         };
       });
     },

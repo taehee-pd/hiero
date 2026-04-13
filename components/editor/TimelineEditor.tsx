@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
-import type { TimelineTrack, Variant, Layer, LayerSnapshot, LayerBinding } from '@/lib/schema/types';
+import type { TimelineTrack, Variant, Layer, LayerBinding } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import type { TransitionPreview } from '@/lib/editor-store/store';
@@ -215,7 +215,7 @@ export function buildTimelineTransitionPreview(
   };
 }
 
-export const TimelineEditor = memo(function TimelineEditor({ iconId, transition, variant }: { iconId: string; transition: TransitionConfig; variant: Variant }) {
+export const TimelineEditor = memo(function TimelineEditor({ transition, variant }: { iconId: string; transition: TransitionConfig; variant: Variant }) {
   const { setTransitionPreview } = useEditorActions();
   const preview = useEditorStore((s) => s.transitionPreview);
   const [selected, setSelected] = useState<SelectedKeyframe | null>(null);
@@ -691,7 +691,7 @@ export const TimelineEditor = memo(function TimelineEditor({ iconId, transition,
                 <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
                   {grouped.map((group) => (
                     <div key={group.category}>
-                      <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium uppercase tracking-tight text-muted-foreground/70">
+                      <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground/70">
                         {group.category}
                       </p>
                       {group.items.map((item) => {

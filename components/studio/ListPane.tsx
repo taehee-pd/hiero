@@ -1,11 +1,22 @@
 'use client';
 
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { ArrowDownToLine, ChevronLeft, ChevronRight, FolderInput, Plus, Search } from 'lucide-react';
+import { ArrowDownToLine, ChevronLeft, ChevronRight, FolderInput, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from '@/components/ui/use-toast';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { exportSvgString } from '@/lib/export/export-svg';
@@ -66,6 +77,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
 
   const [query, setQuery] = useState('');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -112,11 +124,26 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     const zipBlob = createZipBlob(fileMap);
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
+    const fileName = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
     a.href = url;
-    a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
+    a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
+    toast({
+      title: 'Quick ZIP export started',
+      description: `Downloading ${fileName}`,
+    });
   }, [project]);
+
+  const handleOpenExportDialog = useCallback(() => {
+    if (!project) return;
+    setExportDialogOpen(true);
+  }, [project]);
+
+  const handleConfirmExportAll = useCallback(() => {
+    setExportDialogOpen(false);
+    handleExportAll();
+  }, [handleExportAll]);
 
   const handleSvgFileDrop = useCallback(
     async (files: FileList) => {
@@ -300,11 +327,17 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleExportAll} aria-label="Export all as ZIP">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="h-6 w-6 shrink-0 rounded-lg border-border/70 bg-primary/[0.06] text-primary hover:bg-primary/10 hover:text-primary"
+                    onClick={handleOpenExportDialog}
+                    aria-label="Quick ZIP export"
+                  >
                     <ArrowDownToLine className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">Export All</TooltipContent>
+                <TooltipContent side="bottom">Quick ZIP (SVG package)</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -337,9 +370,22 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search icons…"
                 aria-label="Search icons"
-                className="h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs"
+                className={cn(
+                  'h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs',
+                  query ? 'pr-7' : 'pr-2',
+                )}
                 style={{ boxShadow: 'var(--shadow-outline)' }}
               />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-4 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="size-3" />
+                </button>
+              ) : null}
             </div>
 
             {/* Icon grid with marquee support */}
@@ -356,10 +402,22 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                 aria-label="Icons"
               >
                 {filtered.length === 0 ? (
-                  <div className="col-span-3 flex items-center justify-center py-8">
-                    <p className="rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground" style={{ boxShadow: 'var(--shadow-outline)' }}>
-                      {query ? 'No icons match your search.' : 'No icons yet. Create or import one.'}
+                  <div className="col-span-3 flex flex-col items-center justify-center gap-2 py-8">
+                    <p
+                      className="max-w-full truncate rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground"
+                      style={{ boxShadow: 'var(--shadow-outline)' }}
+                    >
+                      {query ? `No icons match "${query}"` : 'No icons yet. Create or import one.'}
                     </p>
+                    {query ? (
+                      <button
+                        type="button"
+                        onClick={() => setQuery('')}
+                        className="text-[length:var(--text-caption)] text-primary underline-offset-2 hover:underline"
+                      >
+                        Clear search
+                      </button>
+                    ) : null}
                   </div>
                 ) : (
                   filtered.map((icon) => {
@@ -389,6 +447,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                         onToggleFavorite={() => toggleFavorite(icon.id)}
                         onDuplicate={() => editorStore.getState().duplicateIcon(icon.id)}
                         onDelete={() => editorStore.getState().removeIcon(icon.id)}
+                        onRename={(nextName) => editorStore.getState().renameIcon(icon.id, nextName)}
                       />
                     );
                   })
@@ -430,6 +489,26 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       )}
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
+
+      <AlertDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quick ZIP export</AlertDialogTitle>
+            <AlertDialogDescription>
+              Export {iconCount} icon{iconCount === 1 ? '' : 's'} as an SVG package (.zip).
+              For React, Lottie, or full distribution options, open the Contour menu
+              &rarr; Export in the top bar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmExportAll}>
+              <ArrowDownToLine className="size-4" />
+              Download ZIP
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

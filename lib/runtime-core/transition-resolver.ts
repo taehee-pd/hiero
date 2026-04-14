@@ -132,25 +132,35 @@ export function resolveTransition(
       resolved.animationType = 'replace';
     }
 
-    // 8.3 — When topology is incompatible, override morph bindings with
-    // the appropriate crossfade strategy so geometry never deforms
-    // across incompatible topologies.
-    //
-    // However, subpath-count-mismatch alone should NOT prevent morphing
-    // because the cross-icon morph pipeline handles differing sub-path
-    // counts via sub-path matching, De Casteljau subdivision, and
-    // centroid collapse.  Only override when there are "hard"
-    // incompatibilities (closed/open mismatch, fill-mode change, etc.).
-    const hardIncompatibilities = topologyAnalysis.incompatibilities.filter(
-      (i) => i !== 'subpath-count-mismatch',
+    // 8.3 — Topology override. We used to throw away any computed morph
+    // whenever the topology analysis flagged a "hard" incompatibility
+    // (closed/open mismatch, fill-mode change, etc.), which produced a
+    // ton of false-positive crossfades — the morph engines themselves
+    // (alignCubicPaths, attemptCrossIconMorph) already refuse to return
+    // a morph when they truly can't handle a pair, so a *successful*
+    // morph result means the engine vouched for it and we should honor
+    // it. Only force a crossfade when:
+    //   1. The engines produced no morph at all, AND there is some
+    //      hard incompatibility worth signaling, OR
+    //   2. The change is a true rendering-mode flip (stroke <-> fill)
+    //      that path-space interpolation cannot represent, OR
+    //   3. One side has no path data at all.
+    const renderingModeFlip = topologyAnalysis.incompatibilities.includes(
+      'stroke-to-fill-change',
     );
-    if (
-      hardIncompatibilities.length > 0 &&
+    const pathTypeMismatch = topologyAnalysis.incompatibilities.includes(
+      'path-type-mismatch',
+    );
+    const shouldOverride =
       !resolved.preserved &&
-      resolved.animationType === 'morph'
-    ) {
+      resolved.animationType === 'morph' &&
+      (renderingModeFlip || pathTypeMismatch || !resolved.morph);
+    if (shouldOverride) {
       resolved.morph = undefined;
-      if (topologyAnalysis.recommendedStrategy === 'draw-crossfade') {
+      if (
+        renderingModeFlip ||
+        topologyAnalysis.recommendedStrategy === 'draw-crossfade'
+      ) {
         resolved.fallback = 'fade-through';
         resolved.animationType = 'replace';
         resolved.diagnostics?.push('topologyOverride:draw-crossfade');
@@ -561,32 +571,36 @@ export function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadine
   if (subpathCompatibility < 1) reasons.push('subpath-mismatch');
   if (closedCompatibility < 1) reasons.push('closed-open-mismatch');
 
-  // Thresholds relaxed 2026-04-14: the previous gates demanded near-exact
-  // command/subpath/closed parity for any morph-class strategy, which
-  // forced almost every transition through chooseFallbackMode (crossfade).
-  // The actual morph engines tolerate far more variation than the
-  // resolver was admitting; let them do their job.
+  // Thresholds relaxed 2026-04-14 (round 2): the previous gates demanded
+  // near-exact command/subpath/closed parity *and* bbox/centroid floors
+  // for any morph-class strategy, forcing almost every transition through
+  // chooseFallbackMode (crossfade). The actual morph engines tolerate far
+  // more variation than the resolver was admitting — strictMorph in
+  // particular is a *path-shape* operation, so demoting it because the
+  // icon happens to live in a different bbox is the wrong call.
+  //
+  // Strategy tiering now:
+  //   - strictMorph     when command + subpath + closed all match exactly
+  //   - bestGuessMorph  when topology is broadly similar
+  //   - crossIconMorph  default catch-all (engines decide null/non-null)
   let recommendedStrategy: MorphReadiness['recommendedStrategy'] = 'crossIconMorph';
   if (
     commandCompatibility === 1 &&
     subpathCompatibility === 1 &&
-    closedCompatibility === 1 &&
-    bboxSimilarity >= 0.7 &&
-    centroidSimilarity >= 0.65
+    closedCompatibility === 1
   ) {
     recommendedStrategy = 'strictMorph';
   } else if (
-    subpathCompatibility >= 0.5 &&
-    commandCompatibility >= 0.55 &&
-    centroidSimilarity >= 0.25 &&
-    bboxSimilarity >= 0.25
+    subpathCompatibility >= 0.34 &&
+    commandCompatibility >= 0.4 &&
+    closedCompatibility >= 0.5
   ) {
     recommendedStrategy = 'bestGuessMorph';
   }
-  // Default tier (centroidSimilarity below the bestGuess gate) is
-  // crossIconMorph rather than fallback — the cross-icon pipeline is the
-  // catch-all and only fails for genuinely unparseable pairs, in which
-  // case the resolver downstream still falls through to a real fallback.
+  // Default tier is crossIconMorph rather than fallback — the cross-icon
+  // pipeline is the catch-all and only fails for genuinely unparseable
+  // pairs, in which case the resolver downstream still falls through to
+  // a real fallback.
 
   return {
     score,

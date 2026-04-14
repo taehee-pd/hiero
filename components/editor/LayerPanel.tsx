@@ -217,7 +217,39 @@ export const LayerPanel = memo(function LayerPanel() {
                     isSelected ? 'bg-primary' : 'bg-transparent',
                   )}
                 />
-                <span className="ml-2 size-2.5 shrink-0" />
+                <div
+                  className={cn(
+                    'ml-2 flex size-5 shrink-0 items-center justify-center rounded-sm border text-foreground transition',
+                    isSelected
+                      ? 'border-primary/40 bg-background/80'
+                      : 'border-border/60 bg-background/60',
+                    !isVisible && 'opacity-50',
+                  )}
+                  aria-hidden
+                >
+                  {layer.path?.d ? (
+                    <svg
+                      viewBox={currentVariant?.viewBox.join(' ') ?? '0 0 24 24'}
+                      className="size-full"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d={layer.path.d}
+                        fill={layer.style.fill ? 'currentColor' : 'none'}
+                        stroke={
+                          layer.style.stroke || !layer.style.fill ? 'currentColor' : 'none'
+                        }
+                        strokeWidth={layer.style.strokeWidth ?? 1.5}
+                        strokeLinecap={layer.style.lineCap ?? 'round'}
+                        strokeLinejoin={layer.style.lineJoin ?? 'round'}
+                        fillRule={layer.path.fillRule}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    </svg>
+                  ) : (
+                    <span className="size-1.5 rounded-full bg-muted-foreground/40" />
+                  )}
+                </div>
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-50')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (

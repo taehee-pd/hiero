@@ -21,27 +21,77 @@ import { useEditorActions, useEditorStore, useTool } from '@/lib/editor-store/ho
 import type { ShapeType, Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';
 
+type ToolIconComponent = React.ComponentType<
+  React.SVGProps<SVGSVGElement> & { className?: string }
+>;
+
+// lucide's Move uses only open stroked paths, so fill="currentColor" has no
+// visual effect. This custom solid variant is rendered when direct-select is
+// active so the toolbar has a filled counterpart for every tool.
+const SolidMove: ToolIconComponent = ({ className, ...props }) => (
+  <svg
+    {...props}
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    stroke="currentColor"
+    strokeWidth={1.5}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2 15 5 13 5 13 11 19 11 19 9 22 12 19 15 19 13 13 13 13 19 15 19 12 22 9 19 11 19 11 13 5 13 5 15 2 12 5 9 5 11 11 11 11 5 9 5 Z" />
+  </svg>
+);
+
 const SELECT_TOOLS: Array<{
   id: Tool;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ToolIconComponent;
+  solidIcon: ToolIconComponent;
   label: string;
   shortcut: string;
 }> = [
-  { id: 'select', icon: MousePointer2, label: 'Select', shortcut: 'V' },
-  { id: 'direct-select', icon: Move, label: 'Direct Select', shortcut: 'A' },
+  {
+    id: 'select',
+    icon: MousePointer2,
+    solidIcon: MousePointer2,
+    label: 'Select',
+    shortcut: 'V',
+  },
+  {
+    id: 'direct-select',
+    icon: Move,
+    solidIcon: SolidMove,
+    label: 'Direct Select',
+    shortcut: 'A',
+  },
 ];
 
 const TOOLS: Array<{
   id: Tool;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ToolIconComponent;
+  solidIcon: ToolIconComponent;
   label: string;
   shortcut: string;
   disabled?: boolean;
 }> = [
-  { id: 'select', icon: MousePointer2, label: 'Select', shortcut: 'V' },
-  { id: 'pen', icon: Pen, label: 'Pen', shortcut: 'P' },
-  { id: 'shape', icon: Square, label: 'Shape', shortcut: 'U' },
-  { id: 'guide', icon: Ruler, label: 'Guide', shortcut: 'G', disabled: true },
+  {
+    id: 'select',
+    icon: MousePointer2,
+    solidIcon: MousePointer2,
+    label: 'Select',
+    shortcut: 'V',
+  },
+  { id: 'pen', icon: Pen, solidIcon: Pen, label: 'Pen', shortcut: 'P' },
+  { id: 'shape', icon: Square, solidIcon: Square, label: 'Shape', shortcut: 'U' },
+  {
+    id: 'guide',
+    icon: Ruler,
+    solidIcon: Ruler,
+    label: 'Guide',
+    shortcut: 'G',
+    disabled: true,
+  },
 ];
 
 export const SHAPE_SUB_TOOLS: Array<{
@@ -152,11 +202,22 @@ export const ToolPanel = memo(function ToolPanel({
                           isDock ? 'size-8 border-0 bg-transparent' : 'size-7',
                         )}
                       >
-                        {isSelectEntry ? (
-                        <activeSelectTool.icon className="size-4" />
-                      ) : (
-                        <tool.icon className="size-4" />
-                      )}
+                        {(() => {
+                        const LineIcon = isSelectEntry
+                          ? activeSelectTool.icon
+                          : tool.icon;
+                        const SolidIcon = isSelectEntry
+                          ? activeSelectTool.solidIcon
+                          : tool.solidIcon;
+                        return isActive ? (
+                          <SolidIcon
+                            className="size-4"
+                            fill="currentColor"
+                          />
+                        ) : (
+                          <LineIcon className="size-4" />
+                        );
+                      })()}
                       </span>
                       {!isDock ? (
                         <span className="text-sm font-medium text-foreground">
@@ -312,7 +373,11 @@ export const ToolPanel = memo(function ToolPanel({
                   isDock ? 'size-8 border-0 bg-transparent' : 'size-7',
                 )}
               >
-                <Magnet className="size-4" />
+                {snapEnabled ? (
+                  <Magnet className="size-4" fill="currentColor" />
+                ) : (
+                  <Magnet className="size-4" />
+                )}
               </span>
               {!isDock ? (
                 <span className="text-sm font-medium text-foreground">

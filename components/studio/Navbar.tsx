@@ -254,13 +254,11 @@ export function Navbar() {
                 aria-label="Main menu"
               >
                 <span
-                  className="shrink-0 bg-foreground"
+                  className="inline-block h-3 shrink-0 bg-foreground"
                   role="img"
                   aria-label="Contour logo"
                   style={{
-                    display: 'inline-block',
-                    height: 12,
-                    width: Math.round(12 * (2144 / 408)),
+                    aspectRatio: '2144 / 408',
                     maskImage: 'url(/contour_wordmark.svg)',
                     maskSize: 'contain',
                     maskRepeat: 'no-repeat',
@@ -356,20 +354,20 @@ export function Navbar() {
             />
           ) : (
             <button
-              className="group flex min-w-0 items-center gap-0 rounded-md px-1 py-0.5 hover:bg-accent hover:gap-1 transition-all"
+              className="group flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent"
               onClick={startEditingName}
             >
               <span className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</span>
-              <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 w-0 group-hover:w-3" />
+              <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           )}
 
           <Badge
             variant="outline"
-            className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-tight ${
+            className={`h-5 shrink-0 rounded-full px-2 text-[10px] font-medium tracking-tight ${
               isDirty
-                ? 'status-warning-surface shadow-[inset_0_0_0_0.5px_var(--border-warning)]'
-                : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
+                ? 'status-warning-surface border-[color:var(--border-warning)]'
+                : 'border-border/70 bg-background/80 text-muted-foreground'
             }`}
           >
             {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}

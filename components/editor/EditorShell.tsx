@@ -453,11 +453,11 @@ function InlineEditableTitle({
 
   return (
     <button
-      className={`group/edit flex min-w-0 items-center gap-0 rounded-md px-1 py-0.5 hover:bg-accent hover:gap-1 transition-all ${className ?? ''}`}
+      className={`group/edit flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent ${className ?? ''}`}
       onClick={startEditing}
     >
       <span className="truncate text-sm font-semibold tracking-tight">{value}</span>
-      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-all group-hover/edit:opacity-100 w-0 group-hover/edit:w-3" />
+      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
     </button>
   );
 }
@@ -522,28 +522,24 @@ function LeftSidebar({
           <ScrollArea className="h-full">
             <div role="region" aria-label="Variants" className="wire-section animate-in fade-in duration-150">
               <div className="wire-section-header">
-                <span>Variants</span>
+                <span>Sizes</span>
               </div>
-              <label className="wire-label-inline flex items-center gap-2 px-0.5 text-[10px] text-muted-foreground">
-                <span className="min-w-[70px]">New size (px)</span>
+              <div className="wire-inline-form !p-0">
                 <Input
                   value={newVariantSize}
                   onChange={(event) => onNewVariantSizeChange(event.target.value)}
                   type="number"
                   min="1"
                   step="1"
-                  placeholder="32"
+                  placeholder="New size (px)"
                   aria-label="New variant size in pixels"
-                  className="wire-input flex-1"
+                  className="wire-input"
                 />
                 <Button variant="outline" size="sm" className="wire-mini-button" onClick={onCreateVariant}>
                   Add
                 </Button>
-              </label>
-              <div className="wire-section-header">
-                <span>Sizes</span>
               </div>
-              <div className="flex flex-wrap gap-1 px-0.5">
+              <div className="flex flex-wrap gap-1 px-0.5 pt-1">
                 {variants.map((variant) => {
                   const isDerived = variant.id.includes('.');
                   const isCurrent = variant.id === currentVariantId;
@@ -563,7 +559,7 @@ function LeftSidebar({
                         >
                           <span>{formatVariantLabel(variant)}</span>
                           {isDerived ? (
-                            <span className="rounded-sm bg-muted px-1 py-0.5 text-[9px] font-medium leading-none text-muted-foreground">
+                            <span className="rounded-sm bg-muted px-1 py-0.5 text-[10px] font-medium leading-none tracking-wide text-muted-foreground">
                               derived
                             </span>
                           ) : null}
@@ -1209,7 +1205,7 @@ function RightSidebar({
                         <TooltipTrigger asChild>
                           <span
                             tabIndex={0}
-                            className="inline-flex size-3 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label="What is Role?"
                           >
                             <HelpCircle className="size-3" />
@@ -1499,7 +1495,7 @@ function RightSidebar({
                         <TooltipTrigger asChild>
                           <span
                             tabIndex={0}
-                            className="inline-flex size-3 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label="What is Rendering mode?"
                           >
                             <HelpCircle className="size-3" />
@@ -1567,14 +1563,15 @@ function RightSidebar({
                   />
                 </div>
                 <Separator className="my-2" />
-                <div className="pt-1">
+                <div className="flex justify-end pt-1">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="wire-mini-button w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="h-6 rounded-md px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     onClick={onDeleteVariant}
                   >
-                    Delete size
+                    <Trash2 className="size-3" />
+                    Delete this size
                   </Button>
                 </div>
               </>

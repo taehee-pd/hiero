@@ -311,7 +311,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
+                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
                     <Plus className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -319,7 +319,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-6 w-6 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
                     <FolderInput className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
@@ -328,9 +328,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon-sm"
-                    className="h-6 w-6 shrink-0 rounded-lg border-border/70 bg-primary/[0.06] text-primary hover:bg-primary/10 hover:text-primary"
+                    className="h-7 w-7 shrink-0 rounded-lg text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={handleOpenExportDialog}
                     aria-label="Quick ZIP export"
                   >
@@ -397,7 +397,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             >
               <div
                 ref={gridRef}
-                className="grid grid-cols-3 content-start gap-1 p-2"
+                className="grid select-none grid-cols-3 content-start gap-1 p-2"
                 role="list"
                 aria-label="Icons"
               >

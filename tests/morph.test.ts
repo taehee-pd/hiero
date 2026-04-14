@@ -68,7 +68,12 @@ describe('transition resolver morph integration', () => {
     expect(resolved.layerBindings[0]?.fallback).toBeUndefined();
   });
 
-  test('bestGuessMorph bindings fall back to fallback when normalization fails', () => {
+  test('bestGuessMorph bindings cascade to cross-icon morph for arc → polygon', () => {
+    // After the dogfooding loosen-up, an arc → polygon pair (which used
+    // to short-circuit to fallback when bestGuessMorph couldn't normalize
+    // it) cascades through the cross-icon morph engine, which DOES handle
+    // differing topologies. The user-visible result is a real morph
+    // animation instead of a crossfade.
     const fromState: LayerSnapshot = {
       layers: {
         shape: makeLayer('shape', 'M0 0 A10 10 0 0 1 10 10'),
@@ -87,7 +92,7 @@ describe('transition resolver morph integration', () => {
     };
 
     const resolved = resolveTransition(transition, fromState, toState);
-    expect(resolved.layerBindings[0]?.morph).toBeUndefined();
-    expect(resolved.layerBindings[0]?.fallback).not.toBeUndefined();
+    expect(resolved.layerBindings[0]?.morph).toBeDefined();
+    expect(resolved.layerBindings[0]?.fallback).toBeUndefined();
   });
 });

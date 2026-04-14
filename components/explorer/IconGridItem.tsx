@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 
-import { Check, Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
+import { CheckSquare, Copy, Grid3X3, Heart, Pencil, Square as SquareIcon, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -128,42 +128,21 @@ export function IconGridItem({
             }
           }}
           className={cn(
-            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            'group relative flex select-none flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            // Two visual states (selected wins when both are true):
+            //   selected → solid primary fill, white label + glyph
+            //              (marked for batch action; cannot be missed)
+            //   active   → primary tint fill, primary label
+            //              (the icon currently open in the editor)
             selected
-              ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
+              ? 'border-primary bg-primary text-primary-foreground shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_28%,transparent)]'
               : active
-                ? 'border-primary/60 bg-primary/12 shadow-[inset_0_0_0_1px_var(--primary),0_4px_10px_color-mix(in_srgb,var(--primary)_18%,transparent)]'
+                ? 'border-primary/70 bg-primary/15 shadow-[inset_0_0_0_1px_var(--primary)]'
                 : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >
-          {/* Selection checkbox */}
           <div
-            className={cn(
-              'absolute right-1.5 top-1.5 flex gap-0.5 transition-opacity',
-              selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-            )}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShiftClick();
-              }}
-              aria-pressed={selected}
-              aria-label={selected ? `Deselect ${iconName}` : `Select ${iconName}`}
-              className={cn(
-                'flex size-5 items-center justify-center rounded-md border transition',
-                selected
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border/80 bg-background/80 text-transparent hover:text-muted-foreground',
-              )}
-            >
-              {selected ? <Check className="size-3" /> : null}
-            </button>
-          </div>
-
-          <div
-            className="flex w-full flex-col items-center gap-2 rounded-md cursor-pointer"
+            className="flex w-full cursor-pointer select-none flex-col items-center gap-2 rounded-md"
             onClick={handleClick}
             onDoubleClick={handleDoubleClick}
           >
@@ -171,7 +150,10 @@ export function IconGridItem({
               {svg ? (
                 <div
                   aria-hidden="true"
-                  className="flex size-10 items-center justify-center text-foreground transition-transform duration-100 group-hover:scale-[1.04]"
+                  className={cn(
+                    'flex size-10 items-center justify-center transition-transform duration-100 group-hover:scale-[1.04]',
+                    selected ? 'text-primary-foreground' : 'text-foreground',
+                  )}
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
               ) : (
@@ -204,8 +186,12 @@ export function IconGridItem({
               ) : (
                 <p
                   className={cn(
-                    'truncate text-[length:var(--text-caption)] text-foreground',
-                    active ? 'font-semibold text-primary' : 'font-medium',
+                    'truncate select-none text-[length:var(--text-caption)]',
+                    selected
+                      ? 'font-semibold text-primary-foreground'
+                      : active
+                        ? 'font-semibold text-primary'
+                        : 'font-medium text-foreground',
                   )}
                 >
                   {iconName}
@@ -216,6 +202,18 @@ export function IconGridItem({
         </article>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {/*
+          Non-modifier toggle path for multi-select. The floating checkbox
+          was removed per design review, but `onShiftClick` still needs a
+          reachable entry point for touch devices (which have no Shift/Cmd
+          keyboard modifier) — native long-press opens this context menu,
+          so a Select / Deselect item here is the accessible fallback.
+        */}
+        <ContextMenuItem onSelect={onShiftClick}>
+          {selected ? <CheckSquare className="size-4" /> : <SquareIcon className="size-4" />}
+          {selected ? 'Deselect' : 'Select'}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onSelect={onToggleFavorite}>
           <Heart className="size-4" />
           {favorite ? 'Unfavorite' : 'Favorite'}

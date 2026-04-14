@@ -251,16 +251,23 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
   // --- Engine readout ---
   // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
-  // power users can see which tier `autoMorph()` would pick for the first
-  // shared layer of the current source/target pair.
+  // power users can see which tier `autoMorph()` picks for the primary
+  // layer pair of the current source/target. For cross-icon pairs the
+  // layer IDs won't match, so fall back to a positional pairing — picking
+  // the first layer on each side — which matches what the resolver's
+  // auto-matcher does for the first binding. Previously this readout
+  // returned 'fallback' for every cross-icon transition even when the
+  // actual preview morphed cleanly.
   const engineChoseTier = useMemo<string | null>(() => {
     if (!sourceSnapshot || !targetSnapshot) return null;
-    const sharedId = Object.keys(sourceSnapshot.layers).find(
-      (id) => Boolean(targetSnapshot.layers[id]),
-    );
-    if (!sharedId) return 'fallback';
-    const fromD = sourceSnapshot.layers[sharedId]?.path?.d;
-    const toD = targetSnapshot.layers[sharedId]?.path?.d;
+    const fromIds = Object.keys(sourceSnapshot.layers);
+    const toIds = Object.keys(targetSnapshot.layers);
+    if (fromIds.length === 0 || toIds.length === 0) return 'fallback';
+    const sharedId = fromIds.find((id) => Boolean(targetSnapshot.layers[id]));
+    const fromId = sharedId ?? fromIds[0]!;
+    const toId = sharedId ?? toIds[0]!;
+    const fromD = sourceSnapshot.layers[fromId]?.path?.d;
+    const toD = targetSnapshot.layers[toId]?.path?.d;
     if (!fromD || !toD) return 'fallback';
     const result = autoMorph(fromD, toD);
     return result?.selectedStrategy ?? 'fallback';
@@ -376,12 +383,31 @@ export const TransitionPanel = memo(function TransitionPanel() {
       easing: formEasing,
       direction: formDirection,
       stagger: staggerConfig,
-      layerBindings: buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, effectiveStrategy),
+      layerBindings: buildDefaultLayerBindings(
+        sourceSnapshot,
+        targetSnapshot,
+        effectiveStrategy,
+        { isCrossIcon: Boolean(srcIconId && tgtIconId && srcIconId !== tgtIconId) },
+      ),
     };
 
     let resolved: ReturnType<typeof resolveTransition>;
     try {
-      resolved = resolveTransition(config, sourceSnapshot, targetSnapshot);
+      resolved = resolveTransition(config, sourceSnapshot, targetSnapshot, {
+        // Tell the resolver this is a cross-icon transition when source
+        // and target come from different icons; this engages the 3-pass
+        // role/name/geometry matcher in resolveBindings instead of the
+        // same-icon readiness-only path.
+        crossIconContext:
+          srcIconId && tgtIconId && srcIconId !== tgtIconId
+            ? {
+                sourceIconId: srcIconId,
+                targetIconId: tgtIconId,
+                sourceVariantId: srcVariantId,
+                targetVariantId: tgtVariantId,
+              }
+            : undefined,
+      });
     } catch (error) {
       toast({
         title: 'Preview failed',
@@ -850,37 +876,49 @@ function buildDefaultLayerBindings(
   fromSnapshot: LayerSnapshot,
   toSnapshot: LayerSnapshot,
   strategy: RuntimeTransitionIntent['strategy'],
+  options: { isCrossIcon: boolean } = { isCrossIcon: false },
 ): LayerBinding[] {
   const fromIds = Object.keys(fromSnapshot.layers);
   const toIds = Object.keys(toSnapshot.layers);
 
-  // Auto strategy: match by layer identity first (shared IDs), then treat
-  // unmatched layers as added/removed. This avoids false pairings when
-  // object key order differs between source and target.
+  // Auto strategy is context-sensitive:
+  //
+  //   • Cross-icon previews: IDs almost never match, so pre-pairing by
+  //     ID dumps every layer into a one-sided 'removed' / 'added'
+  //     binding. The resolver short-circuits one-sided bindings at the
+  //     `if (!fromD || !toD)` guard to fade-in / fade-out, which is
+  //     exactly the false-positive crossfade we had to eliminate.
+  //     Returning `[]` here lets resolveBindings run its 3-pass
+  //     cross-icon matcher (role → name → geometry/readiness).
+  //
+  //   • Same-icon previews (variant → variant): preserve stable-ID
+  //     pairing. Two layers that intentionally keep their IDs across
+  //     variants must animate identity-to-identity, not swap via a
+  //     geometry-based readiness match. E.g. if layers `a` and `b`
+  //     trade positions in the target variant, we want `a→a` / `b→b`,
+  //     not `a→b` / `b→a`.
   if (strategy === 'auto') {
+    if (options.isCrossIcon) {
+      return [];
+    }
     const toIdSet = new Set(toIds);
     const fromIdSet = new Set(fromIds);
     const bindings: LayerBinding[] = [];
-
-    // Shared layers — matched by ID
     for (const id of fromIds) {
       if (toIdSet.has(id)) {
         bindings.push({ fromLayerId: id, toLayerId: id });
       }
     }
-    // Unmatched source → removed
     for (const id of fromIds) {
       if (!toIdSet.has(id)) {
         bindings.push({ fromLayerId: id, toLayerId: undefined });
       }
     }
-    // Unmatched target → added
     for (const id of toIds) {
       if (!fromIdSet.has(id)) {
         bindings.push({ fromLayerId: undefined, toLayerId: id });
       }
     }
-
     return bindings;
   }
 

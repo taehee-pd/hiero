@@ -138,7 +138,7 @@ export function NavPane() {
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      'group/item relative flex h-7 items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
+                      'group/item relative flex h-7 select-none items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
                       activeIconSetId === iconSet.id
                         ? 'bg-primary/12 text-foreground font-semibold shadow-[inset_2px_0_0_var(--primary),inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_35%,transparent)]'
                         : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
@@ -172,7 +172,7 @@ export function NavPane() {
                       ) : navExpanded ? (
                         <>
                           <span className="min-w-0 truncate">{iconSet.name}</span>
-                          <span className="ml-auto shrink-0 rounded bg-black/[0.06] px-1 text-[10px] text-muted-foreground dark:bg-white/[0.08]">{iconSet.iconCount}</span>
+                          <span className="ml-auto shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-medium leading-4 text-muted-foreground tabular-nums">{iconSet.iconCount}</span>
                         </>
                       ) : null}
                     </button>

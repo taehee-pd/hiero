@@ -2,8 +2,10 @@ import { parseSvgPath } from '../editor-core/parse';
 import type { PathPoint } from '../editor-core/path-model';
 import { arcToCubicSegments } from './arc-to-cubic';
 import {
+  computeSubPathAlignmentCost,
   crossIconMorph,
   findOptimalShapeIndex,
+  reverseSubPathSegments,
   rotateSubPathSegments,
 } from './cross-icon-morph';
 import {
@@ -669,12 +671,31 @@ function alignCubicPaths(from: CubicPath, to: CubicPath): [CubicPath, CubicPath]
     padSubPathSegments(leftSubPath, segmentCount);
     padSubPathSegments(rightSubPath, segmentCount);
 
+    // Direction reversal: paths that encode identical geometry but in
+    // opposite traversal direction (e.g. an author drew an outline
+    // clockwise in one state and counter-clockwise in another, or a
+    // horizontal line is drawn left-to-right vs right-to-left) used to
+    // morph as a visual horizontal flip because segment[0] of one side
+    // was naïvely paired with segment[0] of the other. Before we pick a
+    // shape-index rotation, score the forward and reversed orientations
+    // of the right sub-path and use whichever has lower total endpoint
+    // displacement. Reversal applies to *both* open and closed paths.
+    if (segmentCount > 1) {
+      const reversedRight = reverseSubPathSegments(rightSubPath);
+      const forwardCost = computeSubPathAlignmentCost(leftSubPath, rightSubPath);
+      const reversedCost = computeSubPathAlignmentCost(leftSubPath, reversedRight);
+      if (reversedCost < forwardCost) {
+        right[index] = reversedRight;
+      }
+    }
+
     // 8.1c: Shape index optimization — find optimal rotation offset
-    // that minimizes total point displacement for closed paths
-    if (leftSubPath.closed && rightSubPath.closed && segmentCount > 1) {
-      const offset = findOptimalShapeIndex(leftSubPath, rightSubPath);
+    // that minimizes total point displacement for closed paths (applied
+    // on top of the — possibly reversed — orientation chosen above).
+    if (right[index]!.closed && leftSubPath.closed && segmentCount > 1) {
+      const offset = findOptimalShapeIndex(leftSubPath, right[index]!);
       if (offset > 0) {
-        const rotated = rotateSubPathSegments(rightSubPath, offset);
+        const rotated = rotateSubPathSegments(right[index]!, offset);
         right[index] = rotated;
       }
     }

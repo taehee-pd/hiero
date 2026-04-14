@@ -123,9 +123,12 @@
   --text-label: clamp(10px, 0.6875rem, 12px);
   --text-caption: clamp(9px, 0.625rem, 11px);
 
-  /* ── Timing ── */
-  --duration-fast: 120ms;
-  --duration-normal: 160ms;
+  /* ── Timing ──
+     Snappy 50ms across all UI motion (tooltips, popovers, hovers, toggles).
+     This does NOT affect icon/animation playback, which is driven by per-effect
+     duration values in the runtime, not by these CSS tokens. */
+  --duration-fast: 50ms;
+  --duration-normal: 50ms;
 
   /* ── Shadow Levels (multi-layer, sub-0.1 opacity — ElevenLabs-inspired) ── */
   --shadow-inset-edge: inset 0 0 0 0.5px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -424,6 +427,9 @@
   --text-2xl--line-height: 3.5rem;
   --text-2xl--letter-spacing: -0.1875rem;
 
+  /* ── Default transition duration (overrides Tailwind's 150ms baseline) ── */
+  --default-transition-duration: 50ms;
+
   /* ── Radius ── */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -587,6 +593,18 @@
 
   .dark .swift-surface {
     background: color-mix(in srgb, var(--background) 96%, white 4%);
+  }
+
+  /* ── Snappy UI motion (50ms) ──
+     Override Tailwind's default transition duration and tw-animate-css's
+     enter/exit animation duration so every Radix popover, tooltip, dropdown,
+     select, hover transition, etc. runs at 50ms. Per-effect icon animations
+     still use their own durations because they don't read these variables. */
+  *,
+  *::before,
+  *::after {
+    --tw-duration: 50ms;
+    --tw-animation-duration: 50ms;
   }
 
   /* Reduced-motion: collapse all transitions to instant */

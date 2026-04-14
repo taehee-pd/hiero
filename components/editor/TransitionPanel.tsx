@@ -506,8 +506,9 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </p>
       </div>
 
-      {/* 1. Animation — source → target endpoints */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      {/* 1. Animation — source → target endpoints (stacked so each has full
+          panel width and inputs are not cropped in narrow side panels). */}
+      <div className="flex flex-col items-stretch gap-2">
         <LockedSourceEndpoint
           iconName={currentIcon.name}
           variants={srcVariants}
@@ -516,9 +517,9 @@ export const TransitionPanel = memo(function TransitionPanel() {
         />
         <div
           aria-hidden="true"
-          className="flex size-6 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground"
+          className="mx-auto flex size-6 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground"
         >
-          <ArrowRight className="size-3.5" />
+          <ArrowRight className="size-3.5 rotate-90" />
         </div>
         <CrossIconEndpointPicker
           label="Target"

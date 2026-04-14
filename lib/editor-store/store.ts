@@ -1545,6 +1545,11 @@ function createActions(): EditorActions {
       editorStoreApi.setState((s) => {
         const icon = s.project?.icons[id];
         if (!icon) return s;
+        // Idempotency: re-selecting the already-current icon should be a
+        // no-op. Returning a new state here would reset viewport/selection
+        // and cause a perceived "zoom jump" when a user clicks the same
+        // icon twice in the list.
+        if (s.currentIconId === id) return s;
         const nextVariantId = Object.keys(icon.variants)[0] ?? null;
         return {
           currentIconId: id,
@@ -2727,20 +2732,30 @@ function createActions(): EditorActions {
               },
             ];
         const shouldFocus = options?.focus !== false;
-        return shouldFocus
-          ? {
-              ...buildWorkspaceState(s.workspace!, iconSetId, {
-                previousState: s,
-                keepTabs: true,
-                requestedIconId: iconId,
-              }),
-              currentVariantId: variantId,
-              openTabs: nextTabs,
-              activeTabId: tabId,
-            }
-          : {
-              openTabs: nextTabs,
-            };
+        if (!shouldFocus) {
+          return { openTabs: nextTabs };
+        }
+        // Idempotency guard: if we're already focused on this exact tab,
+        // don't rebuild workspace state — that would reset the viewport
+        // (zoom/pan), clear selection, etc. Users expect clicking an
+        // already-open icon to be a no-op.
+        if (
+          s.activeTabId === tabId
+          && s.activeIconSetId === iconSetId
+          && s.currentIconId === iconId
+        ) {
+          return exists ? s : { openTabs: nextTabs };
+        }
+        return {
+          ...buildWorkspaceState(s.workspace!, iconSetId, {
+            previousState: s,
+            keepTabs: true,
+            requestedIconId: iconId,
+          }),
+          currentVariantId: variantId,
+          openTabs: nextTabs,
+          activeTabId: tabId,
+        };
       });
       return tabId;
     },

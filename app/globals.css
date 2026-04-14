@@ -1497,7 +1497,16 @@
 
   .wire-layer-row[data-active='true'],
   .wire-list-row[data-active='true'] {
-    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--primary) 55%, transparent),
+      0 1px 2px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+
+  .wire-layer-row[data-active='true'] .wire-layer-name,
+  .wire-list-row[data-active='true'] .wire-list-row-label {
+    color: var(--foreground);
+    font-weight: 600;
   }
 
   .wire-layer-row:focus-visible,
@@ -1511,7 +1520,53 @@
     flex: 1;
     min-width: 0;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+  }
+
+  .wire-layer-swatch {
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: color-mix(in srgb, var(--background) 96%, transparent);
+    color: var(--foreground);
+    overflow: hidden;
+  }
+
+  .wire-layer-row[data-active='true'] .wire-layer-swatch {
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    background: var(--background);
+  }
+
+  .wire-layer-swatch-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--foreground-tertiary) 80%, transparent);
+  }
+
+  .wire-layer-rename-input {
+    flex: 1;
+    min-width: 0;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    background: var(--background);
+    color: var(--foreground);
+    font: inherit;
+    font-size: 11px;
+    line-height: 16px;
+    outline: none;
+  }
+
+  .wire-layer-rename-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
   }
 
   .wire-layer-name {
@@ -1519,6 +1574,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--foreground);
+    cursor: text;
   }
 
   .wire-layer-kind {

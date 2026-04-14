@@ -11,7 +11,6 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
 import {
   useSelection,
   useEditorStore,
@@ -230,10 +229,10 @@ export const LayerPanel = memo(function LayerPanel() {
                 />
                 <div
                   className={cn(
-                    'ml-2 flex size-5 shrink-0 items-center justify-center rounded-sm border text-foreground transition',
+                    'ml-2 flex size-7 shrink-0 items-center justify-center rounded-md border text-foreground transition',
                     isSelected
-                      ? 'border-primary/40 bg-background/80'
-                      : 'border-border/60 bg-background/60',
+                      ? 'border-primary/40 bg-background'
+                      : 'border-border/60 bg-background/80',
                     !isVisible && 'opacity-50',
                   )}
                   aria-hidden
@@ -246,19 +245,28 @@ export const LayerPanel = memo(function LayerPanel() {
                         <span className="size-1.5 rounded-full bg-muted-foreground/40" />
                       );
                     }
+                    const viewBoxStr = currentVariant?.viewBox.join(' ') ?? '0 0 24 24';
+                    const rawStrokeWidth = layer.style.strokeWidth ?? 1.5;
+                    // Ensure the stroke is visible in the tiny thumbnail.
+                    // The thumbnail always shows strokes at a readable size,
+                    // independent of whatever stroke-width the author picked.
+                    const previewStrokeWidth = Math.max(rawStrokeWidth, 1.5);
                     return (
                       <svg
-                        viewBox={currentVariant?.viewBox.join(' ') ?? '0 0 24 24'}
-                        className="size-full"
+                        viewBox={viewBoxStr}
+                        width="100%"
+                        height="100%"
+                        preserveAspectRatio="xMidYMid meet"
                         xmlns="http://www.w3.org/2000/svg"
+                        style={{ display: 'block', overflow: 'visible' }}
                       >
                         <path
                           d={layer.path.d}
                           fill={hasFill ? 'currentColor' : 'none'}
                           stroke={hasStroke ? 'currentColor' : 'none'}
-                          strokeWidth={layer.style.strokeWidth ?? 1.5}
-                          strokeLinecap={layer.style.lineCap}
-                          strokeLinejoin={layer.style.lineJoin}
+                          strokeWidth={previewStrokeWidth}
+                          strokeLinecap={layer.style.lineCap ?? 'round'}
+                          strokeLinejoin={layer.style.lineJoin ?? 'round'}
                           fillRule={layer.path.fillRule}
                           vectorEffect="non-scaling-stroke"
                         />
@@ -273,9 +281,15 @@ export const LayerPanel = memo(function LayerPanel() {
                     ) : null}
                     {/* UX-F4: Inline rename when F2 is pressed or double-clicked */}
                     {isRenaming ? (
-                      <Input
+                      <input
                         type="text"
-                        className="h-5 w-full text-[13px] font-medium"
+                        className={cn(
+                          'min-w-0 flex-1 rounded-sm border border-primary/40 bg-background',
+                          'px-1 py-0 text-[length:var(--text-body)] font-medium text-foreground',
+                          'leading-[1.25rem] outline-none ring-0',
+                          'focus:border-primary focus:ring-1 focus:ring-primary/30',
+                        )}
+                        style={{ height: '1.25rem' }}
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onKeyDown={(e) => {
@@ -291,9 +305,10 @@ export const LayerPanel = memo(function LayerPanel() {
                         onBlur={() => commitRename(layer.id)}
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <p className="truncate text-[length:var(--text-body)] font-medium text-foreground">{layer.id}</p>
+                      <p className="truncate text-[length:var(--text-body)] font-medium leading-[1.25rem] text-foreground">{layer.id}</p>
                     )}
                     {/* J7: Variable-value activity indicator */}
                     {hasVariableValue ? (

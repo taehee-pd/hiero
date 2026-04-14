@@ -497,14 +497,12 @@ function decideRuntimeStrategy(
   if (declared === 'strictMorph' && readiness.commandCompatibility < 1) {
     return readiness.recommendedStrategy;
   }
-  if (declared === 'bestGuessMorph' && readiness.score < 0.45) {
-    // When bestGuessMorph thresholds aren't met but paths are still
-    // somewhat compatible (centroidSimilarity >= 0.3), try the
-    // cross-icon morph pipeline which handles differing topologies.
-    if (readiness.centroidSimilarity >= 0.3) {
-      return 'crossIconMorph';
-    }
-    return 'fallback';
+  if (declared === 'bestGuessMorph' && readiness.score < 0.3) {
+    // Even when the score is too low for bestGuessMorph proper, keep
+    // trying via the cross-icon pipeline rather than dropping to a
+    // crossfade — the engines themselves return null on truly hopeless
+    // pairs and the resolver picks up the real fallback there.
+    return 'crossIconMorph';
   }
   // When crossIconMorph is explicitly declared, always use it —
   // no readiness gate. The pipeline handles any sub-path topology.
@@ -533,7 +531,17 @@ export function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadine
   }
 
   const commandCompatibility = compareSignature(from, to);
-  const subpathCompatibility = from.stats.subpathCount === to.stats.subpathCount ? 1 : 0;
+  // Graded similarity rather than binary equality: a 3-vs-4 sub-path pair
+  // is much closer to morphable than a 1-vs-10 pair, but the previous
+  // `=== ? 1 : 0` collapsed both to 0 and forced fallback. The morph
+  // engines (alignCubicPaths) handle differing counts internally.
+  const subpathCompatibility = (() => {
+    const a = from.stats.subpathCount;
+    const b = to.stats.subpathCount;
+    if (a === 0 && b === 0) return 1;
+    if (a === 0 || b === 0) return 0;
+    return Math.min(a, b) / Math.max(a, b);
+  })();
   const closedCompatibility = compareBooleans(from.stats.closed, to.stats.closed);
   const bboxSimilarity = compareBBox(from.stats.bbox, to.stats.bbox);
   const centroidSimilarity = compareCentroid(from.stats.centroid, to.stats.centroid, from, to);
@@ -553,29 +561,32 @@ export function computeReadiness(fromLayer: Layer, toLayer: Layer): MorphReadine
   if (subpathCompatibility < 1) reasons.push('subpath-mismatch');
   if (closedCompatibility < 1) reasons.push('closed-open-mismatch');
 
-  let recommendedStrategy: MorphReadiness['recommendedStrategy'] = 'fallback';
+  // Thresholds relaxed 2026-04-14: the previous gates demanded near-exact
+  // command/subpath/closed parity for any morph-class strategy, which
+  // forced almost every transition through chooseFallbackMode (crossfade).
+  // The actual morph engines tolerate far more variation than the
+  // resolver was admitting; let them do their job.
+  let recommendedStrategy: MorphReadiness['recommendedStrategy'] = 'crossIconMorph';
   if (
     commandCompatibility === 1 &&
     subpathCompatibility === 1 &&
     closedCompatibility === 1 &&
-    bboxSimilarity >= 0.85 &&
-    centroidSimilarity >= 0.8
+    bboxSimilarity >= 0.7 &&
+    centroidSimilarity >= 0.65
   ) {
     recommendedStrategy = 'strictMorph';
   } else if (
-    subpathCompatibility === 1 &&
-    commandCompatibility >= 0.8 &&
-    centroidSimilarity >= 0.45 &&
-    bboxSimilarity >= 0.4
+    subpathCompatibility >= 0.5 &&
+    commandCompatibility >= 0.55 &&
+    centroidSimilarity >= 0.25 &&
+    bboxSimilarity >= 0.25
   ) {
     recommendedStrategy = 'bestGuessMorph';
-  } else if (centroidSimilarity >= 0.3) {
-    // 8.2 — Paths are somewhat spatially related but topology differs
-    // (different sub-path counts, command signatures, etc.).
-    // Cross-icon morph can handle these via sub-path matching and
-    // De Casteljau subdivision.
-    recommendedStrategy = 'crossIconMorph';
   }
+  // Default tier (centroidSimilarity below the bestGuess gate) is
+  // crossIconMorph rather than fallback — the cross-icon pipeline is the
+  // catch-all and only fails for genuinely unparseable pairs, in which
+  // case the resolver downstream still falls through to a real fallback.
 
   return {
     score,

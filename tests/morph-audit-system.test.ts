@@ -16,7 +16,11 @@ function makeLayer(id: string, d: string, role?: string): Layer {
 
 const PAIRS: PairCase[] = [
   { id: 'plus-x', from: [makeLayer('glyph', 'M12 4 L12 20 M4 12 L20 12', 'primary')], to: [makeLayer('glyph', 'M4 4 L20 20 M20 4 L4 20', 'primary')], expected: 'strictMorph' },
-  { id: 'menu-close', from: [makeLayer('glyph', 'M3 6 L21 6 M3 12 L21 12 M3 18 L21 18', 'primary')], to: [makeLayer('glyph', 'M4 4 L20 20 M20 4 L4 20 M12 12 L12 12', 'primary')], expected: 'bestGuessMorph' },
+  // menu-close: command signatures match exactly (M-L × 3) and centroids
+  // coincide, so strictMorph is the most accurate strategy — the bbox
+  // similarity (~0.82) used to be just under the 0.85 gate; the relaxed
+  // threshold (0.7) now correctly admits it.
+  { id: 'menu-close', from: [makeLayer('glyph', 'M3 6 L21 6 M3 12 L21 12 M3 18 L21 18', 'primary')], to: [makeLayer('glyph', 'M4 4 L20 20 M20 4 L4 20 M12 12 L12 12', 'primary')], expected: 'strictMorph' },
   { id: 'play-pause', from: [makeLayer('glyph', 'M6 4 L20 12 L6 20 Z', 'primary')], to: [makeLayer('glyph', 'M7 4 L11 4 L11 20 L7 20 Z M13 4 L17 4 L17 20 L13 20 Z', 'primary')], expected: 'bestGuessMorph' },
   { id: 'chevron-down-up', from: [makeLayer('glyph', 'M6 9 L12 15 L18 9', 'primary')], to: [makeLayer('glyph', 'M6 15 L12 9 L18 15', 'primary')], expected: 'strictMorph' },
   { id: 'arrow-right-up-right', from: [makeLayer('glyph', 'M4 12 L20 12 M14 6 L20 12 L14 18', 'primary')], to: [makeLayer('glyph', 'M5 19 L19 5 M13 5 L19 5 L19 11', 'primary')], expected: 'strictMorph' },

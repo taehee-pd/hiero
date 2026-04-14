@@ -132,7 +132,7 @@ export function IconGridItem({
             selected
               ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
               : active
-                ? 'border-transparent bg-muted/50'
+                ? 'border-primary/60 bg-primary/12 shadow-[inset_0_0_0_1px_var(--primary),0_4px_10px_color-mix(in_srgb,var(--primary)_18%,transparent)]'
                 : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >
@@ -202,7 +202,12 @@ export function IconGridItem({
                   className="w-full rounded-sm border border-border/80 bg-background px-1 py-0.5 text-center text-[length:var(--text-caption)] font-medium text-foreground outline-none focus:border-ring"
                 />
               ) : (
-                <p className="truncate font-medium text-[length:var(--text-caption)] text-foreground">
+                <p
+                  className={cn(
+                    'truncate text-[length:var(--text-caption)] text-foreground',
+                    active ? 'font-semibold text-primary' : 'font-medium',
+                  )}
+                >
                   {iconName}
                 </p>
               )}

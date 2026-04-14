@@ -138,9 +138,9 @@ export function NavPane() {
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      'group/item flex h-7 items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
+                      'group/item relative flex h-7 items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
                       activeIconSetId === iconSet.id
-                        ? 'bg-muted/50 text-foreground font-medium'
+                        ? 'bg-primary/12 text-foreground font-semibold shadow-[inset_2px_0_0_var(--primary),inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_35%,transparent)]'
                         : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
                   >

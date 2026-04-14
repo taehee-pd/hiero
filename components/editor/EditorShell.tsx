@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   Blend,
   ChevronDown,
-  Circle,
   Copy,
   Eye,
   EyeOff,
-  Folder,
   FolderOpen,
   HelpCircle,
   Loader2,
@@ -21,7 +19,6 @@ import {
   PenTool,
   Plus,
   Ruler,
-  Spline,
   Square,
   Trash2,
   X,
@@ -149,16 +146,16 @@ function formatVariantLabel(variant: { name?: string; size: number }) {
   return `${name} ${variant.size}px`;
 }
 
-function getLayerShapeIcon(layer: Layer): React.ComponentType<{ className?: string }> {
-  if (layer.isClipMask) return Folder;
-  const d = layer.path?.d ?? '';
-  if (!d) return Square;
-  // Heuristic: infer shape from the first few path commands.
-  if (/^\s*M[^A-Za-z]*Z/i.test(d) && /[CcQqSsTtAa]/.test(d)) return Circle;
-  if (/[Aa]/.test(d)) return Circle;
-  if (/[Cc]/.test(d)) return Spline;
-  if (/^\s*M[^A-Za-z]*H[^A-Za-z]*V[^A-Za-z]*H[^A-Za-z]*Z/i.test(d)) return Square;
-  return Spline;
+// A paint is "visible" only if it is defined and not explicitly `none`.
+// The schema represents transparent fills as { mode: 'fixed', value: 'none' },
+// and the runtime treats undefined paints as `none` too. Both cases should
+// render as empty in the layer thumbnail so it matches what the canvas shows.
+function isPaintVisibleForPreview(
+  paint: Layer['style']['fill'] | Layer['style']['stroke'],
+): boolean {
+  if (!paint) return false;
+  if (paint.mode === 'fixed' && paint.value === 'none') return false;
+  return true;
 }
 
 function scaleViewBox(
@@ -657,6 +654,7 @@ function LeftSidebar({
                   onSelectLayer={onSelectLayer}
                   onToggleLayerVisibility={onToggleLayerVisibility}
                   currentIconId={currentIcon?.id ?? null}
+                  currentVariant={currentVariant}
                 />
               )}
             </div>
@@ -673,22 +671,47 @@ function LayerRowsList({
   onSelectLayer,
   onToggleLayerVisibility,
   currentIconId,
+  currentVariant,
 }: {
   layerRows: ReturnType<typeof buildLayerPanelRows>;
   selectedLayerId: string | null;
   onSelectLayer: (layerId: string) => void;
   onToggleLayerVisibility: (layerId: string, visible: boolean) => void;
   currentIconId: string | null;
+  currentVariant: Variant | null;
 }) {
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
   const dragSourceIdRef = useRef<string | null>(null);
+  const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const beginRename = useCallback((layerId: string) => {
+    setRenamingLayerId(layerId);
+    setRenameValue(layerId);
+  }, []);
+
+  const commitRename = useCallback(
+    (layerId: string) => {
+      const trimmed = renameValue.trim();
+      if (trimmed && trimmed !== layerId && currentIconId) {
+        editorStore.getState().renameLayer?.(currentIconId, layerId, trimmed);
+      }
+      setRenamingLayerId(null);
+    },
+    [currentIconId, renameValue],
+  );
+
+  const viewBoxStr = currentVariant?.viewBox.join(' ') ?? '0 0 24 24';
 
   return (
     <div role="listbox" aria-label="Layers" className="relative">
       {layerRows.map((row, index) => {
         const isSelected = row.layer.id === selectedLayerId;
-        const ShapeIcon = getLayerShapeIcon(row.layer);
         const isDropTarget = dragTargetIndex === index;
+        const isRenaming = renamingLayerId === row.layer.id;
+        const hasFill = isPaintVisibleForPreview(row.layer.style.fill);
+        const hasStroke = isPaintVisibleForPreview(row.layer.style.stroke);
+        const hasPathPreview = Boolean(row.layer.path?.d) && (hasFill || hasStroke);
         return (
           <ContextMenu key={row.layer.id}>
             <ContextMenuTrigger asChild>
@@ -697,10 +720,18 @@ function LayerRowsList({
                 aria-selected={isSelected}
                 data-active={isSelected ? 'true' : 'false'}
                 className="wire-layer-row relative"
-                draggable
-                onClick={() => onSelectLayer(row.layer.id)}
+                draggable={!isRenaming}
+                onClick={() => {
+                  if (isRenaming) return;
+                  onSelectLayer(row.layer.id);
+                }}
                 onKeyDown={(e) => {
+                  if (isRenaming) return;
                   if (e.key === 'Enter') onSelectLayer(row.layer.id);
+                  if (e.key === 'F2') {
+                    e.preventDefault();
+                    beginRename(row.layer.id);
+                  }
                 }}
                 tabIndex={0}
                 onDragStart={(e) => {
@@ -744,8 +775,72 @@ function LayerRowsList({
                   className="wire-layer-line"
                   style={{ paddingLeft: `${row.depth * 12}px` }}
                 >
-                  <ShapeIcon className="size-3 shrink-0 text-muted-foreground" />
-                  <span className="wire-layer-name">{row.layer.id}</span>
+                  {/* Per-layer SVG thumbnail: renders the actual path
+                      geometry for the current variant, honoring whether
+                      fill / stroke are visible. Falls back to a neutral
+                      dot when the layer has no drawable content. */}
+                  <span
+                    aria-hidden
+                    className="wire-layer-swatch"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    {hasPathPreview && row.layer.path?.d ? (
+                      <svg
+                        viewBox={viewBoxStr}
+                        width="100%"
+                        height="100%"
+                        preserveAspectRatio="xMidYMid meet"
+                        xmlns="http://www.w3.org/2000/svg"
+                        style={{ display: 'block', overflow: 'visible' }}
+                      >
+                        <path
+                          d={row.layer.path.d}
+                          fill={hasFill ? 'currentColor' : 'none'}
+                          stroke={hasStroke ? 'currentColor' : 'none'}
+                          strokeWidth={Math.max(row.layer.style.strokeWidth ?? 1.5, 1.5)}
+                          strokeLinecap={row.layer.style.lineCap ?? 'round'}
+                          strokeLinejoin={row.layer.style.lineJoin ?? 'round'}
+                          fillRule={row.layer.path.fillRule}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    ) : (
+                      <span className="wire-layer-swatch-dot" />
+                    )}
+                  </span>
+                  {isRenaming ? (
+                    <input
+                      type="text"
+                      className="wire-layer-rename-input"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitRename(row.layer.id);
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setRenamingLayerId(null);
+                        }
+                        e.stopPropagation();
+                      }}
+                      onBlur={() => commitRename(row.layer.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      className="wire-layer-name"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        beginRename(row.layer.id);
+                      }}
+                    >
+                      {row.layer.id}
+                    </span>
+                  )}
                   {row.layer.isClipMask ? (
                     <span className="wire-layer-kind">mask</span>
                   ) : null}
@@ -770,10 +865,7 @@ function LayerRowsList({
             <ContextMenuContent className="w-52">
               <ContextMenuItem
                 onSelect={() => {
-                  const newId = window.prompt('Rename layer', row.layer.id);
-                  if (newId && newId !== row.layer.id && currentIconId) {
-                    editorStore.getState().renameLayer?.(currentIconId, row.layer.id, newId);
-                  }
+                  beginRename(row.layer.id);
                 }}
               >
                 <Pencil className="size-4" />

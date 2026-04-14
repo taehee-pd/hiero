@@ -6,6 +6,7 @@ import {
   ArrowUpToLine,
   ClipboardPaste,
   Copy,
+  Loader2,
   Maximize2,
   MousePointerSquareDashed,
   Trash2,
@@ -83,6 +84,12 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   const [isSpacePanEnabled, setIsSpacePanEnabled] = useState(false);
   const [isDragPanning, setIsDragPanning] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  // Perceived-loading overlay: shown while the SVG geometry for a newly
+  // opened icon is being materialized. Opening an icon for the first time
+  // can lag noticeably (path parsing, gradient defs, etc.), so we briefly
+  // swap in a blurred canvas + spinner to give the user clear feedback.
+  const [isIconLoading, setIsIconLoading] = useState(false);
+  const lastRenderedKeyRef = useRef<string | null>(null);
   const lastAutoFitTargetRef = useRef<string | null>(null);
 
   // Subscribe to relevant state for re-render
@@ -264,9 +271,48 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
 
     if (!icon || !variant || !currentState) {
       svg.innerHTML = '';
+      lastRenderedKeyRef.current = null;
+      setIsIconLoading(false);
       return;
     }
 
+    const nextKey = `${icon.id}::${variant.id}`;
+    const isNewIcon = lastRenderedKeyRef.current !== nextKey;
+
+    // For fresh icon/variant switches, defer the heavy renderSvg() call
+    // to the next animation frame so React can paint the loading overlay
+    // first. Without this, the click-to-paint delay feels like a freeze.
+    if (isNewIcon) {
+      svg.innerHTML = '';
+      setIsIconLoading(true);
+      const rafs: { first: number; second: number | null } = { first: 0, second: null };
+      rafs.first = requestAnimationFrame(() => {
+        renderSvg(
+          {
+            icon,
+            variantId: variant.id,
+            renderingMode,
+            tokens: project?.tokenSet?.colors,
+          },
+          svg,
+        );
+        lastRenderedKeyRef.current = nextKey;
+        // Keep the overlay on screen for one more frame so the spinner
+        // is perceivable even when the heavy work lands quickly.
+        rafs.second = requestAnimationFrame(() => {
+          setIsIconLoading(false);
+        });
+      });
+      return () => {
+        cancelAnimationFrame(rafs.first);
+        if (rafs.second !== null) {
+          cancelAnimationFrame(rafs.second);
+        }
+      };
+    }
+
+    // Same icon/variant — in-place edit. Render synchronously so edits
+    // stay responsive and no loading overlay flashes.
     renderSvg(
       {
         icon,
@@ -276,6 +322,8 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       },
       svg,
     );
+    lastRenderedKeyRef.current = nextKey;
+    setIsIconLoading(false);
   }, [
     icon,
     variant,
@@ -923,6 +971,23 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           <span>{vb[2]} × {vb[3]}</span>
           <span>·</span>
           <span>{selection.layerIds.length} layers</span>
+        </div>
+      ) : null}
+
+      {/* Icon-open loading overlay: blur the canvas while the SVG for a
+          newly selected icon is being built. Prevents the "frozen UI"
+          impression during the first-open lag. */}
+      {isIconLoading && icon && variant ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/40 backdrop-blur-[2px]"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading icon"
+        >
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 shadow-[var(--shadow-outline)]">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <span className="text-[length:var(--text-label)] text-muted-foreground">Loading icon…</span>
+          </div>
         </div>
       ) : null}
 

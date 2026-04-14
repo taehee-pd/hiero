@@ -20,7 +20,18 @@ import {
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { selectCurrentVariant } from '@/lib/editor-store/selectors';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
+import type { PaintRef } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
+
+// A paint is "visible" only if it is defined and not explicitly `none`.
+// The schema represents transparent fills as { mode: 'fixed', value: 'none' },
+// and the runtime treats undefined paints as `none` too. Both cases should
+// render as empty in the layer thumbnail so it matches what the canvas shows.
+function isPaintVisible(paint: PaintRef | undefined): boolean {
+  if (!paint) return false;
+  if (paint.mode === 'fixed' && paint.value === 'none') return false;
+  return true;
+}
 
 export const LayerPanel = memo(function LayerPanel() {
   const rows = useEditorStore(selectCurrentLayerPanelRows);
@@ -217,7 +228,44 @@ export const LayerPanel = memo(function LayerPanel() {
                     isSelected ? 'bg-primary' : 'bg-transparent',
                   )}
                 />
-                <span className="ml-2 size-2.5 shrink-0" />
+                <div
+                  className={cn(
+                    'ml-2 flex size-5 shrink-0 items-center justify-center rounded-sm border text-foreground transition',
+                    isSelected
+                      ? 'border-primary/40 bg-background/80'
+                      : 'border-border/60 bg-background/60',
+                    !isVisible && 'opacity-50',
+                  )}
+                  aria-hidden
+                >
+                  {(() => {
+                    const hasFill = isPaintVisible(layer.style.fill);
+                    const hasStroke = isPaintVisible(layer.style.stroke);
+                    if (!layer.path?.d || (!hasFill && !hasStroke)) {
+                      return (
+                        <span className="size-1.5 rounded-full bg-muted-foreground/40" />
+                      );
+                    }
+                    return (
+                      <svg
+                        viewBox={currentVariant?.viewBox.join(' ') ?? '0 0 24 24'}
+                        className="size-full"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d={layer.path.d}
+                          fill={hasFill ? 'currentColor' : 'none'}
+                          stroke={hasStroke ? 'currentColor' : 'none'}
+                          strokeWidth={layer.style.strokeWidth ?? 1.5}
+                          strokeLinecap={layer.style.lineCap}
+                          strokeLinejoin={layer.style.lineJoin}
+                          fillRule={layer.path.fillRule}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      </svg>
+                    );
+                  })()}
+                </div>
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-50')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (

@@ -227,7 +227,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                         <Button
                           variant="outline"
                           className={cn(
-                            'group/preset relative flex h-auto items-center gap-2 overflow-hidden rounded-lg border-border/60 px-2.5 py-2 text-left transition-colors duration-100',
+                            'group/preset relative flex h-auto flex-col items-center justify-center gap-1.5 overflow-hidden rounded-lg border-border/60 px-2 py-3 text-center transition-colors duration-100',
                             disabled
                               ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
                               : 'hover:bg-accent hover:border-primary/30',
@@ -238,11 +238,11 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                           <span
                             aria-hidden="true"
                             className={cn(
-                              'flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-primary',
+                              'flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary',
                               !disabled && hoverAnim,
                             )}
                           >
-                            <span className="size-2 rounded-full bg-current" />
+                            <span className="size-3 rounded-full bg-current" />
                           </span>
                           <p className="text-[length:var(--text-caption)] font-medium leading-tight">
                             {preset.label}

@@ -1146,7 +1146,7 @@ function RightSidebar({
                     </SelectContent>
                   </Select>
                 </RowField>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid gap-1.5">
                   <RowField label="Fill">
                     <ToggleGroup
                       type="single"

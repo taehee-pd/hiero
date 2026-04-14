@@ -133,21 +133,29 @@ export function resolveTransition(
     }
 
     // 8.3 — Topology override. We used to throw away any computed morph
-    // whenever the topology analysis flagged a "hard" incompatibility
-    // (closed/open mismatch, fill-mode change, etc.), which produced a
-    // ton of false-positive crossfades — the morph engines themselves
+    // whenever the topology analysis flagged *any* "hard" incompatibility
+    // (closed/open mismatch, etc.), which produced a ton of
+    // false-positive crossfades — the morph engines themselves
     // (alignCubicPaths, attemptCrossIconMorph) already refuse to return
     // a morph when they truly can't handle a pair, so a *successful*
     // morph result means the engine vouched for it and we should honor
     // it. Only force a crossfade when:
-    //   1. The engines produced no morph at all, AND there is some
-    //      hard incompatibility worth signaling, OR
-    //   2. The change is a true rendering-mode flip (stroke <-> fill)
-    //      that path-space interpolation cannot represent, OR
+    //   1. The engines produced no morph at all, OR
+    //   2. The change is a true rendering-mode flip (stroke <-> fill,
+    //      or filled <-> stroked for this particular layer) that
+    //      path-space interpolation cannot represent, OR
     //   3. One side has no path data at all.
-    const renderingModeFlip = topologyAnalysis.incompatibilities.includes(
-      'stroke-to-fill-change',
-    );
+    //
+    // Note: `stroke-to-fill-change` is a *snapshot-level* flag (raised
+    // when the set of stroked/filled layers changes), while
+    // `fill-mode-change` is a *per-layer* flag (raised when an
+    // individual binding flips fill mode). Both need to trigger the
+    // override — per-layer fill-mode flips can happen even when the
+    // snapshot-wide set is unchanged (e.g. layer A becomes filled and
+    // layer B becomes stroked, keeping the snapshot balance).
+    const renderingModeFlip =
+      topologyAnalysis.incompatibilities.includes('stroke-to-fill-change') ||
+      topologyAnalysis.incompatibilities.includes('fill-mode-change');
     const pathTypeMismatch = topologyAnalysis.incompatibilities.includes(
       'path-type-mismatch',
     );

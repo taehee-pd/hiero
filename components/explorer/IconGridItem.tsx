@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 
-import { Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
+import { CheckSquare, Copy, Grid3X3, Heart, Pencil, Square as SquareIcon, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -202,6 +202,18 @@ export function IconGridItem({
         </article>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {/*
+          Non-modifier toggle path for multi-select. The floating checkbox
+          was removed per design review, but `onShiftClick` still needs a
+          reachable entry point for touch devices (which have no Shift/Cmd
+          keyboard modifier) — native long-press opens this context menu,
+          so a Select / Deselect item here is the accessible fallback.
+        */}
+        <ContextMenuItem onSelect={onShiftClick}>
+          {selected ? <CheckSquare className="size-4" /> : <SquareIcon className="size-4" />}
+          {selected ? 'Deselect' : 'Select'}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem onSelect={onToggleFavorite}>
           <Heart className="size-4" />
           {favorite ? 'Unfavorite' : 'Favorite'}

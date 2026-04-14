@@ -383,7 +383,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
       easing: formEasing,
       direction: formDirection,
       stagger: staggerConfig,
-      layerBindings: buildDefaultLayerBindings(sourceSnapshot, targetSnapshot, effectiveStrategy),
+      layerBindings: buildDefaultLayerBindings(
+        sourceSnapshot,
+        targetSnapshot,
+        effectiveStrategy,
+        { isCrossIcon: Boolean(srcIconId && tgtIconId && srcIconId !== tgtIconId) },
+      ),
     };
 
     let resolved: ReturnType<typeof resolveTransition>;
@@ -871,25 +876,50 @@ function buildDefaultLayerBindings(
   fromSnapshot: LayerSnapshot,
   toSnapshot: LayerSnapshot,
   strategy: RuntimeTransitionIntent['strategy'],
+  options: { isCrossIcon: boolean } = { isCrossIcon: false },
 ): LayerBinding[] {
   const fromIds = Object.keys(fromSnapshot.layers);
   const toIds = Object.keys(toSnapshot.layers);
 
-  // Auto strategy: hand the matching off to the resolver entirely.
+  // Auto strategy is context-sensitive:
   //
-  // Previously this function pre-paired layers by exact ID match, which
-  // worked for same-icon variant transitions but was catastrophic for
-  // cross-icon transitions (where IDs almost never match). The resolver
-  // would then see a non-empty layerBindings array, skip its own
-  // auto-matching, and dump every layer into a one-sided
-  // `removed`/`added` binding that short-circuits to fade-in / fade-out
-  // crossfade — which is exactly the false-positive crossfade the user
-  // was seeing across the editor preview. The resolver's own
-  // resolveBindings has a 3-pass cross-icon matcher (role → name →
-  // geometry/readiness) and a same-icon readiness matcher; both are
-  // strictly more capable than what we were doing here.
+  //   • Cross-icon previews: IDs almost never match, so pre-pairing by
+  //     ID dumps every layer into a one-sided 'removed' / 'added'
+  //     binding. The resolver short-circuits one-sided bindings at the
+  //     `if (!fromD || !toD)` guard to fade-in / fade-out, which is
+  //     exactly the false-positive crossfade we had to eliminate.
+  //     Returning `[]` here lets resolveBindings run its 3-pass
+  //     cross-icon matcher (role → name → geometry/readiness).
+  //
+  //   • Same-icon previews (variant → variant): preserve stable-ID
+  //     pairing. Two layers that intentionally keep their IDs across
+  //     variants must animate identity-to-identity, not swap via a
+  //     geometry-based readiness match. E.g. if layers `a` and `b`
+  //     trade positions in the target variant, we want `a→a` / `b→b`,
+  //     not `a→b` / `b→a`.
   if (strategy === 'auto') {
-    return [];
+    if (options.isCrossIcon) {
+      return [];
+    }
+    const toIdSet = new Set(toIds);
+    const fromIdSet = new Set(fromIds);
+    const bindings: LayerBinding[] = [];
+    for (const id of fromIds) {
+      if (toIdSet.has(id)) {
+        bindings.push({ fromLayerId: id, toLayerId: id });
+      }
+    }
+    for (const id of fromIds) {
+      if (!toIdSet.has(id)) {
+        bindings.push({ fromLayerId: id, toLayerId: undefined });
+      }
+    }
+    for (const id of toIds) {
+      if (!fromIdSet.has(id)) {
+        bindings.push({ fromLayerId: undefined, toLayerId: id });
+      }
+    }
+    return bindings;
   }
 
   // Cross-icon: layers from different icons — pair positionally, then

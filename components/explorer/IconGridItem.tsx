@@ -129,14 +129,16 @@ export function IconGridItem({
           }}
           className={cn(
             'group relative flex select-none flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-            // Two independent visual layers:
-            //   active  → solid primary fill (the icon currently open in the editor)
-            //   selected → outer charcoal ring (marked for batch action)
-            // They can co-exist (filled card with a ring around it).
-            active
-              ? 'border-primary/70 bg-primary/15 shadow-[inset_0_0_0_1px_var(--primary)]'
-              : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
-            selected && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background',
+            // Two visual states (selected wins when both are true):
+            //   selected → solid primary fill, white label + glyph
+            //              (marked for batch action; cannot be missed)
+            //   active   → primary tint fill, primary label
+            //              (the icon currently open in the editor)
+            selected
+              ? 'border-primary bg-primary text-primary-foreground shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_28%,transparent)]'
+              : active
+                ? 'border-primary/70 bg-primary/15 shadow-[inset_0_0_0_1px_var(--primary)]'
+                : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >
           <div
@@ -148,7 +150,10 @@ export function IconGridItem({
               {svg ? (
                 <div
                   aria-hidden="true"
-                  className="flex size-10 items-center justify-center text-foreground transition-transform duration-100 group-hover:scale-[1.04]"
+                  className={cn(
+                    'flex size-10 items-center justify-center transition-transform duration-100 group-hover:scale-[1.04]',
+                    selected ? 'text-primary-foreground' : 'text-foreground',
+                  )}
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
               ) : (
@@ -182,7 +187,11 @@ export function IconGridItem({
                 <p
                   className={cn(
                     'truncate select-none text-[length:var(--text-caption)]',
-                    active ? 'font-semibold text-primary' : 'font-medium text-foreground',
+                    selected
+                      ? 'font-semibold text-primary-foreground'
+                      : active
+                        ? 'font-semibold text-primary'
+                        : 'font-medium text-foreground',
                   )}
                 >
                   {iconName}

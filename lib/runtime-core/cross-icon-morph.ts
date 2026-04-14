@@ -621,6 +621,72 @@ export function rotateSubPathSegments(
   };
 }
 
+/**
+ * Reverse the traversal direction of a cubic sub-path.
+ *
+ * Given a path that walks S → s0.end → s1.end → … → s(n-1).end, returns
+ * a path that walks s(n-1).end → … → s1.end → s0.end → S. Each cubic
+ * segment gets its control points swapped (c1 ↔ c2) because they were
+ * named relative to the original direction.
+ *
+ * Used by `alignCubicPaths` / `bestGuessMorph` to avoid visual
+ * horizontal-flip artifacts when two paths encode the same geometry in
+ * opposite orientations.
+ */
+export function reverseSubPathSegments(subPath: CubicSubPath): CubicSubPath {
+  const n = subPath.segments.length;
+  if (n === 0) {
+    return {
+      start: { ...subPath.start },
+      segments: [],
+      closed: subPath.closed,
+    };
+  }
+
+  // Previous-end lookup: prev(0) = start; prev(i>0) = segs[i-1].end
+  const prevEnd = (i: number) =>
+    i === 0 ? subPath.start : subPath.segments[i - 1]!.end;
+
+  const reversed: CubicSubPath['segments'] = new Array(n);
+  for (let r = 0; r < n; r += 1) {
+    const origIdx = n - 1 - r;
+    const origSeg = subPath.segments[origIdx]!;
+    reversed[r] = {
+      c1: { ...origSeg.c2 },
+      c2: { ...origSeg.c1 },
+      end: { ...prevEnd(origIdx) },
+    };
+  }
+
+  return {
+    start: { ...subPath.segments[n - 1]!.end },
+    segments: reversed,
+    closed: subPath.closed,
+  };
+}
+
+/**
+ * Total sum-of-squares displacement between two equal-length sub-paths,
+ * comparing each pair of endpoints and (with half weight) control
+ * points. Used as the scoring function for direction / rotation
+ * alignment in {@link alignCubicPaths}.
+ */
+export function computeSubPathAlignmentCost(
+  from: CubicSubPath,
+  to: CubicSubPath,
+): number {
+  const n = Math.min(from.segments.length, to.segments.length);
+  let cost = pointDistSq(from.start, to.start);
+  for (let i = 0; i < n; i += 1) {
+    const f = from.segments[i]!;
+    const t = to.segments[i]!;
+    cost += pointDistSq(f.end, t.end);
+    cost += pointDistSq(f.c1, t.c1) * 0.5;
+    cost += pointDistSq(f.c2, t.c2) * 0.5;
+  }
+  return cost;
+}
+
 // ---------------------------------------------------------------------------
 // 8.2d — Unmatched sub-path handling
 // ---------------------------------------------------------------------------

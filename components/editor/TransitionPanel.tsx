@@ -251,16 +251,23 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
   // --- Engine readout ---
   // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
-  // power users can see which tier `autoMorph()` would pick for the first
-  // shared layer of the current source/target pair.
+  // power users can see which tier `autoMorph()` picks for the primary
+  // layer pair of the current source/target. For cross-icon pairs the
+  // layer IDs won't match, so fall back to a positional pairing — picking
+  // the first layer on each side — which matches what the resolver's
+  // auto-matcher does for the first binding. Previously this readout
+  // returned 'fallback' for every cross-icon transition even when the
+  // actual preview morphed cleanly.
   const engineChoseTier = useMemo<string | null>(() => {
     if (!sourceSnapshot || !targetSnapshot) return null;
-    const sharedId = Object.keys(sourceSnapshot.layers).find(
-      (id) => Boolean(targetSnapshot.layers[id]),
-    );
-    if (!sharedId) return 'fallback';
-    const fromD = sourceSnapshot.layers[sharedId]?.path?.d;
-    const toD = targetSnapshot.layers[sharedId]?.path?.d;
+    const fromIds = Object.keys(sourceSnapshot.layers);
+    const toIds = Object.keys(targetSnapshot.layers);
+    if (fromIds.length === 0 || toIds.length === 0) return 'fallback';
+    const sharedId = fromIds.find((id) => Boolean(targetSnapshot.layers[id]));
+    const fromId = sharedId ?? fromIds[0]!;
+    const toId = sharedId ?? toIds[0]!;
+    const fromD = sourceSnapshot.layers[fromId]?.path?.d;
+    const toD = targetSnapshot.layers[toId]?.path?.d;
     if (!fromD || !toD) return 'fallback';
     const result = autoMorph(fromD, toD);
     return result?.selectedStrategy ?? 'fallback';

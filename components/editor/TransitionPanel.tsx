@@ -565,8 +565,10 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </p>
       </div>
 
-      {/* 3. Timing — duration + easing + direction */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* 3. Timing — duration + easing + direction
+          Stacked vertically so the easing trigger has the full panel width
+          and never crops in the inspector column. */}
+      <div className="grid gap-3">
         <div className="grid gap-1.5">
           <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
             Duration (ms)
@@ -584,7 +586,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
           <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
             Easing
           </Label>
-          <EasingPicker value={formEasing} onSelect={setFormEasing} />
+          <EasingPicker
+            value={formEasing}
+            onSelect={setFormEasing}
+            className="w-full"
+            triggerClassName="h-8 w-full justify-start rounded-lg"
+          />
         </div>
       </div>
       <div className="grid gap-1.5">

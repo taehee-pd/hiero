@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/kibo-ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 import { BezierCurveEditor } from './BezierCurveEditor';
 import type { SpringConfig } from '@/lib/schema/types';
 
@@ -92,19 +93,27 @@ function EasingMiniPreview({ easing }: { easing: EasingOption }) {
 export function EasingPicker({
   value,
   onSelect,
+  className,
+  triggerClassName,
 }: {
   value: EasingValue;
   onSelect: (value: EasingValue) => void;
+  className?: string;
+  triggerClassName?: string;
 }) {
   const _isPreset = typeof value === 'string' && EASING_OPTIONS.includes(value as EasingOption);
   const [hoveredOption, setHoveredOption] = useState<EasingOption | null>(null);
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={cn('flex items-center gap-1', className)}>
       <Popover>
         <PopoverTrigger asChild>
-          <Button size="sm" variant="outline">
-            Easing: {getEasingLabel(value)}
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn('min-w-0 [&>span]:truncate', triggerClassName)}
+          >
+            <span>Easing: {getEasingLabel(value)}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-2">

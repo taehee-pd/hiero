@@ -55,7 +55,7 @@ import {
   useEditorStore,
   useSelection,
 } from '@/lib/editor-store/hooks';
-import { selectCurrentState } from '@/lib/editor-store/selectors';
+import { selectCurrentType } from '@/lib/editor-store/selectors';
 import { editorStore, VARIANT_SIZE_PRESETS } from '@/lib/editor-store/store';
 import type { BooleanMode } from '@/lib/editor-core/boolean-ops';
 import {
@@ -160,12 +160,12 @@ export const InspectorPanel = memo(function InspectorPanel() {
     upsertSymbolComponent,
     removeSymbolComponent,
   } = useEditorActions();
-  const currentState = useEditorStore(selectCurrentState);
+  const currentState = useEditorStore(selectCurrentType);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
   const isDeriving = useEditorStore((s) => s.isDeriving);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const currentIconId = useEditorStore((s) => s.currentIconId);
-  const currentStateId = useEditorStore((s) => s.currentStateId);
+  const currentTypeId = useEditorStore((s) => s.currentTypeId);
   const colorTokens = useEditorStore(
     (s) => s.project?.tokenSet?.colors ?? {},
   );
@@ -806,7 +806,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Lock topology to enforce command structure compatibility across states.
+                    Lock topology to enforce command structure compatibility across types.
                   </p>
                 )}
 
@@ -965,7 +965,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       key={action.mode}
                       label={action.label}
                       onClick={() =>
-                        alignLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                        alignLayers(action.mode, selection.layerIds, currentIconId!, currentTypeId!)
                       }
                     >
                       <action.icon className="size-4" />
@@ -979,7 +979,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       label={action.label}
                       disabled={!enoughLayersToDistribute}
                       onClick={() =>
-                        distributeLayers(action.mode, selection.layerIds, currentIconId!, currentStateId!)
+                        distributeLayers(action.mode, selection.layerIds, currentIconId!, currentTypeId!)
                       }
                     >
                       <action.icon className="size-4" />
@@ -1075,7 +1075,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               colorTokens={colorTokens}
               fillModeOptions
               onChange={(paint) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   fill: paint,
                 })
               }
@@ -1096,7 +1096,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               paint={layer.style.stroke}
               colorTokens={colorTokens}
               onChange={(paint) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   stroke: paint,
                 })
               }
@@ -1105,7 +1105,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               label="Stroke Width"
               value={layer.style.strokeWidth}
               onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   strokeWidth: v,
                 })
               }
@@ -1119,7 +1119,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 ['square', 'Square'],
               ]}
               onChange={(value) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   lineCap: value as Layer['style']['lineCap'],
                 })
               }
@@ -1133,7 +1133,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 ['bevel', 'Bevel'],
               ]}
               onChange={(value) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   lineJoin: value as Layer['style']['lineJoin'],
                 })
               }
@@ -1145,7 +1145,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               max={1}
               step={0.05}
               onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   fillOpacity: v,
                 })
               }
@@ -1157,7 +1157,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               max={1}
               step={0.05}
               onChange={(v) =>
-                patchStyle(currentIconId, currentStateId, layer.id, {
+                patchStyle(currentIconId, currentTypeId, layer.id, {
                   strokeOpacity: v,
                 })
               }
@@ -1219,7 +1219,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     placeholder={pointContext.xMixed ? 'Mixed' : undefined}
                     disabled={pointContext.count === 0}
                     onChange={(v) =>
-                      patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                      patchSelectedPoints(currentIconId, currentTypeId, layer.id, selection.pointIds, (pt) => {
                         translatePointPosition(pt, v - pt.position.x, 0);
                       })
                     }
@@ -1230,7 +1230,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     placeholder={pointContext.yMixed ? 'Mixed' : undefined}
                     disabled={pointContext.count === 0}
                     onChange={(v) =>
-                      patchSelectedPoints(currentIconId, currentStateId, layer.id, selection.pointIds, (pt) => {
+                      patchSelectedPoints(currentIconId, currentTypeId, layer.id, selection.pointIds, (pt) => {
                         translatePointPosition(pt, 0, v - pt.position.y);
                       })
                     }
@@ -1264,7 +1264,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   step={0.25}
                   disabled={pointContext.count === 0}
                   onChange={(v) =>
-                    applyPointRadius(currentIconId, currentStateId, layer.id, selection.pointIds, v)
+                    applyPointRadius(currentIconId, currentTypeId, layer.id, selection.pointIds, v)
                   }
                 />
 
@@ -1277,7 +1277,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       onChange={(v) =>
                         updateSelectedHandle(
                           currentIconId,
-                          currentStateId,
+                          currentTypeId,
                           layer.id,
                           selection.pointIds,
                           pointContext.nodeType,
@@ -1294,7 +1294,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       onChange={(v) =>
                         updateSelectedHandle(
                           currentIconId,
-                          currentStateId,
+                          currentTypeId,
                           layer.id,
                           selection.pointIds,
                           pointContext.nodeType,
@@ -1311,7 +1311,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       onChange={(v) =>
                         updateSelectedHandle(
                           currentIconId,
-                          currentStateId,
+                          currentTypeId,
                           layer.id,
                           selection.pointIds,
                           pointContext.nodeType,
@@ -1328,7 +1328,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       onChange={(v) =>
                         updateSelectedHandle(
                           currentIconId,
-                          currentStateId,
+                          currentTypeId,
                           layer.id,
                           selection.pointIds,
                           pointContext.nodeType,
@@ -1351,7 +1351,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               label="X"
               value={layer.transform?.x}
               onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
+                patchTransform(currentIconId, currentTypeId, layer.id, {
                   x: v,
                 })
               }
@@ -1360,7 +1360,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               label="Y"
               value={layer.transform?.y}
               onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
+                patchTransform(currentIconId, currentTypeId, layer.id, {
                   y: v,
                 })
               }
@@ -1369,7 +1369,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               label="Rotate"
               value={layer.transform?.rotate}
               onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
+                patchTransform(currentIconId, currentTypeId, layer.id, {
                   rotate: v,
                 })
               }
@@ -1379,7 +1379,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               value={layer.transform?.scaleX}
               step={0.1}
               onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
+                patchTransform(currentIconId, currentTypeId, layer.id, {
                   scaleX: v,
                 })
               }
@@ -1389,7 +1389,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               value={layer.transform?.scaleY}
               step={0.1}
               onChange={(v) =>
-                patchTransform(currentIconId, currentStateId, layer.id, {
+                patchTransform(currentIconId, currentTypeId, layer.id, {
                   scaleY: v,
                 })
               }
@@ -1405,7 +1405,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
 
 function patchStyle(
   iconId: string | null,
-  _stateId: string | null,
+  _typeId: string | null,
   layerId: string,
   stylePatch: Partial<Layer['style']>,
 ) {
@@ -1423,7 +1423,7 @@ function patchStyle(
 
 function patchTransform(
   iconId: string | null,
-  _stateId: string | null,
+  _typeId: string | null,
   layerId: string,
   transformPatch: Partial<NonNullable<Layer['transform']>>,
 ) {
@@ -1455,7 +1455,7 @@ type ResolvedEditablePoint = {
 
 function patchSelectedPoints(
   iconId: string | null,
-  _stateId: string | null,
+  _typeId: string | null,
   layerId: string,
   pointIds: string[],
   updater: (point: EditablePoint, resolved: ResolvedEditablePoint) => void,
@@ -1481,12 +1481,12 @@ function patchSelectedPoints(
 
 function applyPointRadius(
   iconId: string | null,
-  stateId: string | null,
+  typeId: string | null,
   layerId: string,
   pointIds: string[],
   radius: number,
 ) {
-  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt, resolved) => {
+  patchSelectedPoints(iconId, typeId, layerId, pointIds, (pt, resolved) => {
     if (radius <= 0) {
       pt.handleIn = null;
       pt.handleOut = null;
@@ -1589,7 +1589,7 @@ function findPointByKey(path: ReturnType<typeof parseSvgPath>, key: string) {
 
 function updateSelectedHandle(
   iconId: string | null,
-  stateId: string | null,
+  typeId: string | null,
   layerId: string,
   pointIds: string[],
   nodeType: NodeType | null,
@@ -1597,7 +1597,7 @@ function updateSelectedHandle(
   axis: 'x' | 'y',
   value: number,
 ) {
-  patchSelectedPoints(iconId, stateId, layerId, pointIds, (pt) => {
+  patchSelectedPoints(iconId, typeId, layerId, pointIds, (pt) => {
     const targetKey = handle === 'in' ? 'handleIn' : 'handleOut';
     const oppositeKey = handle === 'in' ? 'handleOut' : 'handleIn';
     const targetHandle = pt[targetKey] ?? { x: pt.position.x, y: pt.position.y };

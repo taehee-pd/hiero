@@ -3,7 +3,7 @@ import { editorStore, type EditorStore } from './store';
 import {
   selectCurrentIcon,
   selectCurrentVariant,
-  selectCurrentState,
+  selectCurrentType,
   selectCurrentLayers,
   selectIconList,
 } from './selectors';
@@ -28,8 +28,8 @@ export function useCurrentVariant(): Variant | null {
   return useEditorStore(selectCurrentVariant);
 }
 
-export function useCurrentState(): LayerSnapshot | null {
-  return useEditorStore(selectCurrentState);
+export function useCurrentType(): LayerSnapshot | null {
+  return useEditorStore(selectCurrentType);
 }
 
 export function useCurrentLayers(): Layer[] {
@@ -71,11 +71,11 @@ const editorActions = {
   duplicateLayersToVariant: editorStore.getState().duplicateLayersToVariant,
   setCurrentIcon: editorStore.getState().setCurrentIcon,
   setCurrentVariant: editorStore.getState().setCurrentVariant,
-  setCurrentState: editorStore.getState().setCurrentState,
-  addState: editorStore.getState().addState,
-  removeState: editorStore.getState().removeState,
-  renameState: editorStore.getState().renameState,
-  duplicateState: editorStore.getState().duplicateState,
+  setCurrentType: editorStore.getState().setCurrentType,
+  addType: editorStore.getState().addType,
+  removeType: editorStore.getState().removeType,
+  renameType: editorStore.getState().renameType,
+  duplicateType: editorStore.getState().duplicateType,
   setTopology: editorStore.getState().setTopology,
   setSelectedIconGuideIndex: editorStore.getState().setSelectedIconGuideIndex,
   patchLayer: editorStore.getState().patchLayer,

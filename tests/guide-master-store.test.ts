@@ -81,10 +81,10 @@ describe('guide master store actions', () => {
               id: 'v24',
               size: 24,
               viewBox: [0, 0, 24, 24],
-              defaultState: 'default',
+              defaultType: 'default',
             },
           },
-          states: {
+          types: {
             default: {
               id: 'default',
               layers: {},

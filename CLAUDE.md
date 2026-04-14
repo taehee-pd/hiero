@@ -52,7 +52,7 @@ regenerate `bun.lock`. Commit both lockfiles together.
 
 ```
 lib/
-├── schema/             # Icon, Variant, State, Layer, Transition types
+├── schema/             # Icon, Variant, IconType, Layer, Transition types
 ├── runtime-core/       # autoMorph (unified automatic morph), intrinsic interpolation,
 │                       # morph, topology, transition resolver, draw executor,
 │                       # hybrid compositor, open-path guard, cubic weight interpolation

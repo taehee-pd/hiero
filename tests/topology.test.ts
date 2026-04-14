@@ -6,9 +6,9 @@ import {
 } from '../lib/editor-core/topology';
 import { editorStore } from '../lib/editor-store/store';
 import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
-import type { State } from '../lib/schema/types';
+import type { IconType } from '../lib/schema/types';
 
-const COMPLEX_STATE: State = {
+const COMPLEX_STATE: IconType = {
   id: 'default',
   layers: {
     compound: {
@@ -47,7 +47,7 @@ describe('topology', () => {
   });
 
   test('areTopologiesCompatible reports matching and mismatching contracts', () => {
-    const matchingState: State = {
+    const matchingState: IconType = {
       id: 'match',
       layers: {
         compound: {
@@ -59,7 +59,7 @@ describe('topology', () => {
         },
       },
     };
-    const mismatchingState: State = {
+    const mismatchingState: IconType = {
       id: 'mismatch',
       layers: {
         compound: {
@@ -93,8 +93,8 @@ describe('topology', () => {
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
-    const stateId = state.currentStateId!;
-    const current = state.project!.icons[iconId].variants[variantId].states![stateId]!;
+    const stateId = state.currentTypeId!;
+    const current = state.project!.icons[iconId].variants[variantId].types![stateId]!;
     const before = current.layers.roof.path!.d;
 
     state.setStateTopology(iconId, stateId, lockTopology(current));
@@ -106,7 +106,7 @@ describe('topology', () => {
     ).toThrow('Topology is locked');
 
     const after =
-      editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]!.layers.roof
+      editorStore.getState().project!.icons[iconId].variants[variantId].types![stateId]!.layers.roof
         .path!.d;
     expect(after).toBe(before);
   });

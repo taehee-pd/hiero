@@ -18,7 +18,7 @@ import {
   selectCurrentIcon,
   selectCurrentGuideMaster,
   selectCurrentVariant,
-  selectCurrentState,
+  selectCurrentType,
 } from '@/lib/editor-store/selectors';
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
 import {
@@ -95,7 +95,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   // Subscribe to relevant state for re-render
   const icon = useEditorStore(selectCurrentIcon);
   const variant = useEditorStore(selectCurrentVariant);
-  const currentState = useEditorStore(selectCurrentState);
+  const currentState = useEditorStore(selectCurrentType);
   const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const viewport = useEditorStore((s) => s.viewport);
   const selection = useEditorStore((s) => s.selection);

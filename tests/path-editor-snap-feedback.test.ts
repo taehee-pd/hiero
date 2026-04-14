@@ -42,8 +42,8 @@ function createProjectFixture(): Project {
                 style: {},
               },
             },
-            defaultState: 'default',
-            states: {
+            defaultType: 'default',
+            types: {
               default: {
                 id: 'default',
                 layers: {
@@ -106,7 +106,7 @@ beforeEach(() => {
   editorStore.getState().loadProject(createProjectFixture());
   editorStore.getState().setCurrentIcon('snap');
   editorStore.getState().setCurrentVariant('v24');
-  editorStore.getState().setCurrentState('default');
+  editorStore.getState().setCurrentType('default');
   editorStore.getState().setActiveSnapGuides([]);
 });
 
@@ -171,7 +171,7 @@ describe('path editor snap feedback', () => {
     (editor as any).beginPenPlacement('moving', 12, 8, 8);
 
     const d =
-      editorStore.getState().project!.icons.snap.variants.v24.states!.default.layers.moving.path!.d;
+      editorStore.getState().project!.icons.snap.variants.v24.types!.default.layers.moving.path!.d;
     const path = editorStore.getState().pendingPenHandle;
 
     expect(d).toBe('M1 1 L2 2 C10 8 6 8 8 8 C10 8 12 8 12 8');
@@ -192,7 +192,7 @@ describe('path editor snap feedback', () => {
     (editor as any).commitControlDrag({ clientX: 8.28, clientY: 10.72, shiftKey: false, altKey: false });
 
     const d =
-      editorStore.getState().project!.icons.snap.variants.v24.states!.default.layers.moving.path!.d;
+      editorStore.getState().project!.icons.snap.variants.v24.types!.default.layers.moving.path!.d;
     expect(d).toContain('C8.3 10.7');
     editor.destroy();
   });

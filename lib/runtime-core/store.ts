@@ -1,7 +1,7 @@
 import type {
   RuntimeEffect,
   RuntimeLayer,
-  RuntimeState,
+  RuntimeIconType,
   RuntimeTrack,
   RuntimeTransition,
   RuntimeVariantPayload,
@@ -30,8 +30,8 @@ export type RuntimeSnapshot = {
 };
 
 export type IconRuntimeStoreSnapshot = {
-  currentStateId: string;
-  settledStateId: string;
+  currentTypeId: string;
+  settledTypeId: string;
   activeTransitionId?: string;
   activeEffectId?: string;
   isAnimating: boolean;
@@ -97,8 +97,8 @@ export function createIconRuntimeStore(
   };
 
   // Default state ID: prefer the first state key if states are defined, otherwise 'default'
-  const fallbackStateId = payload.states
-    ? (Object.keys(payload.states)[0] ?? 'default')
+  const fallbackStateId = payload.types
+    ? (Object.keys(payload.types)[0] ?? 'default')
     : 'default';
   const initialStateId = options.initialStateId ?? fallbackStateId;
   let effect: EffectPlayback | undefined;
@@ -107,8 +107,8 @@ export function createIconRuntimeStore(
   let destroyed = false;
 
   let snapshot: IconRuntimeStoreSnapshot = {
-    currentStateId: initialStateId,
-    settledStateId: initialStateId,
+    currentTypeId: initialStateId,
+    settledTypeId: initialStateId,
     isAnimating: false,
     snapshot: buildStateSnapshot(payload, initialStateId),
   };
@@ -149,11 +149,11 @@ export function createIconRuntimeStore(
         // Transition finished — settle into target state
         activeTransition = undefined;
         snapshot = {
-          currentStateId: snapshot.currentStateId,
-          settledStateId: snapshot.currentStateId,
+          currentTypeId: snapshot.currentTypeId,
+          settledTypeId: snapshot.currentTypeId,
           isAnimating: Boolean(effect),
           activeEffectId: effect?.id,
-          snapshot: buildStateSnapshot(payload, snapshot.currentStateId),
+          snapshot: buildStateSnapshot(payload, snapshot.currentTypeId),
         };
         return;
       }
@@ -170,8 +170,8 @@ export function createIconRuntimeStore(
       }
 
       snapshot = {
-        currentStateId: snapshot.currentStateId,
-        settledStateId: activeTransition.fromStateId,
+        currentTypeId: snapshot.currentTypeId,
+        settledTypeId: activeTransition.fromStateId,
         activeTransitionId: activeTransition.id,
         activeEffectId: effect?.id,
         isAnimating: true,
@@ -180,15 +180,15 @@ export function createIconRuntimeStore(
       return;
     }
 
-    let runtimeSnapshot = buildStateSnapshot(payload, snapshot.currentStateId);
+    let runtimeSnapshot = buildStateSnapshot(payload, snapshot.currentTypeId);
 
     if (effect && effectProgress) {
       runtimeSnapshot = applyEffectToSnapshot(payload, runtimeSnapshot, effect, effectProgress.progress);
     }
 
     snapshot = {
-      currentStateId: snapshot.currentStateId,
-      settledStateId: snapshot.currentStateId,
+      currentTypeId: snapshot.currentTypeId,
+      settledTypeId: snapshot.currentTypeId,
       activeEffectId: effect?.id,
       isAnimating: Boolean(effect),
       snapshot: runtimeSnapshot,
@@ -213,23 +213,23 @@ export function createIconRuntimeStore(
   }
 
   function setState(stateId: string, stateOptions?: { immediate?: boolean }) {
-    if (payload.states && !payload.states[stateId] && stateId !== fallbackStateId) {
+    if (payload.types && !payload.types[stateId] && stateId !== fallbackStateId) {
       return;
     }
 
     // If already targeting this state, ignore duplicate
-    if (snapshot.currentStateId === stateId) {
+    if (snapshot.currentTypeId === stateId) {
       return;
     }
 
-    const previousStateId = snapshot.currentStateId;
+    const previousStateId = snapshot.currentTypeId;
 
     // Look for a transition from current to target
     const found = findTransition(previousStateId, stateId);
     if (found && !stateOptions?.immediate) {
       // Preserve the previous settled state if we're interrupting an in-flight transition
       const settledState = activeTransition
-        ? snapshot.settledStateId
+        ? snapshot.settledTypeId
         : previousStateId;
       activeTransition = {
         id: found.id,
@@ -240,8 +240,8 @@ export function createIconRuntimeStore(
       };
       snapshot = {
         ...snapshot,
-        currentStateId: stateId,
-        settledStateId: settledState,
+        currentTypeId: stateId,
+        settledTypeId: settledState,
         activeTransitionId: found.id,
         isAnimating: true,
         snapshot: buildStateSnapshot(payload, previousStateId),
@@ -253,8 +253,8 @@ export function createIconRuntimeStore(
 
     snapshot = {
       ...snapshot,
-      currentStateId: stateId,
-      settledStateId: stateId,
+      currentTypeId: stateId,
+      settledTypeId: stateId,
       snapshot: buildStateSnapshot(payload, stateId),
     };
     const now = frame.now();
@@ -337,8 +337,8 @@ function buildTransitionSnapshot(
   playback: TransitionPlayback,
   progress: number,
 ): RuntimeSnapshot {
-  const fromState = payload.states?.[playback.fromStateId];
-  const toState = payload.states?.[playback.toStateId];
+  const fromState = payload.types?.[playback.fromStateId];
+  const toState = payload.types?.[playback.toStateId];
 
   if (!fromState || !toState) {
     // Fallback: just use target state layers
@@ -440,7 +440,7 @@ function buildStateSnapshot(
   stateId?: string,
 ): RuntimeSnapshot {
   const resolvedStateId = stateId ?? payload.variant.id;
-  const layers = payload.states?.[resolvedStateId]?.layers ?? payload.layers ?? [];
+  const layers = payload.types?.[resolvedStateId]?.layers ?? payload.layers ?? [];
   return {
     stateId: resolvedStateId,
     viewBox: [...payload.variant.viewBox],
@@ -734,8 +734,8 @@ function resolveReplaceDirection(
 function buildDirectionalReplaceSnapshot(
   toStateId: string,
   viewBox: [number, number, number, number],
-  fromState: RuntimeState,
-  toState: RuntimeState,
+  fromState: RuntimeIconType,
+  toState: RuntimeIconType,
   progress: number,
   direction: EffectiveDirection,
 ): RuntimeSnapshot {

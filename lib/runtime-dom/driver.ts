@@ -217,7 +217,7 @@ export function createIconDriver(
   const effectLatestValues = new Map<string, InterpolatedValues>();
   const effectColorOverrides = new Map<string, Record<string, Record<string, string>>>();
 
-  const unsubscribe = stateMachine.onStateChange((snapshot, transition) => {
+  const unsubscribe = stateMachine.onSnapshotChange((snapshot, transition) => {
     // Determine the target variant ID. Prefer the transition's explicit toVariantId
     // (which may differ from the state machine's current ID during rapid switches),
     // but always fall back to the state machine's current variant rather than the

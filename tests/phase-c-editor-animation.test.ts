@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import type {
   Effect,
   Transition,
-  State,
+  IconType,
   TimelineTrack,
   SpringConfig,
   StateTrigger,
@@ -60,13 +60,13 @@ describe('C3 — Per-track easing in TimelineTrack', () => {
   });
 
   test('per-track easing modifies interpolation via scheduler', () => {
-    const fromState: State = {
+    const fromState: IconType = {
       id: 'a',
       layers: {
         layer1: { id: 'layer1', style: {} },
       },
     };
-    const toState: State = {
+    const toState: IconType = {
       id: 'b',
       layers: {
         layer1: { id: 'layer1', style: {} },
@@ -228,7 +228,7 @@ describe('C5 — Custom effect kind', () => {
   });
 });
 
-// --- C6: State interaction triggers ---
+// --- C6: IconType interaction triggers ---
 
 describe('C6 — StateTrigger schema', () => {
   test('StateTrigger type is valid', () => {

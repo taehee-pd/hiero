@@ -144,10 +144,10 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
       if (
         state.selection.layerIds.length > 1 &&
         state.currentIconId &&
-        state.currentStateId
+        state.currentTypeId
       ) {
         e.preventDefault();
-        alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentStateId);
+        alignLayers(mode, state.selection.layerIds, state.currentIconId, state.currentTypeId);
         return;
       }
     }

@@ -19,14 +19,14 @@ describe('project guide migration', () => {
               id: 'v24',
               size: 24,
               viewBox: [0, 0, 24, 24],
-              defaultState: 'default',
+              defaultType: 'default',
               guideSetId: 'standard',
             },
             v32: {
               id: 'v32',
               size: 32,
               viewBox: [0, 0, 32, 32],
-              defaultState: 'default',
+              defaultType: 'default',
               guideSetId: 'standard',
             },
           },
@@ -36,7 +36,7 @@ describe('project guide migration', () => {
               items: [{ kind: 'hline', y: 12 }],
             },
           },
-          states: {
+          types: {
             default: {
               id: 'default',
               layers: {},
@@ -84,7 +84,7 @@ describe('project guide migration', () => {
               id: 'v24',
               size: 24,
               viewBox: [0, 0, 24, 24],
-              defaultState: 'default',
+              defaultType: 'default',
             },
           },
           guides: {
@@ -93,7 +93,7 @@ describe('project guide migration', () => {
               items: [{ kind: 'vline', x: 8 }],
             },
           },
-          states: {
+          types: {
             default: {
               id: 'default',
               layers: {},

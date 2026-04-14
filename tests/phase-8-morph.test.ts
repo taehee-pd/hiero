@@ -23,7 +23,7 @@ import {
   computeDrawCrossfadeFrame,
   shouldUseDrawCrossfade,
 } from '@/lib/runtime-core/topology-detection';
-import type { State } from '@/lib/schema/types';
+import type { IconType } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
 // 8.1a — Arc-to-cubic conversion tests
@@ -343,8 +343,8 @@ describe('Phase 8.2 — Cross-icon morphing', () => {
 // ---------------------------------------------------------------------------
 
 describe('Phase 8.3a — Topology incompatibility detection', () => {
-  function makeState(layers: Record<string, { d?: string; fill?: boolean; stroke?: boolean; strokeWidth?: number }>): State {
-    const stateLayers: Record<string, State['layers'][string]> = {};
+  function makeState(layers: Record<string, { d?: string; fill?: boolean; stroke?: boolean; strokeWidth?: number }>): IconType {
+    const stateLayers: Record<string, IconType['layers'][string]> = {};
     for (const [id, config] of Object.entries(layers)) {
       stateLayers[id] = {
         id,
@@ -580,13 +580,13 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
   it('uses crossIconMorph as fallback when strictMorph and bestGuessMorph fail', () => {
     // Two paths with different sub-path counts — strictMorph and bestGuessMorph
     // will fail, but crossIconMorph can match sub-paths by centroid proximity.
-    const fromState: State = {
+    const fromState: IconType = {
       id: 'from',
       layers: {
         shape: makeLayer('shape', 'M0 0 L10 0 L10 10 Z'),
       },
     };
-    const toState: State = {
+    const toState: IconType = {
       id: 'to',
       layers: {
         shape: makeLayer('shape', 'M0 0 L10 0 L10 10 Z M15 15 L25 15 L25 25 Z'),
@@ -613,11 +613,11 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
   });
 
   it('topology analysis is included in resolved transition', () => {
-    const fromState: State = {
+    const fromState: IconType = {
       id: 'from',
       layers: { line: makeLayer('line', 'M0 0 L10 10', { stroke: true, strokeWidth: 2, fill: false }) },
     };
-    const toState: State = {
+    const toState: IconType = {
       id: 'to',
       layers: { line: makeLayer('line', 'M0 0 L10 10 Z', { fill: true }) },
     };
@@ -639,11 +639,11 @@ describe('Phase 8 — Transition resolver cross-icon morph integration', () => {
   });
 
   it('topology-incompatible transition overrides morph to crossfade', () => {
-    const fromState: State = {
+    const fromState: IconType = {
       id: 'outline',
       layers: { icon: makeLayer('icon', 'M0 0 L10 0 L10 10', { stroke: true, strokeWidth: 2, fill: false }) },
     };
-    const toState: State = {
+    const toState: IconType = {
       id: 'filled',
       layers: { icon: makeLayer('icon', 'M0 0 L10 0 L10 10 Z', { fill: true }) },
     };
@@ -738,13 +738,13 @@ describe('Phase 8 — Cross-icon morph winding normalization', () => {
 
 describe('Phase 8 — MorphReadiness crossIconMorph strategy', () => {
   it('readiness recommends crossIconMorph for partially compatible paths', () => {
-    const fromState: State = {
+    const fromState: IconType = {
       id: 'from',
       layers: {
         a: makeLayer('a', 'M0 0 L10 0 L10 10 Z'),
       },
     };
-    const toState: State = {
+    const toState: IconType = {
       id: 'to',
       layers: {
         a: makeLayer('a', 'M2 2 C5 2 8 5 10 10 Z'),

@@ -12,8 +12,8 @@ describe('TimelineEditor preview frames', () => {
       name: '24',
       viewBox: [0, 0, 24, 24],
       layers: {},
-      defaultState: 'idle',
-      states: {
+      defaultType: 'idle',
+      types: {
         idle: {
           id: 'idle',
           layers: {

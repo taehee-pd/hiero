@@ -20,7 +20,7 @@ const SPRING_PAYLOAD: RuntimeVariantPayload = {
       stroke: { kind: 'solid', color: '#000000' },
     },
   ],
-  states: {
+  types: {
     default: {
       layers: [
         {
@@ -81,8 +81,8 @@ describe('runtime core store', () => {
     store.setState('active');
 
     let snapshot = store.getSnapshot();
-    expect(snapshot.currentStateId).toBe('active');
-    expect(snapshot.settledStateId).toBe('default');
+    expect(snapshot.currentTypeId).toBe('active');
+    expect(snapshot.settledTypeId).toBe('default');
     expect(snapshot.activeTransitionId).toBe('activate');
 
     now = 110;
@@ -101,8 +101,8 @@ describe('runtime core store', () => {
 
     expect(snapshot.isAnimating).toBeFalse();
     expect(snapshot.activeTransitionId).toBeUndefined();
-    expect(snapshot.currentStateId).toBe('active');
-    expect(snapshot.settledStateId).toBe('active');
+    expect(snapshot.currentTypeId).toBe('active');
+    expect(snapshot.settledTypeId).toBe('active');
     expect(
       snapshot.snapshot.layers.some((layer) => layer.d === 'M7 5l7 7-7 7'),
     ).toBeTrue();
@@ -122,8 +122,8 @@ describe('runtime core store', () => {
     store.setState('default');
     snapshot = store.getSnapshot();
 
-    expect(snapshot.currentStateId).toBe('default');
-    expect(snapshot.settledStateId).toBe('default');
+    expect(snapshot.currentTypeId).toBe('default');
+    expect(snapshot.settledTypeId).toBe('default');
     expect(snapshot.activeTransitionId).toBe('reset');
 
     now = 181;
@@ -131,8 +131,8 @@ describe('runtime core store', () => {
     snapshot = store.getSnapshot();
 
     expect(snapshot.activeTransitionId).toBeUndefined();
-    expect(snapshot.currentStateId).toBe('default');
-    expect(snapshot.settledStateId).toBe('default');
+    expect(snapshot.currentTypeId).toBe('default');
+    expect(snapshot.settledTypeId).toBe('default');
   });
 
   test('ignores duplicate requests for the already-targeted state while animating', () => {
@@ -145,13 +145,13 @@ describe('runtime core store', () => {
     store.setState('active');
     const firstSnapshot = store.getSnapshot();
     expect(firstSnapshot.activeTransitionId).toBe('activate');
-    expect(firstSnapshot.settledStateId).toBe('default');
+    expect(firstSnapshot.settledTypeId).toBe('default');
 
     store.setState('active');
     const secondSnapshot = store.getSnapshot();
 
     expect(secondSnapshot.activeTransitionId).toBe('activate');
-    expect(secondSnapshot.settledStateId).toBe('default');
+    expect(secondSnapshot.settledTypeId).toBe('default');
     expect(secondSnapshot.isAnimating).toBeTrue();
 
     now = 221;
@@ -159,8 +159,8 @@ describe('runtime core store', () => {
     const finalSnapshot = store.getSnapshot();
 
     expect(finalSnapshot.activeTransitionId).toBeUndefined();
-    expect(finalSnapshot.currentStateId).toBe('active');
-    expect(finalSnapshot.settledStateId).toBe('active');
+    expect(finalSnapshot.currentTypeId).toBe('active');
+    expect(finalSnapshot.settledTypeId).toBe('active');
   });
 
   test('plays draw effects and clears them once complete', () => {
@@ -213,6 +213,6 @@ describe('runtime core store', () => {
 
     expect(snapshot.isAnimating).toBeFalse();
     expect(snapshot.activeTransitionId).toBeUndefined();
-    expect(snapshot.settledStateId).toBe('active');
+    expect(snapshot.settledTypeId).toBe('active');
   });
 });

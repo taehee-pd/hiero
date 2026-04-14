@@ -31,7 +31,7 @@ describe('runtime react phase 4 integration', () => {
     function Harness() {
       const runtime = useIcon({
         payload,
-        defaultState: 'active',
+        defaultType: 'active',
         transition: false,
       });
 
@@ -39,8 +39,8 @@ describe('runtime react phase 4 integration', () => {
         <RuntimeSvgRenderer
           snapshot={runtime.snapshot}
           size={96}
-          data-runtime-state={runtime.currentStateId}
-          data-available-states={runtime.availableStates.join(',')}
+          data-runtime-state={runtime.currentTypeId}
+          data-available-states={runtime.availableTypes.join(',')}
         />
       );
     }

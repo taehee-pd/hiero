@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { Icon, State, Transition } from '../lib/schema';
+import type { Icon, IconType, Transition } from '../lib/schema';
 import { strictMorph, type InterpolatedValues } from '../lib/runtime-core';
 import { DomRenderer } from '../lib/runtime-dom';
 
@@ -168,7 +168,7 @@ function toCamelCase(name: string): string {
 }
 
 function makeIcon(): Icon {
-  const idleState: State = {
+  const idleState: IconType = {
     id: 'idle',
     layers: {
       accent: {
@@ -198,7 +198,7 @@ function makeIcon(): Icon {
     },
   };
 
-  const activeState: State = {
+  const activeState: IconType = {
     id: 'active',
     layers: {
       badge: {
@@ -248,8 +248,8 @@ function makeIcon(): Icon {
         size: 24,
         viewBox: [0, 0, 24, 24],
         layers: idleState.layers,
-        defaultState: 'idle',
-        states: {
+        defaultType: 'idle',
+        types: {
           idle: idleState,
           active: activeState,
         },
@@ -262,14 +262,14 @@ function makeIcon(): Icon {
 }
 
 function makeSharedLayerIcon(): Icon {
-  const stateA: State = {
+  const stateA: IconType = {
     id: 'state-a',
     layers: {
       bg: { id: 'bg', path: { d: 'M0 0H24V24H0Z' }, style: { fill: { mode: 'fixed', value: '#fff' } } },
       icon: { id: 'icon', path: { d: 'M6 6L18 18' }, style: { stroke: { mode: 'fixed', value: '#000' } } },
     },
   };
-  const stateB: State = {
+  const stateB: IconType = {
     id: 'state-b',
     layers: {
       bg: { id: 'bg', path: { d: 'M1 1H23V23H1Z' }, style: { fill: { mode: 'fixed', value: '#eee' } } },
@@ -285,8 +285,8 @@ function makeSharedLayerIcon(): Icon {
         size: 24,
         viewBox: [0, 0, 24, 24],
         layers: stateA.layers,
-        defaultState: 'state-a',
-        states: { 'state-a': stateA, 'state-b': stateB },
+        defaultType: 'state-a',
+        types: { 'state-a': stateA, 'state-b': stateB },
       },
     },
     transitions: {},
@@ -356,7 +356,7 @@ describe('runtime dom renderer', () => {
     const container = createMockContainer();
     const icon = makeIcon();
     const renderer = new DomRenderer(container, icon);
-    const fromLayer = icon.variants.v24.states!.idle!.layers.base!;
+    const fromLayer = icon.variants.v24.types!.idle!.layers.base!;
     const toLayer = {
       ...fromLayer,
       path: { d: 'M4 4 H20 V20 H4 Z', fillRule: 'evenodd' as const },
@@ -393,8 +393,8 @@ describe('runtime dom renderer', () => {
     const container = createMockContainer();
     const icon = makeIcon();
     const renderer = new DomRenderer(container, icon);
-    const fromLayer = icon.variants.v24.states!.idle!.layers.base!;
-    const toLayer = icon.variants.v24.states!.active!.layers.badge!;
+    const fromLayer = icon.variants.v24.types!.idle!.layers.base!;
+    const toLayer = icon.variants.v24.types!.active!.layers.badge!;
 
     renderer.mount('v24');
     renderer.applyFrame(
@@ -502,8 +502,8 @@ describe('runtime dom renderer', () => {
             'layer-a': { id: 'layer-a', path: { d: 'M0 0H24V24H0Z' }, style: {} },
             'layer-c': { id: 'layer-c', path: { d: 'M4 4H20V20H4Z' }, style: {} },
           },
-          defaultState: 'two-layers',
-          states: {
+          defaultType: 'two-layers',
+          types: {
             'two-layers': {
               id: 'two-layers',
               layers: {

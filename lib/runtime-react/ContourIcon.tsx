@@ -366,8 +366,8 @@ export const ContourIcon = forwardRef<ContourIconHandle, ContourIconProps>(
     // Render static SVG with layers for SSR. After the driver mounts, it
     // creates its own <path> elements inside the SVG and we stop rendering
     // React-managed paths to avoid duplication and reconciliation conflicts.
-    const resolvedStateDef = resolvedVariant.states?.[resolvedState];
-    const ssrLayers = resolvedStateDef?.layers ?? resolvedVariant.layers ?? {};
+    const resolvedTypeDef = resolvedVariant.types?.[resolvedState];
+    const ssrLayers = resolvedTypeDef?.layers ?? resolvedVariant.layers ?? {};
     const layers =
       !hydratedRef.current && Object.keys(ssrLayers).length > 0
         ? getRenderableLayers(ssrLayers)
@@ -498,19 +498,19 @@ function resolveVariant(
 }
 
 function resolveState(variant: Variant, requestedState?: string): string {
-  if (requestedState && variant.states?.[requestedState]) {
+  if (requestedState && variant.types?.[requestedState]) {
     return requestedState;
   }
 
-  if (variant.defaultState && variant.states?.[variant.defaultState]) {
-    return variant.defaultState;
+  if (variant.defaultType && variant.types?.[variant.defaultType]) {
+    return variant.defaultType;
   }
 
-  const fallback = Object.values(variant.states ?? {})[0];
+  const fallback = Object.values(variant.types ?? {})[0];
   if (!fallback) {
-    // Variant-centric model: no states map — return the variant's own ID
+    // Variant-centric model: no types map — return the variant's own ID
     // so the driver won't attempt a transition to a non-existent variant.
-    return variant.defaultState ?? variant.id;
+    return variant.defaultType ?? variant.id;
   }
 
   return fallback.id;

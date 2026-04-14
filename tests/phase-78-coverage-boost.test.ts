@@ -17,7 +17,7 @@ import {
   shouldReduceMotion,
 } from '@/lib/runtime-core/motion-preference';
 import { canonicalizePath } from '@/lib/runtime-core/path-normalization';
-import type { State, Transition } from '@/lib/schema/types';
+import type { IconType, Transition } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
 // morph.ts — canonicalizeCommands coverage
@@ -162,8 +162,8 @@ describe('morph.ts — bestGuessMorph', () => {
 // ---------------------------------------------------------------------------
 
 describe('inspection.ts — inspectTransitionPlan', () => {
-  function makeState(layers: Record<string, { d?: string }>): State {
-    const result: Record<string, State['layers'][string]> = {};
+  function makeState(layers: Record<string, { d?: string }>): IconType {
+    const result: Record<string, IconType['layers'][string]> = {};
     for (const [id, config] of Object.entries(layers)) {
       result[id] = {
         id,

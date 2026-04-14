@@ -13,8 +13,8 @@ function makeIcon(): Icon {
         size: 24,
         viewBox: [0, 0, 24, 24],
         layers: {},
-        defaultState: 'default',
-        states: {
+        defaultType: 'default',
+        types: {
           default: {
             id: 'default',
             layers: {

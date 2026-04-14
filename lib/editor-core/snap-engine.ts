@@ -2,7 +2,7 @@ import { editorStore, type EditorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
   selectCurrentGuideMaster,
-  selectCurrentState,
+  selectCurrentType,
   selectCurrentVariant,
 } from '@/lib/editor-store/selectors';
 import { parseSvgPath } from './parse';
@@ -72,7 +72,7 @@ export class SnapEngine {
     const variant = selectCurrentVariant(state);
     const icon = selectCurrentIcon(state);
     const guideMaster = selectCurrentGuideMaster(state);
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
 
     const viewBox = options.viewBox ?? variant?.viewBox;
     const zoom = Math.max(options.zoom ?? state.viewport.zoom ?? 1, 0.0001);
@@ -214,9 +214,9 @@ export class SnapEngine {
     const s = this.store.getState() as EditorStore;
     const iconId = s.currentIconId ?? '';
     const variantId = s.currentVariantId ?? '';
-    const stateId = s.currentStateId ?? '';
+    const stateId = s.currentTypeId ?? '';
     const projectMarker = s.project ? Object.keys(s.project.icons).length : 0;
-    const current = selectCurrentState(s);
+    const current = selectCurrentType(s);
     const layerCount = current ? Object.keys(current.layers).length : 0;
     return `${iconId}|${variantId}|${stateId}|${projectMarker}|${layerCount}`;
   }

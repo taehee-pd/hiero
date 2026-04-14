@@ -2,11 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import type { Icon, State } from '../lib/schema';
+import type { Icon, IconType } from '../lib/schema';
 import { ContourIcon, useIconState } from '../lib/runtime-react';
 
 function makeTestIcon(): Icon {
-  const defaultState: State = {
+  const defaultType: IconType = {
     id: 'default',
     layers: {
       bg: { id: 'bg', path: { d: 'M0 0H24V24H0Z' }, style: { fill: { mode: 'fixed', value: '#fff' } } },
@@ -14,7 +14,7 @@ function makeTestIcon(): Icon {
     },
   };
 
-  const activeState: State = {
+  const activeState: IconType = {
     id: 'active',
     layers: {
       bg: { id: 'bg', path: { d: 'M0 0H24V24H0Z' }, style: { fill: { mode: 'fixed', value: '#eee' } } },
@@ -30,9 +30,9 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
-        layers: defaultState.layers,
-        defaultState: 'default',
-        states: { default: defaultState, active: activeState },
+        layers: defaultType.layers,
+        defaultType: 'default',
+        types: { default: defaultType, active: activeState },
       },
       v16: {
         id: 'v16',
@@ -41,8 +41,8 @@ function makeTestIcon(): Icon {
         layers: {
           arrow: { id: 'arrow', path: { d: 'M5 3l6 5-6 5' }, style: {} },
         },
-        defaultState: 'default',
-        states: {
+        defaultType: 'default',
+        types: {
           default: {
             id: 'default',
             layers: {

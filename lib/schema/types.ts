@@ -10,68 +10,69 @@ export type LayerSnapshot = {
   topology?: TopologyContract;
 };
 
-export type State = {
+/**
+ * IconType — a named visual style within a Variant (e.g. "line", "filled", "colored").
+ * Free-form identifier: users can name types whatever they want.
+ * Not to be confused with interaction states (hover, active, etc.); those are handled
+ * separately via `StateTrigger` in consumer code.
+ */
+export type IconType = {
   id: string;
   layers: Record<string, Layer>;
   topology?: TopologyContract;
 };
 
-function buildDefaultLegacyState(v: Variant): State {
-  const fallbackState = Object.values(v.states ?? {})[0];
+function buildDefaultIconType(v: Variant): IconType {
+  const fallbackType = Object.values(v.types ?? {})[0];
   return {
-    id: v.defaultState ?? fallbackState?.id ?? 'default',
-    layers: v.layers ?? fallbackState?.layers ?? {},
-    topology: v.topology ?? fallbackState?.topology,
+    id: v.defaultType ?? fallbackType?.id ?? 'default',
+    layers: v.layers ?? fallbackType?.layers ?? {},
+    topology: v.topology ?? fallbackType?.topology,
   };
 }
 
-export function getVariantDefaultStateId(v: Variant): string {
-  return v.defaultState ?? Object.keys(v.states ?? {})[0] ?? 'default';
+export function getVariantDefaultTypeId(v: Variant): string {
+  return v.defaultType ?? Object.keys(v.types ?? {})[0] ?? 'default';
 }
 
-export function getVariantState(v: Variant, stateId?: string | null): State {
-  const resolvedStateId = stateId ?? getVariantDefaultStateId(v);
-  const state = v.states?.[resolvedStateId];
-  if (state) {
+export function getVariantType(v: Variant, typeId?: string | null): IconType {
+  const resolvedTypeId = typeId ?? getVariantDefaultTypeId(v);
+  const iconType = v.types?.[resolvedTypeId];
+  if (iconType) {
     return {
-      ...state,
-      topology: state.topology ?? v.topology,
+      ...iconType,
+      topology: iconType.topology ?? v.topology,
     };
   }
-  // Flat-variant model: no states map — use top-level layers.
-  // Emit a dev warning when an explicit non-default stateId was requested but not found,
-  // to surface authoring mistakes (stale stateId after migration).
-  if (
-    resolvedStateId &&
-    resolvedStateId !== 'default' &&
-    v.states &&
-    Object.keys(v.states).length > 0
-  ) {
-    console.warn(
-      `[contour] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`,
-    );
-  }
-  return buildDefaultLegacyState(v);
+  // Flat-variant model: no matching type — use top-level layers as fallback.
+  // (The runtime renderer intentionally passes variant ids here for variant-
+  // switch flows, so a missing lookup here is expected, not a bug.)
+  return buildDefaultIconType(v);
 }
 
-export function withLegacyVariantStateView(v: Variant): Variant {
-  const defaultState = getVariantDefaultStateId(v);
-  const defaultStateView = v.states?.[defaultState];
-  const fallbackState = Object.values(v.states ?? {})[0];
+/**
+ * Normalize a flat variant into the `types` shape. Ensures a default IconType
+ * entry exists keyed by `defaultType`, populated from the top-level layers.
+ * Used by sample fixtures and importers to produce a canonical variant.
+ */
+export function normalizeVariant(v: Variant): Variant {
+  const defaultType = getVariantDefaultTypeId(v);
+  const defaultTypeView = v.types?.[defaultType];
+  const fallbackType = Object.values(v.types ?? {})[0];
   const normalizedLayers =
-    v.layers ?? defaultStateView?.layers ?? fallbackState?.layers ?? {};
+    v.layers ?? defaultTypeView?.layers ?? fallbackType?.layers ?? {};
   const normalizedTopology =
-    v.topology ?? defaultStateView?.topology ?? fallbackState?.topology;
+    v.topology ?? defaultTypeView?.topology ?? fallbackType?.topology;
   return {
     ...v,
     layers: normalizedLayers,
     topology: normalizedTopology,
-    defaultState,
-    states: {
-      ...(v.states ?? {}),
-      [defaultState]: {
-        ...(defaultStateView ?? {}),
-        id: defaultState,
+    defaultType,
+    types: {
+      ...(v.types ?? {}),
+      [defaultType]: {
+        ...(defaultTypeView ?? {}),
+        id: defaultType,
         layers: normalizedLayers,
         topology: normalizedTopology,
       },
@@ -80,9 +81,9 @@ export function withLegacyVariantStateView(v: Variant): Variant {
 }
 
 /** Convert a flat Variant into a LayerSnapshot for runtime functions. */
-export function variantToSnapshot(v: Variant, stateId?: string | null): LayerSnapshot {
-  const state = getVariantState(v, stateId);
-  return { layers: state.layers, topology: state.topology };
+export function variantToSnapshot(v: Variant, typeId?: string | null): LayerSnapshot {
+  const iconType = getVariantType(v, typeId);
+  return { layers: iconType.layers, topology: iconType.topology };
 }
 
 // ---------------------------------------------------------------------------
@@ -151,10 +152,10 @@ export type Variant = {
   style?: 'outline' | 'fill' | 'slash' | 'circle' | 'square' | 'badge' | string;
   layers: Record<string, Layer>;
   topology?: TopologyContract;
-  /** Compatibility-only state view for partially migrated modules and tests. */
-  defaultState?: string;
-  /** Compatibility-only state view for partially migrated modules and tests. */
-  states?: Record<string, State>;
+  /** Default IconType id for this variant (e.g. "line", "filled"). */
+  defaultType?: string;
+  /** Named visual types within this variant (e.g. "line", "filled", "colored"). */
+  types?: Record<string, IconType>;
   variableValue?: number;  // 0.0-1.0, controls progressive layer fill
   weightControlPoints?: {
     ultralight?: string;  // SVG d string

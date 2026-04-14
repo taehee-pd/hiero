@@ -1,7 +1,7 @@
 import type { Icon, LayerSnapshot, RuntimeTransitionIntent, Transition, Variant } from '../schema';
 import { variantToSnapshot } from '../schema/types';
 
-export type StateChangeListener = (snapshot: LayerSnapshot, transition: RuntimeTransitionIntent | null) => void;
+export type SnapshotChangeListener = (snapshot: LayerSnapshot, transition: RuntimeTransitionIntent | null) => void;
 
 /** Find a transition defined on the icon that matches from→to variant IDs. */
 function findTransition(icon: Icon, fromVariantId: string, toVariantId: string): Transition | null {
@@ -16,7 +16,7 @@ function findTransition(icon: Icon, fromVariantId: string, toVariantId: string):
 export class StateMachine {
   private readonly icon: Icon;
   private variant: Variant;
-  private readonly listeners = new Set<StateChangeListener>();
+  private readonly listeners = new Set<SnapshotChangeListener>();
   private snapshot: LayerSnapshot;
 
   constructor(icon: Icon, variantId?: string) {
@@ -30,11 +30,6 @@ export class StateMachine {
   }
 
   get currentSnapshot(): LayerSnapshot {
-    return this.snapshot;
-  }
-
-  /** @deprecated Use currentSnapshot instead */
-  get currentState(): LayerSnapshot {
     return this.snapshot;
   }
 
@@ -59,7 +54,7 @@ export class StateMachine {
     return transition;
   }
 
-  onStateChange(callback: StateChangeListener): () => void {
+  onSnapshotChange(callback: SnapshotChangeListener): () => void {
     this.listeners.add(callback);
     return () => {
       this.listeners.delete(callback);

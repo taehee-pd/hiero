@@ -1,4 +1,4 @@
-import { withLegacyVariantStateView, type Icon, type LayerBinding } from '../types';
+import { normalizeVariant, type Icon, type LayerBinding } from '../types';
 
 const SHARED_STROKE_STYLE = {
   fill: { mode: 'fixed', value: 'none' } as const,
@@ -18,7 +18,7 @@ export const HAMBURGER_CLOSE_ICON: Icon = {
   category: 'navigation',
   tags: ['menu', 'close', 'toggle'],
   variants: {
-    '24-open': withLegacyVariantStateView({
+    '24-open': normalizeVariant({
       id: '24-open',
       size: 24,
       viewBox: [0, 0, 24, 24],
@@ -40,7 +40,7 @@ export const HAMBURGER_CLOSE_ICON: Icon = {
         },
       },
     }),
-    '24-closed': withLegacyVariantStateView({
+    '24-closed': normalizeVariant({
       id: '24-closed',
       size: 24,
       viewBox: [0, 0, 24, 24],

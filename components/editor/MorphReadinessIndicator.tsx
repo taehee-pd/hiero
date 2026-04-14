@@ -9,7 +9,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
-import type { State, Transition } from '@/lib/schema/types';
+import type { IconType, Transition } from '@/lib/schema/types';
 import type { MorphReadiness } from '@/lib/runtime-core/transition-resolver';
 import { analyzeTopologyCompatibility } from '@/lib/runtime-core/topology-detection';
 
@@ -18,8 +18,8 @@ import { analyzeTopologyCompatibility } from '@/lib/runtime-core/topology-detect
 // ---------------------------------------------------------------------------
 
 type MorphReadinessIndicatorProps = {
-  fromState: State;
-  toState: State;
+  fromState: IconType;
+  toState: IconType;
   transition: Transition;
   readiness?: MorphReadiness;
   /** UX-F3: Callback to switch strategy to crossfade/bestGuessMorph */
@@ -127,7 +127,7 @@ export function MorphReadinessIndicator({
           {/* Tip for low bbox similarity */}
           {readiness && readiness.bboxSimilarity < 0.5 && (
             <div className="text-[11px] text-muted-foreground/70">
-              Bounding boxes differ. Aligning layer sizes across states improves morph quality.
+              Bounding boxes differ. Aligning layer sizes across types improves morph quality.
             </div>
           )}
 

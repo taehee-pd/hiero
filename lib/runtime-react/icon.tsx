@@ -14,11 +14,11 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   {
     payload,
     state,
-    defaultState,
+    defaultType,
     transition,
     effect,
     effectRepeat,
-    onStateChange,
+    onTypeChange,
     size,
     title,
     ...svgProps
@@ -28,11 +28,11 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   const runtime = useIcon({
     payload,
     state,
-    defaultState,
+    defaultType,
     transition,
     effect,
     effectRepeat,
-    onStateChange,
+    onTypeChange,
   });
 
   return (
@@ -42,8 +42,8 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       size={size}
       title={title}
       snapshot={runtime.snapshot}
-      data-runtime-state={runtime.currentStateId}
-      data-runtime-settled-state={runtime.settledStateId}
+      data-runtime-state={runtime.currentTypeId}
+      data-runtime-settled-state={runtime.settledTypeId}
       data-runtime-transition={runtime.activeTransitionId}
       data-runtime-effect={runtime.activeEffectId}
       data-runtime-animating={runtime.isAnimating ? 'true' : 'false'}

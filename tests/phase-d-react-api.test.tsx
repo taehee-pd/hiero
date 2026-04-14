@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import React, { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import type { Icon, State } from '../lib/schema';
+import type { Icon, IconType } from '../lib/schema';
 import {
   ContourIcon,
   type ContourIconHandle,
@@ -17,7 +17,7 @@ import {
 // ---------------------------------------------------------------------------
 
 function makeTestIcon(): Icon {
-  const defaultState: State = {
+  const defaultType: IconType = {
     id: 'default',
     layers: {
       bg: {
@@ -33,7 +33,7 @@ function makeTestIcon(): Icon {
     },
   };
 
-  const activeState: State = {
+  const activeState: IconType = {
     id: 'active',
     layers: {
       bg: {
@@ -49,7 +49,7 @@ function makeTestIcon(): Icon {
     },
   };
 
-  const hoverState: State = {
+  const hoverState: IconType = {
     id: 'hover',
     layers: {
       bg: {
@@ -74,8 +74,8 @@ function makeTestIcon(): Icon {
         size: 24,
         viewBox: [0, 0, 24, 24],
         layers: {},
-        defaultState: 'default',
-        states: { default: defaultState, active: activeState, hover: hoverState },
+        defaultType: 'default',
+        types: { default: defaultType, active: activeState, hover: hoverState },
       },
     },
     transitions: {

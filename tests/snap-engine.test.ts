@@ -41,8 +41,8 @@ function createProjectFixture(): Project {
           size: 24,
           viewBox: [0, 0, 24, 24],
           layers: {},
-          defaultState: 'default',
-          states: {
+          defaultType: 'default',
+          types: {
             default: {
               id: 'default',
               layers: {
@@ -85,7 +85,7 @@ function createMockStore(state: EditorStore): StoreLike & { emit: () => void } {
 
 describe('snap engine', () => {
   test('computeSnap snaps to grid by default', () => {
-    editorStore.setState({ snapEnabled: true, activeSnapGuides: [], project: null, currentIconId: null, currentVariantId: null, currentStateId: null });
+    editorStore.setState({ snapEnabled: true, activeSnapGuides: [], project: null, currentIconId: null, currentVariantId: null, currentTypeId: null });
     const result = computeSnap(
       { x: 3.24, y: 6.76 },
       {
@@ -109,7 +109,7 @@ describe('snap engine', () => {
       project,
       currentIconId: 'snap',
       currentVariantId: 'v24',
-      currentStateId: 'default',
+      currentTypeId: 'default',
       snapEnabled: true,
       viewport: { zoom: 4, panX: 0, panY: 0 },
     } as EditorStore;
@@ -156,7 +156,7 @@ describe('snap engine', () => {
       project,
       currentIconId: 'snap',
       currentVariantId: 'v24',
-      currentStateId: 'default',
+      currentTypeId: 'default',
       snapEnabled: true,
       viewport: { zoom: 1, panX: 0, panY: 0 },
     } as EditorStore;
@@ -181,7 +181,7 @@ describe('snap engine', () => {
     expect(tight.snappedX).toBeTrue();
 
     // Mutate layer geometry and emit store update to trigger cache invalidation.
-    state.project!.icons.snap.variants.v24.states!.default.layers.anchor.path!.d = 'M16 16 L20 20';
+    state.project!.icons.snap.variants.v24.types!.default.layers.anchor.path!.d = 'M16 16 L20 20';
     store.emit();
 
     const afterChange = engine.computeSnap(
@@ -200,7 +200,7 @@ describe('snap engine', () => {
     editorStore.getState().loadProject(loaded);
     editorStore.getState().setCurrentIcon('icon-home');
     editorStore.getState().setCurrentVariant('v24');
-    editorStore.getState().setCurrentState('default');
+    editorStore.getState().setCurrentType('default');
     editorStore.setState({ snapEnabled: true, activeSnapGuides: [] });
 
     const result = computeSnap({ x: 12.1, y: 12.1 }, { zoom: 4, tolerancePx: 3 });
@@ -215,7 +215,7 @@ describe('snap engine', () => {
       project,
       currentIconId: 'snap',
       currentVariantId: 'v24',
-      currentStateId: 'default',
+      currentTypeId: 'default',
       snapEnabled: false,
       viewport: { zoom: 4, panX: 0, panY: 0 },
     } as EditorStore;
@@ -242,7 +242,7 @@ describe('snap engine', () => {
       project,
       currentIconId: 'snap',
       currentVariantId: 'v24',
-      currentStateId: 'default',
+      currentTypeId: 'default',
       snapEnabled: true,
       viewport: { zoom: 4, panX: 0, panY: 0 },
     } as EditorStore;
@@ -276,7 +276,7 @@ describe('snap engine', () => {
       project,
       currentIconId: 'snap',
       currentVariantId: 'v24',
-      currentStateId: 'default',
+      currentTypeId: 'default',
       snapEnabled: true,
       viewport: { zoom: 4, panX: 0, panY: 0 },
     } as EditorStore;

@@ -207,8 +207,8 @@ export function checkPlatformCapabilities(
 
   // Check layers for clip paths (both top-level and in states)
   const allLayers: Array<Record<string, unknown>> = [...(payload.layers as Array<Record<string, unknown>>)];
-  if (payload.states) {
-    for (const state of Object.values(payload.states)) {
+  if (payload.types) {
+    for (const state of Object.values(payload.types)) {
       if (Array.isArray((state as Record<string, unknown>).layers)) {
         allLayers.push(...((state as Record<string, unknown>).layers as Array<Record<string, unknown>>));
       }

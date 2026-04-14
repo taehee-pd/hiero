@@ -232,44 +232,45 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
 
 /* ToolRail removed — search/import actions moved to sidebar head */
 
-// UX-1.4: State management section for variants with multiple states
-function StatesSection({
+// Type management section — lets users define named visual types per variant
+// (e.g. "line", "filled", "colored"). Free-form identifiers.
+function TypesSection({
   currentVariant,
-  currentStateId,
-  onSelectState,
-  onAddState,
-  onRemoveState,
-  onRenameState,
-  onDuplicateState,
+  currentTypeId,
+  onSelectType,
+  onAddType,
+  onRemoveType,
+  onRenameType,
+  onDuplicateType,
 }: {
   currentVariant: Variant | null;
-  currentStateId: string | null;
-  onSelectState: (stateId: string) => void;
-  onAddState: (stateId: string) => void;
-  onRemoveState: (stateId: string) => void;
-  onRenameState: (oldId: string, newId: string) => void;
-  onDuplicateState: (sourceId: string, newId: string) => void;
+  currentTypeId: string | null;
+  onSelectType: (typeId: string) => void;
+  onAddType: (typeId: string) => void;
+  onRemoveType: (typeId: string) => void;
+  onRenameType: (oldId: string, newId: string) => void;
+  onDuplicateType: (sourceId: string, newId: string) => void;
 }) {
-  const [newStateName, setNewStateName] = useState('');
+  const [newTypeName, setNewTypeName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const stateIds = useMemo(
-    () => Object.keys(currentVariant?.states ?? {}),
-    [currentVariant?.states],
+  const typeIds = useMemo(
+    () => Object.keys(currentVariant?.types ?? {}),
+    [currentVariant?.types],
   );
 
   const handleAdd = () => {
-    const name = newStateName.trim() || `state-${stateIds.length + 1}`;
-    onAddState(name);
-    setNewStateName('');
+    const name = newTypeName.trim() || `type-${typeIds.length + 1}`;
+    onAddType(name);
+    setNewTypeName('');
   };
 
   const commitRename = (oldId: string) => {
     const trimmed = renameValue.trim();
     if (trimmed && trimmed !== oldId) {
-      onRenameState(oldId, trimmed);
+      onRenameType(oldId, trimmed);
     }
     setRenamingId(null);
   };
@@ -277,14 +278,14 @@ function StatesSection({
   return (
     <>
       <div className="wire-section-header mt-4">
-        <span>States</span>
+        <span>Types</span>
       </div>
 
       <div className="wire-inline-form">
         <Input
-          value={newStateName}
-          onChange={(e) => setNewStateName(e.target.value)}
-          placeholder="e.g. hover, active"
+          value={newTypeName}
+          onChange={(e) => setNewTypeName(e.target.value)}
+          placeholder="e.g. line, filled, colored"
           className="wire-input"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -298,16 +299,16 @@ function StatesSection({
         </Button>
       </div>
 
-      {stateIds.length === 0 ? (
+      {typeIds.length === 0 ? (
         <p className="px-3 py-2 text-xs text-muted-foreground">
-          No states. Add states to define different appearances (e.g. default, hover, active).
+          No types. Add types to define visual styles (e.g. line, filled, colored).
         </p>
       ) : (
-        stateIds.map((stateId) => {
-          const isDefault = stateId === currentVariant?.defaultState;
+        typeIds.map((typeId) => {
+          const isDefault = typeId === currentVariant?.defaultType;
           return (
-            <div key={stateId} className="group flex items-center">
-              {renamingId === stateId ? (
+            <div key={typeId} className="group flex items-center">
+              {renamingId === typeId ? (
                 <Input
                   className="wire-input mx-3 my-0.5 h-7 text-xs"
                   value={renameValue}
@@ -316,23 +317,23 @@ function StatesSection({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      commitRename(stateId);
+                      commitRename(typeId);
                     } else if (e.key === 'Escape') {
                       setRenamingId(null);
                     }
                   }}
-                  onBlur={() => commitRename(stateId)}
+                  onBlur={() => commitRename(typeId)}
                 />
               ) : (
                 <Button
                   variant="ghost"
-                  data-active={stateId === currentStateId ? 'true' : 'false'}
+                  data-active={typeId === currentTypeId ? 'true' : 'false'}
                   className="wire-list-row flex-1"
-                  onClick={() => onSelectState(stateId)}
+                  onClick={() => onSelectType(typeId)}
                   onDoubleClick={() => {
                     if (isDefault) return;
-                    setRenamingId(stateId);
-                    setRenameValue(stateId);
+                    setRenamingId(typeId);
+                    setRenameValue(typeId);
                   }}
                 >
                   {isDefault ? (
@@ -342,10 +343,10 @@ function StatesSection({
                           <Lock className="size-3" />
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="right">Default state is locked and cannot be removed or renamed.</TooltipContent>
+                      <TooltipContent side="right">Default type is locked and cannot be removed or renamed.</TooltipContent>
                     </Tooltip>
                   ) : null}
-                  <span>{stateId}</span>
+                  <span>{typeId}</span>
                 </Button>
               )}
               {isDefault ? null : (
@@ -354,8 +355,8 @@ function StatesSection({
                     variant="ghost"
                     size="icon-sm"
                     className="size-5 text-muted-foreground hover:text-foreground"
-                    aria-label={`Duplicate ${stateId}`}
-                    onClick={() => onDuplicateState(stateId, `${stateId}-copy`)}
+                    aria-label={`Duplicate ${typeId}`}
+                    onClick={() => onDuplicateType(typeId, `${typeId}-copy`)}
                   >
                     <Copy className="size-3" />
                   </Button>
@@ -363,8 +364,8 @@ function StatesSection({
                     variant="ghost"
                     size="icon-sm"
                     className="size-5 text-muted-foreground hover:text-destructive"
-                    aria-label={`Delete ${stateId}`}
-                    onClick={() => setDeleteTarget(stateId)}
+                    aria-label={`Delete ${typeId}`}
+                    onClick={() => setDeleteTarget(typeId)}
                   >
                     <X className="size-3" />
                   </Button>
@@ -378,16 +379,16 @@ function StatesSection({
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete state</AlertDialogTitle>
+            <AlertDialogTitle>Delete type</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete the &ldquo;{deleteTarget}&rdquo; state? This removes all layer data for this state. You can undo this action.
+              Delete the &ldquo;{deleteTarget}&rdquo; type? This removes all layer data for this type. You can undo this action.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (deleteTarget) onRemoveState(deleteTarget);
+                if (deleteTarget) onRemoveType(deleteTarget);
                 setDeleteTarget(null);
               }}
             >
@@ -476,12 +477,12 @@ function LeftSidebar({
   newVariantSize,
   onNewVariantSizeChange,
   onCreateVariant,
-  currentStateId,
-  onSelectState,
-  onAddState,
-  onRemoveState,
-  onRenameState,
-  onDuplicateState,
+  currentTypeId,
+  onSelectType,
+  onAddType,
+  onRemoveType,
+  onRenameType,
+  onDuplicateType,
 }: {
   currentIcon: Icon | null;
   currentVariant: Variant | null;
@@ -496,12 +497,12 @@ function LeftSidebar({
   newVariantSize: string;
   onNewVariantSizeChange: (value: string) => void;
   onCreateVariant: () => void;
-  currentStateId: string | null;
-  onSelectState: (stateId: string) => void;
-  onAddState: (stateId: string) => void;
-  onRemoveState: (stateId: string) => void;
-  onRenameState: (oldId: string, newId: string) => void;
-  onDuplicateState: (sourceId: string, newId: string) => void;
+  currentTypeId: string | null;
+  onSelectType: (typeId: string) => void;
+  onAddType: (typeId: string) => void;
+  onRemoveType: (typeId: string) => void;
+  onRenameType: (oldId: string, newId: string) => void;
+  onDuplicateType: (sourceId: string, newId: string) => void;
 }) {
 
   return (
@@ -604,20 +605,20 @@ function LeftSidebar({
                 })}
               </div>
 
-              {/* UX-1.4: State management section */}
-              <StatesSection
+              {/* Type management section — e.g. line, filled, colored */}
+              <TypesSection
                 currentVariant={currentVariant}
-                currentStateId={currentStateId}
-                onSelectState={onSelectState}
-                onAddState={onAddState}
-                onRemoveState={onRemoveState}
-                onRenameState={onRenameState}
-                onDuplicateState={onDuplicateState}
+                currentTypeId={currentTypeId}
+                onSelectType={onSelectType}
+                onAddType={onAddType}
+                onRemoveType={onRemoveType}
+                onRenameType={onRenameType}
+                onDuplicateType={onDuplicateType}
               />
             </div>
           </ScrollArea>
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle />
         <ResizablePanel defaultSize={62} minSize={30}>
           <ScrollArea className="h-full">
             <div role="region" aria-label="Layers" className="wire-section animate-in fade-in duration-150">
@@ -1596,7 +1597,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   const router = useRouter();
   const currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
-  const currentStateId = useEditorStore((s) => s.currentStateId);
+  const currentTypeId = useEditorStore((s) => s.currentTypeId);
   const project = useEditorStore((s) => s.project);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selection = useEditorStore((s) => s.selection);
@@ -1627,11 +1628,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     renameLayer,
     setCurrentIcon,
     setCurrentVariant,
-    setCurrentState,
-    addState,
-    removeState,
-    renameState,
-    duplicateState,
+    setCurrentType,
+    addType,
+    removeType,
+    renameType,
+    duplicateType,
     setSelection,
     setTool,
     setTransitionPreview,
@@ -1771,7 +1772,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     };
   }, [activeIconSetId, createBlankIcon, openIconTab]);
 
-  // Auto-select the first visible layer only when switching icons/states
+  // Auto-select the first visible layer only when switching icons/types
   // (not when user explicitly clears selection via Escape or empty-canvas click)
   const autoSelectKeyRef = useRef('');
   useEffect(() => {
@@ -2053,12 +2054,12 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             newVariantSize={newVariantSize}
             onNewVariantSizeChange={setNewVariantSize}
             onCreateVariant={handleCreateVariant}
-            currentStateId={currentStateId}
-            onSelectState={setCurrentState}
-            onAddState={(stateId) => currentIcon && addState(currentIcon.id, stateId)}
-            onRemoveState={(stateId) => currentIcon && removeState(currentIcon.id, stateId)}
-            onRenameState={(oldId, newId) => currentIcon && renameState(currentIcon.id, oldId, newId)}
-            onDuplicateState={(sourceId, newId) => currentIcon && duplicateState(currentIcon.id, sourceId, newId)}
+            currentTypeId={currentTypeId}
+            onSelectType={setCurrentType}
+            onAddType={(typeId) => currentIcon && addType(currentIcon.id, typeId)}
+            onRemoveType={(typeId) => currentIcon && removeType(currentIcon.id, typeId)}
+            onRenameType={(oldId, newId) => currentIcon && renameType(currentIcon.id, oldId, newId)}
+            onDuplicateType={(sourceId, newId) => currentIcon && duplicateType(currentIcon.id, sourceId, newId)}
           />
         </div>
 

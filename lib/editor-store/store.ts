@@ -1,6 +1,6 @@
 import {
-  getVariantDefaultStateId,
-  withLegacyVariantStateView,
+  getVariantDefaultTypeId,
+  normalizeVariant,
 } from '@/lib/schema/types';
 import type {
   Project,
@@ -19,7 +19,7 @@ import type {
   SymbolWeight,
   SyncTarget,
   Variant,
-  State,
+  IconType,
   RenderingMode,
 } from '@/lib/schema/types';
 import {
@@ -53,8 +53,8 @@ export type EditorState = {
   lastSavedAt: number | null;
   currentIconId: string | null;
   currentVariantId: string | null;
-  /** Compatibility-only alias for partially migrated modules and tests. */
-  currentStateId: string | null;
+  /** Currently selected IconType id (e.g. "line", "filled"). */
+  currentTypeId: string | null;
   selectedIconGuideIndex: number | null;
   selection: SelectionState;
   activeSnapGuides: SnapTarget[];
@@ -139,13 +139,13 @@ export type EditorActions = {
   ): void;
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
-  setCurrentState(id: string): void;
-  addState(iconId: string, stateId: string): void;
-  removeState(iconId: string, stateId: string): void;
-  renameState(iconId: string, oldStateId: string, newStateId: string): void;
-  duplicateState(iconId: string, sourceStateId: string, newStateId: string): void;
+  setCurrentType(id: string): void;
+  addType(iconId: string, typeId: string): void;
+  removeType(iconId: string, typeId: string): void;
+  renameType(iconId: string, oldTypeId: string, newTypeId: string): void;
+  duplicateType(iconId: string, sourceTypeId: string, newTypeId: string): void;
   setTopology(iconId: string, variantId: string, topology: TopologyContract | undefined): void;
-  setStateTopology(iconId: string, stateId: string, topology: TopologyContract | undefined): void;
+  setStateTopology(iconId: string, typeId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, layerId: string, patch: Partial<Layer>): void;
   renameLayer(iconId: string, oldLayerId: string, newLayerId: string): void;
@@ -298,7 +298,7 @@ const initialState: EditorState = {
   lastSavedAt: null,
   currentIconId: null,
   currentVariantId: null,
-  currentStateId: null,
+  currentTypeId: null,
   selectedIconGuideIndex: null,
   selection: { layerIds: [], pointIds: [] },
   activeSnapGuides: [],
@@ -373,7 +373,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     project: snapshot.project,
     activeIconSetId: snapshot.activeIconSetId,
     isDirty: snapshot.isDirty,
-    currentStateId: variant ? getVariantDefaultStateId(variant) : null,
+    currentTypeId: variant ? getVariantDefaultTypeId(variant) : null,
     renderingMode: getResolvedRenderingMode(variant),
     selection: { layerIds: [], pointIds: [] },
     activeSnapGuides: [],
@@ -781,7 +781,7 @@ function withLegacyIconView(icon: Icon): Icon {
     variants: Object.fromEntries(
       Object.entries(icon.variants).map(([variantId, variant]) => [
         variantId,
-        withLegacyVariantStateView(variant),
+        normalizeVariant(variant),
       ]),
     ),
   };
@@ -843,7 +843,7 @@ function replaceVariantLayers(
     ...icon,
     variants: {
       ...icon.variants,
-      [variantId]: withLegacyVariantStateView({
+      [variantId]: normalizeVariant({
         ...variant,
         layers: nextLayers,
         topology: nextTopology !== undefined ? nextTopology : variant.topology,
@@ -869,9 +869,9 @@ function buildEditorTarget(project: Project | null | undefined, requestedIconId?
   return {
     iconId,
     variantId,
-    currentStateId:
+    currentTypeId:
       variantId && iconId && project
-        ? getVariantDefaultStateId(project.icons[iconId]!.variants[variantId]!)
+        ? getVariantDefaultTypeId(project.icons[iconId]!.variants[variantId]!)
         : null,
     renderingMode: getResolvedRenderingMode(
       variantId && iconId && project ? project.icons[iconId]?.variants[variantId] : null,
@@ -907,7 +907,7 @@ function createBlankIcon(
     id: toKebabCase(name) || 'new-icon',
     name,
     variants: {
-      [variantId]: withLegacyVariantStateView({
+      [variantId]: normalizeVariant({
         id: variantId,
         name: String(size),
         size,
@@ -938,7 +938,7 @@ function buildWorkspaceState(
     activeIconSetId: resolvedIconSetId,
     currentIconId: target.iconId,
     currentVariantId: target.variantId,
-    currentStateId: target.currentStateId,
+    currentTypeId: target.currentTypeId,
     renderingMode: target.renderingMode,
     selectedIconGuideIndex: null,
     selection: { layerIds: [], pointIds: [] },
@@ -1078,7 +1078,7 @@ function createActions(): EditorActions {
         },
         currentIconId: nextIconId,
         currentVariantId: nextVariantId,
-        currentStateId: nextVariantId ? getVariantDefaultStateId(normalizedNextIcon.variants[nextVariantId]!) : null,
+        currentTypeId: nextVariantId ? getVariantDefaultTypeId(normalizedNextIcon.variants[nextVariantId]!) : null,
         renderingMode: getResolvedRenderingMode(
           nextVariantId ? normalizedNextIcon.variants[nextVariantId] : null,
         ),
@@ -1125,7 +1125,7 @@ function createActions(): EditorActions {
           },
           currentIconId: nextIconId,
           currentVariantId: nextVariantId,
-          currentStateId: nextVariantId ? getVariantDefaultStateId(normalizedNextIcon.variants[nextVariantId]!) : null,
+          currentTypeId: nextVariantId ? getVariantDefaultTypeId(normalizedNextIcon.variants[nextVariantId]!) : null,
           renderingMode: getResolvedRenderingMode(
             nextVariantId ? normalizedNextIcon.variants[nextVariantId] : null,
           ),
@@ -1189,7 +1189,7 @@ function createActions(): EditorActions {
           },
           currentIconId: nextIconId,
           currentVariantId: nextVariantId,
-          currentStateId: nextVariantId ? getVariantDefaultStateId(duplicate.variants[nextVariantId]!) : null,
+          currentTypeId: nextVariantId ? getVariantDefaultTypeId(duplicate.variants[nextVariantId]!) : null,
           renderingMode: getResolvedRenderingMode(nextVariantId ? duplicate.variants[nextVariantId] : null),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
@@ -1226,7 +1226,7 @@ function createActions(): EditorActions {
           },
           currentIconId: nextIconId,
           currentVariantId: nextVariantId,
-          currentStateId: nextIconId && nextVariantId ? getVariantDefaultStateId(nextIcons[nextIconId]!.variants[nextVariantId]!) : null,
+          currentTypeId: nextIconId && nextVariantId ? getVariantDefaultTypeId(nextIcons[nextIconId]!.variants[nextVariantId]!) : null,
           renderingMode: getResolvedRenderingMode(
             nextIconId && nextVariantId ? nextIcons[nextIconId]?.variants[nextVariantId] : null,
           ),
@@ -1272,7 +1272,7 @@ function createActions(): EditorActions {
             ? variantInput.viewBox
             : scaleViewBoxToSize(sourceVariant.viewBox, variantInput.size);
 
-        const nextVariant: Variant = withLegacyVariantStateView({
+        const nextVariant: Variant = normalizeVariant({
           id: nextVariantId,
           name: nextVariantName,
           size: variantInput.size,
@@ -1308,7 +1308,7 @@ function createActions(): EditorActions {
           },
           currentIconId: iconId,
           currentVariantId: nextVariantId,
-          currentStateId: getVariantDefaultStateId(nextVariant),
+          currentTypeId: getVariantDefaultTypeId(nextVariant),
           renderingMode: getResolvedRenderingMode(nextVariant),
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
@@ -1554,7 +1554,7 @@ function createActions(): EditorActions {
         return {
           currentIconId: id,
           currentVariantId: nextVariantId,
-          currentStateId: nextVariantId ? getVariantDefaultStateId(icon.variants[nextVariantId]!) : null,
+          currentTypeId: nextVariantId ? getVariantDefaultTypeId(icon.variants[nextVariantId]!) : null,
           renderingMode: getResolvedRenderingMode(
             nextVariantId ? icon.variants[nextVariantId] : null,
           ),
@@ -1575,7 +1575,7 @@ function createActions(): EditorActions {
 
         return {
           currentVariantId: id,
-          currentStateId: getVariantDefaultStateId(variant),
+          currentTypeId: getVariantDefaultTypeId(variant),
           renderingMode: getResolvedRenderingMode(variant),
           activeSnapGuides: [],
           pointMarquee: null,
@@ -1586,20 +1586,20 @@ function createActions(): EditorActions {
       });
     },
 
-    setCurrentState(id) {
-      editorStoreApi.setState({ currentStateId: id });
+    setCurrentType(id) {
+      editorStoreApi.setState({ currentTypeId: id });
     },
 
-    addState(iconId, stateId) {
+    addType(iconId, typeId) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[s.currentVariantId];
         if (!icon || !variant) return s;
-        if (variant.states?.[stateId]) return s; // already exists
+        if (variant.types?.[typeId]) return s; // already exists
 
-        const newState: State = {
-          id: stateId,
+        const newIconType: IconType = {
+          id: typeId,
           layers: JSON.parse(JSON.stringify(variant.layers)),
           topology: variant.topology ? JSON.parse(JSON.stringify(variant.topology)) : undefined,
         };
@@ -1613,28 +1613,28 @@ function createActions(): EditorActions {
                 ...icon,
                 variants: {
                   ...icon.variants,
-                  [s.currentVariantId]: withLegacyVariantStateView({
+                  [s.currentVariantId]: normalizeVariant({
                     ...variant,
-                    states: { ...(variant.states ?? {}), [stateId]: newState },
+                    types: { ...(variant.types ?? {}), [typeId]: newIconType },
                   }),
                 },
               },
             },
           },
-          currentStateId: stateId,
+          currentTypeId: typeId,
         };
       });
     },
 
-    removeState(iconId, stateId) {
+    removeType(iconId, typeId) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant || !variant.states?.[stateId]) return s;
+        if (!icon || !variant || !variant.types?.[typeId]) return s;
 
-        const { [stateId]: _, ...remainingStates } = variant.states;
-        const stateIds = Object.keys(remainingStates);
+        const { [typeId]: _, ...remainingTypes } = variant.types;
+        const stateIds = Object.keys(remainingTypes);
         const nextStateId = stateIds[0] ?? null;
 
         return {
@@ -1646,35 +1646,35 @@ function createActions(): EditorActions {
                 ...icon,
                 variants: {
                   ...icon.variants,
-                  [s.currentVariantId]: withLegacyVariantStateView({
+                  [s.currentVariantId]: normalizeVariant({
                     ...variant,
-                    states: stateIds.length > 0 ? remainingStates : undefined,
-                    defaultState: variant.defaultState === stateId
+                    types: stateIds.length > 0 ? remainingTypes : undefined,
+                    defaultType: variant.defaultType === typeId
                       ? nextStateId ?? undefined
-                      : variant.defaultState,
+                      : variant.defaultType,
                   }),
                 },
               },
             },
           },
-          currentStateId: s.currentStateId === stateId
-            ? (nextStateId ?? s.currentStateId)
-            : s.currentStateId,
+          currentTypeId: s.currentTypeId === typeId
+            ? (nextStateId ?? s.currentTypeId)
+            : s.currentTypeId,
         };
       });
     },
 
-    renameState(iconId, oldStateId, newStateId) {
+    renameType(iconId, oldTypeId, newTypeId) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant || !variant.states?.[oldStateId]) return s;
-        if (variant.states[newStateId]) return s; // target name already exists
+        if (!icon || !variant || !variant.types?.[oldTypeId]) return s;
+        if (variant.types[newTypeId]) return s; // target name already exists
 
-        const oldState = variant.states[oldStateId];
-        const { [oldStateId]: _, ...rest } = variant.states;
-        const renamedStates = { ...rest, [newStateId]: { ...oldState, id: newStateId } };
+        const oldType = variant.types[oldTypeId];
+        const { [oldTypeId]: _, ...rest } = variant.types;
+        const renamedStates = { ...rest, [newTypeId]: { ...oldType, id: newTypeId } };
 
         return {
           project: {
@@ -1685,37 +1685,37 @@ function createActions(): EditorActions {
                 ...icon,
                 variants: {
                   ...icon.variants,
-                  [s.currentVariantId]: withLegacyVariantStateView({
+                  [s.currentVariantId]: normalizeVariant({
                     ...variant,
-                    states: renamedStates,
-                    defaultState: variant.defaultState === oldStateId
-                      ? newStateId
-                      : variant.defaultState,
+                    types: renamedStates,
+                    defaultType: variant.defaultType === oldTypeId
+                      ? newTypeId
+                      : variant.defaultType,
                   }),
                 },
               },
             },
           },
-          currentStateId: s.currentStateId === oldStateId ? newStateId : s.currentStateId,
+          currentTypeId: s.currentTypeId === oldTypeId ? newTypeId : s.currentTypeId,
         };
       });
     },
 
-    duplicateState(iconId, sourceStateId, newStateId) {
+    duplicateType(iconId, sourceTypeId, newTypeId) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[s.currentVariantId];
         if (!icon || !variant) return s;
 
-        const sourceState = variant.states?.[sourceStateId]
-          ?? { id: sourceStateId, layers: variant.layers, topology: variant.topology };
-        if (variant.states?.[newStateId]) return s; // target already exists
+        const sourceType = variant.types?.[sourceTypeId]
+          ?? { id: sourceTypeId, layers: variant.layers, topology: variant.topology };
+        if (variant.types?.[newTypeId]) return s; // target already exists
 
-        const duplicated: State = {
-          id: newStateId,
-          layers: JSON.parse(JSON.stringify(sourceState.layers)),
-          topology: sourceState.topology ? JSON.parse(JSON.stringify(sourceState.topology)) : undefined,
+        const duplicated: IconType = {
+          id: newTypeId,
+          layers: JSON.parse(JSON.stringify(sourceType.layers)),
+          topology: sourceType.topology ? JSON.parse(JSON.stringify(sourceType.topology)) : undefined,
         };
 
         return {
@@ -1727,15 +1727,15 @@ function createActions(): EditorActions {
                 ...icon,
                 variants: {
                   ...icon.variants,
-                  [s.currentVariantId]: withLegacyVariantStateView({
+                  [s.currentVariantId]: normalizeVariant({
                     ...variant,
-                    states: { ...(variant.states ?? {}), [newStateId]: duplicated },
+                    types: { ...(variant.types ?? {}), [newTypeId]: duplicated },
                   }),
                 },
               },
             },
           },
-          currentStateId: newStateId,
+          currentTypeId: newTypeId,
         };
       });
     },
@@ -1768,7 +1768,7 @@ function createActions(): EditorActions {
       });
     },
 
-    setStateTopology(iconId, stateId, topology) {
+    setStateTopology(iconId, typeId, topology) {
       editorStoreApi.setState((s) => {
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
@@ -1784,21 +1784,21 @@ function createActions(): EditorActions {
                 ...icon,
                 variants: {
                   ...icon.variants,
-                  [s.currentVariantId]: withLegacyVariantStateView({
+                  [s.currentVariantId]: normalizeVariant({
                     ...variant,
                     topology,
-                    states: variant.states
+                    types: variant.types
                       ? {
-                          ...variant.states,
-                          [stateId]: {
-                            ...(variant.states[stateId] ?? {
-                              id: stateId,
+                          ...variant.types,
+                          [typeId]: {
+                            ...(variant.types[typeId] ?? {
+                              id: typeId,
                               layers: variant.layers,
                             }),
                             topology,
                           },
                         }
-                      : variant.states,
+                      : variant.types,
                   }),
                 },
               },

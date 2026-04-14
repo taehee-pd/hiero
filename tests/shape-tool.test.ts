@@ -65,7 +65,7 @@ function createMockSvg(): SVGSVGElement {
 }
 
 function getCurrentLayer(layerId: string) {
-  return editorStore.getState().project!.icons['icon-home'].variants.v24.states!.default.layers[layerId];
+  return editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers[layerId];
 }
 
 function pointerEvent(init: {

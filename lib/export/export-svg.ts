@@ -1,5 +1,5 @@
 import type { Icon, Layer, PaintRef, RenderingMode } from '@/lib/schema/types';
-import { getVariantState } from '@/lib/schema/types';
+import { getVariantType } from '@/lib/schema/types';
 import {
   applyVariableValue,
   resolveLayerStyleForRendering,
@@ -21,7 +21,7 @@ export function exportSvgString(
 ): string {
   const variant = icon.variants[variantId];
   if (!variant) return '';
-  const state = getVariantState(variant, stateId);
+  const state = getVariantType(variant, stateId);
   const effectiveRenderingMode = resolveVariantRenderingMode(
     renderingMode ?? variant.renderingMode,
   );

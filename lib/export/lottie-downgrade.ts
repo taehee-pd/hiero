@@ -49,13 +49,13 @@ export function collectLottieDowngrades(
   // Check variableValue (not representable in Lottie)
   checkVariableValue(variant, diagnostics);
 
-  // Check paint styles for radialGradient — in variant layers and state layers
+  // Check paint styles for radialGradient — in variant layers and type layers.
   const allLayers = new Map<string, typeof variant.layers[string]>();
   for (const [id, layer] of Object.entries(variant.layers ?? {})) {
     allLayers.set(id, layer);
   }
-  for (const state of Object.values(variant.states ?? {})) {
-    for (const [id, layer] of Object.entries(state.layers ?? {})) {
+  for (const iconType of Object.values(variant.types ?? {})) {
+    for (const [id, layer] of Object.entries(iconType.layers ?? {})) {
       allLayers.set(id, layer);
     }
   }
@@ -175,10 +175,10 @@ function checkTransitionCompatibility(
       const toLayerId = binding.toLayerId;
       if (!fromLayerId || !toLayerId) continue;
 
-      const fromState = variant.states?.[transition.from ?? 'default'];
-      const toState = variant.states?.[transition.to ?? 'default'];
-      const fromLayer = fromState?.layers?.[fromLayerId] ?? variant.layers?.[fromLayerId];
-      const toLayer = toState?.layers?.[toLayerId] ?? variant.layers?.[toLayerId];
+      const fromType = variant.types?.[transition.from ?? 'default'];
+      const toType = variant.types?.[transition.to ?? 'default'];
+      const fromLayer = fromType?.layers?.[fromLayerId] ?? variant.layers?.[fromLayerId];
+      const toLayer = toType?.layers?.[toLayerId] ?? variant.layers?.[toLayerId];
 
       if (fromLayer?.path?.d && toLayer?.path?.d) {
         const fromCommands = extractPathCommands(fromLayer.path.d);

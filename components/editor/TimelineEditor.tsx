@@ -471,7 +471,7 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
     });
   }, [bindings, fromState, toState]);
 
-  // I3: State for the add-track dropdown per binding
+  // I3: IconType for the add-track dropdown per binding
   const [addTrackOpen, setAddTrackOpen] = useState<number | null>(null);
   const addTrackMenuRef = useRef<HTMLDivElement>(null);
 

@@ -88,7 +88,7 @@ describe('runtime-json export', () => {
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
 
-    variant.states = {
+    variant.types = {
       default: {
         id: 'default',
         layers: structuredClone(variant.layers),
@@ -271,7 +271,7 @@ describe('runtime-json export', () => {
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
 
-    variant.states = {
+    variant.types = {
       default: {
         id: 'default',
         layers: structuredClone(variant.layers),
@@ -339,7 +339,7 @@ describe('runtime-json export', () => {
     const icon = project.icons['icon-home']!;
     const variant = icon.variants.v24;
 
-    variant.states = {
+    variant.types = {
       default: {
         id: 'default',
         layers: structuredClone(variant.layers),

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { Icon, State, SyncTarget, IconSet } from '../lib/schema/types';
+import type { Icon, IconType, SyncTarget, IconSet } from '../lib/schema/types';
 import type {
   RuntimeIconMeta,
   RuntimeVariantPayload,
@@ -24,7 +24,7 @@ import type { AdapterPrSyncRequest } from '../lib/sync-service/connectors/adapte
 // ---------------------------------------------------------------------------
 
 function makeTestIcon(): Icon {
-  const defaultState: State = {
+  const defaultType: IconType = {
     id: 'default',
     layers: {
       bg: {
@@ -43,9 +43,9 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
-        layers: defaultState.layers,
-        defaultState: 'default',
-        states: { default: defaultState },
+        layers: defaultType.layers,
+        defaultType: 'default',
+        types: { default: defaultType },
       },
     },
     transitions: {},

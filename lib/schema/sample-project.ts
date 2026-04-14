@@ -1,4 +1,4 @@
-import { withLegacyVariantStateView, type Project } from './types';
+import { normalizeVariant, type Project } from './types';
 import { createWorkspaceFromProject } from './workspace';
 
 /**
@@ -19,7 +19,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'general',
       tags: ['home', 'house', 'main'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,
@@ -64,7 +64,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'general',
       tags: ['search', 'find', 'magnify'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,
@@ -107,7 +107,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'general',
       tags: ['heart', 'love', 'favorite'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,
@@ -139,7 +139,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'communication',
       tags: ['bell', 'notification', 'alert'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,
@@ -184,7 +184,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'general',
       tags: ['settings', 'gear', 'cog', 'preferences'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,
@@ -231,7 +231,7 @@ const BASE_SAMPLE_PROJECT: Project = {
       category: 'general',
       tags: ['star', 'favorite', 'rating'],
       variants: {
-        v24: withLegacyVariantStateView({
+        v24: normalizeVariant({
           id: 'v24',
           name: '24',
           size: 24,

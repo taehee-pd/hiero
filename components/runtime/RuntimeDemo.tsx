@@ -16,7 +16,7 @@ export function RuntimeDemo() {
   const controlledEffectTimerRef = useRef<number | undefined>(undefined);
   const uncontrolled = useIcon({
     payload,
-    defaultState: 'default',
+    defaultType: 'default',
   });
 
   useEffect(
@@ -137,8 +137,8 @@ export function RuntimeDemo() {
                     size={148}
                     className="text-foreground drop-shadow-[0_12px_24px_color-mix(in_oklab,var(--primary)_18%,transparent)]"
                     title="Uncontrolled runtime icon preview"
-                    data-runtime-state={uncontrolled.currentStateId}
-                    data-runtime-settled-state={uncontrolled.settledStateId}
+                    data-runtime-state={uncontrolled.currentTypeId}
+                    data-runtime-settled-state={uncontrolled.settledTypeId}
                     data-runtime-transition={uncontrolled.activeTransitionId}
                     data-runtime-effect={uncontrolled.activeEffectId}
                   />
@@ -146,13 +146,13 @@ export function RuntimeDemo() {
 
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    variant={uncontrolled.currentStateId === 'default' ? 'default' : 'outline'}
+                    variant={uncontrolled.currentTypeId === 'default' ? 'default' : 'outline'}
                     onClick={() => uncontrolled.setState('default')}
                   >
                     Default
                   </Button>
                   <Button
-                    variant={uncontrolled.currentStateId === 'active' ? 'default' : 'outline'}
+                    variant={uncontrolled.currentTypeId === 'active' ? 'default' : 'outline'}
                     onClick={() => uncontrolled.setState('active')}
                   >
                     Active
@@ -174,11 +174,11 @@ export function RuntimeDemo() {
                 <div className="grid gap-2 rounded-[18px] border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between gap-4">
                     <span>Current state</span>
-                    <code className="text-foreground">{uncontrolled.currentStateId}</code>
+                    <code className="text-foreground">{uncontrolled.currentTypeId}</code>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span>Settled state</span>
-                    <code className="text-foreground">{uncontrolled.settledStateId}</code>
+                    <code className="text-foreground">{uncontrolled.settledTypeId}</code>
                   </div>
                   <div className="flex items-center justify-between gap-4">
                     <span>Animating</span>

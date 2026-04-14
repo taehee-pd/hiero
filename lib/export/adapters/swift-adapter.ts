@@ -352,8 +352,8 @@ function getFirstVariant(icon: Icon) {
 function collectStateIds(icon: Icon): string[] {
   const ids = new Set<string>();
   for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states ?? {})) {
-      ids.add(stateId);
+    for (const typeId of Object.keys(variant.types ?? {})) {
+      ids.add(typeId);
     }
   }
   return [...ids].sort((a, b) => a.localeCompare(b));

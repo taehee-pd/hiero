@@ -47,8 +47,8 @@ const ALIGN_SHORTCUT_PROJECT: Project = {
               transform: { x: 50, y: 20 },
             },
           },
-          defaultState: 'default',
-          states: {
+          defaultType: 'default',
+          types: {
             default: {
               id: 'default',
               layers: {
@@ -101,7 +101,7 @@ function bootstrapAlignShortcutSelection() {
 }
 
 function getArrangeLayerTransform(layerId: 'a' | 'b' | 'c') {
-  return editorStore.getState().project!.icons.arrange.variants.v24.states!.default.layers[layerId]
+  return editorStore.getState().project!.icons.arrange.variants.v24.types!.default.layers[layerId]
     .transform!;
 }
 
@@ -111,7 +111,7 @@ function getCurrentLayer(
   stateId: string,
   layerId: string,
 ) {
-  return editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId].layers[layerId];
+  return editorStore.getState().project!.icons[iconId].variants[variantId].types![stateId].layers[layerId];
 }
 
 describe('keyboard shortcuts', () => {
@@ -146,7 +146,7 @@ describe('keyboard shortcuts', () => {
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
-    const stateId = state.currentStateId!;
+    const stateId = state.currentTypeId!;
 
     state.setLayerVisibility(iconId, 'roof', false);
     undo();

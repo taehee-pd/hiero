@@ -106,13 +106,13 @@ describe('runtime core', () => {
     const machine = new StateMachine(icon, 'idle');
     const observed: Array<{ transitionId: string | null }> = [];
 
-    machine.onStateChange((_snapshot, transition) => {
+    machine.onSnapshotChange((_snapshot, transition) => {
       observed.push({
         transitionId: transition?.id ?? null,
       });
     });
 
-    expect(machine.currentState.layers).toBeDefined();
+    expect(machine.currentSnapshot.layers).toBeDefined();
 
     machine.transitionTo('active');
     machine.transitionTo('idle');
@@ -865,7 +865,7 @@ describe('StateMachine — variant-centric model', () => {
     const icon = makeIconWithTransition();
     const machine = new StateMachine(icon, 'idle');
     const emitted: Array<string | null> = [];
-    machine.onStateChange((_snapshot, transition) => {
+    machine.onSnapshotChange((_snapshot, transition) => {
       emitted.push(transition?.id ?? null);
     });
     machine.transitionTo('active');
@@ -881,7 +881,7 @@ describe('StateMachine — variant-centric model', () => {
     const icon = makeIconWithTransition();
     const machine = new StateMachine(icon, 'idle');
     let callCount = 0;
-    machine.onStateChange(() => { callCount++; });
+    machine.onSnapshotChange(() => { callCount++; });
     const result = machine.transitionTo('idle');
     expect(result).toBeNull();
     expect(callCount).toBe(0);

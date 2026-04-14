@@ -126,7 +126,7 @@ export type RuntimeLayer = {
   clipPath?: RuntimeClipPath;
 };
 
-export type RuntimeState = {
+export type RuntimeIconType = {
   layers: RuntimeLayer[];
 };
 
@@ -221,7 +221,7 @@ export type RuntimeVariantPayload = {
     viewBox: [number, number, number, number];
   };
   layers: RuntimeLayer[];
-  states?: Record<string, RuntimeState>;
+  types?: Record<string, RuntimeIconType>;
   transitions?: Record<string, RuntimeTransition>;
   effects?: Record<string, RuntimeEffect>;
   draw?: RuntimeDrawAnnotation;
@@ -858,10 +858,8 @@ function buildRuntimeTransitions(
 
   const renderedLayerIds = new Set(runtimeLayers.map((layer) => layer.id));
   const validStateIds = new Set<string>(['default']);
-  if (variant.states) {
-    for (const stateId of Object.keys(variant.states)) {
-      validStateIds.add(stateId);
-    }
+  for (const typeId of Object.keys(variant.types ?? {})) {
+    validStateIds.add(typeId);
   }
 
   const result: Record<string, RuntimeTransition> = {};

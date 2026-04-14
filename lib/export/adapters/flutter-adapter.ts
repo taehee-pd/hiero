@@ -138,7 +138,7 @@ function generateFlutterWidget(
 ): string {
   const stateIds = collectStateIds(icon);
   const firstVariant = getFirstVariant(icon);
-  const defaultState = firstVariant.defaultState ?? 'default';
+  const defaultState = firstVariant.defaultType ?? 'default';
   const viewBox = firstVariant.viewBox;
 
   const lines: string[] = [];
@@ -252,7 +252,7 @@ function generateFlutterWidget(
   lines.push('    switch (state) {');
   for (const stateId of stateIds) {
     // Flat-variant model: 'default' state uses top-level variant layers.
-    const state = firstVariant.states?.[stateId];
+    const state = firstVariant.types?.[stateId];
     const flatLayers = stateId === 'default' && !state ? firstVariant.layers : null;
     if (!state && !flatLayers) continue;
     lines.push(`      case ${className}State.${toDartEnumCase(stateId)}:`);
@@ -301,7 +301,7 @@ function getFirstVariant(icon: Icon) {
 function collectStateIds(icon: Icon): string[] {
   const ids = new Set<string>();
   for (const variant of Object.values(icon.variants)) {
-    for (const stateId of Object.keys(variant.states ?? {})) {
+    for (const stateId of Object.keys(variant.types ?? {})) {
       ids.add(stateId);
     }
   }

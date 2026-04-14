@@ -134,7 +134,7 @@ describe('checkPlatformCapabilities', () => {
 
   test('Flutter profile + payload with clip-path layer → emits unsupported-clip-path', () => {
     const payload = makeMockPayload({
-      states: {
+      types: {
         default: {
           layers: [
             {

@@ -2,7 +2,7 @@ import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
   selectCurrentVariant,
-  selectCurrentState,
+  selectCurrentType,
 } from '@/lib/editor-store/selectors';
 import type { LayerSnapshot } from '@/lib/schema/types';
 import { isPathDirectlyEditable, parseSvgPath, serializePath } from './parse';
@@ -472,7 +472,7 @@ export class PathEditor {
   private startLayerDrag(layerId: string, clientX: number, clientY: number) {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
     if (!icon || !currentState) return;
     const layer = currentState.layers[layerId];
     if (!layer) return;
@@ -497,7 +497,7 @@ export class PathEditor {
     clientY: number,
   ) {
     const state = editorStore.getState();
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
     const pathD = currentState?.layers[layerId]?.path?.d;
     if (!pathD || !isPathDirectlyEditable(pathD)) return;
 
@@ -519,7 +519,7 @@ export class PathEditor {
     clientY: number,
   ) {
     const state = editorStore.getState();
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
     const pathD = currentState?.layers[layerId]?.path?.d;
     if (!pathD || !isPathDirectlyEditable(pathD)) return;
 
@@ -1626,7 +1626,7 @@ export class PathEditor {
     preferredLayerId: string | null,
   ): string[] {
     const state = editorStore.getState();
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
     if (!currentState) return [];
 
     const matched = new Set<string>();

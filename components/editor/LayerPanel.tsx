@@ -48,7 +48,7 @@ export const LayerPanel = memo(function LayerPanel() {
     }
     return map;
   });
-  const _currentStateId = useEditorStore((s) => s.currentStateId);
+  const _currentStateId = useEditorStore((s) => s.currentTypeId);
   const currentVariant = useEditorStore(selectCurrentVariant);
   const { setSelection, setLayerVisibility, renameLayer, removeSelectedLayers } = useEditorActions();
 

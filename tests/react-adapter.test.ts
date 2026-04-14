@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { Icon, State } from '../lib/schema/types';
+import type { Icon, IconType } from '../lib/schema/types';
 import type {
   RuntimeIconMeta,
   RuntimeVariantPayload,
@@ -14,7 +14,7 @@ import {
 // ---------------------------------------------------------------------------
 
 function makeTestIcon(): Icon {
-  const defaultState: State = {
+  const defaultType: IconType = {
     id: 'default',
     layers: {
       bg: {
@@ -30,7 +30,7 @@ function makeTestIcon(): Icon {
     },
   };
 
-  const activeState: State = {
+  const activeState: IconType = {
     id: 'active',
     layers: {
       bg: {
@@ -54,9 +54,9 @@ function makeTestIcon(): Icon {
         id: 'v24',
         size: 24,
         viewBox: [0, 0, 24, 24],
-        layers: defaultState.layers,
-        defaultState: 'default',
-        states: { default: defaultState, active: activeState },
+        layers: defaultType.layers,
+        defaultType: 'default',
+        types: { default: defaultType, active: activeState },
       },
     },
     transitions: {

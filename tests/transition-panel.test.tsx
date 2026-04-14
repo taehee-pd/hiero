@@ -38,8 +38,8 @@ function buildTwoIconProject(): Project {
                 transform: { x: 0, y: 0 },
               },
             },
-            defaultState: 'default',
-            states: {
+            defaultType: 'default',
+            types: {
               default: {
                 id: 'default',
                 layers: {
@@ -72,8 +72,8 @@ function buildTwoIconProject(): Project {
                 transform: { x: 0, y: 0 },
               },
             },
-            defaultState: 'default',
-            states: {
+            defaultType: 'default',
+            types: {
               default: {
                 id: 'default',
                 layers: {

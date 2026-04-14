@@ -43,8 +43,8 @@ function buildClipMaskProject(): Project {
                 clipPathLayerId: 'mask',
               },
             },
-            defaultState: 'default',
-            states: {
+            defaultType: 'default',
+            types: {
               default: {
                 id: 'default',
                 layers: {

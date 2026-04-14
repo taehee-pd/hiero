@@ -24,7 +24,7 @@ describe('variant management', () => {
       id: 'v32',
       size: 32,
       viewBox: [0, 0, 32, 32],
-      defaultState: 'default',
+      defaultType: 'default',
     });
     expect(editorStore.getState().currentVariantId).toBe('v32');
 

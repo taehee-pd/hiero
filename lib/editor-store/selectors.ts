@@ -20,10 +20,10 @@ export function selectCurrentVariant(s: EditorStore): Variant | null {
   return icon.variants[s.currentVariantId] ?? null;
 }
 
-export function selectCurrentState(s: EditorStore): LayerSnapshot | null {
+export function selectCurrentType(s: EditorStore): LayerSnapshot | null {
   const variant = selectCurrentVariant(s);
   if (!variant) return null;
-  return variantToSnapshot(variant, s.currentStateId);
+  return variantToSnapshot(variant, s.currentTypeId);
 }
 
 export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {

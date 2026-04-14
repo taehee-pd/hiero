@@ -1,5 +1,5 @@
 import type { Icon, Layer, PaintRef, Variant } from '../schema';
-import { getVariantState } from '../schema/types';
+import { getVariantType } from '../schema/types';
 import type {
   AnimatedValue,
   InterpolatedValues,
@@ -85,7 +85,7 @@ export class DomRenderer {
 
     this.svg = svg;
     this.variant = variant;
-    this.setState(variant.defaultState ?? 'default');
+    this.setState(variant.defaultType ?? 'default');
   }
 
   applyFrame(
@@ -204,7 +204,7 @@ export class DomRenderer {
       this.variant = variantById;
     }
 
-    const state = getVariantState(this.variant!, variantById ? undefined : stateId);
+    const state = getVariantType(this.variant!, variantById ? undefined : stateId);
 
     const svg = this.svg!;
     const defs = ensureManagedDefs(svg);
@@ -312,7 +312,7 @@ export class DomRenderer {
     }
 
     const defs = ensureManagedDefs(this.svg);
-    const targetState = getVariantState(this.variant, stateId);
+    const targetState = getVariantType(this.variant, stateId);
     const targetLayers = getRenderableLayers(targetState.layers);
     const targetLayerById = new Map(targetLayers.map((layer) => [layer.id, layer]));
 

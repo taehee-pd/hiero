@@ -170,7 +170,7 @@ function generateSvgFileMap(project: Project): FileMap {
   for (const icon of Object.values(project.icons).sort((a, b) => a.name.localeCompare(b.name))) {
     const variant = Object.values(icon.variants)[0];
     if (!variant) continue;
-    const stateId = variant.defaultState ?? 'default';
+    const stateId = variant.defaultType ?? 'default';
     const svg = exportSvgString(icon, variant.id, stateId, project.tokenSet?.colors, variant.renderingMode);
     map[`svg/${toKebab(icon.name || icon.id)}.svg`] = svg;
   }

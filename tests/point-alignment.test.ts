@@ -20,7 +20,7 @@ function bootstrap(pathD: string) {
 
 function getPointPositions() {
   return parseSvgPath(
-    editorStore.getState().project!.icons['icon-home'].variants.v24.states!.default.layers.roof
+    editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers.roof
       .path!.d,
   ).subPaths[0]!.points.map((point) => point.position);
 }

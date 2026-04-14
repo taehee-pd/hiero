@@ -31,8 +31,8 @@ function createMinimalIcon(overrides: Partial<Icon> = {}): Icon {
             },
           },
         },
-        defaultState: 'default',
-        states: {
+        defaultType: 'default',
+        types: {
           default: {
             id: 'default',
             layers: {
@@ -68,8 +68,8 @@ function createAnimatedIcon(): Icon {
             style: { fill: { mode: 'fixed' as const, value: '#000000' } },
           },
         },
-        defaultState: 'default',
-        states: {
+        defaultType: 'default',
+        types: {
           default: {
             id: 'default',
             layers: {
@@ -452,7 +452,7 @@ describe('collectLottieDowngrades (M10)', () => {
 
   test('flags radialGradient', () => {
     const icon = createMinimalIcon();
-    const layer = icon.variants!['16']!.states!['default']!.layers!['layer-1']!;
+    const layer = icon.variants!['16']!.types!['default']!.layers!['layer-1']!;
     layer.style.fill = {
       mode: 'radialGradient' as const,
       cx: 0.5,
@@ -478,8 +478,8 @@ describe('collectLottieDowngrades (M10)', () => {
               style: { fill: { mode: 'fixed' as const, value: '#000' } },
             },
           },
-          defaultState: 'default',
-          states: {
+          defaultType: 'default',
+          types: {
             default: {
               id: 'default',
               layers: {

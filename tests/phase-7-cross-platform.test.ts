@@ -51,8 +51,8 @@ function makeIcon(id: string, name: string): Icon {
             style: { fill: { mode: 'currentColor' } },
           },
         },
-        defaultState: 'idle',
-        states: {
+        defaultType: 'idle',
+        types: {
           idle: {
             id: 'idle',
             layers: {
@@ -120,7 +120,7 @@ function makeVariantPayload(
   return {
     variant: { id: 'default', size: 24, viewBox: [0, 0, 24, 24] },
     layers: [],
-    states: {
+    types: {
       idle: { layers: [] },
       active: { layers: [] },
     },
@@ -310,7 +310,7 @@ describe('Phase 7.2 — Flutter adapter', () => {
   it('emits diagnostics for unsupported features', () => {
     const icon = makeIcon('clip-icon', 'ClipIcon');
     const payload = makeVariantPayload({
-      states: {
+      types: {
         idle: {
           layers: [{
             id: 'clipped',

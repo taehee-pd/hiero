@@ -9,14 +9,14 @@ function bootstrap() {
   editorStore.getState().loadProject(structuredClone(SAMPLE_PROJECT));
 }
 
-function getVariantState(icon = structuredClone(SAMPLE_PROJECT.icons['icon-home'])) {
+function getVariantType(icon = structuredClone(SAMPLE_PROJECT.icons['icon-home'])) {
   return icon.variants.v24;
 }
 
 describe('safety net checks', () => {
   test('svg export resolves token paints with token set values', () => {
     const icon = structuredClone(SAMPLE_PROJECT.icons['icon-home']);
-    getVariantState(icon).layers.roof.style.stroke = { mode: 'token', token: 'accent' };
+    getVariantType(icon).layers.roof.style.stroke = { mode: 'token', token: 'accent' };
 
     const svg = exportSvgString(icon, 'v24', 'default', SAMPLE_PROJECT.tokenSet?.colors);
     expect(svg).toContain('stroke="#38bdf8"');
@@ -65,7 +65,7 @@ describe('safety net checks', () => {
 
   test('svg export emits deterministic gradient defs and references', () => {
     const icon = structuredClone(SAMPLE_PROJECT.icons['icon-home']);
-    getVariantState(icon).layers.roof.style.fill = {
+    getVariantType(icon).layers.roof.style.fill = {
       mode: 'linearGradient',
       angle: 90,
       stops: [
@@ -73,7 +73,7 @@ describe('safety net checks', () => {
         { offset: 1, color: '#eeeeee', opacity: 0.4 },
       ],
     };
-    getVariantState(icon).layers.roof.style.stroke = {
+    getVariantType(icon).layers.roof.style.stroke = {
       mode: 'radialGradient',
       cx: 0.5,
       cy: 0.5,
@@ -96,14 +96,14 @@ describe('safety net checks', () => {
 
   test('svg export emits clip paths and suppresses visible mask layers', () => {
     const icon = structuredClone(SAMPLE_PROJECT.icons['icon-home']);
-    getVariantState(icon).layers.mask = {
+    getVariantType(icon).layers.mask = {
       id: 'mask',
       isClipMask: true,
       path: { d: 'M2 2 H22 V22 H2 Z', fillRule: 'evenodd' },
       style: {},
       transform: { x: 1, y: 2 },
     };
-    getVariantState(icon).layers.roof.clipPathLayerId = 'mask';
+    getVariantType(icon).layers.roof.clipPathLayerId = 'mask';
 
     const svg = exportSvgString(icon, 'v24', 'default', SAMPLE_PROJECT.tokenSet?.colors);
 
@@ -121,18 +121,18 @@ describe('safety net checks', () => {
     const state = editorStore.getState();
     const iconId = state.currentIconId!;
     const variantId = state.currentVariantId!;
-    const stateId = state.currentStateId!;
+    const stateId = state.currentTypeId!;
 
     state.setClipMask('house', ['roof']);
 
-    let layers = editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]
+    let layers = editorStore.getState().project!.icons[iconId].variants[variantId].types![stateId]
       .layers;
     expect(layers.house!.isClipMask).toBeTrue();
     expect(layers.roof!.clipPathLayerId).toBe('house');
 
     state.releaseClipMask('house');
 
-    layers = editorStore.getState().project!.icons[iconId].variants[variantId].states![stateId]
+    layers = editorStore.getState().project!.icons[iconId].variants[variantId].types![stateId]
       .layers;
     expect(layers.house!.isClipMask).toBeFalse();
     expect(layers.roof!.clipPathLayerId).toBeUndefined();

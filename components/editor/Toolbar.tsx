@@ -66,7 +66,7 @@ import {
 import {
   selectCurrentIcon,
   selectCurrentVariant,
-  selectCurrentState,
+  selectCurrentType,
 } from '@/lib/editor-store/selectors';
 import { buildEditorRoute } from '@/lib/platform/routes';
 import {
@@ -207,13 +207,13 @@ export function Toolbar() {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
     const variant = selectCurrentVariant(state);
-    const currentState = selectCurrentState(state);
+    const currentState = selectCurrentType(state);
     if (!icon || !variant || !currentState) return;
 
     const svg = exportSvgString(
       icon,
       variant.id,
-      state.currentStateId ?? 'default',
+      state.currentTypeId ?? 'default',
       state.project?.tokenSet?.colors,
       state.renderingMode,
     );

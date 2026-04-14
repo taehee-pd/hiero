@@ -4,15 +4,15 @@ import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 const runtimeProject = structuredClone(SAMPLE_PROJECT);
 const runtimeIcon = runtimeProject.icons['icon-home']!;
 const runtimeVariant = runtimeIcon.variants.v24;
-const defaultState = runtimeVariant.states!.default;
+const defaultType = runtimeVariant.types!.default;
 
-runtimeVariant.states!.active = {
-  ...structuredClone(defaultState),
+runtimeVariant.types!.active = {
+  ...structuredClone(defaultType),
   id: 'active',
   layers: {
-    ...structuredClone(defaultState.layers),
+    ...structuredClone(defaultType.layers),
     roof: {
-      ...structuredClone(defaultState.layers.roof),
+      ...structuredClone(defaultType.layers.roof),
       path: {
         d: 'M7 5l7 7-7 7',
       },
@@ -87,7 +87,7 @@ const defaultExport = exportRuntimeIconVariant(
 
 const activeProject = structuredClone(runtimeProject);
 activeProject.icons[runtimeIcon.id]!.variants[runtimeVariant.id]!.layers =
-  structuredClone(runtimeVariant.states!.active!.layers);
+  structuredClone(runtimeVariant.types!.active!.layers);
 const activeExport = exportRuntimeIconVariant(
   activeProject,
   runtimeIcon.id,
@@ -98,7 +98,7 @@ export const SAMPLE_RUNTIME_EXPORT = {
   ...defaultExport,
   variant: {
     ...defaultExport.variant,
-    states: {
+    types: {
       default: { layers: defaultExport.variant.layers },
       active: { layers: activeExport.variant.layers },
     },

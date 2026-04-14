@@ -17,15 +17,15 @@ import type { RuntimeVariantPayload } from '@/lib/export/export-runtime-json';
 export type UseIconOptions = {
   payload: RuntimeVariantPayload;
   state?: string;
-  defaultState?: string;
+  defaultType?: string;
   transition?: boolean;
   effect?: string | null;
   effectRepeat?: IconRuntimeEffectRepeat;
-  onStateChange?: (stateId: string) => void;
+  onTypeChange?: (stateId: string) => void;
 };
 
 export type UseIconResult = ReturnType<IconRuntimeStore['getSnapshot']> & {
-  availableStates: string[];
+  availableTypes: string[];
   availableEffects: string[];
   setState: (stateId: string) => void;
   playEffect: (
@@ -37,14 +37,14 @@ export type UseIconResult = ReturnType<IconRuntimeStore['getSnapshot']> & {
 export function useIcon({
   payload,
   state,
-  defaultState,
+  defaultType,
   transition = true,
   effect,
   effectRepeat,
-  onStateChange,
+  onTypeChange,
 }: UseIconOptions): UseIconResult {
   const initialStateRef = useRef<string | undefined>(undefined);
-  initialStateRef.current = state ?? defaultState;
+  initialStateRef.current = state ?? defaultType;
 
   const store = useMemo(
     () =>
@@ -63,14 +63,14 @@ export function useIcon({
   );
 
   const emitStateChange = useCallback((stateId: string) => {
-    if (!onStateChange) {
+    if (!onTypeChange) {
       return;
     }
 
     startTransition(() => {
-      onStateChange(stateId);
+      onTypeChange(stateId);
     });
-  }, [onStateChange]);
+  }, [onTypeChange]);
 
   useEffect(() => {
     if (state === undefined) {
@@ -92,7 +92,7 @@ export function useIcon({
 
   return {
     ...snapshot,
-    availableStates: Object.keys(payload.states ?? { [payload.variant.id]: { layers: payload.layers } }).sort((left, right) =>
+    availableTypes: Object.keys(payload.types ?? { [payload.variant.id]: { layers: payload.layers } }).sort((left, right) =>
       left.localeCompare(right),
     ),
     availableEffects: Object.keys(payload.effects ?? {}).sort((left, right) =>

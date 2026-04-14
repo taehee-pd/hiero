@@ -793,11 +793,15 @@ function LayerRowsList({
                           d={row.layer.path.d}
                           fill={hasFill ? 'currentColor' : 'none'}
                           stroke={hasStroke ? 'currentColor' : 'none'}
-                          strokeWidth={Math.max(row.layer.style.strokeWidth ?? 1.5, 1.5)}
+                          // Use the actual stroke width in user units so the
+                          // thumbnail's stroke scales through the viewBox
+                          // transform exactly the way the icon does at the
+                          // thumbnail's render size — no `non-scaling-stroke`
+                          // hack that would force a constant screen-pixel width.
+                          strokeWidth={row.layer.style.strokeWidth ?? 1.5}
                           strokeLinecap={row.layer.style.lineCap ?? 'round'}
                           strokeLinejoin={row.layer.style.lineJoin ?? 'round'}
                           fillRule={row.layer.path.fillRule}
-                          vectorEffect="non-scaling-stroke"
                         />
                       </svg>
                     ) : (

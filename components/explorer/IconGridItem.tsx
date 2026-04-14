@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 
-import { Check, Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Grid3X3, Heart, Pencil, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -128,42 +128,19 @@ export function IconGridItem({
             }
           }}
           className={cn(
-            'group relative flex flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-            selected
-              ? 'border-transparent bg-primary-soft shadow-[0_0_0_2px_var(--primary)]'
-              : active
-                ? 'border-primary/60 bg-primary/12 shadow-[inset_0_0_0_1px_var(--primary),0_4px_10px_color-mix(in_srgb,var(--primary)_18%,transparent)]'
-                : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
+            'group relative flex select-none flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            // Two independent visual layers:
+            //   active  → solid primary fill (the icon currently open in the editor)
+            //   selected → outer charcoal ring (marked for batch action)
+            // They can co-exist (filled card with a ring around it).
+            active
+              ? 'border-primary/70 bg-primary/15 shadow-[inset_0_0_0_1px_var(--primary)]'
+              : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
+            selected && 'ring-2 ring-foreground/70 ring-offset-1 ring-offset-background',
           )}
         >
-          {/* Selection checkbox */}
           <div
-            className={cn(
-              'absolute right-1.5 top-1.5 flex gap-0.5 transition-opacity',
-              selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-            )}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShiftClick();
-              }}
-              aria-pressed={selected}
-              aria-label={selected ? `Deselect ${iconName}` : `Select ${iconName}`}
-              className={cn(
-                'flex size-5 items-center justify-center rounded-md border transition',
-                selected
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border/80 bg-background/80 text-transparent hover:text-muted-foreground',
-              )}
-            >
-              {selected ? <Check className="size-3" /> : null}
-            </button>
-          </div>
-
-          <div
-            className="flex w-full flex-col items-center gap-2 rounded-md cursor-pointer"
+            className="flex w-full cursor-pointer select-none flex-col items-center gap-2 rounded-md"
             onClick={handleClick}
             onDoubleClick={handleDoubleClick}
           >
@@ -204,8 +181,8 @@ export function IconGridItem({
               ) : (
                 <p
                   className={cn(
-                    'truncate text-[length:var(--text-caption)] text-foreground',
-                    active ? 'font-semibold text-primary' : 'font-medium',
+                    'truncate select-none text-[length:var(--text-caption)]',
+                    active ? 'font-semibold text-primary' : 'font-medium text-foreground',
                   )}
                 >
                   {iconName}

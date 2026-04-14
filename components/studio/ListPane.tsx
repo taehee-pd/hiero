@@ -397,7 +397,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             >
               <div
                 ref={gridRef}
-                className="grid grid-cols-3 content-start gap-1 p-2"
+                className="grid select-none grid-cols-3 content-start gap-1 p-2"
                 role="list"
                 aria-label="Icons"
               >

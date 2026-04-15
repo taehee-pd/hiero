@@ -21,18 +21,13 @@
 import './setup/happy-dom';
 import './setup/react';
 
-import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IconGridItem } from '@/components/explorer/IconGridItem';
-import { unregisterHappyDom } from './setup/happy-dom';
 
-afterEach(() => {
-  cleanup();
-});
-afterAll(async () => {
-  await unregisterHappyDom();
-});
+afterEach(() => { cleanup(); });
+
 
 function makeProps(overrides: Partial<Parameters<typeof IconGridItem>[0]> = {}) {
   const props = {

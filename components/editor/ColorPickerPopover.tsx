@@ -14,7 +14,7 @@ import {
   ColorPickerEyeDropper,
   ColorPickerFormat,
   ColorPickerOutput,
-} from '@/components/kibo-ui/color-picker';
+} from '@/components/ds/color-picker';
 import { cn } from '@/lib/utils';
 
 type ColorPickerPopoverProps = {

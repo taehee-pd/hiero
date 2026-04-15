@@ -8,8 +8,8 @@ import {
   Repeat,
   Repeat1,
 } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
-import { Separator } from '@/components/kibo-ui/separator';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { editorStore } from '@/lib/editor-store/store';

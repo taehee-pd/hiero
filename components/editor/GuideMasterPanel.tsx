@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, Eye, EyeOff, Plus, Ruler, Trash2, X } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,

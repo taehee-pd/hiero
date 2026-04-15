@@ -2,12 +2,12 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, ChevronDown, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
-import { Separator } from '@/components/kibo-ui/separator';
-import { Slider } from '@/components/kibo-ui/slider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from '@/components/ui/use-toast';
 import {

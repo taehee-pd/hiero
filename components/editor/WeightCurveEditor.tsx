@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
 import type { Variant, SymbolWeight } from '@/lib/schema/types';
 import {

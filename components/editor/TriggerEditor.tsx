@@ -1,6 +1,6 @@
 'use client';
 
-import { Label } from '@/components/kibo-ui/label';
+import { Label } from '@/components/ui/label';
 import type { StateTrigger } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 

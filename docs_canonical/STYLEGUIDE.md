@@ -18,7 +18,7 @@ When in doubt, match the surrounding file rather than imposing a new house style
 Observed naming patterns:
 
 - React feature components in `components/editor/`, `components/explorer/`, and `components/export/` use PascalCase file names and component names.
-- Shared UI modules in `components/ui/` and `components/kibo-ui/` use lowercase file names, following shadcn-style conventions.
+- Shared UI modules in `components/ui/` (shadcn/Radix primitives) and `components/ds/` (the cross-feature Contour design system layer) use lowercase file names, following shadcn-style conventions. The prior `components/kibo-ui/` facade was removed in the Phase 2 refactor documented in `specs/design-system-storybook.plan.md`.
 - Library modules in `lib/` generally use lowercase or kebab-case file names with camelCase exports.
 - Tests use `*.test.ts` and `*.test.tsx`.
 

@@ -24,7 +24,7 @@
 // references. See tests/setup/happy-dom.ts and tests/setup/react.ts.
 // Kept as an explicit import (not a bunfig preload) because happy-dom's
 // DOMParser interferes with the existing SVG sanitizer tests.
-import { unregisterHappyDom } from './setup/happy-dom';
+import './setup/happy-dom';
 import './setup/react';
 
 // NOTE: avoid `screen` from @testing-library/dom — its module captures
@@ -32,25 +32,21 @@ import './setup/react';
 // that run before our setup/happy-dom in some orderings. Using the
 // per-render query helpers returned by `render(...)` sidesteps this: they
 // bind to the actual container at call time, after happy-dom is up.
-import { test, expect, afterEach, afterAll } from 'bun:test';
+import { test, expect, afterEach } from 'bun:test';
 import { act, cleanup, render, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from '@/components/ui/use-toast';
 
-afterEach(() => {
-  cleanup();
-});
+afterEach(() => { cleanup(); });
+
 
 // Release happy-dom's hold on globalThis once this file's tests finish,
 // so any later test file (e.g. svg-sanitizer, raw-svg-adapter) in the
 // same bun test process sees Bun's native DOMParser again instead of
 // happy-dom's divergent implementation. Addresses codex adversarial
 // review finding #2 (contamination risk).
-afterAll(async () => {
-  await unregisterHappyDom();
-});
 
 test('Toaster renders a toast fired via the canonical use-toast hook', async () => {
   const rendered = render(<Toaster />);

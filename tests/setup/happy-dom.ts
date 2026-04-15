@@ -1,22 +1,23 @@
-// Happy-dom registration for Bun React component tests — MUST be
-// side-effect-imported BEFORE any @testing-library/* module so
-// @testing-library/dom's `screen` helper sees a valid document.body
-// when it captures references at its own init time.
+// Happy-dom registration for Bun React component tests.
 //
-// This file ONLY registers; it does not import bun:test or schedule
-// lifecycle hooks. When I tried adding afterAll(unregister) here,
-// Bun's module loader subtly broke visibility of `document` inside
-// @testing-library/react's render() — the module-level log showed
-// document present, but the identifier wasn't in scope inside RTL's
-// pure.js. Pushing lifecycle into the test file itself works cleanly.
+// IMPORTANT: the register call runs at module eval so it fires BEFORE
+// any @testing-library/* or userEvent module imports happen. ESM
+// hoists imports above inline statements, so putting the call in the
+// test file itself doesn't work — userEvent captures document
+// references at its own init time and crashes on undefined.
 //
-// Each React test that wants unregister-after-file must call
-// `unregisterHappyDom()` from an afterAll hook. This prevents the
-// happy-dom DOMParser from leaking into later test files in the same
-// bun test process — a contamination risk that only bites if a future
-// DOMParser-using test file sorts alphabetically after a React test.
-// Today none does (svg-sanitizer < toast-smoke), but the unregister is
-// cheap insurance. Documented by codex adversarial review (finding #2).
+// The bun test runner is split into two processes to avoid the
+// happy-dom DOMParser contaminating the svg-sanitizer / raw-svg-
+// adapter tests:
+//
+//   pnpm test:core  → tests/*.test.ts   (no happy-dom, native DOM)
+//   pnpm test:dom   → tests/*.test.tsx  (happy-dom for React tests)
+//
+// `pnpm test` runs them sequentially. See package.json.
+//
+// Once a React test file imports this module, happy-dom stays
+// registered for the rest of the test:dom process. No unregister —
+// the module cache makes unregister unrecoverable across files.
 
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
@@ -28,11 +29,4 @@ declare global {
 if (!globalThis.__contour_happy_dom_registered__) {
   GlobalRegistrator.register();
   globalThis.__contour_happy_dom_registered__ = true;
-}
-
-export async function unregisterHappyDom(): Promise<void> {
-  if (globalThis.__contour_happy_dom_registered__) {
-    await GlobalRegistrator.unregister();
-    globalThis.__contour_happy_dom_registered__ = false;
-  }
 }

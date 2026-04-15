@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import type { Effect, TimelineTrack, SpringConfig } from '@/lib/schema/types';
 import { EasingPicker } from './EasingPicker';
 

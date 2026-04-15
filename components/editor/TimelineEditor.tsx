@@ -9,8 +9,8 @@ import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { cn } from '@/lib/utils';
 

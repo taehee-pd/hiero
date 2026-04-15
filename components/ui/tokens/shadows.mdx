@@ -1,0 +1,58 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Shadows" />
+
+# Shadows
+
+Sourced from `/DESIGN.md` §6 "Depth & Elevation". Every shadow lives
+at **sub-0.1 opacity**; many combine both **outward cast AND inward
+inset** components to create surfaces that feel present but not heavy.
+Dark-mode values compensate with 16–28% opacity since they compete
+with a dark canvas.
+
+> Inset half-pixel borders create edges so subtle they are *felt
+> rather than seen*.
+
+## Live swatches (current theme)
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 16 }}>
+  {[
+    { name: '--shadow-inset-edge', label: 'Level 0.5 — inset edge' },
+    { name: '--shadow-outline', label: 'Level 1 — outline ring' },
+    { name: '--shadow-sm', label: 'Level 1 — shadow-sm' },
+    { name: '--shadow-md', label: 'Level 2 — shadow-md' },
+    { name: '--shadow-lg', label: 'Level 3 — shadow-lg (dialogs)' },
+    { name: '--shadow-panel', label: 'Feature lift — shadow-panel' },
+  ].map(({ name, label }) => (
+    <div
+      key={name}
+      style={{
+        padding: 20,
+        background: 'var(--background)',
+        borderRadius: 14,
+        boxShadow: `var(${name})`,
+        color: 'var(--foreground-secondary)',
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 550, letterSpacing: '0.03125rem' }}>
+        {label.toUpperCase()}
+      </div>
+      <code style={{ fontSize: 11, marginTop: 4, display: 'block' }}>{name}</code>
+    </div>
+  ))}
+</div>
+
+## Levels
+
+| Level | Treatment | Use |
+|-------|-----------|-----|
+| 0 Flat | No shadow | Background surfaces, text blocks |
+| 0.5 Inset edge | `inset 0 0 0 0.5px var(--border)` | Panel internal edge definition |
+| 1 Outline ring | `0 0 0 1px var(--border), 0 1px 2px var(--darker-100)` | Shadow-as-border for cards |
+| 2 Elevated | `0 1px 2px + 0 4px 12px` | Prominent cards, dropdowns |
+| 3 Feature lift | `0 8px 24px var(--darker-200), 0 0 0 1px var(--border)` | Dialogs, popovers |
+
+## Don't
+
+- Use heavy shadows (>0.12 opacity in light mode). The refined quality requires whisper-level depth.
+- Skip the inset-shadow component on panels. Half-pixel inset borders are structural.

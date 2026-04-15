@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { CheckSquare, Copy, Grid3X3, Heart, Pencil, Square as SquareIcon, Trash2 } from 'lucide-react';
 import {
@@ -10,6 +10,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import { useInlineRename } from '@/lib/editor-hooks';
 
 import { cn } from '@/lib/utils';
 
@@ -44,8 +45,21 @@ export function IconGridItem({
   onDelete?: () => void;
   onRename?: (nextName: string) => void;
 }) {
-  const [renaming, setRenaming] = useState(false);
-  const [renameDraft, setRenameDraft] = useState(iconName);
+  // Memoize onCommit so LayerPanel-style dep-chain churn doesn't apply
+  // here either. Hook internally reads via ref, but stable identity
+  // keeps the `commitRename`/`cancelRename` useCallback deps clean.
+  const handleRenameCommit = useCallback(
+    (next: string) => onRename?.(next),
+    [onRename],
+  );
+  const {
+    isRenaming: renaming,
+    draft: renameDraft,
+    setDraft: setRenameDraft,
+    start: startRename,
+    commit: commitRenameHook,
+    cancel: cancelRenameHook,
+  } = useInlineRename({ onCommit: handleRenameCommit });
 
   // Open the icon on pointerup (not click) because Radix's ContextMenuTrigger
   // asChild attaches pointerdown handlers on the <article> that can swallow
@@ -81,18 +95,12 @@ export function IconGridItem({
   );
 
   const commitRename = useCallback(() => {
-    if (!renaming) return;
-    const trimmed = renameDraft.trim();
-    setRenaming(false);
-    if (trimmed && trimmed !== iconName) {
-      onRename?.(trimmed);
-    }
-  }, [renaming, renameDraft, iconName, onRename]);
+    commitRenameHook(iconName);
+  }, [commitRenameHook, iconName]);
 
   const cancelRename = useCallback(() => {
-    setRenaming(false);
-    setRenameDraft(iconName);
-  }, [iconName]);
+    cancelRenameHook();
+  }, [cancelRenameHook]);
 
   return (
     <ContextMenu>
@@ -110,8 +118,7 @@ export function IconGridItem({
             }
             if (event.key === 'F2' && onRename) {
               event.preventDefault();
-              setRenameDraft(iconName);
-              setRenaming(true);
+              startRename(iconName);
             }
           }}
           className={cn(
@@ -193,8 +200,7 @@ export function IconGridItem({
                     // opened the icon, which is fine — rename takes over
                     // visually with the inline input.
                     e.stopPropagation();
-                    setRenameDraft(iconName);
-                    setRenaming(true);
+                    startRename(iconName);
                   }}
                   className={cn(
                     'block w-full box-border truncate select-none rounded-sm border border-transparent px-1 py-0.5 text-center text-[length:var(--text-caption)]',
@@ -231,10 +237,7 @@ export function IconGridItem({
         </ContextMenuItem>
         {onRename ? (
           <ContextMenuItem
-            onSelect={() => {
-              setRenameDraft(iconName);
-              setRenaming(true);
-            }}
+            onSelect={() => startRename(iconName)}
           >
             <Pencil className="size-4" />
             Rename

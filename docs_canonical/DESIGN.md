@@ -92,3 +92,5 @@ readiness), tracked in `NEXT_PHASES.md`.
 | `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@contour/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
 | `PLAN.md` | Archived production-readiness plan (all gaps shipped/removed); kept for decision history |
 | `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
+| `specs/design-system-storybook.plan.md` | Active plan: three-layer component architecture (`ui`/`ds`/feature), Storybook gating, kibo-ui removal, toast fix, Phase 1–8 rollout |
+| `.storybook/` (Storybook 10) | Component catalog + interaction tests via `@storybook/addon-vitest`; spike report in `.storybook/README.md` |

@@ -19,6 +19,7 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { editorStore } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { useMarqueeSelection } from '@/lib/editor-hooks';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { exportSvgPackage } from '@/lib/export/export-svg-package';
 import { createZipBlob } from '@/lib/export/export-react/zip';
@@ -40,23 +41,6 @@ function filterIcons(icons: ListIcon[], query: string): ListIcon[] {
       icon.tags?.some((tag) => tag.toLowerCase().includes(q)),
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Marquee hit-testing helper                                        */
-/* ------------------------------------------------------------------ */
-function rectsIntersect(
-  a: { left: number; top: number; right: number; bottom: number },
-  b: { left: number; top: number; right: number; bottom: number },
-) {
-  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-}
-
-type MarqueeDrag = {
-  startX: number;
-  startY: number;
-  baseSelectedIds: string[];
-  mode: 'replace' | 'toggle';
-};
 
 export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const project = useEditorStore((s) => s.project);
@@ -81,9 +65,26 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const importRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Marquee state (local — only selectedIconIds goes to the store)
-  const [marqueeRect, setMarqueeRect] = useState<{ left: number; top: number; right: number; bottom: number } | null>(null);
-  const marqueeDragRef = useRef<MarqueeDrag | null>(null);
+  // Marquee drag lifecycle — shared hook from lib/editor-hooks.
+  // `gridRef` below owns the query root for hit-testing; the hook
+  // uses it via containerRef to find article[data-icon-id] targets.
+  //
+  // Memoized adapters keep the hook's returned handlers stable across
+  // renders. `getCurrentSelection` reads the store imperatively via an
+  // empty-dep callback (no closure over selectedIconIds state).
+  // `setSelection` is already a stable action from useEditorActions.
+  const getCurrentIconSelection = useCallback(
+    () => [...editorStore.getState().selectedIconIds],
+    [],
+  );
+  const marquee = useMarqueeSelection({
+    itemSelector: 'article[data-icon-id]',
+    itemIdAttribute: 'data-icon-id',
+    getCurrentSelection: getCurrentIconSelection,
+    setSelection: setSelectedIconIds,
+    containerRef: gridRef,
+  });
+  const marqueeRect = marquee.rect;
 
   const icons = useMemo(
     () =>
@@ -163,81 +164,12 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     [],
   );
 
-  /* ---------------------------------------------------------------- */
-  /*  Marquee drag handlers                                           */
-  /* ---------------------------------------------------------------- */
-  const handleGridPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only left button, only on grid background (not on an item or scrollbar)
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      if (target.closest('article[data-icon-id]')) return;
-      if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
-
-      e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-      const base = e.shiftKey || e.metaKey ? [...editorStore.getState().selectedIconIds] : [];
-      if (!e.shiftKey && !e.metaKey) clearIconSelection();
-
-      marqueeDragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        baseSelectedIds: base,
-        mode: e.shiftKey || e.metaKey ? 'toggle' : 'replace',
-      };
-    },
-    [clearIconSelection],
-  );
-
-  const handleGridPointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const drag = marqueeDragRef.current;
-      if (!drag) return;
-
-      const left = Math.min(drag.startX, e.clientX);
-      const top = Math.min(drag.startY, e.clientY);
-      const right = Math.max(drag.startX, e.clientX);
-      const bottom = Math.max(drag.startY, e.clientY);
-
-      setMarqueeRect({ left, top, right, bottom });
-
-      // Hit-test all icon items
-      if (!gridRef.current) return;
-      const items = gridRef.current.querySelectorAll<HTMLElement>('article[data-icon-id]');
-      const hitIds: string[] = [];
-
-      items.forEach((item) => {
-        const rect = item.getBoundingClientRect();
-        if (rectsIntersect({ left, top, right, bottom }, rect)) {
-          const id = item.getAttribute('data-icon-id');
-          if (id) hitIds.push(id);
-        }
-      });
-
-      if (drag.mode === 'toggle') {
-        const baseSet = new Set(drag.baseSelectedIds);
-        for (const id of hitIds) {
-          if (baseSet.has(id)) baseSet.delete(id);
-          else baseSet.add(id);
-        }
-        setSelectedIconIds([...baseSet]);
-      } else {
-        setSelectedIconIds(hitIds);
-      }
-    },
-    [setSelectedIconIds],
-  );
-
-  const handleGridPointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!marqueeDragRef.current) return;
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      marqueeDragRef.current = null;
-      setMarqueeRect(null);
-    },
-    [],
-  );
+  // Marquee handlers come straight from the hook — Phase 4 Commit 3.
+  const handleGridPointerDown = marquee.onPointerDown;
+  const handleGridPointerMove = marquee.onPointerMove;
+  const handleGridPointerUp = marquee.onPointerUp;
+  const handleGridPointerCancel = marquee.onPointerCancel;
+  const handleGridLostPointerCapture = marquee.onLostPointerCapture;
 
   const iconCount = icons.length;
 
@@ -394,6 +326,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               onPointerDown={handleGridPointerDown}
               onPointerMove={handleGridPointerMove}
               onPointerUp={handleGridPointerUp}
+              onPointerCancel={handleGridPointerCancel}
+              onLostPointerCapture={handleGridLostPointerCapture}
             >
               <div
                 ref={gridRef}
@@ -475,9 +409,12 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         />
       </aside>
 
-      {/* Marquee overlay */}
+      {/* Marquee overlay — data-marquee-overlay is a semantic hook
+          used by char-marquee-listPane.test.tsx to assert the overlay
+          actually unmounts at pointerup. Do not remove. */}
       {marqueeRect && (
         <div
+          data-marquee-overlay
           className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
           style={{
             left: marqueeRect.left,

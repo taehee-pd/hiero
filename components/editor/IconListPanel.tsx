@@ -2,9 +2,9 @@
 
 import { memo, useMemo, useState } from 'react';
 import { Search, Shapes } from 'lucide-react';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
-import { Input } from '@/components/kibo-ui/input';
-import { Button } from '@/components/kibo-ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   useIconList,
   useEditorStore,

@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useCallback, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Link2, Pencil, Trash2 } from 'lucide-react';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,7 +10,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import { Button } from '@/components/kibo-ui/button';
+import { Button } from '@/components/ui/button';
 import {
   useSelection,
   useEditorStore,
@@ -18,25 +18,14 @@ import {
 } from '@/lib/editor-store/hooks';
 import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { selectCurrentVariant } from '@/lib/editor-store/selectors';
+import { useInlineRename, useMarqueeSelection } from '@/lib/editor-hooks';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 import type { PaintRef } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
-/* ------------------------------------------------------------------ */
-/*  Marquee hit-testing helper                                        */
-/* ------------------------------------------------------------------ */
-type Rect = { left: number; top: number; right: number; bottom: number };
-
-function rectsIntersect(a: Rect, b: Rect) {
-  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-}
-
-type MarqueeDrag = {
-  startX: number;
-  startY: number;
-  baseLayerIds: string[];
-  mode: 'replace' | 'toggle';
-};
+// Marquee hit-testing helpers moved to lib/editor-hooks/use-marquee-selection.ts
+// during Phase 4 Commit 3. Local Rect / MarqueeDrag / rectsIntersect
+// types deleted — the hook owns the geometry and the drag state.
 
 // A paint is "visible" only if it is defined and not explicitly `none`.
 // The schema represents transparent fills as { mode: 'fixed', value: 'none' },
@@ -81,13 +70,74 @@ export const LayerPanel = memo(function LayerPanel() {
   // UX-F4: Keyboard navigation state
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Marquee drag-to-multi-select state
-  const [marqueeRect, setMarqueeRect] = useState<Rect | null>(null);
-  const marqueeDragRef = useRef<MarqueeDrag | null>(null);
+  // Rename state machine — draft + commit lifecycle managed by the
+  // shared hook. The multi-row routing (which layer is being edited)
+  // stays in `renamingLayerId` above because LayerPanel renders many
+  // rows at once, and the hook is single-instance. Phase 4 Commit 3.
+  //
+  // `onCommit` is memoized so its identity is stable across renders.
+  // Without this wrapper, every keystroke in the rename input would
+  // create a new function, which would churn the hook's returned
+  // callbacks and invalidate every useCallback below that depends on
+  // them (see codex review finding + gstack maintainability / perf
+  // specialists agreeing). The hook itself reads onCommit via a ref
+  // so unmemoized callers are safe but memoizing here keeps the
+  // dep-chain clean for LayerPanel's own callbacks.
+  const handleRenameCommit = useCallback(
+    (next: string) => {
+      if (renamingLayerId && currentIconId) {
+        renameLayer(currentIconId, renamingLayerId, next);
+      }
+    },
+    [renamingLayerId, currentIconId, renameLayer],
+  );
+  const {
+    isRenaming: _renameIsActive,
+    draft: renameDraft,
+    setDraft: setRenameDraft,
+    start: startRenameHook,
+    commit: commitRenameHook,
+    cancel: cancelRenameHook,
+  } = useInlineRename({ onCommit: handleRenameCommit });
+  // Keep the original variable name used in JSX props without
+  // recreating an object literal — the destructured callbacks above
+  // are each individually stable (useCallback([]) inside the hook),
+  // so the dep chains below are now stable even across renders.
+  const startRenameLayer = useCallback(
+    (layerId: string) => {
+      setRenamingLayerId(layerId);
+      startRenameHook(layerId);
+    },
+    [startRenameHook],
+  );
+
+  // Marquee drag-to-multi-select — Phase 4 Commit 3 hook extraction.
+  // getCurrentSelection reads via a ref mirror so the callback itself
+  // is stable across renders. setSelection is wrapped in useCallback
+  // so the adapter identity stays fixed even as selection updates.
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const getCurrentLayerSelection = useCallback(
+    () => [...selectionRef.current.layerIds],
+    [],
+  );
+  const setMarqueeLayerSelection = useCallback(
+    (ids: string[]) => {
+      setSelection({ layerIds: ids, pointIds: [] });
+    },
+    [setSelection],
+  );
+  const marquee = useMarqueeSelection({
+    itemSelector: '[data-layer-id]',
+    itemIdAttribute: 'data-layer-id',
+    getCurrentSelection: getCurrentLayerSelection,
+    setSelection: setMarqueeLayerSelection,
+    containerRef: listRef,
+  });
+  const marqueeRect = marquee.rect;
 
   // UX-F4: Handle keyboard navigation on the layer list container
   const handleListKeyDown = useCallback(
@@ -110,104 +160,29 @@ export const LayerPanel = memo(function LayerPanel() {
       } else if (e.key === 'F2' && focusedIndex >= 0 && focusedIndex < rows.length) {
         e.preventDefault();
         const layer = rows[focusedIndex]!.layer;
-        setRenamingLayerId(layer.id);
-        setRenameValue(layer.id);
+        startRenameLayer(layer.id);
       } else if (e.key === 'Delete' && focusedIndex >= 0) {
         e.preventDefault();
         removeSelectedLayers();
       }
     },
-    [focusedIndex, renamingLayerId, removeSelectedLayers, rows, setSelection],
+    [focusedIndex, renamingLayerId, removeSelectedLayers, rows, setSelection, startRenameLayer],
   );
 
   const commitRename = useCallback(
     (layerId: string) => {
-      const trimmed = renameValue.trim();
-      if (trimmed && trimmed !== layerId && currentIconId) {
-        renameLayer(currentIconId, layerId, trimmed);
-      }
+      commitRenameHook(layerId);
       setRenamingLayerId(null);
     },
-    [currentIconId, renameLayer, renameValue],
+    [commitRenameHook],
   );
 
-  /* ---------------------------------------------------------------- */
-  /*  Marquee drag handlers                                           */
-  /* ---------------------------------------------------------------- */
-  const handleListPointerDown = useCallback(
-    (e: RPointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0) return;
-      const target = e.target as HTMLElement;
-      // Don't start marquee when clicking on a layer item or scrollbar
-      if (target.closest('[data-layer-id]')) return;
-      if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
-
-      e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-
-      const base = e.shiftKey || e.metaKey ? [...selection.layerIds] : [];
-      if (!e.shiftKey && !e.metaKey) {
-        setSelection({ layerIds: [], pointIds: [] });
-      }
-
-      marqueeDragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        baseLayerIds: base,
-        mode: e.shiftKey || e.metaKey ? 'toggle' : 'replace',
-      };
-    },
-    [selection.layerIds, setSelection],
-  );
-
-  const handleListPointerMove = useCallback(
-    (e: RPointerEvent<HTMLDivElement>) => {
-      const drag = marqueeDragRef.current;
-      if (!drag) return;
-
-      const left = Math.min(drag.startX, e.clientX);
-      const top = Math.min(drag.startY, e.clientY);
-      const right = Math.max(drag.startX, e.clientX);
-      const bottom = Math.max(drag.startY, e.clientY);
-
-      setMarqueeRect({ left, top, right, bottom });
-
-      // Hit-test all layer items
-      if (!listRef.current) return;
-      const items = listRef.current.querySelectorAll<HTMLElement>('[data-layer-id]');
-      const hitIds: string[] = [];
-
-      items.forEach((item) => {
-        const rect = item.getBoundingClientRect();
-        if (rectsIntersect({ left, top, right, bottom }, rect)) {
-          const id = item.getAttribute('data-layer-id');
-          if (id) hitIds.push(id);
-        }
-      });
-
-      if (drag.mode === 'toggle') {
-        const baseSet = new Set(drag.baseLayerIds);
-        for (const id of hitIds) {
-          if (baseSet.has(id)) baseSet.delete(id);
-          else baseSet.add(id);
-        }
-        setSelection({ layerIds: [...baseSet], pointIds: [] });
-      } else {
-        setSelection({ layerIds: hitIds, pointIds: [] });
-      }
-    },
-    [setSelection],
-  );
-
-  const handleListPointerUp = useCallback(
-    (e: RPointerEvent<HTMLDivElement>) => {
-      if (!marqueeDragRef.current) return;
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      marqueeDragRef.current = null;
-      setMarqueeRect(null);
-    },
-    [],
-  );
+  // Marquee handlers come straight from the hook — Phase 4 Commit 3.
+  const handleListPointerDown = marquee.onPointerDown;
+  const handleListPointerMove = marquee.onPointerMove;
+  const handleListPointerUp = marquee.onPointerUp;
+  const handleListPointerCancel = marquee.onPointerCancel;
+  const handleListLostPointerCapture = marquee.onLostPointerCapture;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -223,6 +198,8 @@ export const LayerPanel = memo(function LayerPanel() {
         onPointerDown={handleListPointerDown}
         onPointerMove={handleListPointerMove}
         onPointerUp={handleListPointerUp}
+        onPointerCancel={handleListPointerCancel}
+        onLostPointerCapture={handleListLostPointerCapture}
       >
         {/* UX-F4: Keyboard navigable layer list */}
         <div
@@ -315,8 +292,7 @@ export const LayerPanel = memo(function LayerPanel() {
                 }}
                 onDoubleClick={() => {
                   // UX-F4: Double-click to rename
-                  setRenamingLayerId(layer.id);
-                  setRenameValue(layer.id);
+                  startRenameLayer(layer.id);
                 }}
                 onContextMenu={() => {
                   setFocusedIndex(rowIndex);
@@ -408,14 +384,15 @@ export const LayerPanel = memo(function LayerPanel() {
                           'focus:border-primary focus:ring-1 focus:ring-primary/30',
                         )}
                         style={{ height: '1.25rem' }}
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             commitRename(layer.id);
                           } else if (e.key === 'Escape') {
                             e.preventDefault();
+                            cancelRenameHook();
                             setRenamingLayerId(null);
                           }
                           e.stopPropagation();
@@ -479,10 +456,7 @@ export const LayerPanel = memo(function LayerPanel() {
               </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
-                  <ContextMenuItem onSelect={() => {
-                    setRenamingLayerId(layer.id);
-                    setRenameValue(layer.id);
-                  }}>
+                  <ContextMenuItem onSelect={() => startRenameLayer(layer.id)}>
                     <Pencil className="size-4" />
                     Rename
                   </ContextMenuItem>
@@ -509,9 +483,12 @@ export const LayerPanel = memo(function LayerPanel() {
         </div>
       </ScrollArea>
 
-      {/* Marquee overlay */}
+      {/* Marquee overlay — data-marquee-overlay is a semantic hook
+          used by char-marquee-layerPanel.test.tsx to assert the
+          overlay actually unmounts at pointerup. Do not remove. */}
       {marqueeRect && (
         <div
+          data-marquee-overlay
           className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
           style={{
             left: marqueeRect.left,

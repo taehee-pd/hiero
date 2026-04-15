@@ -1,0 +1,44 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { HoverElevationDemo } from './motion-demo';
+
+<Meta title="Tokens/Motion" />
+
+# Motion
+
+Sourced from `/DESIGN.md` §7 "Motion & Interaction Feedback".
+
+> Motion should communicate state change, not decorate. Keep transitions
+> short and utility-like for editor responsiveness.
+
+## Concrete timing
+
+| Interaction | Duration | Easing |
+|---|---|---|
+| Button hover / active | `120ms` | `ease` |
+| Panel border / shadow shift | `160ms` | `ease` |
+| NavPane collapse / expand | `200ms` | CSS transition |
+| Dialog enter | `150ms` | `ease-out` |
+| Toast / error enter | `200ms` | `ease-out` |
+| Scrollbar fade | Instant | — |
+
+## Demo — hover elevation (Level 1 → Level 2)
+
+Hover the card below. Shadow shifts per DESIGN.md §7 ("Cards shift one
+shadow level up on hover").
+
+<HoverElevationDemo />
+
+## Focus ring
+
+Per `/DESIGN.md` §7: **visible but not harsh.**
+
+```
+0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent)
+```
+
+See the `Focus` token page for a live demo.
+
+## Don't
+
+- Trade clarity for novelty in animation experiments.
+- Use motion for decoration; every transition should communicate a state change.

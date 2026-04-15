@@ -14,9 +14,9 @@ import {
   Square,
   Star,
 } from 'lucide-react';
-import { Button } from '@/components/kibo-ui/button';
+import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/kibo-ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEditorActions, useEditorStore, useTool } from '@/lib/editor-store/hooks';
 import type { ShapeType, Tool } from '@/lib/editor-store/types';
 import { cn } from '@/lib/utils';

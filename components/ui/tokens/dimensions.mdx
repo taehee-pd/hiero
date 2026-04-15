@@ -1,0 +1,74 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Dimensions" />
+
+# Dimensions
+
+Sourced from `/DESIGN.md` §5 "Layout Principles > Concrete dimensions"
+and §9 agent prompt example ("ghost icon buttons at 28px with 14px
+icons"). These are the canonical pane and chrome sizes.
+
+## Studio chrome
+
+| Element | Value |
+|---|---|
+| Navbar height | `40px` (h-10) |
+| Toolbar height | `38px` (with a `clamp(36px, 2.375rem, 40px)` responsive range — §9 #9) |
+| NavPane expanded | `200px` |
+| NavPane collapsed | `56px` (w-14) |
+| ListPane width | `260px` |
+| Inspector width | `260px` |
+| Panel padding | `12px` |
+| Panel gap | `8px` |
+| Section gap | `12px` |
+
+Phase 7 of `specs/design-system-storybook.plan.md` adds these as named
+CSS variables (`--navbar-height`, `--toolbar-height-{min,max}`,
+`--navpane-width-{expanded,collapsed}`, `--listpane-width`,
+`--inspector-width`, etc.) so DS components can reference them instead
+of hardcoding magic numbers.
+
+## Icon buttons
+
+Per `/DESIGN.md` §9: "ghost icon buttons at **28px** with **14px** icons".
+
+<div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16 }}>
+  {[
+    { label: 'sm', frame: 24, inner: 12 },
+    { label: 'md (default)', frame: 28, inner: 14 },
+    { label: 'lg', frame: 32, inner: 16 },
+  ].map(({ label, frame, inner }) => (
+    <div key={label} style={{ display: 'grid', gap: 6, alignItems: 'center', justifyItems: 'center' }}>
+      <div
+        style={{
+          width: frame,
+          height: frame,
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          display: 'grid',
+          placeItems: 'center',
+          background: 'var(--background)',
+        }}
+      >
+        <div
+          aria-hidden="true"
+          style={{
+            width: inner,
+            height: inner,
+            borderRadius: 2,
+            background: 'var(--foreground-tertiary)',
+          }}
+        />
+      </div>
+      <code style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>
+        {label} · {frame}px / {inner}px
+      </code>
+    </div>
+  ))}
+</div>
+
+## Responsive behavior
+
+- On narrower widths, collapse non-critical panes first (NavPane → ListPane).
+- Preserve core authoring canvas and essential edit controls.
+- Keep destructive or publish actions visible and explicit.

@@ -8,6 +8,7 @@ import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
 import { AutoSaveProvider } from '@/components/persistence/AutoSaveProvider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const viewport = {
@@ -54,6 +55,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AutoSaveProvider />
           {children}
+          <Toaster />
           <Analytics />
         </ThemeProvider>
         <Script src="https://mcp.figma.com/mcp/html-to-design/capture.js" strategy="afterInteractive" />

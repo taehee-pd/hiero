@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { Button } from '@/components/kibo-ui/button';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
-import { Slider } from '@/components/kibo-ui/slider';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SPRING_PRESETS } from '@/lib/runtime-core/spring';
 import type { SpringConfig } from '@/lib/schema/types';

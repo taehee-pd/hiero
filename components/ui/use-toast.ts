@@ -188,4 +188,27 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+/**
+ * Reset the toast store to its initial empty state. Intended for test
+ * + Storybook harness use — clears any toasts from prior test runs or
+ * stories so each harness sees a clean slate.
+ *
+ * Codex adversarial review (Phase 4) finding #8: memoryState is
+ * module-global and TOAST_REMOVE_DELAY is effectively infinite (1M ms),
+ * so a story/test that fires a toast leaks it into subsequent stories
+ * or tests until explicitly dismissed.
+ *
+ * @internal — not intended for production use.
+ */
+function resetToastStateForTest() {
+  // Clear any scheduled remove timers so they don't fire against the
+  // fresh state after it's been reset.
+  for (const timer of toastTimeouts.values()) {
+    clearTimeout(timer)
+  }
+  toastTimeouts.clear()
+  memoryState = { toasts: [] }
+  listeners.forEach((listener) => listener(memoryState))
+}
+
+export { useToast, toast, resetToastStateForTest }

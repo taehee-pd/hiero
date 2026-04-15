@@ -29,14 +29,14 @@ import {
   X,
   ClipboardPaste,
 } from 'lucide-react';
-import { ScrollArea } from '@/components/kibo-ui/scroll-area';
-import { Input } from '@/components/kibo-ui/input';
-import { Label } from '@/components/kibo-ui/label';
-import { Separator } from '@/components/kibo-ui/separator';
-import { Button } from '@/components/kibo-ui/button';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
-import { Slider } from '@/components/kibo-ui/slider';
-import { Switch } from '@/components/kibo-ui/switch';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorPickerPopover } from './ColorPickerPopover';

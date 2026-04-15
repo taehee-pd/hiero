@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+import { FocusRingDemo } from './focus-demo';
+
+<Meta title="Tokens/Focus" />
+
+# Focus
+
+Sourced from `/DESIGN.md` §7 "Feedback patterns" and §9 agent prompt
+guide #3. The focus ring is **visible but not harsh** — a single,
+literal formula lives in DESIGN.md and every primitive inherits it
+through shadcn's Tailwind tokens.
+
+## Canonical formula
+
+```
+box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+```
+
+## Try it
+
+Tab into each control below. The ring is identical everywhere — same
+offset, same color-mix, same 3px thickness.
+
+<FocusRingDemo />
+
+## Rules
+
+- **Every focusable element must expose this ring.** Primitives inherit it automatically via the shadcn `focus-visible:ring-*` Tailwind classes.
+- **Never** suppress the ring without providing an equivalent affordance.
+- **Never** use `outline: none` alone. Pair with the ring via the shared token.

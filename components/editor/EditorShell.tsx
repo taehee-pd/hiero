@@ -69,9 +69,9 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/kibo-ui/select';
-import { Input } from '@/components/kibo-ui/input';
-import { Button } from '@/components/kibo-ui/button';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
@@ -234,7 +234,14 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
 
 // Type management section — lets users define named visual types per variant
 // (e.g. "line", "filled", "colored"). Free-form identifiers.
-function TypesSection({
+//
+// Exported for per-site characterization testing. Plan §6 Phase 4 Commit 2
+// requires locking in the inline-rename state machine in isolation from
+// the full EditorShell, which is too heavy to mount in bun + happy-dom.
+// The export is intentionally named `TypesSection` (not a generic
+// `_TypesSection`) — if this ever needs to move to its own file during
+// Phase 5, the import path changes and the test updates in lockstep.
+export function TypesSection({
   typeCatalog,
   defaultTypeId,
   currentTypeId,

@@ -286,3 +286,113 @@ describe('smooth quadratic (T/t) round-trip (Phase 1 target)', () => {
     expect(flatten(first)).toEqual(flatten(second));
   });
 });
+
+describe('mixed-family smooth commands (SVG spec §9.3.6 / §9.3.7)', () => {
+  // Regression for Codex PR review P1: S only reflects when the previous
+  // command was a cubic (C/c/S/s), and T only reflects when the previous
+  // command was a quadratic (Q/q/T/t). Mixed cases like Q→S or C→T must
+  // use the current anchor as the implicit control, not the prior
+  // command's control from the opposite curve family.
+
+  test('S after Q uses the anchor as its implicit first control (not the Q control reflection)', () => {
+    // `M0 0 Q10 20 20 0 S40 0 50 0`
+    //
+    // After Q the "current point" is (20, 0) and the Q's control is (10, 20).
+    // If we WRONGLY reflected, cp1 of the S-derived cubic would be (30, -20).
+    // Per SVG spec, since the previous command is Q (not cubic), cp1 must be
+    // the anchor (20, 0).
+    const d = 'M0 0 Q10 20 20 0 S40 0 50 0';
+    const parsed = parseSvgPath(d);
+    expect(parsed.subPaths[0]!.points).toHaveLength(3);
+    const [, p1, p2] = parsed.subPaths[0]!.points;
+
+    // Q endpoint stays at (20, 0).
+    expect(p1!.position).toEqual({ x: 20, y: 0 });
+    // Q's control must still live on p1.handleIn.
+    expect(p1!.handleIn).toEqual({ x: 10, y: 20 });
+    // p1.handleOut is the cubic's cp1 — must be the anchor (20, 0),
+    // NOT the reflection of the Q control (which would be (30, -20)).
+    expect(p1!.handleOut).toEqual({ x: 20, y: 0 });
+
+    // S endpoint + its explicit second control.
+    expect(p2!.position).toEqual({ x: 50, y: 0 });
+    expect(p2!.handleIn).toEqual({ x: 40, y: 0 });
+  });
+
+  test('T after C uses the anchor as its implicit control (not the C second-control reflection)', () => {
+    // `M0 0 C10 0 20 0 30 0 T40 0`
+    //
+    // After C the "current point" is (30, 0) and the C's second control is
+    // (20, 0). If we WRONGLY reflected, the T-derived quadratic's control
+    // would be (40, 0). Per SVG spec, since the previous command is C (not
+    // quadratic), the implicit control must be the anchor (30, 0).
+    const d = 'M0 0 C10 0 20 0 30 0 T40 0';
+    const parsed = parseSvgPath(d);
+    expect(parsed.subPaths[0]!.points).toHaveLength(3);
+    const [, p1, p2] = parsed.subPaths[0]!.points;
+
+    expect(p1!.position).toEqual({ x: 30, y: 0 });
+    // C's second control lives on p1.handleIn.
+    expect(p1!.handleIn).toEqual({ x: 20, y: 0 });
+    // p1.handleOut is the quadratic control — must be the anchor (30, 0),
+    // NOT the reflection of the C second control (which would be (40, 0)).
+    expect(p1!.handleOut).toEqual({ x: 30, y: 0 });
+
+    // T endpoint and its (anchor-based) incoming control.
+    expect(p2!.position).toEqual({ x: 40, y: 0 });
+    expect(p2!.handleIn).toEqual({ x: 30, y: 0 });
+  });
+
+  test('S→S chain still reflects (each subsequent S sees the previous as cubic)', () => {
+    // Sanity check that the family tracker correctly transitions S → cubic
+    // so subsequent S commands still reflect. If we had reset the family
+    // to null after S, this would break.
+    const d = 'M0 0 C10 0 20 0 30 0 S40 0 50 0 S60 0 70 0';
+    const parsed = parseSvgPath(d);
+    const points = parsed.subPaths[0]!.points;
+    expect(points).toHaveLength(4);
+
+    // Second S's cp1 must reflect the first S's cp2 (40, 0) about (50, 0)
+    // → (60, 0).
+    expect(points[2]!.handleOut).toEqual({ x: 60, y: 0 });
+    expect(points[3]!.handleIn).toEqual({ x: 60, y: 0 });
+    expect(points[3]!.position).toEqual({ x: 70, y: 0 });
+  });
+
+  test('T→T chain still reflects (each subsequent T sees the previous as quadratic)', () => {
+    const d = 'M0 0 Q10 20 20 0 T40 0 T60 0';
+    const parsed = parseSvgPath(d);
+    const points = parsed.subPaths[0]!.points;
+    expect(points).toHaveLength(4);
+
+    // First T's control reflects Q's (10, 20) about (20, 0) → (30, -20).
+    expect(points[1]!.handleOut).toEqual({ x: 30, y: -20 });
+    expect(points[2]!.handleIn).toEqual({ x: 30, y: -20 });
+    expect(points[2]!.position).toEqual({ x: 40, y: 0 });
+
+    // Second T's control reflects the previous T's control (30, -20)
+    // about (40, 0) → (50, 20).
+    expect(points[2]!.handleOut).toEqual({ x: 50, y: 20 });
+    expect(points[3]!.handleIn).toEqual({ x: 50, y: 20 });
+    expect(points[3]!.position).toEqual({ x: 60, y: 0 });
+  });
+
+  test('L between curves resets the family (S after L uses the anchor)', () => {
+    // `M0 0 C10 0 20 0 30 0 L40 0 S50 0 60 0`
+    //
+    // Even though there's a cubic earlier, the intervening L resets the
+    // family, so S's implicit cp1 must be the anchor (40, 0).
+    const d = 'M0 0 C10 0 20 0 30 0 L40 0 S50 0 60 0';
+    const parsed = parseSvgPath(d);
+    const points = parsed.subPaths[0]!.points;
+    expect(points).toHaveLength(4);
+    // p2 is the L endpoint at (40, 0). Its handleOut (the S-derived cp1)
+    // must be the anchor, NOT the reflection of p1.handleIn (which would
+    // be nonsense since p2.handleIn is null after L).
+    expect(points[2]!.position).toEqual({ x: 40, y: 0 });
+    expect(points[2]!.handleIn).toBeNull();
+    expect(points[2]!.handleOut).toEqual({ x: 40, y: 0 });
+    expect(points[3]!.handleIn).toEqual({ x: 50, y: 0 });
+    expect(points[3]!.position).toEqual({ x: 60, y: 0 });
+  });
+});

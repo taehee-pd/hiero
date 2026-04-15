@@ -144,22 +144,23 @@ export function NavPane() {
                         : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
                     )}
                   >
-                    <button
-                      type="button"
-                      className="flex min-w-0 flex-1 items-center gap-2"
-                      onClick={() => handleSelectProject(iconSet.id)}
-                      onContextMenu={(e) => { e.preventDefault(); setDeleteTarget(iconSet); }}
-                      onKeyDown={(e) => {
-                        if (renamingId) return; // Don't intercept keys while renaming
-                        if (e.key === 'F2') { e.preventDefault(); handleStartRename(iconSet); }
-                        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); setDeleteTarget(iconSet); }
-                      }}
-                    >
-                      <FolderOpen className="size-3.5 shrink-0" />
-                      {navExpanded && renamingId === iconSet.id ? (
-                        <Input
+                    {/*
+                      Rename input is rendered as a SIBLING of the row
+                      button, not inside it. Previously the <Input> was
+                      nested inside a <button>, which is invalid HTML
+                      (interactive-in-interactive) and broke focus/blur
+                      on some browsers. Now the row button hosts the
+                      label; when renaming, the button is replaced by a
+                      bare input sharing the row's box via `h-7` to keep
+                      the height/padding consistent with the label.
+                    */}
+                    {navExpanded && renamingId === iconSet.id ? (
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <FolderOpen className="size-3.5 shrink-0" />
+                        <input
                           autoFocus
-                          className="h-5 min-w-0 flex-1 text-xs"
+                          type="text"
+                          className="flex h-7 min-w-0 flex-1 items-center rounded-sm border border-[color:color-mix(in_srgb,var(--primary)_55%,transparent)] bg-background px-1 text-xs text-foreground outline-none focus:border-ring focus:ring-[2px] focus:ring-ring/30"
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
                           onKeyDown={(e) => {
@@ -169,13 +170,27 @@ export function NavPane() {
                           onBlur={handleCommitRename}
                           onClick={(e) => e.stopPropagation()}
                         />
-                      ) : navExpanded ? (
-                        <>
-                          <span className="min-w-0 truncate">{iconSet.name}</span>
-                          <span className="ml-auto shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-medium leading-4 text-muted-foreground tabular-nums">{iconSet.iconCount}</span>
-                        </>
-                      ) : null}
-                    </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2"
+                        onClick={() => handleSelectProject(iconSet.id)}
+                        onContextMenu={(e) => { e.preventDefault(); setDeleteTarget(iconSet); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'F2') { e.preventDefault(); handleStartRename(iconSet); }
+                          if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); setDeleteTarget(iconSet); }
+                        }}
+                      >
+                        <FolderOpen className="size-3.5 shrink-0" />
+                        {navExpanded ? (
+                          <>
+                            <span className="min-w-0 truncate">{iconSet.name}</span>
+                            <span className="ml-auto shrink-0 rounded-md bg-muted px-1.5 text-[10px] font-medium leading-4 text-muted-foreground tabular-nums">{iconSet.iconCount}</span>
+                          </>
+                        ) : null}
+                      </button>
+                    )}
                     {navExpanded && renamingId !== iconSet.id && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

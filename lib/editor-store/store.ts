@@ -6,6 +6,7 @@ import type {
   Project,
   Workspace,
   IconSet,
+  IconSetTypeDef,
   Icon,
   Layer,
   TopologyContract,
@@ -140,10 +141,20 @@ export type EditorActions = {
   setCurrentIcon(id: string): void;
   setCurrentVariant(id: string): void;
   setCurrentType(id: string): void;
-  addType(iconId: string, typeId: string): void;
-  removeType(iconId: string, typeId: string): void;
-  renameType(iconId: string, oldTypeId: string, newTypeId: string): void;
-  duplicateType(iconId: string, sourceTypeId: string, newTypeId: string): void;
+  addType(typeId: string): void;
+  removeType(typeId: string): void;
+  renameType(oldTypeId: string, newTypeId: string): void;
+  /**
+   * Update the *display label* of a type entry in the IconSet catalog,
+   * without changing its structural id. Use this to let users "rename"
+   * the default type — whose id is structurally required to stay stable
+   * because it's referenced throughout the runtime, export, and
+   * transition pipelines as the literal string the schema was serialized
+   * with. Passing an empty name clears the custom label and falls back
+   * to the type id.
+   */
+  setTypeName(typeId: string, name: string): void;
+  duplicateType(sourceTypeId: string, newTypeId: string): void;
   setTopology(iconId: string, variantId: string, topology: TopologyContract | undefined): void;
   setStateTopology(iconId: string, typeId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
@@ -662,6 +673,96 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
   };
 }
 
+/**
+ * Types are universal within an IconSet (like theme tokens). This migration
+ * lifts authored types from individual variants into an IconSet-level catalog,
+ * then backfills every variant so that every type in the catalog has a
+ * per-variant layer entry. Variants missing a type get its layers cloned
+ * from their own default type — this matches `addType`'s runtime behavior.
+ */
+function ensureUniversalTypes(project: Project): Project {
+  // Union all authored type ids across every variant.
+  const catalog: Record<string, IconSetTypeDef> = { ...(project.types ?? {}) };
+  for (const icon of Object.values(project.icons)) {
+    for (const variant of Object.values(icon.variants)) {
+      if (!variant.types) continue;
+      for (const typeId of Object.keys(variant.types)) {
+        if (!catalog[typeId]) catalog[typeId] = { id: typeId };
+      }
+    }
+  }
+
+  const catalogIds = Object.keys(catalog);
+
+  // If there are no authored types anywhere, leave the catalog empty and
+  // let variants carry only their implicit `default` fallback.
+  const nextIcons = Object.fromEntries(
+    Object.entries(project.icons).map(([iconId, icon]) => {
+      const nextVariants = Object.fromEntries(
+        Object.entries(icon.variants).map(([variantId, variant]) => {
+          if (catalogIds.length === 0) {
+            return [variantId, variant];
+          }
+          const next = normalizeVariant(variant);
+          const defaultId = getVariantDefaultTypeId(next);
+          const sourceType = next.types?.[defaultId];
+          const sourceLayers = sourceType?.layers ?? next.layers ?? {};
+          const sourceTopology = sourceType?.topology ?? next.topology;
+
+          const mergedTypes: Record<string, IconType> = { ...(next.types ?? {}) };
+          let changed = false;
+          for (const typeId of catalogIds) {
+            if (mergedTypes[typeId]) continue;
+            mergedTypes[typeId] = {
+              id: typeId,
+              layers: structuredClone(sourceLayers),
+              topology: sourceTopology ? structuredClone(sourceTopology) : undefined,
+            };
+            changed = true;
+          }
+          if (!changed) return [variantId, next];
+          return [
+            variantId,
+            normalizeVariant({
+              ...next,
+              types: mergedTypes,
+            }),
+          ];
+        }),
+      );
+      return [iconId, { ...icon, variants: nextVariants }];
+    }),
+  ) as Project['icons'];
+
+  return {
+    ...project,
+    types: catalogIds.length > 0 ? catalog : project.types,
+    icons: nextIcons,
+  };
+}
+
+/**
+ * Clone the layer geometry of a variant's default type, so a freshly-created
+ * universal type can slot in with meaningful starting content on every icon.
+ */
+function cloneVariantDefaultAsType(variant: Variant, typeId: string): Variant {
+  const defaultId = getVariantDefaultTypeId(variant);
+  const source = variant.types?.[defaultId];
+  const sourceLayers = source?.layers ?? variant.layers ?? {};
+  const sourceTopology = source?.topology ?? variant.topology;
+  return normalizeVariant({
+    ...variant,
+    types: {
+      ...(variant.types ?? {}),
+      [typeId]: {
+        id: typeId,
+        layers: structuredClone(sourceLayers),
+        topology: sourceTopology ? structuredClone(sourceTopology) : undefined,
+      },
+    },
+  });
+}
+
 function ensureUniqueGuideMasterId(
   baseId: string,
   guideMasters: Record<string, GuideMaster>,
@@ -861,21 +962,27 @@ function getFirstVariantId(project: Project | null | undefined, iconId: string |
   return Object.keys(project.icons[iconId]?.variants ?? {})[0] ?? null;
 }
 
-function buildEditorTarget(project: Project | null | undefined, requestedIconId?: string | null) {
+function buildEditorTarget(
+  project: Project | null | undefined,
+  requestedIconId?: string | null,
+  previousTypeId?: string | null,
+) {
   const iconId =
     requestedIconId && project?.icons[requestedIconId] ? requestedIconId : getFirstIconId(project);
   const variantId = getFirstVariantId(project, iconId);
+  const variant =
+    variantId && iconId && project ? project.icons[iconId]?.variants[variantId] : null;
+
+  // Prefer the previously-selected universal type if the IconSet still has it
+  // in its catalog (types are universal across icons, so this carries through).
+  const preserved =
+    previousTypeId && project?.types?.[previousTypeId] ? previousTypeId : null;
 
   return {
     iconId,
     variantId,
-    currentTypeId:
-      variantId && iconId && project
-        ? getVariantDefaultTypeId(project.icons[iconId]!.variants[variantId]!)
-        : null,
-    renderingMode: getResolvedRenderingMode(
-      variantId && iconId && project ? project.icons[iconId]?.variants[variantId] : null,
-    ),
+    currentTypeId: preserved ?? (variant ? getVariantDefaultTypeId(variant) : null),
+    renderingMode: getResolvedRenderingMode(variant),
   };
 }
 
@@ -903,18 +1010,41 @@ function createBlankIcon(
     Object.values(project.guideMasters ?? {}).find((master) => master.targetSize === size)?.id ??
     Object.values(project.guideMasters ?? {})[0]?.id;
 
+  // Preexisting bug (surfaced by the default-type-rename work): this
+  // helper previously called `normalizeVariant({ layers: {} })` which
+  // silently synthesizes a `default` type entry and ignores the IconSet
+  // catalog. New icons created into a project that already has custom
+  // types (e.g. `line`, `filled`) would only carry the literal `default`
+  // key, visually rendering as a "missing type" once the user switched
+  // to any other tab.
+  //
+  // Fix: seed every catalog type onto the fresh variant so a newly
+  // created icon matches the universal-types invariant from day one.
+  const catalogTypeIds = Object.keys(project.types ?? {});
+  const seededTypes: Record<string, IconType> = {};
+  for (const typeId of catalogTypeIds) {
+    seededTypes[typeId] = { id: typeId, layers: {} };
+  }
+  const baseVariant: Variant = {
+    id: variantId,
+    name: String(size),
+    size,
+    viewBox: [0, 0, size, size],
+    guideMasterId,
+    layers: {},
+    ...(catalogTypeIds.length > 0
+      ? {
+          defaultType: catalogTypeIds[0],
+          types: seededTypes,
+        }
+      : {}),
+  };
+
   return {
     id: toKebabCase(name) || 'new-icon',
     name,
     variants: {
-      [variantId]: normalizeVariant({
-        id: variantId,
-        name: String(size),
-        size,
-        viewBox: [0, 0, size, size],
-        guideMasterId,
-        layers: {},
-      }),
+      [variantId]: normalizeVariant(baseVariant),
     },
   };
 }
@@ -926,7 +1056,11 @@ function buildWorkspaceState(
 ): Partial<EditorStore> {
   const resolvedIconSetId = activeIconSetId ?? getFirstIconSetId(workspace);
   const project = getActiveIconSet(workspace, resolvedIconSetId);
-  const target = buildEditorTarget(project, options?.requestedIconId);
+  const target = buildEditorTarget(
+    project,
+    options?.requestedIconId,
+    options?.previousState?.currentTypeId,
+  );
 
   const baseState = options?.previousState;
   const existingTabs = options?.keepTabs ? (baseState?.openTabs ?? []) : [];
@@ -975,7 +1109,7 @@ function createActions(): EditorActions {
       const migratedIconSets = Object.fromEntries(
         Object.entries(workspace.iconSets).map(([iconSetId, iconSet]) => [
           iconSetId,
-          migrateProjectForGuideMasters(iconSet),
+          ensureUniversalTypes(migrateProjectForGuideMasters(iconSet)),
         ]),
       );
       const migratedWorkspace: Workspace = withLegacyWorkspaceView({
@@ -1005,7 +1139,9 @@ function createActions(): EditorActions {
 
     loadProject(project, options) {
       const workspace = withLegacyWorkspaceView(
-        createWorkspaceFromProject(withLegacyProjectView(migrateProjectForGuideMasters(project))),
+        createWorkspaceFromProject(
+          withLegacyProjectView(ensureUniversalTypes(migrateProjectForGuideMasters(project))),
+        ),
       );
       const { resetHistory = true, markDirty = false, keepTabs = false } = options ?? {};
       editorStoreApi.setState({
@@ -1272,6 +1408,26 @@ function createActions(): EditorActions {
             ? variantInput.viewBox
             : scaleViewBoxToSize(sourceVariant.viewBox, variantInput.size);
 
+        // Preexisting bug (surfaced by the default-type-rename work): the
+        // previous implementation only cloned `sourceVariant.layers` into
+        // `normalizeVariant({ layers, ... })`, which silently dropped
+        // every non-default type entry on the source. A project with
+        // types `line`, `filled`, `colored` would see all three erased
+        // the moment the user added a new size variant. Clone the full
+        // per-type map too.
+        const nextTypes: Record<string, IconType> | undefined = sourceVariant.types
+          ? Object.fromEntries(
+              Object.entries(sourceVariant.types).map(([typeId, iconType]) => [
+                typeId,
+                {
+                  id: typeId,
+                  layers: cloneLayers(iconType.layers),
+                  topology: iconType.topology ? cloneTopology(iconType.topology) : undefined,
+                },
+              ]),
+            )
+          : undefined;
+
         const nextVariant: Variant = normalizeVariant({
           id: nextVariantId,
           name: nextVariantName,
@@ -1289,6 +1445,8 @@ function createActions(): EditorActions {
           scale: variantInput.scale ?? sourceVariant.scale,
           layers: nextLayers,
           topology: nextTopology,
+          defaultType: sourceVariant.defaultType,
+          types: nextTypes,
         });
 
         return {
@@ -1551,13 +1709,17 @@ function createActions(): EditorActions {
         // icon twice in the list.
         if (s.currentIconId === id) return s;
         const nextVariantId = Object.keys(icon.variants)[0] ?? null;
+        const nextVariant = nextVariantId ? icon.variants[nextVariantId]! : null;
+        // Types are universal across icons — carry the active type through
+        // switching icons as long as the IconSet catalog still has it.
+        const preservedTypeId =
+          s.currentTypeId && s.project?.types?.[s.currentTypeId] ? s.currentTypeId : null;
         return {
           currentIconId: id,
           currentVariantId: nextVariantId,
-          currentTypeId: nextVariantId ? getVariantDefaultTypeId(icon.variants[nextVariantId]!) : null,
-          renderingMode: getResolvedRenderingMode(
-            nextVariantId ? icon.variants[nextVariantId] : null,
-          ),
+          currentTypeId:
+            preservedTypeId ?? (nextVariant ? getVariantDefaultTypeId(nextVariant) : null),
+          renderingMode: getResolvedRenderingMode(nextVariant),
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           activeSnapGuides: [],
@@ -1573,9 +1735,11 @@ function createActions(): EditorActions {
         const variant = icon?.variants[id];
         if (!variant) return s;
 
+        const preservedTypeId =
+          s.currentTypeId && s.project?.types?.[s.currentTypeId] ? s.currentTypeId : null;
         return {
           currentVariantId: id,
-          currentTypeId: getVariantDefaultTypeId(variant),
+          currentTypeId: preservedTypeId ?? getVariantDefaultTypeId(variant),
           renderingMode: getResolvedRenderingMode(variant),
           activeSnapGuides: [],
           pointMarquee: null,
@@ -1590,150 +1754,185 @@ function createActions(): EditorActions {
       editorStoreApi.setState({ currentTypeId: id });
     },
 
-    addType(iconId, typeId) {
+    addType(typeId) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
-        if (variant.types?.[typeId]) return s; // already exists
+        if (!s.project) return s;
+        if (s.project.types?.[typeId]) return s; // already in catalog
 
-        const newIconType: IconType = {
-          id: typeId,
-          layers: JSON.parse(JSON.stringify(variant.layers)),
-          topology: variant.topology ? JSON.parse(JSON.stringify(variant.topology)) : undefined,
-        };
+        const nextIcons = Object.fromEntries(
+          Object.entries(s.project.icons).map(([iconId, icon]) => {
+            const nextVariants = Object.fromEntries(
+              Object.entries(icon.variants).map(([variantId, variant]) => {
+                if (variant.types?.[typeId]) {
+                  return [variantId, variant];
+                }
+                return [variantId, cloneVariantDefaultAsType(variant, typeId)];
+              }),
+            );
+            return [iconId, { ...icon, variants: nextVariants }];
+          }),
+        );
 
         return {
           project: {
             ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: {
-                ...icon,
-                variants: {
-                  ...icon.variants,
-                  [s.currentVariantId]: normalizeVariant({
-                    ...variant,
-                    types: { ...(variant.types ?? {}), [typeId]: newIconType },
-                  }),
-                },
-              },
-            },
+            types: { ...(s.project.types ?? {}), [typeId]: { id: typeId } },
+            icons: nextIcons,
           },
           currentTypeId: typeId,
         };
       });
     },
 
-    removeType(iconId, typeId) {
+    removeType(typeId) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant || !variant.types?.[typeId]) return s;
+        if (!s.project || !s.project.types?.[typeId]) return s;
 
-        const { [typeId]: _, ...remainingTypes } = variant.types;
-        const stateIds = Object.keys(remainingTypes);
-        const nextStateId = stateIds[0] ?? null;
+        const { [typeId]: _removed, ...remainingCatalog } = s.project.types;
+        const remainingIds = Object.keys(remainingCatalog);
+        const fallbackTypeId = remainingIds[0] ?? null;
+
+        const nextIcons = Object.fromEntries(
+          Object.entries(s.project.icons).map(([iconId, icon]) => {
+            const nextVariants = Object.fromEntries(
+              Object.entries(icon.variants).map(([variantId, variant]) => {
+                if (!variant.types?.[typeId]) return [variantId, variant];
+                const { [typeId]: _v, ...remainingTypes } = variant.types;
+                return [
+                  variantId,
+                  normalizeVariant({
+                    ...variant,
+                    types: Object.keys(remainingTypes).length > 0 ? remainingTypes : undefined,
+                    defaultType:
+                      variant.defaultType === typeId
+                        ? (fallbackTypeId ?? undefined)
+                        : variant.defaultType,
+                  }),
+                ];
+              }),
+            );
+            return [iconId, { ...icon, variants: nextVariants }];
+          }),
+        );
 
         return {
           project: {
             ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: {
-                ...icon,
-                variants: {
-                  ...icon.variants,
-                  [s.currentVariantId]: normalizeVariant({
-                    ...variant,
-                    types: stateIds.length > 0 ? remainingTypes : undefined,
-                    defaultType: variant.defaultType === typeId
-                      ? nextStateId ?? undefined
-                      : variant.defaultType,
-                  }),
-                },
-              },
-            },
+            types: remainingIds.length > 0 ? remainingCatalog : undefined,
+            icons: nextIcons,
           },
-          currentTypeId: s.currentTypeId === typeId
-            ? (nextStateId ?? s.currentTypeId)
-            : s.currentTypeId,
+          currentTypeId:
+            s.currentTypeId === typeId ? (fallbackTypeId ?? s.currentTypeId) : s.currentTypeId,
         };
       });
     },
 
-    renameType(iconId, oldTypeId, newTypeId) {
+    renameType(oldTypeId, newTypeId) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant || !variant.types?.[oldTypeId]) return s;
-        if (variant.types[newTypeId]) return s; // target name already exists
+        if (!s.project || !s.project.types?.[oldTypeId]) return s;
+        if (s.project.types[newTypeId]) return s; // target name already exists
 
-        const oldType = variant.types[oldTypeId];
-        const { [oldTypeId]: _, ...rest } = variant.types;
-        const renamedStates = { ...rest, [newTypeId]: { ...oldType, id: newTypeId } };
+        const { [oldTypeId]: oldDef, ...restCatalog } = s.project.types;
+        const nextCatalog: Record<string, IconSetTypeDef> = {
+          ...restCatalog,
+          [newTypeId]: { ...oldDef, id: newTypeId },
+        };
+
+        const nextIcons = Object.fromEntries(
+          Object.entries(s.project.icons).map(([iconId, icon]) => {
+            const nextVariants = Object.fromEntries(
+              Object.entries(icon.variants).map(([variantId, variant]) => {
+                if (!variant.types?.[oldTypeId]) return [variantId, variant];
+                const oldType = variant.types[oldTypeId];
+                const { [oldTypeId]: _v, ...restTypes } = variant.types;
+                return [
+                  variantId,
+                  normalizeVariant({
+                    ...variant,
+                    types: { ...restTypes, [newTypeId]: { ...oldType, id: newTypeId } },
+                    defaultType:
+                      variant.defaultType === oldTypeId ? newTypeId : variant.defaultType,
+                  }),
+                ];
+              }),
+            );
+            return [iconId, { ...icon, variants: nextVariants }];
+          }),
+        );
 
         return {
           project: {
             ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: {
-                ...icon,
-                variants: {
-                  ...icon.variants,
-                  [s.currentVariantId]: normalizeVariant({
-                    ...variant,
-                    types: renamedStates,
-                    defaultType: variant.defaultType === oldTypeId
-                      ? newTypeId
-                      : variant.defaultType,
-                  }),
-                },
-              },
-            },
+            types: nextCatalog,
+            icons: nextIcons,
           },
           currentTypeId: s.currentTypeId === oldTypeId ? newTypeId : s.currentTypeId,
         };
       });
     },
 
-    duplicateType(iconId, sourceTypeId, newTypeId) {
+    setTypeName(typeId, name) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
-
-        const sourceType = variant.types?.[sourceTypeId]
-          ?? { id: sourceTypeId, layers: variant.layers, topology: variant.topology };
-        if (variant.types?.[newTypeId]) return s; // target already exists
-
-        const duplicated: IconType = {
-          id: newTypeId,
-          layers: JSON.parse(JSON.stringify(sourceType.layers)),
-          topology: sourceType.topology ? JSON.parse(JSON.stringify(sourceType.topology)) : undefined,
+        if (!s.project || !s.project.types?.[typeId]) return s;
+        const trimmed = name.trim();
+        const existing = s.project.types[typeId];
+        const nextName = trimmed.length > 0 ? trimmed : undefined;
+        if (existing.name === nextName) return s;
+        return {
+          project: {
+            ...s.project,
+            types: {
+              ...s.project.types,
+              [typeId]: {
+                ...existing,
+                name: nextName,
+              },
+            },
+          },
         };
+      });
+    },
+
+    duplicateType(sourceTypeId, newTypeId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project) return s;
+        if (s.project.types?.[newTypeId]) return s; // target already exists
+
+        const nextIcons = Object.fromEntries(
+          Object.entries(s.project.icons).map(([iconId, icon]) => {
+            const nextVariants = Object.fromEntries(
+              Object.entries(icon.variants).map(([variantId, variant]) => {
+                if (variant.types?.[newTypeId]) return [variantId, variant];
+                const sourceType =
+                  variant.types?.[sourceTypeId] ??
+                  ({
+                    id: sourceTypeId,
+                    layers: variant.layers,
+                    topology: variant.topology,
+                  } as IconType);
+                const duplicated: IconType = {
+                  id: newTypeId,
+                  layers: structuredClone(sourceType.layers),
+                  topology: sourceType.topology ? structuredClone(sourceType.topology) : undefined,
+                };
+                return [
+                  variantId,
+                  normalizeVariant({
+                    ...variant,
+                    types: { ...(variant.types ?? {}), [newTypeId]: duplicated },
+                  }),
+                ];
+              }),
+            );
+            return [iconId, { ...icon, variants: nextVariants }];
+          }),
+        );
 
         return {
           project: {
             ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: {
-                ...icon,
-                variants: {
-                  ...icon.variants,
-                  [s.currentVariantId]: normalizeVariant({
-                    ...variant,
-                    types: { ...(variant.types ?? {}), [newTypeId]: duplicated },
-                  }),
-                },
-              },
-            },
+            types: { ...(s.project.types ?? {}), [newTypeId]: { id: newTypeId } },
+            icons: nextIcons,
           },
           currentTypeId: newTypeId,
         };

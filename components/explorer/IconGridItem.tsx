@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { CheckSquare, Copy, Grid3X3, Heart, Pencil, Square as SquareIcon, Trash2 } from 'lucide-react';
 import {
@@ -44,46 +44,40 @@ export function IconGridItem({
   onDelete?: () => void;
   onRename?: (nextName: string) => void;
 }) {
-  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [renameDraft, setRenameDraft] = useState(iconName);
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+  // Open the icon on pointerup (not click) because Radix's ContextMenuTrigger
+  // asChild attaches pointerdown handlers on the <article> that can swallow
+  // synthesized click events in some environments. pointerup is dispatched
+  // independently and always fires on mouse release. We track the pointer
+  // from down→up so drag/slide gestures don't accidentally open an icon.
+  const pointerStartRef = useRef<{ x: number; y: number; id: number } | null>(null);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return; // only primary button
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  }, []);
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
       if (renaming) return;
+      const start = pointerStartRef.current;
+      pointerStartRef.current = null;
+      if (!start || start.id !== e.pointerId) return;
+      // Ignore when the pointer moved meaningfully — treat as drag/scroll.
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
+      if (dx * dx + dy * dy > 16) return; // 4px slop
       const isShift = e.shiftKey || e.metaKey;
       if (isShift) {
-        if (clickTimerRef.current) {
-          clearTimeout(clickTimerRef.current);
-          clickTimerRef.current = null;
-        }
         onShiftClick();
         return;
       }
-      // Delay single-click to give onDoubleClick a chance to cancel it.
-      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = setTimeout(() => {
-        clickTimerRef.current = null;
-        onSelect();
-        onOpen();
-      }, 200);
+      onSelect();
+      onOpen();
     },
     [onOpen, onSelect, onShiftClick, renaming],
-  );
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (renaming) return;
-      if (e.shiftKey || e.metaKey) return;
-      if (!onRename) return;
-      if (clickTimerRef.current) {
-        clearTimeout(clickTimerRef.current);
-        clickTimerRef.current = null;
-      }
-      setRenameDraft(iconName);
-      setRenaming(true);
-    },
-    [iconName, onRename, renaming],
   );
 
   const commitRename = useCallback(() => {
@@ -99,13 +93,6 @@ export function IconGridItem({
     setRenaming(false);
     setRenameDraft(iconName);
   }, [iconName]);
-
-  useEffect(() => {
-    const timerRef = clickTimerRef;
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
 
   return (
     <ContextMenu>
@@ -128,7 +115,7 @@ export function IconGridItem({
             }
           }}
           className={cn(
-            'group relative flex select-none flex-col items-center rounded-lg border p-2 transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            'group relative flex select-none flex-col items-center rounded-lg border transition-all duration-[160ms] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
             // Two visual states (selected wins when both are true):
             //   selected → solid primary fill, white label + glyph
             //              (marked for batch action; cannot be missed)
@@ -141,10 +128,17 @@ export function IconGridItem({
                 : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
           )}
         >
+          {/*
+            Click target fills the entire card including the card's padding
+            so there are no dead zones near the border. `onClick` lives here
+            (not on the <article>) because Radix's ContextMenuTrigger asChild
+            attaches pointer handlers to the article that can swallow clicks
+            from certain pointer input sources; the inner div is unaffected.
+          */}
           <div
-            className="flex w-full cursor-pointer select-none flex-col items-center gap-2 rounded-md"
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            className="flex w-full cursor-pointer select-none flex-col items-center gap-2 rounded-md p-2"
           >
             <div className="flex aspect-square w-full items-center justify-center rounded-md">
               {svg ? (
@@ -161,6 +155,13 @@ export function IconGridItem({
               )}
             </div>
             <div className="w-full text-center">
+              {/*
+                Label and input share the same box: identical height,
+                padding, border width (transparent on the label), and
+                font metrics. The only visual delta between the two
+                states is the border color — which means zero text jump
+                on double-click, on blur, or on cancel.
+              */}
               {renaming ? (
                 <input
                   autoFocus
@@ -181,12 +182,22 @@ export function IconGridItem({
                     }
                   }}
                   aria-label={`Rename ${iconName}`}
-                  className="w-full rounded-sm border border-border/80 bg-background px-1 py-0.5 text-center text-[length:var(--text-caption)] font-medium text-foreground outline-none focus:border-ring"
+                  className="block w-full box-border rounded-sm border border-border/80 bg-background px-1 py-0.5 text-center text-[length:var(--text-caption)] font-medium text-foreground outline-none focus:border-ring"
                 />
               ) : (
                 <p
+                  onDoubleClick={(e) => {
+                    if (!onRename) return;
+                    // Double-click on the label (not the whole card) enters
+                    // rename mode. The card's single-click already fired and
+                    // opened the icon, which is fine — rename takes over
+                    // visually with the inline input.
+                    e.stopPropagation();
+                    setRenameDraft(iconName);
+                    setRenaming(true);
+                  }}
                   className={cn(
-                    'truncate select-none text-[length:var(--text-caption)]',
+                    'block w-full box-border truncate select-none rounded-sm border border-transparent px-1 py-0.5 text-center text-[length:var(--text-caption)]',
                     selected
                       ? 'font-semibold text-primary-foreground'
                       : active

@@ -20,7 +20,7 @@ import {
   createStarPath,
 } from './path-shapes';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
-import type { PathPoint } from './path-model';
+import type { EditablePath, PathPoint } from './path-model';
 import type { GuideItem, Layer } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
@@ -52,6 +52,19 @@ type PenPlacement = {
   anchor: { x: number; y: number };
   pointerId: number;
   basePathD: string;
+  /** Parsed snapshot of `basePathD`, captured once at gesture start so per-
+   *  frame preview/commit handlers can clone instead of re-parsing. */
+  baseEditable: EditablePath;
+  /** Screen coordinates at pointerdown. Used to enforce a drag threshold
+   *  before curve handles are created — matches Figma/Illustrator/Inkscape
+   *  pen tool behavior (a pure click produces a corner point, not a curve). */
+  downClientX: number;
+  downClientY: number;
+  /** Becomes true once the pointer has moved more than `PEN_DRAG_THRESHOLD_PX`
+   *  from the pointerdown position. Once tripped, stays tripped for the rest
+   *  of the gesture so tiny motion going back under the threshold doesn't
+   *  flicker the preview. */
+  hasDragged: boolean;
 };
 type PenHandlePreview = {
   anchor: { x: number; y: number };
@@ -80,6 +93,9 @@ type SelectionTransformPlacement = {
   mode: 'move' | 'resize';
   handle: BBoxHandle | null;
   basePathD: string;
+  /** Parsed snapshot of `basePathD`, captured once at gesture start so the
+   *  per-frame selection-transform preview can clone instead of re-parsing. */
+  baseEditable: EditablePath;
 };
 type PointMarqueePlacement = {
   layerId: string | null;
@@ -98,6 +114,15 @@ const SHAPE_EMPTY_EPSILON = 0.001;
 const BBOX_HIT_PADDING_PX = 12;
 const POINT_HIT_RADIUS_PX = 22;
 const MARQUEE_DRAG_THRESHOLD_PX = 4;
+/**
+ * Screen-space drag threshold for the pen tool. A pointer movement below
+ * this distance between pointerdown and pointerup produces a corner point
+ * (straight line segment), matching Figma, Illustrator, Inkscape, and
+ * Sketch. Without this threshold, any sub-pixel jitter turns every click
+ * into a curved segment. Compared in client (CSS) pixels so the behavior
+ * is zoom-independent.
+ */
+const PEN_DRAG_THRESHOLD_PX = 4;
 
 function getActiveVariantSnapshot(
   state: ReturnType<typeof editorStore.getState>,
@@ -107,6 +132,41 @@ function getActiveVariantSnapshot(
   const variant = state.project?.icons[iconId]?.variants[state.currentVariantId];
   if (!variant) return null;
   return { layers: variant.layers, topology: variant.topology };
+}
+
+/**
+ * Deep-clone an EditablePath. Used by drag handlers that want a fresh
+ * mutable copy per frame without re-running `parseSvgPath(pathD)`. Cloning
+ * an object tree is significantly cheaper than tokenizing + parsing an
+ * SVG `d` string, especially on long paths — and it keeps per-frame drag
+ * math immune to parser round-trip drift.
+ *
+ * Only clones the fields the editor actually reads/mutates. `id` and
+ * `segment.type` stay the same object references where safe because they
+ * are either primitives or string-branded enums.
+ */
+function cloneEditablePath(path: EditablePath): EditablePath {
+  return {
+    id: path.id,
+    subPaths: path.subPaths.map((sp) => ({
+      id: sp.id,
+      closed: sp.closed,
+      points: sp.points.map((pt) => ({
+        id: pt.id,
+        position: { x: pt.position.x, y: pt.position.y },
+        handleIn: pt.handleIn ? { x: pt.handleIn.x, y: pt.handleIn.y } : null,
+        handleOut: pt.handleOut ? { x: pt.handleOut.x, y: pt.handleOut.y } : null,
+        nodeType: pt.nodeType,
+        segment: pt.segment
+          ? pt.segment.type === 'quadratic'
+            ? { type: 'quadratic', control: { x: pt.segment.control.x, y: pt.segment.control.y } }
+            : pt.segment.type === 'arc'
+              ? { ...pt.segment }
+              : { type: pt.segment.type }
+          : null,
+      })),
+    })),
+  };
 }
 
 /**
@@ -129,6 +189,10 @@ export class PathEditor {
   private dragControlDirection: ControlDirection | null = null;
   private originalTransform: { x: number; y: number } | null = null;
   private originalPathD: string | null = null;
+  /** Parsed snapshot of `originalPathD`, captured once at point/control
+   *  drag start so `dragPoint` / `dragControl` / `commitPointDrag` /
+   *  `commitControlDrag` can clone instead of re-parsing on every frame. */
+  private originalEditable: EditablePath | null = null;
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private shapePlacement: ShapePlacement | null = null;
@@ -463,6 +527,12 @@ export class PathEditor {
       anchor: snappedPoint,
       pointerId,
       basePathD,
+      // Cache the parsed model so updatePenCurvePreview/commitPenPlacement
+      // clone instead of re-parsing on every frame.
+      baseEditable: editable,
+      downClientX: clientX,
+      downClientY: clientY,
+      hasDragged: false,
     };
     pauseHistory();
 
@@ -508,6 +578,9 @@ export class PathEditor {
     this.dragStartX = clientX;
     this.dragStartY = clientY;
     this.originalPathD = pathD;
+    // Parse the path ONCE at gesture start. Per-frame drag handlers will
+    // clone this snapshot instead of re-parsing the `d` string each move.
+    this.originalEditable = parseSvgPath(pathD);
     pauseHistory();
   }
 
@@ -531,6 +604,7 @@ export class PathEditor {
     this.dragStartX = clientX;
     this.dragStartY = clientY;
     this.originalPathD = pathD;
+    this.originalEditable = parseSvgPath(pathD);
     pauseHistory();
   }
 
@@ -659,6 +733,7 @@ export class PathEditor {
       mode: 'resize',
       handle,
       basePathD: normalizedBasePathD,
+      baseEditable: editable,
     };
 
     if (layerTransformX !== 0 || layerTransformY !== 0) {
@@ -898,6 +973,7 @@ export class PathEditor {
       mode: hit.type,
       handle: hit.handle,
       basePathD: pathD,
+      baseEditable: parseSvgPath(pathD),
     };
     state.setPointTransformLabel({
       width: bbox.maxX - bbox.minX,
@@ -1102,13 +1178,16 @@ export class PathEditor {
   }
 
   private dragPoint(e: PointerEvent) {
-    if (!this.dragPointKey || !this.dragLayerId || !this.originalPathD) return;
+    if (!this.dragPointKey || !this.dragLayerId || !this.originalEditable) return;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId, true);
 
-    const editable = parseSvgPath(this.originalPathD);
+    // Clone the gesture-start snapshot instead of re-parsing `originalPathD`
+    // on every pointermove frame. Any parser round-trip drift now happens
+    // at most once per gesture, not once per frame.
+    const editable = cloneEditablePath(this.originalEditable);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
@@ -1153,14 +1232,14 @@ export class PathEditor {
   }
 
   private dragControl(e: PointerEvent) {
-    if (!this.dragPointKey || !this.dragLayerId || !this.dragControlDirection || !this.originalPathD) {
+    if (!this.dragPointKey || !this.dragLayerId || !this.dragControlDirection || !this.originalEditable) {
       return;
     }
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
-    const editable = parseSvgPath(this.originalPathD);
+    const editable = cloneEditablePath(this.originalEditable);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
@@ -1202,30 +1281,43 @@ export class PathEditor {
   private updatePenCurvePreview(e: PointerEvent) {
     if (!this.penPlacement) return;
 
+    // Pen tool drag threshold (screen pixels). Below this we leave the
+    // newly-added point as a pure corner: handles stay null and the
+    // serialized path keeps its L segment. Once the threshold is crossed
+    // we latch `hasDragged = true` for the rest of the gesture so moving
+    // back under the threshold doesn't flicker between corner and curve.
+    const downDx = e.clientX - this.penPlacement.downClientX;
+    const downDy = e.clientY - this.penPlacement.downClientY;
+    const downDistSq = downDx * downDx + downDy * downDy;
+    if (!this.penPlacement.hasDragged) {
+      if (downDistSq < PEN_DRAG_THRESHOLD_PX * PEN_DRAG_THRESHOLD_PX) {
+        return;
+      }
+      this.penPlacement.hasDragged = true;
+    }
+
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.penPlacement.layerId, true);
-    const editable = parseSvgPath(this.penPlacement.basePathD);
+    // Clone the cached parse captured in beginPenPlacement. The previous
+    // version re-tokenized and re-parsed `basePathD` on every pointermove,
+    // which was the hottest source of parse-induced jitter during pen use.
+    const editable = cloneEditablePath(this.penPlacement.baseEditable);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
-    const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
-    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
-    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
-    const subPath = editable.subPaths[subPathIdx];
-    if (!subPath) return;
 
-    const prev = subPath.points[pointIdx - 1] ?? null;
     const previewPoint = e.shiftKey
       ? constrainAngle(this.penPlacement.anchor, snappedPoint)
       : snappedPoint;
     const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
     applyPenPreviewToPoint(point, preview);
 
-    if (prev) {
-      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
-      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
-    }
+    // NOTE: intentionally do NOT touch `prev.handleOut` here. The previous
+    // point's outgoing handle was set by its own earlier drag (or left
+    // null by a click-only commit). Overwriting it with the current
+    // point's forward handle produced the geometrically-nonsensical
+    // "always curved" output users were seeing.
 
     this.publishPendingPenHandle(this.penPlacement.layerId, this.penPlacement.pointKey, preview);
 
@@ -1395,29 +1487,34 @@ export class PathEditor {
     const layer = getActiveVariantSnapshot(state, iconId)?.layers[this.penPlacement.layerId];
     if (!layer?.path) return;
 
+    // If the pointer never crossed the drag threshold, commit a pure
+    // corner point with no handles. The editable cached at gesture start
+    // already has the new point as a line segment — no further mutation
+    // needed. Crucially we also clear any pending pen handle so the next
+    // pen click doesn't inherit jitter-curve state from this click.
+    if (!this.penPlacement.hasDragged) {
+      this.clearPendingPenHandle();
+      // The basePathD written in beginPenPlacement is already the correct
+      // corner-point serialization. No extra patch needed.
+      return;
+    }
+
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.penPlacement.layerId);
-    const editable = parseSvgPath(this.penPlacement.basePathD);
+    const editable = cloneEditablePath(this.penPlacement.baseEditable);
     const point = this.resolvePoint(editable, this.penPlacement.pointKey);
     if (!point) return;
 
-    const [subPathIdxRaw, pointIdxRaw] = this.penPlacement.pointKey.split(':');
-    const subPathIdx = Number.parseInt(subPathIdxRaw ?? '-1', 10);
-    const pointIdx = Number.parseInt(pointIdxRaw ?? '-1', 10);
-    const subPath = editable.subPaths[subPathIdx];
-    const prev = subPath?.points[pointIdx - 1] ?? null;
     const previewPoint = e.shiftKey
       ? constrainAngle(this.penPlacement.anchor, snappedPoint)
       : snappedPoint;
     const preview = this.buildPenHandlePreview(previewPoint, { altKey: e.altKey });
     applyPenPreviewToPoint(point, preview);
 
-    if (prev) {
-      prev.handleOut = preview.handleOut ? { ...preview.handleOut } : null;
-      prev.nodeType = preview.handleOut ? (e.altKey ? 'corner' : 'smooth') : 'static';
-    }
+    // NOTE: intentionally do NOT touch `prev.handleOut` here. See the
+    // matching comment in `updatePenCurvePreview`.
 
     state.patchLayer(iconId,this.penPlacement.layerId, {
       path: { ...layer.path, d: serializePath(editable) },
@@ -1477,7 +1574,7 @@ export class PathEditor {
   }
 
   private commitPointDrag(e: PointerEvent) {
-    if (!this.dragLayerId || !this.dragPointKey || !this.originalPathD) return;
+    if (!this.dragLayerId || !this.dragPointKey || !this.originalEditable) return;
     const state = editorStore.getState();
     const iconId = state.currentIconId;
     if (!iconId) return;
@@ -1486,7 +1583,7 @@ export class PathEditor {
     if (!svgPoint) return;
     const snappedPoint = this.computeSnappedPoint(svgPoint, this.dragLayerId);
 
-    const editable = parseSvgPath(this.originalPathD);
+    const editable = cloneEditablePath(this.originalEditable);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
@@ -1520,7 +1617,7 @@ export class PathEditor {
   }
 
   private commitControlDrag(e: PointerEvent) {
-    if (!this.dragLayerId || !this.dragPointKey || !this.dragControlDirection || !this.originalPathD) {
+    if (!this.dragLayerId || !this.dragPointKey || !this.dragControlDirection || !this.originalEditable) {
       return;
     }
 
@@ -1531,7 +1628,7 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return;
 
-    const editable = parseSvgPath(this.originalPathD);
+    const editable = cloneEditablePath(this.originalEditable);
     const context = this.resolvePointContext(editable, this.dragPointKey);
     if (!context) return;
 
@@ -1977,6 +2074,7 @@ export class PathEditor {
     this.dragStartSvg = null;
     this.originalTransform = null;
     this.originalPathD = null;
+    this.originalEditable = null;
     this.shapePlacement = null;
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
@@ -2280,7 +2378,7 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return null;
     const current = this.snapPointToGrid(svgPoint);
-    const editable = parseSvgPath(placement.basePathD);
+    const editable = cloneEditablePath(placement.baseEditable);
     const resolvedPoints = placement.pointKeys
       .map((key) => {
         const point = this.resolvePoint(editable, key);

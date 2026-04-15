@@ -6,7 +6,7 @@ function nextId(prefix: string): string {
 }
 
 
-const EDITABLE_COMMANDS = new Set(['M', 'L', 'H', 'V', 'C', 'Q', 'A', 'Z']);
+const EDITABLE_COMMANDS = new Set(['M', 'L', 'H', 'V', 'C', 'S', 'Q', 'T', 'A', 'Z']);
 
 export function isPathDirectlyEditable(d: string): boolean {
   const tokens = tokenize(d);
@@ -150,6 +150,90 @@ export function parseSvgPath(d: string): EditablePath {
             control: { x: cpx, y: cpy },
           });
           pt.handleIn = { x: cpx, y: cpy };
+          currentSubPath?.points.push(pt);
+
+          cx = x;
+          cy = y;
+        }
+        break;
+      }
+
+      case 'S':
+      case 's': {
+        // Smooth cubic: the first control point is the reflection of the
+        // previous cubic's second control point relative to the current
+        // point. Per SVG spec, the "previous second control" is the
+        // previous command's x2,y2 — in our model, C and S store that on
+        // the *current* point's handleIn at parse time. So at the moment
+        // S runs, the "previous command's second control" lives on
+        // `prev.handleIn`.
+        //
+        // If the previous command was not a cubic (C/S), the implicit
+        // first control equals the current point.
+        //
+        // We also assign `prev.handleOut` to that reflected control so
+        // the serializer can rebuild a valid C segment pair.
+        const isRel = cmd === 's';
+        while (i < tokens.length && isNumber(tokens[i])) {
+          const x2 = num() + (isRel ? cx : 0);
+          const y2 = num() + (isRel ? cy : 0);
+          const x = num() + (isRel ? cx : 0);
+          const y = num() + (isRel ? cy : 0);
+
+          const prev =
+            currentSubPath?.points[currentSubPath.points.length - 1];
+          if (prev) {
+            const reflected =
+              prev.handleIn
+                ? {
+                    x: 2 * prev.position.x - prev.handleIn.x,
+                    y: 2 * prev.position.y - prev.handleIn.y,
+                  }
+                : { x: prev.position.x, y: prev.position.y };
+            prev.handleOut = reflected;
+            prev.nodeType = inferNodeType(prev.position, prev.handleIn, prev.handleOut);
+          }
+
+          const pt = makePoint(x, y, { type: 'cubic' });
+          pt.handleIn = { x: x2, y: y2 };
+          pt.nodeType = 'smooth';
+          currentSubPath?.points.push(pt);
+
+          cx = x;
+          cy = y;
+        }
+        break;
+      }
+
+      case 'T':
+      case 't': {
+        // Smooth quadratic: the control point is the reflection of the
+        // previous quadratic's control point relative to the current
+        // point. Same rule as S but for Q: the previous Q stored its
+        // control on `prev.handleIn`, and we reflect about `prev.position`.
+        //
+        // If the previous command was not a quadratic (Q/T), the implicit
+        // control equals the current point.
+        const isRel = cmd === 't';
+        while (i < tokens.length && isNumber(tokens[i])) {
+          const x = num() + (isRel ? cx : 0);
+          const y = num() + (isRel ? cy : 0);
+
+          const prev =
+            currentSubPath?.points[currentSubPath.points.length - 1];
+          let control = { x: 0, y: 0 };
+          if (prev) {
+            control = prev.handleIn
+              ? {
+                  x: 2 * prev.position.x - prev.handleIn.x,
+                  y: 2 * prev.position.y - prev.handleIn.y,
+                }
+              : { x: prev.position.x, y: prev.position.y };
+            prev.handleOut = control;
+          }
+
+          const pt = makePoint(x, y, { type: 'quadratic', control });
+          pt.handleIn = control;
           currentSubPath?.points.push(pt);
 
           cx = x;

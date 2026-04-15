@@ -1,0 +1,11 @@
+/* Phase 1 spike: supply system-font fallbacks for the CSS vars that the
+   app layout normally sets via next/font (--font-geist-sans,
+   --font-geist-mono). Storybook can't evaluate geist/font/local, so we
+   shadow those tokens here. Visual fidelity is slightly off, which is
+   fine for the spike — a production Storybook run can revisit this via
+   @storybook/addon-themes or a font-face <link> if the gap matters. */
+:root,
+.sb-root {
+  --font-geist-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-geist-mono: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+}

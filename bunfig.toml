@@ -1,0 +1,6 @@
+# Bun configuration for this repo.
+#
+# Intentionally NO [test].preload for happy-dom — happy-dom's DOMParser
+# diverges from Bun's built-in on SVG attribute namespaces, which breaks
+# the svg-sanitizer / raw-svg-adapter tests. React component tests opt in
+# explicitly by importing `tests/setup/react.ts` at the top of the file.

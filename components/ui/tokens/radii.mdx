@@ -1,0 +1,45 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Radii" />
+
+# Radii
+
+Sourced from `/DESIGN.md` §4 "Component Stylings > Buttons" and §9
+example prompts. Generous radius is structural — `/DESIGN.md` §8
+explicitly bans sharp corners (less than 6px) on interactive elements.
+
+## Canonical values
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginTop: 16 }}>
+  {[
+    { name: 'toolbar action', radius: 8, css: '0.5rem' },
+    { name: 'search input', radius: 10, css: '0.625rem' },
+    { name: 'panel nav', radius: 14, css: '0.875rem' },
+    { name: 'card / icon tile', radius: 14, css: '0.875rem' },
+    { name: 'pill / CTA', radius: 9999, css: '9999px' },
+  ].map(({ name, radius, css }) => (
+    <div key={name} style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: radius,
+          background: 'var(--primary-soft)',
+          border: '1px solid var(--border)',
+        }}
+      />
+      <div style={{ fontSize: 11, fontWeight: 550, color: 'var(--foreground)', textAlign: 'center' }}>
+        {name}
+      </div>
+      <code style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>{css}</code>
+    </div>
+  ))}
+</div>
+
+## Usage rules (DESIGN.md §4 + §9)
+
+- **`9999px` full pill** — primary CTAs, badges, status indicators, accent-soft chips.
+- **`0.875rem` / 14px** — panel navigation items, icon grid tiles.
+- **`0.625rem` / 10px** — search inputs.
+- **`0.5rem` / 8px** — toolbar actions, standard text inputs.
+- **Never** less than 6px on interactive elements. §8 guardrail: "sharp corners on interactive elements are banned."

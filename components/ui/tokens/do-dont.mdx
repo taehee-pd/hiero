@@ -1,0 +1,114 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Do and Don't" />
+
+# Do / Don't
+
+Sourced from `/DESIGN.md` §8 "Do / Don't Guardrails". This page is a
+visual anchor for the exact guardrails in DESIGN.md — every row below
+is a direct quote from §8, not an interpretation.
+
+## Do
+
+- Reuse existing shadcn/Radix-based primitives and current component patterns.
+- Keep UI changes consistent with the dark editor ecosystem.
+- Preserve accessibility semantics (ARIA labels, focus visibility, keyboard flow).
+- Maintain visual consistency across nav / list / editor / inspector surfaces.
+- Use multi-layer shadows (inset + outline + elevation) at sub-0.1 opacity.
+- Use `var(--primary-soft)` for selected / active item backgrounds.
+- Use pill shapes (`9999px`) for badges, status indicators, and primary CTA buttons.
+- Keep font weight restrained — **450 for body, 550 for emphasis**. Never 700 for headings.
+
+## Don't
+
+- Introduce consumer-marketing visual language into production tooling surfaces.
+- Add high-saturation gradients or glassmorphism without an explicit product decision.
+- Hide critical actions behind ambiguous icon-only affordances.
+- Trade clarity for novelty in animation or style experiments.
+- Use heavy shadows (>0.12 opacity in light mode) — the refined quality requires whisper-level depth.
+- Use sharp corners (less than 6px radius) on interactive elements — generous radius is structural.
+- Use bold (700) display headings — the lighter weight signals professional restraint.
+- Skip the inset-shadow component on panels — half-pixel inset borders define edges.
+
+## Paired examples
+
+### Do: sub-0.1 opacity multi-layer shadow / Don't: heavy drop shadow
+
+<div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+  <div
+    style={{
+      flex: 1,
+      padding: 20,
+      borderRadius: 14,
+      background: 'var(--background)',
+      boxShadow: 'var(--shadow-outline)',
+      color: 'var(--foreground)',
+      fontSize: 13,
+    }}
+  >
+    <span style={{ fontSize: 11, color: 'var(--foreground-success)', fontWeight: 550 }}>DO</span>
+    <div style={{ marginTop: 8 }}>Outline ring + 1px cast, ≤0.06 opacity.</div>
+  </div>
+  <div
+    style={{
+      flex: 1,
+      padding: 20,
+      borderRadius: 14,
+      background: 'var(--background)',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+      color: 'var(--foreground)',
+      fontSize: 13,
+    }}
+  >
+    <span style={{ fontSize: 11, color: 'var(--foreground-danger)', fontWeight: 550 }}>DON'T</span>
+    <div style={{ marginTop: 8 }}>20px offset, 0.35 opacity — consumer-grade drop shadow.</div>
+  </div>
+</div>
+
+### Do: restrained weight 450 heading / Don't: bold 700 heading
+
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+  <div style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+    <div style={{ fontSize: 11, color: 'var(--foreground-success)', fontWeight: 550, letterSpacing: '0.03125rem' }}>DO</div>
+    <div style={{ fontSize: 24, fontWeight: 450, letterSpacing: '-0.10625rem', marginTop: 4, color: 'var(--foreground)' }}>
+      Layers
+    </div>
+  </div>
+  <div style={{ padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+    <div style={{ fontSize: 11, color: 'var(--foreground-danger)', fontWeight: 550, letterSpacing: '0.03125rem' }}>DON'T</div>
+    <div style={{ fontSize: 24, fontWeight: 700, marginTop: 4, color: 'var(--foreground)' }}>
+      LAYERS
+    </div>
+  </div>
+</div>
+
+### Do: generous radius / Don't: sharp corners on interactive elements
+
+<div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+  <button
+    style={{
+      padding: '8px 16px',
+      borderRadius: 9999,
+      background: 'var(--primary)',
+      color: 'var(--primary-foreground)',
+      border: 'none',
+      fontSize: 13,
+      fontWeight: 500,
+    }}
+  >
+    do — pill (9999px)
+  </button>
+  <button
+    style={{
+      padding: '8px 16px',
+      borderRadius: 2,
+      background: 'var(--primary)',
+      color: 'var(--primary-foreground)',
+      border: 'none',
+      fontSize: 13,
+      fontWeight: 500,
+    }}
+  >
+    don't — 2px
+  </button>
+</div>

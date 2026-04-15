@@ -1,0 +1,55 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Spacing" />
+
+# Spacing
+
+Sourced from `/DESIGN.md` §5 "Layout Principles". Spacing is deliberately
+tight — the design system targets medium-dense data tooling. These
+values come straight from `app/globals.css` and are visible via CSS
+variables on `:root`.
+
+## 4pt scale
+
+<div style={{ display: 'grid', gap: 8, marginTop: 16 }}>
+  {[
+    { name: '--space-1', px: 4 },
+    { name: '--space-2', px: 8 },
+    { name: '--space-3', px: 12 },
+    { name: '--space-4', px: 16 },
+    { name: '--space-5', px: 20 },
+    { name: '--space-6', px: 24 },
+    { name: '--space-8', px: 32 },
+  ].map(({ name, px }) => (
+    <div
+      key={name}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}
+    >
+      <code style={{ width: 110 }}>{name}</code>
+      <span style={{ width: 48, color: 'var(--foreground-secondary)' }}>{px}px</span>
+      <span
+        aria-hidden="true"
+        style={{
+          height: 16,
+          width: `var(${name})`,
+          background: 'var(--primary)',
+          borderRadius: 4,
+        }}
+      />
+    </div>
+  ))}
+</div>
+
+## Panel rhythm tokens (DESIGN.md §5)
+
+| Token | Value | Purpose |
+|---|---|---|
+| `--panel-padding` | `12px` | internal spacing rhythm inside every panel |
+| `--panel-gap` | `8px` | gap between siblings inside a panel |
+| `--section-gap` | `12px` | gap between semantic sections |
+
+## Whitespace philosophy
+
+- **Purposeful breathing room** — ElevenLabs-generous, adapted for density. Each pane is self-contained with clear internal rhythm.
+- **Warm emptiness** — Empty states use subtle dotted backgrounds (`.studio-dots`) and muted text rather than harsh blank space.
+- **Typography-led rhythm** — Light heading weights create hierarchy without heavy dividers.

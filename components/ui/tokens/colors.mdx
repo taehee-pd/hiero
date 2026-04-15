@@ -1,0 +1,91 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Tokens/Colors" />
+
+# Colors
+
+Sourced from `/DESIGN.md` §2 "Color Palette & Roles" and §9 "Quick color
+reference". Every swatch below reads live from the CSS variables defined
+in `app/globals.css` — if DESIGN.md and globals.css ever disagree, this
+page diffs.
+
+> **Reserve strong accent saturation for primary actions, focus indicators,
+> and active states.** Use `--primary-soft` for selected backgrounds,
+> active pane highlights, hover badges. Use warm surface treatment
+> (`--surface-warm`) for featured CTA areas.
+
+## Core semantic roles
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
+  {[
+    { name: '--background', label: 'background / shell' },
+    { name: '--background-secondary', label: 'panel surface' },
+    { name: '--surface-warm', label: 'warm surface (feature CTA)' },
+    { name: '--foreground', label: 'text primary' },
+    { name: '--foreground-secondary', label: 'text secondary' },
+    { name: '--foreground-tertiary', label: 'text tertiary / muted' },
+    { name: '--border', label: 'border / separators' },
+    { name: '--border-subtle', label: 'border subtle' },
+    { name: '--primary', label: 'accent (brand / action)' },
+    { name: '--primary-soft', label: 'accent soft' },
+    { name: '--foreground-success', label: 'foreground — success' },
+    { name: '--foreground-warning', label: 'foreground — warning' },
+    { name: '--foreground-danger', label: 'foreground — danger' },
+  ].map(({ name, label }) => (
+    <div
+      key={name}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        background: 'var(--background)',
+        color: 'var(--foreground)',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: `var(${name})`,
+          border: '1px solid var(--border)',
+          flex: 'none',
+        }}
+      />
+      <div style={{ display: 'grid', gap: 2 }}>
+        <code style={{ fontSize: 12 }}>{name}</code>
+        <span style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>{label}</span>
+      </div>
+    </div>
+  ))}
+</div>
+
+## Light / dark reference values
+
+Per `/DESIGN.md` §9 (Quick color reference). These are the concrete
+values each semantic token resolves to; the live swatches above track
+whichever theme is currently active via the toolbar.
+
+| Purpose | Light | Dark |
+|---------|-------|------|
+| Background | `#FFFFFF` | `#0A0A0A` |
+| Surface | `#F3F7FA` | `#21282D` |
+| Warm surface | `rgba(243,247,250,0.8)` | `rgba(33,40,45,0.8)` |
+| Text | `#090D10` | `#FFFFFF` |
+| Text secondary | `#3C464D` | `#CBD1D6` |
+| Text muted | `#7E8991` | `#7E8991` |
+| Accent | `#3186EE` | `#6DADFF` |
+| Accent soft | `rgba(49,134,238,0.08)` | `rgba(109,173,255,0.12)` |
+| Border | `rgba(0,0,0,0.05)` | `rgba(255,255,255,0.20)` |
+| Border subtle | `rgba(0,0,0,0.06)` | `rgba(255,255,255,0.06)` |
+
+## Do / don't
+
+- **Do** use `--primary-soft` for selected-item backgrounds and active pane highlights.
+- **Do** preserve panel/surface hierarchy through tone and border contrast before reaching for shadow.
+- **Don't** introduce new chroma families without an explicit product decision.
+- **Don't** raise accent saturation for ambient decoration.

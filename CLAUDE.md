@@ -16,9 +16,15 @@ pnpm dev           # Start dev server
 pnpm build         # Production build (output: .next/)
 pnpm lint          # ESLint check
 pnpm format:check  # Prettier check
-bun test           # Run all tests
+pnpm test          # Run all tests (splits into test:core + test:dom)
 npx tsc --noEmit   # Type-check without emitting
 ```
+
+> **Do not run `bun test` directly.** Use `pnpm test`. The test suite is
+> split into two bun invocations (`test:core` for `.test.ts` and
+> `test:dom` for React `.test.tsx` files) so happy-dom's DOMParser
+> can't contaminate the svg-sanitizer / import-svg tests that run in
+> the same bun process. See `bunfig.toml` for the full explanation.
 
 ## CI Emulation (run before every push)
 
@@ -30,7 +36,7 @@ bun install                     # Regenerate bun.lock
 bun install --frozen-lockfile   # Emulate CI — must pass before pushing
 bun run format:check            # Prettier check (CI runs this on pnpm-lock.yaml too)
 bun run lint                    # ESLint — 0 errors required
-bun test                        # Run tests
+pnpm test                       # test:core + test:dom (see note above)
 pnpm build                      # Verify production build
 ```
 
@@ -97,7 +103,7 @@ tests/                # Bun test files (103+ tests)
 - **UI Components:** Always use shadcn/ui or kibo-ui — never raw `<select>`, `<input type="range">`, etc.
 - **CSS:** Use Tailwind utilities + `wire-*` CSS classes for editor panels (defined in `app/globals.css`)
 - **State:** Custom store in `lib/editor-store/store.ts` — use `useEditorStore()` and `useEditorActions()` (built on `useSyncExternalStore`)
-- **Testing:** `bun test` — all tests must pass before committing
+- **Testing:** `pnpm test` — all tests must pass before committing (splits into core + dom; see bunfig.toml)
 - **Commits:** Author as `taehee-pd <j.taehee@icloud.com>` with Co-Authored-By Claude
 
 ## Specs & Documentation

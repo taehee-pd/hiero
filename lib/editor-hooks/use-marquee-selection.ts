@@ -22,8 +22,30 @@
 //     drag start. With shift/meta, the base is preserved so toggle
 //     mode can add/remove against it.
 //   - Pointerup ends the drag cleanly (no stuck overlay rect).
+//
+// ── Cancellation + unmount hygiene (codex adversarial finding #2) ─
+//
+// A drag in progress must end cleanly when any of these happen:
+//   - pointerup fires (normal path)
+//   - pointercancel fires (OS-level interrupt: touch cancellation,
+//     gesture preemption, low-level scroll takeover)
+//   - lostpointercapture fires (focus loss, alt-tab, modal open that
+//     steals capture)
+//   - the hosting component unmounts (route change mid-drag)
+//
+// Without these, dragRef.current stays set and `rect` stays non-null
+// on screen — the next click is treated as a continuation of the dead
+// drag. All paths funnel through the same `endDrag()` helper so any
+// future cleanup (analytics, telemetry, selection commit on cancel)
+// lives in one place.
 
-import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as RPointerEvent,
+} from 'react';
 
 export type MarqueeRect = {
   left: number;
@@ -38,6 +60,10 @@ type DragState = {
   /** Selection at drag start — toggle mode adds/removes against this. */
   baseIds: string[];
   mode: 'replace' | 'toggle';
+  /** Captured pointerId so we can release on any exit path. */
+  pointerId: number;
+  /** Element that currently holds pointer capture. Released on end. */
+  captureTarget: HTMLElement | null;
 };
 
 export type MarqueeSelectionApi = {
@@ -50,6 +76,18 @@ export type MarqueeSelectionApi = {
   onPointerDown: (e: RPointerEvent<HTMLElement>) => void;
   onPointerMove: (e: RPointerEvent<HTMLElement>) => void;
   onPointerUp: (e: RPointerEvent<HTMLElement>) => void;
+  /**
+   * Bind to the same element as `onPointerDown` — releases capture
+   * and clears drag state when the OS interrupts the gesture (touch
+   * cancellation, gesture preemption).
+   */
+  onPointerCancel: (e: RPointerEvent<HTMLElement>) => void;
+  /**
+   * Bind to the same element as `onPointerDown` — releases drag
+   * state if pointer capture is lost (focus change, alt-tab, modal
+   * overlay stealing capture).
+   */
+  onLostPointerCapture: (e: RPointerEvent<HTMLElement>) => void;
 };
 
 export type MarqueeSelectionOptions = {
@@ -66,12 +104,14 @@ export type MarqueeSelectionOptions = {
   itemIdAttribute: string;
   /**
    * Return the current selection at drag-start time. The hook snapshots
-   * this into `baseIds` when shift/meta is held.
+   * this into `baseIds` when shift/meta is held. MUST be stable across
+   * renders (useCallback) — the hook uses it inside memoized handlers.
    */
   getCurrentSelection: () => string[];
   /**
    * Replace the active selection. Called from both the drag-start
    * clear (when no modifier is held) and from pointermove hit-tests.
+   * MUST be stable across renders.
    */
   setSelection: (ids: string[]) => void;
   /**
@@ -100,6 +140,23 @@ export function useMarqueeSelection({
   const dragRef = useRef<DragState | null>(null);
   const [rect, setRect] = useState<MarqueeRect | null>(null);
 
+  // Single exit point for every end-of-drag path (pointerup, cancel,
+  // lostpointercapture, unmount). Safe to call when no drag is active.
+  const endDrag = useCallback(() => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    try {
+      drag.captureTarget?.releasePointerCapture(drag.pointerId);
+    } catch {
+      // Capture may have already been released by the time we get
+      // here (e.g., element unmounted). releasePointerCapture throws
+      // in that case; swallow — we only care about the hook's state
+      // being reset.
+    }
+    dragRef.current = null;
+    setRect(null);
+  }, []);
+
   const onPointerDown = useCallback(
     (e: RPointerEvent<HTMLElement>) => {
       if (e.button !== 0) return;
@@ -112,7 +169,14 @@ export function useMarqueeSelection({
       if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
 
       e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      const captureTarget = e.currentTarget as HTMLElement;
+      try {
+        captureTarget.setPointerCapture?.(e.pointerId);
+      } catch {
+        // Rare: setPointerCapture can fail on synthetic events or
+        // detached elements. Not fatal — drag still works, we just
+        // lose "capture" semantics for this gesture.
+      }
 
       const additive = e.shiftKey || e.metaKey;
       const base = additive ? [...getCurrentSelection()] : [];
@@ -123,6 +187,8 @@ export function useMarqueeSelection({
         startY: e.clientY,
         baseIds: base,
         mode: additive ? 'toggle' : 'replace',
+        pointerId: e.pointerId,
+        captureTarget,
       };
     },
     [itemSelector, getCurrentSelection, setSelection],
@@ -141,7 +207,14 @@ export function useMarqueeSelection({
       setRect(liveRect);
 
       const container = containerRef.current;
-      if (!container) return;
+      if (!container) {
+        // Container unmounted mid-drag. End the drag cleanly rather
+        // than leaving stale state; a later pointerup would also clean
+        // up but callers expect the rect overlay to disappear
+        // immediately when the list it belongs to is gone.
+        endDrag();
+        return;
+      }
 
       const items = container.querySelectorAll<HTMLElement>(itemSelector);
       const hits: string[] = [];
@@ -164,14 +237,46 @@ export function useMarqueeSelection({
         setSelection(hits);
       }
     },
-    [itemSelector, itemIdAttribute, setSelection, containerRef],
+    [itemSelector, itemIdAttribute, setSelection, containerRef, endDrag],
   );
 
-  const onPointerUp = useCallback((e: RPointerEvent<HTMLElement>) => {
-    if (!dragRef.current) return;
-    (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-    dragRef.current = null;
-    setRect(null);
+  const onPointerUp = useCallback(
+    (_e: RPointerEvent<HTMLElement>) => {
+      endDrag();
+    },
+    [endDrag],
+  );
+
+  const onPointerCancel = useCallback(
+    (_e: RPointerEvent<HTMLElement>) => {
+      endDrag();
+    },
+    [endDrag],
+  );
+
+  const onLostPointerCapture = useCallback(
+    (_e: RPointerEvent<HTMLElement>) => {
+      endDrag();
+    },
+    [endDrag],
+  );
+
+  // Unmount cleanup — if the hosting component unmounts mid-drag we
+  // still need to release pointer capture (the element is gone but
+  // the pointerId may still be pinned to it on some platforms) and
+  // clear state so a re-mount starts fresh.
+  useEffect(() => {
+    return () => {
+      if (dragRef.current) {
+        const drag = dragRef.current;
+        try {
+          drag.captureTarget?.releasePointerCapture(drag.pointerId);
+        } catch {
+          // See endDrag comment.
+        }
+        dragRef.current = null;
+      }
+    };
   }, []);
 
   return {
@@ -179,5 +284,7 @@ export function useMarqueeSelection({
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    onPointerCancel,
+    onLostPointerCapture,
   };
 }

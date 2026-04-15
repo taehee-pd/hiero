@@ -181,4 +181,30 @@ describe('LayerPanel marquee multi-select (characterization)', () => {
 
     expect(getSelectedLayerIds()).toEqual(['alpha']);
   });
+
+  test('pointercancel ends the drag (codex finding #2)', () => {
+    const { container } = render(<LayerPanel />);
+    const list = findLayerListContainer(container);
+    expect(list).not.toBeNull();
+
+    fireEvent.pointerDown(list!, { button: 0, clientX: 500, clientY: 500 });
+    fireEvent.pointerMove(list!, { clientX: 510, clientY: 510 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).not.toBeNull();
+
+    fireEvent.pointerCancel(list!, { clientX: 510, clientY: 510 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).toBeNull();
+  });
+
+  test('lostpointercapture ends the drag (codex finding #2)', () => {
+    const { container } = render(<LayerPanel />);
+    const list = findLayerListContainer(container);
+    expect(list).not.toBeNull();
+
+    fireEvent.pointerDown(list!, { button: 0, clientX: 500, clientY: 500 });
+    fireEvent.pointerMove(list!, { clientX: 510, clientY: 510 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).not.toBeNull();
+
+    fireEvent.lostPointerCapture(list!, { clientX: 510, clientY: 510 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).toBeNull();
+  });
 });

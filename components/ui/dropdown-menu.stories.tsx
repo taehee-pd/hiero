@@ -73,15 +73,41 @@ async function openMenu(canvasElement: HTMLElement) {
   return body;
 }
 
-export const ArrowDownEnterActivates: Story = {
+export const OpenKeyboardEnterActivates: Story = {
   play: async ({ canvasElement, args }) => {
     const body = await openMenu(canvasElement);
-    // First item is "duplicate" — Enter should fire it.
+    // openMenu() used Enter to open, which Radix DropdownMenu auto-
+    // highlights the first item on. A second Enter activates that
+    // already-highlighted item. This test covers the keyboard-open
+    // path; ArrowDownNavigateAndActivate below covers down-arrow
+    // navigation before committing.
     await userEvent.keyboard('{Enter}');
     await waitFor(async () => {
       await expect(args.onDuplicate).toHaveBeenCalled();
     });
-    // Menu auto-closes after select; confirm.
+    await waitFor(() => {
+      expect(body.queryByRole('menu')).toBeNull();
+    });
+  },
+};
+
+export const ArrowDownNavigateAndActivate: Story = {
+  play: async ({ canvasElement, args }) => {
+    const body = await openMenu(canvasElement);
+    // Menu opens with "duplicate" highlighted. ArrowDown moves to the
+    // next item (the "export" submenu trigger). ArrowDown again moves
+    // to "delete" (past the separator). Enter activates "delete".
+    //
+    // This is the gstack testing specialist finding: the previous
+    // story was named ArrowDownEnterActivates but never pressed
+    // ArrowDown. Splitting the two paths here gives real coverage
+    // for keyboard navigation vs immediate activation.
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{Enter}');
+    await waitFor(async () => {
+      await expect(args.onDelete).toHaveBeenCalled();
+    });
     await waitFor(() => {
       expect(body.queryByRole('menu')).toBeNull();
     });

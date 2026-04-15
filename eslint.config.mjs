@@ -135,4 +135,75 @@ export default tseslint.config(
       ],
     },
   },
+
+  // Dynamic-import + require() bypass guard — codex adversarial review
+  // finding #5. ESLint's no-restricted-imports only covers static
+  // `import ... from '...'` syntax. Dynamic `import('@/components/kibo-ui/x')`
+  // and `require('@/components/kibo-ui/x')` pass the static rule
+  // unchallenged. no-restricted-syntax runs on the AST, so it catches
+  // both shapes. Repo-wide because the removed kibo-ui folder should
+  // never be reachable from any layer.
+  {
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression[source.type='Literal'][source.value=/^@\\/components\\/kibo-ui(\\/|$)/]",
+          message:
+            'components/kibo-ui was removed in Phase 2. Dynamic import() of the deleted folder is forbidden.',
+        },
+        {
+          selector:
+            "CallExpression[callee.name='require'][arguments.0.type='Literal'][arguments.0.value=/^@\\/components\\/kibo-ui(\\/|$)/]",
+          message:
+            'components/kibo-ui was removed in Phase 2. require() of the deleted folder is forbidden.',
+        },
+      ],
+    },
+  },
+  // Dynamic-import guard for the components/ui primitives-only layer.
+  // Static rule above catches `import from '@/components/ds'`; this
+  // catches `import('@/components/ds')` / `require('@/components/ds')`.
+  {
+    files: ['components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression[source.type='Literal'][source.value=/^@\\/components\\/(ds|editor|studio|explorer|export)(\\/|$)/]",
+          message:
+            'components/ui is primitives-only. Dynamic import() of DS or feature folders is forbidden.',
+        },
+        {
+          selector:
+            "CallExpression[callee.name='require'][arguments.0.type='Literal'][arguments.0.value=/^@\\/components\\/(ds|editor|studio|explorer|export)(\\/|$)/]",
+          message:
+            'components/ui is primitives-only. require() of DS or feature folders is forbidden.',
+        },
+      ],
+    },
+  },
+  // Dynamic-import guard for the components/ds layer.
+  {
+    files: ['components/ds/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression[source.type='Literal'][source.value=/^@\\/components\\/(editor|studio|explorer|export)(\\/|$)/]",
+          message:
+            'components/ds cannot dynamically import from feature folders.',
+        },
+        {
+          selector:
+            "CallExpression[callee.name='require'][arguments.0.type='Literal'][arguments.0.value=/^@\\/components\\/(editor|studio|explorer|export)(\\/|$)/]",
+          message:
+            'components/ds cannot require() feature folders.',
+        },
+      ],
+    },
+  },
 );

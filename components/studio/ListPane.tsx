@@ -68,10 +68,19 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   // Marquee drag lifecycle — shared hook from lib/editor-hooks.
   // `gridRef` below owns the query root for hit-testing; the hook
   // uses it via containerRef to find article[data-icon-id] targets.
+  //
+  // Memoized adapters keep the hook's returned handlers stable across
+  // renders. `getCurrentSelection` reads the store imperatively via an
+  // empty-dep callback (no closure over selectedIconIds state).
+  // `setSelection` is already a stable action from useEditorActions.
+  const getCurrentIconSelection = useCallback(
+    () => [...editorStore.getState().selectedIconIds],
+    [],
+  );
   const marquee = useMarqueeSelection({
     itemSelector: 'article[data-icon-id]',
     itemIdAttribute: 'data-icon-id',
-    getCurrentSelection: () => [...editorStore.getState().selectedIconIds],
+    getCurrentSelection: getCurrentIconSelection,
     setSelection: setSelectedIconIds,
     containerRef: gridRef,
   });
@@ -159,6 +168,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const handleGridPointerDown = marquee.onPointerDown;
   const handleGridPointerMove = marquee.onPointerMove;
   const handleGridPointerUp = marquee.onPointerUp;
+  const handleGridPointerCancel = marquee.onPointerCancel;
+  const handleGridLostPointerCapture = marquee.onLostPointerCapture;
 
   const iconCount = icons.length;
 
@@ -315,6 +326,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               onPointerDown={handleGridPointerDown}
               onPointerMove={handleGridPointerMove}
               onPointerUp={handleGridPointerUp}
+              onPointerCancel={handleGridPointerCancel}
+              onLostPointerCapture={handleGridLostPointerCapture}
             >
               <div
                 ref={gridRef}
@@ -396,9 +409,12 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         />
       </aside>
 
-      {/* Marquee overlay */}
+      {/* Marquee overlay — data-marquee-overlay is a semantic hook
+          used by char-marquee-listPane.test.tsx to assert the overlay
+          actually unmounts at pointerup. Do not remove. */}
       {marqueeRect && (
         <div
+          data-marquee-overlay
           className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
           style={{
             left: marqueeRect.left,

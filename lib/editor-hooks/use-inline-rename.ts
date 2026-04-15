@@ -26,8 +26,23 @@
 // characterization tests (tests/char-inline-rename-{navbar,editorShell}
 // .test.tsx) lock in the divergent behaviors so future regressions are
 // still caught even though the code is not migrated.
+//
+// ── Synchronous re-entry guard (codex adversarial finding #1) ─────
+//
+// The re-entry guard CANNOT rely on React state, because Enter's
+// onKeyDown and the input's onBlur can fire within the same React
+// event tick. React batches state updates from event handlers, so
+// setIsRenaming(false) from the first commit() does not flush before
+// the second commit() reads the closed-over `isRenaming`. The stale
+// value passes the guard and both commits fire onCommit.
+//
+// Fix: mirror isRenaming and draft into a ref that mutates
+// synchronously. The guard reads from the ref; state still exists for
+// re-render signaling. Keystrokes update both. start/commit/cancel
+// each update the ref immediately before (or instead of) scheduling
+// the state update.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export type InlineRenameApi = {
   /** True while the user is editing. */
@@ -48,11 +63,7 @@ export type InlineRenameApi = {
    *
    * Wire this to both the input's onBlur AND to onKeyDown on Enter.
    * The hook handles the blur-after-commit re-entry by checking
-   * isRenaming first.
-   *
-   * `currentName` must be passed each call so the "unchanged" short
-   * circuit can compare against the latest prop value without the
-   * hook having to hold a reference or re-render.
+   * the synchronous ref guard first.
    */
   commit: (currentName: string) => string | undefined;
   /**
@@ -66,52 +77,83 @@ export type InlineRenameOptions = {
    * Called exactly once per successful commit with the sanitized
    * (trimmed, non-empty, changed) value. The hook will NOT call this
    * for empty or unchanged commits.
+   *
+   * IMPORTANT: onCommit should be wrapped in useCallback by the caller
+   * so its identity is stable. The hook does NOT depend on onCommit in
+   * its internal useCallback arrays — it reads via a ref — so the only
+   * downstream consequence of an unstable onCommit is whether the
+   * caller's own memoization chain stays stable.
    */
   onCommit: (nextName: string) => void;
 };
 
+type MirrorState = {
+  isRenaming: boolean;
+  draft: string;
+};
+
 export function useInlineRename({ onCommit }: InlineRenameOptions): InlineRenameApi {
+  // React state is kept for re-render signaling (so consumers reading
+  // the returned isRenaming/draft get updated UI). The ref is the
+  // source of truth for the synchronous guards inside the callbacks.
   const [isRenaming, setIsRenaming] = useState(false);
   const [draft, setDraft] = useState('');
 
+  const mirrorRef = useRef<MirrorState>({ isRenaming: false, draft: '' });
+  const onCommitRef = useRef(onCommit);
+  // Keep onCommit's latest value readable inside the synchronous
+  // commit() without putting it in a dep array — caller may pass an
+  // unmemoized function and we do not want to churn commit's identity.
+  onCommitRef.current = onCommit;
+
+  const setDraftStable = useCallback((next: string) => {
+    mirrorRef.current = { ...mirrorRef.current, draft: next };
+    setDraft(next);
+  }, []);
+
   const start = useCallback((currentName: string) => {
+    mirrorRef.current = { isRenaming: true, draft: currentName };
     setDraft(currentName);
     setIsRenaming(true);
   }, []);
 
   const cancel = useCallback(() => {
-    setIsRenaming(false);
     // Draft reset on cancel matches IconGridItem's cancelRename contract.
     // LayerPanel did not reset the draft because its input unmounts, so
     // the stranded state was unobservable. The hook resets unconditionally
     // so no call site leaks stale drafts into a re-entry of rename mode.
+    mirrorRef.current = { isRenaming: false, draft: '' };
+    setIsRenaming(false);
     setDraft('');
   }, []);
 
-  const commit = useCallback(
-    (currentName: string): string | undefined => {
-      // Re-entry guard: if the input fires blur right after Escape or
-      // Enter already committed, isRenaming is already false and we
-      // should no-op. This keeps the characterization-test contract
-      // that each commit happens exactly once per user gesture.
-      if (!isRenaming) return undefined;
+  const commit = useCallback((currentName: string): string | undefined => {
+    // SYNCHRONOUS guard via ref. React may not have flushed the state
+    // update from a prior commit() yet (Enter + blur in the same
+    // tick), so we MUST NOT read `isRenaming` from closure. If the
+    // ref says the user is no longer renaming, this call is a
+    // blur-after-Enter re-entry and should no-op.
+    if (!mirrorRef.current.isRenaming) return undefined;
 
-      const trimmed = draft.trim();
-      setIsRenaming(false);
+    const trimmed = mirrorRef.current.draft.trim();
 
-      if (!trimmed) return undefined;
-      if (trimmed === currentName) return undefined;
+    // Flip the mirror immediately so a second synchronous commit()
+    // hits the early return above. The state update is scheduled but
+    // doesn't need to land before that guard fires.
+    mirrorRef.current = { isRenaming: false, draft: mirrorRef.current.draft };
+    setIsRenaming(false);
 
-      onCommit(trimmed);
-      return trimmed;
-    },
-    [isRenaming, draft, onCommit],
-  );
+    if (!trimmed) return undefined;
+    if (trimmed === currentName) return undefined;
+
+    onCommitRef.current(trimmed);
+    return trimmed;
+  }, []);
 
   return {
     isRenaming,
     draft,
-    setDraft,
+    setDraft: setDraftStable,
     start,
     commit,
     cancel,

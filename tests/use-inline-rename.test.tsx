@@ -117,4 +117,49 @@ describe('useInlineRename', () => {
 
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
+
+  test('synchronous re-entry guard: same-tick commit() + commit() fires onCommit exactly once (codex adversarial #1)', () => {
+    // Before Phase 4 post-review, the re-entry guard read `isRenaming`
+    // from the render closure. If Enter's onKeyDown and the input's
+    // onBlur both fire within the same React event tick, React batches
+    // the setIsRenaming(false) from the first commit and the second
+    // commit sees the stale `true` — both commits fire onCommit.
+    //
+    // The fix moves the guard into a ref that mutates synchronously.
+    // This test exercises the exact "no act() flush between calls"
+    // path that the earlier test missed. Both commits run inside a
+    // single act() block, so neither sees any intervening React flush.
+    const onCommit = mock((_: string) => {});
+    const { result } = renderHook(() => useInlineRename({ onCommit }));
+
+    act(() => result.current.start('arrow-right'));
+    act(() => result.current.setDraft('arrow-down'));
+    act(() => {
+      // Both commits in the SAME act(). Before the fix, React's
+      // batching means isRenaming is still true when the second
+      // commit runs, and onCommit fires twice.
+      result.current.commit('arrow-right'); // Enter path
+      result.current.commit('arrow-right'); // Blur-after-Enter path
+    });
+
+    expect(onCommit).toHaveBeenCalledTimes(1);
+  });
+
+  test('cold commit(): calling commit() on a hook that never started is a no-op', () => {
+    // The guard's other purpose: a fresh hook has isRenaming=false,
+    // so commit() should do nothing. Gstack testing specialist finding
+    // — previously implied by the re-entry test but never explicitly
+    // asserted.
+    const onCommit = mock(() => {});
+    const { result } = renderHook(() => useInlineRename({ onCommit }));
+
+    let returned: string | undefined = 'not-undefined';
+    act(() => {
+      returned = result.current.commit('whatever');
+    });
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(returned).toBeUndefined();
+    expect(result.current.isRenaming).toBe(false);
+  });
 });

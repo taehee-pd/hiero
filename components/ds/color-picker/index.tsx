@@ -116,8 +116,18 @@ export const ColorPicker = ({
     }
   }, [value, setHue, setSaturation, setLightness, setAlpha]);
 
-  // Notify parent of changes
+  // Notify parent of changes. Skip the mount fire so a controlled
+  // consumer doesn't get a spurious onChange on initial render that
+  // would flip its controlled state back to the just-parsed-from-
+  // value values (gstack maintainability review: "spurious onChange
+  // on mount can corrupt controlled forms or trigger unnecessary
+  // store writes").
+  const isMountedRef = useRef(false);
   useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
     if (onChange) {
       const color = Color.hsl(hue, saturation, lightness).alpha(alpha / 100);
       const rgba = color.rgb().array();
@@ -304,8 +314,12 @@ export const ColorPickerEyeDropper = ({
       setSaturation(s);
       setLightness(l);
       setAlpha(100);
-    } catch (error) {
-      console.error("EyeDropper failed:", error);
+    } catch {
+      // EyeDropper is experimental — it throws on unsupported browsers
+      // (Firefox, Safari, some WebViews) and also on user cancel. Both
+      // are expected; swallow silently instead of polluting the
+      // production console. Gstack maintainability review noted the
+      // previous console.error was noise-generating.
     }
   };
 

@@ -77,27 +77,64 @@ export const LayerPanel = memo(function LayerPanel() {
   // shared hook. The multi-row routing (which layer is being edited)
   // stays in `renamingLayerId` above because LayerPanel renders many
   // rows at once, and the hook is single-instance. Phase 4 Commit 3.
-  const renameHook = useInlineRename({
-    onCommit: (next) => {
+  //
+  // `onCommit` is memoized so its identity is stable across renders.
+  // Without this wrapper, every keystroke in the rename input would
+  // create a new function, which would churn the hook's returned
+  // callbacks and invalidate every useCallback below that depends on
+  // them (see codex review finding + gstack maintainability / perf
+  // specialists agreeing). The hook itself reads onCommit via a ref
+  // so unmemoized callers are safe but memoizing here keeps the
+  // dep-chain clean for LayerPanel's own callbacks.
+  const handleRenameCommit = useCallback(
+    (next: string) => {
       if (renamingLayerId && currentIconId) {
         renameLayer(currentIconId, renamingLayerId, next);
       }
     },
-  });
+    [renamingLayerId, currentIconId, renameLayer],
+  );
+  const {
+    isRenaming: _renameIsActive,
+    draft: renameDraft,
+    setDraft: setRenameDraft,
+    start: startRenameHook,
+    commit: commitRenameHook,
+    cancel: cancelRenameHook,
+  } = useInlineRename({ onCommit: handleRenameCommit });
+  // Keep the original variable name used in JSX props without
+  // recreating an object literal — the destructured callbacks above
+  // are each individually stable (useCallback([]) inside the hook),
+  // so the dep chains below are now stable even across renders.
   const startRenameLayer = useCallback(
     (layerId: string) => {
       setRenamingLayerId(layerId);
-      renameHook.start(layerId);
+      startRenameHook(layerId);
     },
-    [renameHook],
+    [startRenameHook],
   );
 
   // Marquee drag-to-multi-select — Phase 4 Commit 3 hook extraction.
+  // getCurrentSelection reads via a ref mirror so the callback itself
+  // is stable across renders. setSelection is wrapped in useCallback
+  // so the adapter identity stays fixed even as selection updates.
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const getCurrentLayerSelection = useCallback(
+    () => [...selectionRef.current.layerIds],
+    [],
+  );
+  const setMarqueeLayerSelection = useCallback(
+    (ids: string[]) => {
+      setSelection({ layerIds: ids, pointIds: [] });
+    },
+    [setSelection],
+  );
   const marquee = useMarqueeSelection({
     itemSelector: '[data-layer-id]',
     itemIdAttribute: 'data-layer-id',
-    getCurrentSelection: () => [...selection.layerIds],
-    setSelection: (ids) => setSelection({ layerIds: ids, pointIds: [] }),
+    getCurrentSelection: getCurrentLayerSelection,
+    setSelection: setMarqueeLayerSelection,
     containerRef: listRef,
   });
   const marqueeRect = marquee.rect;
@@ -134,16 +171,18 @@ export const LayerPanel = memo(function LayerPanel() {
 
   const commitRename = useCallback(
     (layerId: string) => {
-      renameHook.commit(layerId);
+      commitRenameHook(layerId);
       setRenamingLayerId(null);
     },
-    [renameHook],
+    [commitRenameHook],
   );
 
   // Marquee handlers come straight from the hook — Phase 4 Commit 3.
   const handleListPointerDown = marquee.onPointerDown;
   const handleListPointerMove = marquee.onPointerMove;
   const handleListPointerUp = marquee.onPointerUp;
+  const handleListPointerCancel = marquee.onPointerCancel;
+  const handleListLostPointerCapture = marquee.onLostPointerCapture;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -159,6 +198,8 @@ export const LayerPanel = memo(function LayerPanel() {
         onPointerDown={handleListPointerDown}
         onPointerMove={handleListPointerMove}
         onPointerUp={handleListPointerUp}
+        onPointerCancel={handleListPointerCancel}
+        onLostPointerCapture={handleListLostPointerCapture}
       >
         {/* UX-F4: Keyboard navigable layer list */}
         <div
@@ -343,15 +384,15 @@ export const LayerPanel = memo(function LayerPanel() {
                           'focus:border-primary focus:ring-1 focus:ring-primary/30',
                         )}
                         style={{ height: '1.25rem' }}
-                        value={renameHook.draft}
-                        onChange={(e) => renameHook.setDraft(e.target.value)}
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             commitRename(layer.id);
                           } else if (e.key === 'Escape') {
                             e.preventDefault();
-                            renameHook.cancel();
+                            cancelRenameHook();
                             setRenamingLayerId(null);
                           }
                           e.stopPropagation();
@@ -442,9 +483,12 @@ export const LayerPanel = memo(function LayerPanel() {
         </div>
       </ScrollArea>
 
-      {/* Marquee overlay */}
+      {/* Marquee overlay — data-marquee-overlay is a semantic hook
+          used by char-marquee-layerPanel.test.tsx to assert the
+          overlay actually unmounts at pointerup. Do not remove. */}
       {marqueeRect && (
         <div
+          data-marquee-overlay
           className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
           style={{
             left: marqueeRect.left,

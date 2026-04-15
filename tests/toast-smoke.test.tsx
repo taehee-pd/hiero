@@ -32,12 +32,20 @@ import './setup/react';
 // that run before our setup/happy-dom in some orderings. Using the
 // per-render query helpers returned by `render(...)` sidesteps this: they
 // bind to the actual container at call time, after happy-dom is up.
-import { test, expect, afterEach } from 'bun:test';
+import { test, expect, afterEach, beforeEach } from 'bun:test';
 import { act, cleanup, render, within } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Toaster } from '@/components/ui/toaster';
-import { toast } from '@/components/ui/use-toast';
+import { toast, resetToastStateForTest } from '@/components/ui/use-toast';
+
+beforeEach(() => {
+  // The toast store is a module-level singleton with an effectively
+  // infinite TOAST_REMOVE_DELAY (~1M ms). Without an explicit reset,
+  // toasts fired by one test leak into every subsequent test in the
+  // same bun process. Codex adversarial review (Phase 4) finding #8.
+  resetToastStateForTest();
+});
 
 afterEach(() => { cleanup(); });
 
@@ -83,11 +91,29 @@ test('app/layout.tsx mounts <Toaster /> from the canonical path (regression guar
   // exists to fix. A pure runtime test (the one above) would not catch a
   // regression that removes the mount from app/layout.tsx, because it
   // mounts its own Toaster inline.
+  //
+  // Codex adversarial review flagged that exact-string matching here
+  // is brittle (aliased imports, prettier wrapping, adding props to
+  // <Toaster>, moving the mount into a Providers wrapper). The regex
+  // patterns below allow whitespace / quote-style variation and
+  // multi-import lines, while still failing when the Toaster name or
+  // the canonical path disappears.
   const layout = readFileSync(resolve(import.meta.dir, '..', 'app/layout.tsx'), 'utf8');
 
-  expect(layout).toContain("import { Toaster } from '@/components/ui/toaster'");
-  expect(layout).toMatch(/<Toaster\s*\/>/);
-  expect(layout).not.toContain('@/hooks/use-toast');
+  // Import: allows `import { Toaster }` OR `import { X, Toaster, Y }`
+  // OR `import { Toaster as _ }`, with either quote style and any
+  // whitespace. Requires the path to be @/components/ui/toaster.
+  const toasterImportRe =
+    /import\s*(?:type\s+)?\{[^}]*\bToaster\b(?:\s+as\s+\w+)?[^}]*\}\s*from\s*['"]@\/components\/ui\/toaster['"]/;
+  expect(layout).toMatch(toasterImportRe);
+
+  // JSX: `<Toaster`, `<Toaster />`, `<Toaster prop={}>`. `<` then
+  // optional whitespace then the name then a non-word boundary
+  // (space, slash, newline, or attribute).
+  expect(layout).toMatch(/<\s*Toaster\b[^>]*\/?>/);
+
+  // Nobody re-introduced the deleted hook path.
+  expect(layout).not.toMatch(/@\/hooks\/use-toast/);
 });
 
 test('components/ui/toaster.tsx imports from the canonical use-toast path', () => {
@@ -102,6 +128,8 @@ test('components/ui/toaster.tsx imports from the canonical use-toast path', () =
     'utf8',
   );
 
-  expect(toasterSrc).toContain("from '@/components/ui/use-toast'");
-  expect(toasterSrc).not.toContain('@/hooks/use-toast');
+  // Same shape as above — allow any import structure that pulls from
+  // the canonical path.
+  expect(toasterSrc).toMatch(/from\s*['"]@\/components\/ui\/use-toast['"]/);
+  expect(toasterSrc).not.toMatch(/@\/hooks\/use-toast/);
 });

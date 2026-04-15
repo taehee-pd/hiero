@@ -2,6 +2,7 @@ import type { Preview } from '@storybook/nextjs-vite';
 import { ThemeProvider } from 'next-themes';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
+import { resetToastStateForTest } from '@/components/ui/use-toast';
 // NOTE (Phase 1 spike workaround): geist/font/{sans,mono} call next/font/local
 // at module eval. @storybook/nextjs-vite does not fully shim next/font yet, so
 // importing them here crashes the Vite build ("default is not exported by
@@ -45,6 +46,13 @@ const preview: Preview = {
   decorators: [
     (Story, context) => {
       const theme = (context.globals.theme as string | undefined) ?? 'light';
+      // Reset the toast store before each story render so module-level
+      // memoryState from the previous story doesn't leak into this one.
+      // Codex adversarial review (Phase 4 finding #8): TOAST_REMOVE_DELAY
+      // is ~infinite (1M ms), so without an explicit reset, a story
+      // that fires a toast would leave it in the store for every
+      // subsequent story until the process exits.
+      resetToastStateForTest();
       return (
         <div
           className="sb-root"

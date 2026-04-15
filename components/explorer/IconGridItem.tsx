@@ -45,10 +45,21 @@ export function IconGridItem({
   onDelete?: () => void;
   onRename?: (nextName: string) => void;
 }) {
-  const rename = useInlineRename({
-    onCommit: (next) => onRename?.(next),
-  });
-  const renaming = rename.isRenaming;
+  // Memoize onCommit so LayerPanel-style dep-chain churn doesn't apply
+  // here either. Hook internally reads via ref, but stable identity
+  // keeps the `commitRename`/`cancelRename` useCallback deps clean.
+  const handleRenameCommit = useCallback(
+    (next: string) => onRename?.(next),
+    [onRename],
+  );
+  const {
+    isRenaming: renaming,
+    draft: renameDraft,
+    setDraft: setRenameDraft,
+    start: startRename,
+    commit: commitRenameHook,
+    cancel: cancelRenameHook,
+  } = useInlineRename({ onCommit: handleRenameCommit });
 
   // Open the icon on pointerup (not click) because Radix's ContextMenuTrigger
   // asChild attaches pointerdown handlers on the <article> that can swallow
@@ -84,12 +95,12 @@ export function IconGridItem({
   );
 
   const commitRename = useCallback(() => {
-    rename.commit(iconName);
-  }, [rename, iconName]);
+    commitRenameHook(iconName);
+  }, [commitRenameHook, iconName]);
 
   const cancelRename = useCallback(() => {
-    rename.cancel();
-  }, [rename]);
+    cancelRenameHook();
+  }, [cancelRenameHook]);
 
   return (
     <ContextMenu>
@@ -107,7 +118,7 @@ export function IconGridItem({
             }
             if (event.key === 'F2' && onRename) {
               event.preventDefault();
-              rename.start(iconName);
+              startRename(iconName);
             }
           }}
           className={cn(
@@ -162,8 +173,8 @@ export function IconGridItem({
                 <input
                   autoFocus
                   type="text"
-                  value={rename.draft}
-                  onChange={(e) => rename.setDraft(e.target.value)}
+                  value={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   onDoubleClick={(e) => e.stopPropagation()}
                   onBlur={commitRename}
@@ -189,7 +200,7 @@ export function IconGridItem({
                     // opened the icon, which is fine — rename takes over
                     // visually with the inline input.
                     e.stopPropagation();
-                    rename.start(iconName);
+                    startRename(iconName);
                   }}
                   className={cn(
                     'block w-full box-border truncate select-none rounded-sm border border-transparent px-1 py-0.5 text-center text-[length:var(--text-caption)]',
@@ -226,7 +237,7 @@ export function IconGridItem({
         </ContextMenuItem>
         {onRename ? (
           <ContextMenuItem
-            onSelect={() => rename.start(iconName)}
+            onSelect={() => startRename(iconName)}
           >
             <Pencil className="size-4" />
             Rename

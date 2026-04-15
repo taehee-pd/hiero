@@ -103,7 +103,7 @@ function buildWorkspace(): Workspace {
 function bootstrap() {
   editorStore.getState().loadWorkspace(buildWorkspace());
   // Ensure list pane is expanded so the grid actually renders.
-  editorStore.setState({ listExpanded: true });
+  editorStore.setState({ listPaneExpanded: true });
 }
 
 function getSelectedIds(): string[] {
@@ -224,19 +224,62 @@ describe('ListPane marquee multi-select (characterization)', () => {
     expect(getSelectedIds()).toEqual(['a']);
   });
 
-  test('pointerup after a drag ends the drag cleanly (no stuck marquee rect)', () => {
+  test('pointerup after a drag ends the drag cleanly (overlay unmounts)', () => {
+    const { container } = render(<ListPane />);
+    const grid = findGridContainer(container);
+    expect(grid).not.toBeNull();
+    stubClientRectsForArticles();
+
+    // Start the drag and move once so the overlay actually mounts.
+    // Without pointermove, marquee.rect is still null and the overlay
+    // never existed in the first place — the original version of this
+    // test passed vacuously because it asserted "null" in both cases.
+    fireEvent.pointerDown(grid!, { button: 0, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(grid!, { clientX: 250, clientY: 250 });
+
+    // Overlay IS mounted now — the drag is live and the rect is set.
+    // ListPane's overlay carries `data-marquee-overlay` as a semantic
+    // test hook. document.body because the overlay is position:fixed
+    // and React portals to the tree root, not the render container.
+    const duringDrag = document.body.querySelector('[data-marquee-overlay]');
+    expect(duringDrag).not.toBeNull();
+
+    fireEvent.pointerUp(grid!, { clientX: 250, clientY: 250 });
+
+    const afterDrag = document.body.querySelector('[data-marquee-overlay]');
+    expect(afterDrag).toBeNull();
+  });
+
+  test('pointercancel ends the drag (codex finding #2 — OS interrupt)', () => {
     const { container } = render(<ListPane />);
     const grid = findGridContainer(container);
     expect(grid).not.toBeNull();
     stubClientRectsForArticles();
 
     fireEvent.pointerDown(grid!, { button: 0, clientX: 200, clientY: 200 });
-    fireEvent.pointerUp(grid!, { clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(grid!, { clientX: 250, clientY: 250 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).not.toBeNull();
 
-    // After pointerup the marquee rect overlay should be removed. We
-    // verify by the absence of any element carrying the marquee
-    // overlay class the current code uses.
-    const overlay = container.querySelector('[data-marquee-overlay]');
-    expect(overlay).toBeNull();
+    // Cancel (touch cancellation, gesture preemption, OS interrupt).
+    // Before the Phase 4 post-review fix, this left a stuck overlay
+    // and the next click was treated as a continuation of the dead
+    // drag. The hook's onPointerCancel now releases capture + clears.
+    fireEvent.pointerCancel(grid!, { clientX: 250, clientY: 250 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).toBeNull();
+  });
+
+  test('lostpointercapture ends the drag (codex finding #2 — focus steal)', () => {
+    const { container } = render(<ListPane />);
+    const grid = findGridContainer(container);
+    expect(grid).not.toBeNull();
+    stubClientRectsForArticles();
+
+    fireEvent.pointerDown(grid!, { button: 0, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(grid!, { clientX: 250, clientY: 250 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).not.toBeNull();
+
+    // Simulate a modal stealing pointer capture mid-drag.
+    fireEvent.lostPointerCapture(grid!, { clientX: 250, clientY: 250 });
+    expect(document.body.querySelector('[data-marquee-overlay]')).toBeNull();
   });
 });

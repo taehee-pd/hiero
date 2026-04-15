@@ -90,6 +90,17 @@ export function variantToSnapshot(v: Variant, typeId?: string | null): LayerSnap
 // Workspace & Project
 // ---------------------------------------------------------------------------
 
+/**
+ * IconSetTypeDef — universal type metadata registered at the IconSet level.
+ * Each icon's variants carry per-type layer geometry under `Variant.types`,
+ * but the list of available types (the "catalog") lives here so that adding,
+ * removing, or renaming a type propagates across every icon in the set.
+ */
+export type IconSetTypeDef = {
+  id: string;
+  name?: string;
+};
+
 export type IconSet = {
   version: '1.0';
   meta: { name: string; createdAt: string; updatedAt: string };
@@ -99,6 +110,8 @@ export type IconSet = {
   tokenSet?: TokenSet;
   exportProfiles?: ExportProfile[];
   collections?: Record<string, Collection>;
+  /** Universal type catalog — shared across every icon and variant in the set. */
+  types?: Record<string, IconSetTypeDef>;
 };
 
 export type Project = IconSet;

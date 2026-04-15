@@ -235,20 +235,32 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
 // Type management section — lets users define named visual types per variant
 // (e.g. "line", "filled", "colored"). Free-form identifiers.
 function TypesSection({
-  currentVariant,
+  typeCatalog,
+  defaultTypeId,
   currentTypeId,
   onSelectType,
   onAddType,
   onRemoveType,
   onRenameType,
+  onSetTypeName,
   onDuplicateType,
 }: {
-  currentVariant: Variant | null;
+  typeCatalog: Record<string, { id: string; name?: string }> | null | undefined;
+  defaultTypeId: string | null;
   currentTypeId: string | null;
   onSelectType: (typeId: string) => void;
   onAddType: (typeId: string) => void;
   onRemoveType: (typeId: string) => void;
   onRenameType: (oldId: string, newId: string) => void;
+  /**
+   * Update the display label of the default type without changing its
+   * structural id. Used specifically for the default row's rename
+   * interaction — the id `'default'` stays stable so runtime/export/
+   * transition pipelines keep working, and only the user-facing name
+   * string is rewritten. Non-default rows go through `onRenameType`
+   * instead, which performs a full catalog + per-variant id rewrite.
+   */
+  onSetTypeName: (typeId: string, name: string) => void;
   onDuplicateType: (sourceId: string, newId: string) => void;
 }) {
   const [newTypeName, setNewTypeName] = useState('');
@@ -257,8 +269,8 @@ function TypesSection({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const typeIds = useMemo(
-    () => Object.keys(currentVariant?.types ?? {}),
-    [currentVariant?.types],
+    () => Object.keys(typeCatalog ?? {}),
+    [typeCatalog],
   );
 
   const handleAdd = () => {
@@ -267,11 +279,43 @@ function TypesSection({
     setNewTypeName('');
   };
 
-  const commitRename = (oldId: string) => {
+  /**
+   * Commit a rename. Two paths:
+   *
+   *   1. Default type  → `onSetTypeName` — updates the display label only.
+   *      The structural id `'default'` stays stable, so all transition
+   *      endpoints, export code, and runtime fallbacks that reference
+   *      that literal keep working unchanged.
+   *
+   *   2. Non-default  → `onRenameType` — rewrites the catalog id and
+   *      propagates the new id to every variant's `types` map.
+   *
+   * Collision/empty/no-op cases leave the row in rename mode so the
+   * user gets unambiguous feedback that nothing committed. Only a
+   * successful commit closes the input.
+   */
+  const commitRename = (typeId: string) => {
     const trimmed = renameValue.trim();
-    if (trimmed && trimmed !== oldId) {
-      onRenameType(oldId, trimmed);
+    const isDefault = typeId === defaultTypeId;
+    if (isDefault) {
+      const currentName = typeCatalog?.[typeId]?.name ?? '';
+      if (trimmed === currentName) {
+        setRenamingId(null);
+        return;
+      }
+      onSetTypeName(typeId, trimmed);
+      setRenamingId(null);
+      return;
     }
+    if (!trimmed || trimmed === typeId) {
+      setRenamingId(null);
+      return;
+    }
+    if (typeCatalog && typeCatalog[trimmed]) {
+      // Collision — leave rename mode open so the user can fix it.
+      return;
+    }
+    onRenameType(typeId, trimmed);
     setRenamingId(null);
   };
 
@@ -281,7 +325,7 @@ function TypesSection({
         <span>Types</span>
       </div>
 
-      <div className="wire-inline-form">
+      <div className="wire-inline-form !p-0">
         <Input
           value={newTypeName}
           onChange={(e) => setNewTypeName(e.target.value)}
@@ -305,73 +349,148 @@ function TypesSection({
         </p>
       ) : (
         typeIds.map((typeId) => {
-          const isDefault = typeId === currentVariant?.defaultType;
-          return (
-            <div key={typeId} className="group flex items-center">
-              {renamingId === typeId ? (
-                <Input
-                  className="wire-input mx-3 my-0.5 h-7 text-xs"
-                  value={renameValue}
+          const isDefault = typeId === defaultTypeId;
+          // Display label falls back to the structural id. This lets the
+          // user customize the default type's label via `setTypeName`
+          // without ever changing the serialized key.
+          const displayLabel = typeCatalog?.[typeId]?.name ?? typeId;
+          const startRename = () => {
+            setRenameValue(displayLabel);
+            setRenamingId(typeId);
+          };
+          if (renamingId === typeId) {
+            return (
+              <div key={typeId} className="group flex items-center">
+                {/*
+                  The rename input drops into the same `wire-list-row` box
+                  the label was rendered in: identical min-height, padding,
+                  font size, and flex behavior. The `inline-rename-input`
+                  class adds the visible border + focus ring. Together they
+                  produce a pixel-perfect swap (no text jump vertically or
+                  horizontally when entering/leaving edit mode).
+                */}
+                <input
+                  type="text"
                   autoFocus
+                  className="wire-list-row inline-rename-input flex-1 justify-start gap-1.5 px-[10px] text-[11px]"
+                  style={{ ['--inline-rename-height' as string]: '36px' }}
+                  value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       commitRename(typeId);
                     } else if (e.key === 'Escape') {
+                      e.preventDefault();
                       setRenamingId(null);
                     }
                   }}
                   onBlur={() => commitRename(typeId)}
                 />
-              ) : (
-                <Button
-                  variant="ghost"
-                  data-active={typeId === currentTypeId ? 'true' : 'false'}
-                  className="wire-list-row flex-1"
-                  onClick={() => onSelectType(typeId)}
-                  onDoubleClick={() => {
-                    if (isDefault) return;
-                    setRenamingId(typeId);
-                    setRenameValue(typeId);
+              </div>
+            );
+          }
+          return (
+            <ContextMenu key={typeId}>
+              <ContextMenuTrigger asChild>
+                <div className="group flex items-center">
+                  {/*
+                    `wire-list-row` defines the visual baseline (36px min
+                    height, 10px symmetric horizontal padding, hover/active
+                    states). The Tailwind utilities below override the
+                    `Button` base variant's `justify-center h-9 px-4` so
+                    icon + label align flush-left and the row height + gap
+                    match the layer list exactly.
+                  */}
+                  <Button
+                    variant="ghost"
+                    data-active={typeId === currentTypeId ? 'true' : 'false'}
+                    className="wire-list-row inline-rename-label flex-1 justify-start gap-1.5 px-[10px] text-[11px]"
+                    style={{ ['--inline-rename-height' as string]: '36px' }}
+                    onClick={() => onSelectType(typeId)}
+                    onDoubleClick={startRename}
+                    onKeyDown={(e) => {
+                      // Wire F2 at the row level so the shortcut the
+                      // context menu advertises actually works when the
+                      // row is keyboard-focused.
+                      if (e.key === 'F2') {
+                        e.preventDefault();
+                        startRename();
+                      }
+                    }}
+                  >
+                    {isDefault ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex items-center text-muted-foreground/80">
+                            <Lock className="size-3" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">Default type — cannot be deleted, but the label can be renamed.</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    <span>{displayLabel}</span>
+                  </Button>
+                  {isDefault ? null : (
+                    <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-5 text-muted-foreground hover:text-foreground"
+                        aria-label={`Duplicate ${typeId}`}
+                        onClick={() => onDuplicateType(typeId, `${typeId}-copy`)}
+                      >
+                        <Copy className="size-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-5 text-muted-foreground hover:text-destructive"
+                        aria-label={`Delete ${typeId}`}
+                        onClick={() => setDeleteTarget(typeId)}
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextMenuItem
+                  onSelect={() => {
+                    // Defer to next tick so the ContextMenu has time to
+                    // unmount before we flip the row into rename mode.
+                    // Without this, the context menu's focus trap steals
+                    // the auto-focus from the rename <input>.
+                    setTimeout(() => {
+                      startRename();
+                    }, 0);
                   }}
                 >
-                  {isDefault ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex items-center text-muted-foreground/80">
-                          <Lock className="size-3" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">Default type is locked and cannot be removed or renamed.</TooltipContent>
-                    </Tooltip>
-                  ) : null}
-                  <span>{typeId}</span>
-                </Button>
-              )}
-              {isDefault ? null : (
-                <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pr-2">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-5 text-muted-foreground hover:text-foreground"
-                    aria-label={`Duplicate ${typeId}`}
-                    onClick={() => onDuplicateType(typeId, `${typeId}-copy`)}
-                  >
-                    <Copy className="size-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="size-5 text-muted-foreground hover:text-destructive"
-                    aria-label={`Delete ${typeId}`}
-                    onClick={() => setDeleteTarget(typeId)}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
+                  <Pencil className="size-4" />
+                  Rename
+                  <ContextMenuShortcut>F2</ContextMenuShortcut>
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onSelect={() => onDuplicateType(typeId, `${typeId}-copy`)}
+                >
+                  <Copy className="size-4" />
+                  Duplicate
+                </ContextMenuItem>
+                {isDefault ? null : (
+                  <>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onSelect={() => setDeleteTarget(typeId)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
+                      Delete
+                    </ContextMenuItem>
+                  </>
+                )}
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })
       )}
@@ -433,11 +552,18 @@ function InlineEditableTitle({
     setEditing(false);
   }, [draft, value, onCommit]);
 
+  // Both states share the same box so the title doesn't jump when
+  // entering/leaving edit mode. The underlying pattern: identical
+  // height, padding, font, margin. The button's hover background + the
+  // input's visible border live inside the same border-box.
+  const SHARED_BOX =
+    'h-6 min-w-0 w-full rounded-md px-1.5 text-sm font-semibold tracking-tight text-foreground';
+
   if (editing) {
     return (
       <input
         ref={inputRef}
-        className={`h-6 min-w-0 w-full rounded-md border border-border bg-background px-1.5 text-sm font-semibold tracking-tight text-foreground outline-none focus:ring-1 focus:ring-ring ${className ?? ''}`}
+        className={`${SHARED_BOX} border border-border bg-background outline-none focus:ring-1 focus:ring-ring ${className ?? ''}`}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
@@ -454,10 +580,10 @@ function InlineEditableTitle({
 
   return (
     <button
-      className={`group/edit flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent ${className ?? ''}`}
+      className={`group/edit flex items-center gap-1 ${SHARED_BOX} border border-transparent hover:bg-accent ${className ?? ''}`}
       onClick={startEditing}
     >
-      <span className="truncate text-sm font-semibold tracking-tight">{value}</span>
+      <span className="truncate">{value}</span>
       <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
     </button>
   );
@@ -466,6 +592,8 @@ function InlineEditableTitle({
 function LeftSidebar({
   currentIcon,
   currentVariant,
+  typeCatalog,
+  defaultTypeId,
   layerRows,
   selectedLayerId,
   onSelectLayer,
@@ -482,10 +610,13 @@ function LeftSidebar({
   onAddType,
   onRemoveType,
   onRenameType,
+  onSetTypeName,
   onDuplicateType,
 }: {
   currentIcon: Icon | null;
   currentVariant: Variant | null;
+  typeCatalog: Record<string, { id: string; name?: string }> | null | undefined;
+  defaultTypeId: string | null;
   layerRows: ReturnType<typeof buildLayerPanelRows>;
   selectedLayerId: string | null;
   onSelectLayer: (layerId: string) => void;
@@ -502,6 +633,7 @@ function LeftSidebar({
   onAddType: (typeId: string) => void;
   onRemoveType: (typeId: string) => void;
   onRenameType: (oldId: string, newId: string) => void;
+  onSetTypeName: (typeId: string, name: string) => void;
   onDuplicateType: (sourceId: string, newId: string) => void;
 }) {
 
@@ -607,12 +739,14 @@ function LeftSidebar({
 
               {/* Type management section — e.g. line, filled, colored */}
               <TypesSection
-                currentVariant={currentVariant}
+                typeCatalog={typeCatalog}
+                defaultTypeId={defaultTypeId}
                 currentTypeId={currentTypeId}
                 onSelectType={onSelectType}
                 onAddType={onAddType}
                 onRemoveType={onRemoveType}
                 onRenameType={onRenameType}
+                onSetTypeName={onSetTypeName}
                 onDuplicateType={onDuplicateType}
               />
             </div>
@@ -812,7 +946,7 @@ function LayerRowsList({
                   {isRenaming ? (
                     <input
                       type="text"
-                      className="wire-layer-rename-input"
+                      className="wire-layer-rename-input inline-rename-input"
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -833,7 +967,7 @@ function LayerRowsList({
                     />
                   ) : (
                     <span
-                      className="wire-layer-name"
+                      className="wire-layer-name inline-rename-label"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         beginRename(row.layer.id);
@@ -1632,6 +1766,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     addType,
     removeType,
     renameType,
+    setTypeName,
     duplicateType,
     setSelection,
     setTool,
@@ -1771,28 +1906,6 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       window.removeEventListener('contour:new-icon', newIcon as EventListener);
     };
   }, [activeIconSetId, createBlankIcon, openIconTab]);
-
-  // Auto-select the first visible layer only when switching icons/types
-  // (not when user explicitly clears selection via Escape or empty-canvas click)
-  const autoSelectKeyRef = useRef('');
-  useEffect(() => {
-    const key = `${currentIconId}:${currentVariantId}`;
-    if (key === autoSelectKeyRef.current) return;
-    autoSelectKeyRef.current = key;
-    if (!project || !currentIconId) return;
-    const layers = currentVariantId
-      ? (project.icons[currentIconId]?.variants[currentVariantId]?.layers ?? {})
-      : {};
-    const nextLayerId =
-      Object.values(layers).find((layer) => layer.visible !== false)?.id ?? Object.keys(layers)[0];
-    if (!nextLayerId) return;
-    setSelection({ layerIds: [nextLayerId], pointIds: [] });
-  }, [
-    currentIconId,
-    currentVariantId,
-    project,
-    setSelection,
-  ]);
 
   useEffect(() => {
     if (!selectedTransition || !currentVariant || !previewPlaying) return;
@@ -2040,6 +2153,8 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           <LeftSidebar
             currentIcon={currentIcon}
             currentVariant={currentVariant}
+            typeCatalog={project?.types ?? null}
+            defaultTypeId={currentVariant ? (currentVariant.defaultType ?? null) : null}
             layerRows={layerRows}
             selectedLayerId={selectedLayerId}
             onSelectLayer={(layerId) => setSelection({ layerIds: [layerId], pointIds: [] })}
@@ -2056,10 +2171,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             onCreateVariant={handleCreateVariant}
             currentTypeId={currentTypeId}
             onSelectType={setCurrentType}
-            onAddType={(typeId) => currentIcon && addType(currentIcon.id, typeId)}
-            onRemoveType={(typeId) => currentIcon && removeType(currentIcon.id, typeId)}
-            onRenameType={(oldId, newId) => currentIcon && renameType(currentIcon.id, oldId, newId)}
-            onDuplicateType={(sourceId, newId) => currentIcon && duplicateType(currentIcon.id, sourceId, newId)}
+            onAddType={(typeId) => addType(typeId)}
+            onRemoveType={(typeId) => removeType(typeId)}
+            onRenameType={(oldId, newId) => renameType(oldId, newId)}
+            onSetTypeName={(typeId, name) => setTypeName(typeId, name)}
+            onDuplicateType={(sourceId, newId) => duplicateType(sourceId, newId)}
           />
         </div>
 

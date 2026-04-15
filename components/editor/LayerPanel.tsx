@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { Eye, EyeOff, Link2, Pencil, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/kibo-ui/scroll-area';
 import {
@@ -21,6 +21,22 @@ import { selectCurrentVariant } from '@/lib/editor-store/selectors';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
 import type { PaintRef } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
+
+/* ------------------------------------------------------------------ */
+/*  Marquee hit-testing helper                                        */
+/* ------------------------------------------------------------------ */
+type Rect = { left: number; top: number; right: number; bottom: number };
+
+function rectsIntersect(a: Rect, b: Rect) {
+  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+}
+
+type MarqueeDrag = {
+  startX: number;
+  startY: number;
+  baseLayerIds: string[];
+  mode: 'replace' | 'toggle';
+};
 
 // A paint is "visible" only if it is defined and not explicitly `none`.
 // The schema represents transparent fills as { mode: 'fixed', value: 'none' },
@@ -69,6 +85,10 @@ export const LayerPanel = memo(function LayerPanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
+  // Marquee drag-to-multi-select state
+  const [marqueeRect, setMarqueeRect] = useState<Rect | null>(null);
+  const marqueeDragRef = useRef<MarqueeDrag | null>(null);
+
   // UX-F4: Handle keyboard navigation on the layer list container
   const handleListKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -111,6 +131,84 @@ export const LayerPanel = memo(function LayerPanel() {
     [currentIconId, renameLayer, renameValue],
   );
 
+  /* ---------------------------------------------------------------- */
+  /*  Marquee drag handlers                                           */
+  /* ---------------------------------------------------------------- */
+  const handleListPointerDown = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      // Don't start marquee when clicking on a layer item or scrollbar
+      if (target.closest('[data-layer-id]')) return;
+      if (target.closest('[data-slot="scroll-area-scrollbar"]')) return;
+
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+      const base = e.shiftKey || e.metaKey ? [...selection.layerIds] : [];
+      if (!e.shiftKey && !e.metaKey) {
+        setSelection({ layerIds: [], pointIds: [] });
+      }
+
+      marqueeDragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        baseLayerIds: base,
+        mode: e.shiftKey || e.metaKey ? 'toggle' : 'replace',
+      };
+    },
+    [selection.layerIds, setSelection],
+  );
+
+  const handleListPointerMove = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      const drag = marqueeDragRef.current;
+      if (!drag) return;
+
+      const left = Math.min(drag.startX, e.clientX);
+      const top = Math.min(drag.startY, e.clientY);
+      const right = Math.max(drag.startX, e.clientX);
+      const bottom = Math.max(drag.startY, e.clientY);
+
+      setMarqueeRect({ left, top, right, bottom });
+
+      // Hit-test all layer items
+      if (!listRef.current) return;
+      const items = listRef.current.querySelectorAll<HTMLElement>('[data-layer-id]');
+      const hitIds: string[] = [];
+
+      items.forEach((item) => {
+        const rect = item.getBoundingClientRect();
+        if (rectsIntersect({ left, top, right, bottom }, rect)) {
+          const id = item.getAttribute('data-layer-id');
+          if (id) hitIds.push(id);
+        }
+      });
+
+      if (drag.mode === 'toggle') {
+        const baseSet = new Set(drag.baseLayerIds);
+        for (const id of hitIds) {
+          if (baseSet.has(id)) baseSet.delete(id);
+          else baseSet.add(id);
+        }
+        setSelection({ layerIds: [...baseSet], pointIds: [] });
+      } else {
+        setSelection({ layerIds: hitIds, pointIds: [] });
+      }
+    },
+    [setSelection],
+  );
+
+  const handleListPointerUp = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      if (!marqueeDragRef.current) return;
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      marqueeDragRef.current = null;
+      setMarqueeRect(null);
+    },
+    [],
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="workspace-panel-header sticky top-0 z-10 flex items-center justify-between bg-background px-3 py-2">
@@ -120,11 +218,16 @@ export const LayerPanel = memo(function LayerPanel() {
         </div>
         <span className="workspace-badge">{rows.length}</span>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea
+        className="flex-1"
+        onPointerDown={handleListPointerDown}
+        onPointerMove={handleListPointerMove}
+        onPointerUp={handleListPointerUp}
+      >
         {/* UX-F4: Keyboard navigable layer list */}
         <div
           ref={listRef}
-          className="flex flex-col gap-2 p-3"
+          className="flex select-none flex-col gap-2 p-3"
           role="listbox"
           tabIndex={0}
           onKeyDown={handleListKeyDown}
@@ -188,6 +291,7 @@ export const LayerPanel = memo(function LayerPanel() {
                   if (el) itemRefs.current.set(rowIndex, el);
                   else itemRefs.current.delete(rowIndex);
                 }}
+                data-layer-id={layer.id}
                 className={cn(
                   'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-[length:var(--text-body)] transition',
                   isSelected
@@ -197,9 +301,17 @@ export const LayerPanel = memo(function LayerPanel() {
                   // J7: Dim layers that are inactive at the current variableValue
                   hasVariableValue && !isVarActive && 'opacity-50',
                 )}
-                onClick={() => {
+                onClick={(e) => {
                   setFocusedIndex(rowIndex);
-                  setSelection({ layerIds: [layer.id], pointIds: [] });
+                  if (e.shiftKey || e.metaKey) {
+                    // Toggle this layer in the current selection
+                    const next = selection.layerIds.includes(layer.id)
+                      ? selection.layerIds.filter((id) => id !== layer.id)
+                      : [...selection.layerIds, layer.id];
+                    setSelection({ layerIds: next, pointIds: [] });
+                  } else {
+                    setSelection({ layerIds: [layer.id], pointIds: [] });
+                  }
                 }}
                 onDoubleClick={() => {
                   // UX-F4: Double-click to rename
@@ -279,12 +391,18 @@ export const LayerPanel = memo(function LayerPanel() {
                     {maskLayerId ? (
                       <Link2 className="size-3 shrink-0 text-muted-foreground" />
                     ) : null}
-                    {/* UX-F4: Inline rename when F2 is pressed or double-clicked */}
+                    {/*
+                      UX-F4: Inline rename. Label and input share the
+                      same box — identical height, padding, border
+                      width (transparent on the label), and font
+                      metrics. Border color is the only visual delta
+                      between the two states, so the swap doesn't jump.
+                    */}
                     {isRenaming ? (
                       <input
                         type="text"
                         className={cn(
-                          'min-w-0 flex-1 rounded-sm border border-primary/40 bg-background',
+                          'box-border min-w-0 flex-1 rounded-sm border border-primary/40 bg-background',
                           'px-1 py-0 text-[length:var(--text-body)] font-medium text-foreground',
                           'leading-[1.25rem] outline-none ring-0',
                           'focus:border-primary focus:ring-1 focus:ring-primary/30',
@@ -308,7 +426,12 @@ export const LayerPanel = memo(function LayerPanel() {
                         onDoubleClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <p className="truncate text-[length:var(--text-body)] font-medium leading-[1.25rem] text-foreground">{layer.id}</p>
+                      <p
+                        className="box-border min-w-0 flex-1 truncate rounded-sm border border-transparent px-1 py-0 text-[length:var(--text-body)] font-medium leading-[1.25rem] text-foreground"
+                        style={{ height: '1.25rem' }}
+                      >
+                        {layer.id}
+                      </p>
                     )}
                     {/* J7: Variable-value activity indicator */}
                     {hasVariableValue ? (
@@ -385,6 +508,19 @@ export const LayerPanel = memo(function LayerPanel() {
           })}
         </div>
       </ScrollArea>
+
+      {/* Marquee overlay */}
+      {marqueeRect && (
+        <div
+          className="pointer-events-none fixed z-50 border border-primary/60 bg-primary/10"
+          style={{
+            left: marqueeRect.left,
+            top: marqueeRect.top,
+            width: marqueeRect.right - marqueeRect.left,
+            height: marqueeRect.bottom - marqueeRect.top,
+          }}
+        />
+      )}
     </div>
   );
 });

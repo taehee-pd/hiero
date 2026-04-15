@@ -142,21 +142,45 @@ describe('path editor snap feedback', () => {
     editor.destroy();
   });
 
-  test('stores mirrored pending handles for a dragged pen endpoint', () => {
+  test('click-only pen placement (below drag threshold) leaves a corner point with no handles', () => {
+    // Regression for "bezier points always curved" bug: previously, any
+    // sub-pixel mouse jitter between pointerdown and pointerup triggered
+    // curve-handle creation. Now we enforce a 4px screen-space threshold
+    // matching Figma/Illustrator/Inkscape behavior.
+    const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
+
+    (editor as any).beginPenPlacement('moving', 8, 8, 7);
+    // A 2px drag is well below the 4px threshold — must be ignored.
+    (editor as any).updatePenCurvePreview({ clientX: 10, clientY: 8 });
+    (editor as any).onPointerUp({ clientX: 10, clientY: 8, pointerId: 7 });
+
+    // No pending pen handle should be published for a click-only commit.
+    expect(editorStore.getState().pendingPenHandle).toBeNull();
+
+    // The path must still be a pure line segment ending at (8,8).
+    const d =
+      editorStore.getState().project!.icons.snap.variants.v24.types!.default.layers.moving.path!.d;
+    expect(d).toBe('M1 1 L2 2 L8 8');
+    editor.destroy();
+  });
+
+  test('stores mirrored pending handles for a pen endpoint dragged past the threshold', () => {
     const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
 
     const placement = (editor as any).beginPenPlacement('moving', 8, 8, 7);
     expect(placement).not.toBeNull();
 
-    (editor as any).updatePenCurvePreview({ clientX: 10, clientY: 8 });
-    (editor as any).onPointerUp({ clientX: 10, clientY: 8, pointerId: 7 });
+    // 8px drag — clearly above the 4px threshold. Preview handles are
+    // mirrored around the anchor (8,8): handleIn at (0,8), handleOut at (16,8).
+    (editor as any).updatePenCurvePreview({ clientX: 16, clientY: 8 });
+    (editor as any).onPointerUp({ clientX: 16, clientY: 8, pointerId: 7 });
 
     expect(editorStore.getState().pendingPenHandle).toMatchObject({
       layerId: 'moving',
       pointKey: '0:2',
       anchor: { x: 8, y: 8 },
-      handleIn: { x: 6, y: 8 },
-      handleOut: { x: 10, y: 8 },
+      handleIn: { x: 0, y: 8 },
+      handleOut: { x: 16, y: 8 },
     });
     editor.destroy();
   });
@@ -165,17 +189,29 @@ describe('path editor snap feedback', () => {
     const editor = new PathEditor(createSvgStub() as unknown as SVGSVGElement);
 
     (editor as any).beginPenPlacement('moving', 8, 8, 7);
-    (editor as any).updatePenCurvePreview({ clientX: 10, clientY: 8 });
-    (editor as any).onPointerUp({ clientX: 10, clientY: 8, pointerId: 7 });
+    // Above-threshold drag so the handles persist past commit.
+    (editor as any).updatePenCurvePreview({ clientX: 16, clientY: 8 });
+    (editor as any).onPointerUp({ clientX: 16, clientY: 8, pointerId: 7 });
 
+    // Second pen click at (12, 8) — no drag this time, click-only add.
     (editor as any).beginPenPlacement('moving', 12, 8, 8);
+    (editor as any).onPointerUp({ clientX: 12, clientY: 8, pointerId: 8 });
 
     const d =
       editorStore.getState().project!.icons.snap.variants.v24.types!.default.layers.moving.path!.d;
-    const path = editorStore.getState().pendingPenHandle;
+    const pending = editorStore.getState().pendingPenHandle;
 
-    expect(d).toBe('M1 1 L2 2 C10 8 6 8 8 8 C10 8 12 8 12 8');
-    expect(path).toBeNull();
+    // Previous bug: `prev.handleOut = preview.handleOut` overwrote point 1's
+    // (at 2,2) outgoing handle with the CURRENT point's forward drag direction,
+    // producing a segment whose first control was past the new anchor. With
+    // the fix:
+    //   - segment 1→2 (line→cubic because pt2.handleIn is set): cp1 = prev.position (2,2),
+    //     cp2 = pt2.handleIn (0,8), end (8,8)
+    //   - segment 2→3 (cubic because prev.handleOut is set from materialized pending):
+    //     cp1 = prev.handleOut (16,8), cp2 = pt3.position (12,8), end (12,8)
+    expect(d).toBe('M1 1 L2 2 C2 2 0 8 8 8 C16 8 12 8 12 8');
+    // After the second click-only commit, pending should be cleared.
+    expect(pending).toBeNull();
     editor.destroy();
   });
 

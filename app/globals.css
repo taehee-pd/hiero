@@ -1486,7 +1486,11 @@
     align-items: center;
     gap: 6px;
     min-height: 36px;
-    padding: 8px 4px 8px 10px;
+    /* Symmetric horizontal padding so the row feels balanced when a
+     * trailing control (eye icon, etc.) is rendered on the right edge.
+     * Was `8px 4px 8px 10px` — the tight right gutter made the eye
+     * icon look like it was clinging to the border. */
+    padding: 8px 10px;
     margin: 1px 0;
     border-radius: 8px;
     text-align: left;
@@ -1497,6 +1501,13 @@
     -webkit-user-select: none;
   }
 
+  /* Subtle hover tint on non-active rows — same accent color family as
+   * wire-icon-button hover, so the whole left panel feels consistent. */
+  .wire-layer-row:hover:not([data-active='true']),
+  .wire-list-row:hover:not([data-active='true']) {
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+
   .wire-layer-row[data-active='true'],
   .wire-list-row[data-active='true'] {
     background: color-mix(in srgb, var(--primary) 22%, transparent);
@@ -1505,8 +1516,7 @@
       0 1px 2px color-mix(in srgb, var(--primary) 18%, transparent);
   }
 
-  .wire-layer-row[data-active='true'] .wire-layer-name,
-  .wire-list-row[data-active='true'] .wire-list-row-label {
+  .wire-layer-row[data-active='true'] .wire-layer-name {
     color: var(--foreground);
     font-weight: 600;
   }
@@ -1551,32 +1561,78 @@
     background: color-mix(in srgb, var(--foreground-tertiary) 80%, transparent);
   }
 
-  .wire-layer-rename-input {
-    flex: 1;
+  /*
+   * Shared "seamless swap" pattern for inline renameable labels.
+   *
+   * Every double-click-to-rename surface in the app has two visual states:
+   *   (a) a label (span / p / button text)
+   *   (b) an input
+   *
+   * If the label and input don't occupy the exact same box, the text
+   * visibly jumps when the user enters or leaves edit mode. The fix is to
+   * render both states into an identically-sized box: same height,
+   * padding, border width, and font metrics. The label carries a
+   * *transparent* 1px border that takes up the same layout space as the
+   * input's real border, so the swap is pixel-perfect.
+   *
+   * `--inline-rename-height` can be overridden per-site (default 20px,
+   * e.g. 24px for larger titles, 36px for type/layer list rows).
+   */
+  .inline-rename-label,
+  .inline-rename-input {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
     min-width: 0;
-    height: 18px;
+    max-width: 100%;
+    height: var(--inline-rename-height, 20px);
     padding: 0 4px;
+    border: 1px solid transparent;
     border-radius: 4px;
-    border: 1px solid color-mix(in srgb, var(--primary) 55%, transparent);
-    background: var(--background);
-    color: var(--foreground);
     font: inherit;
-    font-size: 11px;
-    line-height: 16px;
+    margin: 0;
+    background: transparent;
+    color: var(--foreground);
+  }
+
+  .inline-rename-label {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: text;
+    /* span default baseline alignment + inline-flex don't cooperate on
+     * ellipsis; this `display: inline-block` fallback handles the span
+     * case when the author uses a span instead of a div. */
+    text-overflow: ellipsis;
+  }
+
+  .inline-rename-input {
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    background: var(--background);
     outline: none;
   }
 
-  .wire-layer-rename-input:focus {
+  .inline-rename-input:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent);
   }
 
+  .wire-layer-rename-input {
+    /* Site-specific: the layer list row renders labels and inputs at
+     * 11px text and wants to grow to fill the remaining line. We use the
+     * shared `.inline-rename-input` class for box/border/focus and only
+     * add growth + site-specific font sizing here. */
+    flex: 1;
+    font-size: 11px;
+    line-height: 1;
+  }
+
   .wire-layer-name {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    color: var(--foreground);
-    cursor: text;
+    /* Layer label — uses shared `.inline-rename-label` box, plus flex
+     * growth so long names ellipsize inside the row's remaining width. */
+    flex: 1;
+    font-size: 11px;
+    line-height: 1;
   }
 
   .wire-layer-kind {

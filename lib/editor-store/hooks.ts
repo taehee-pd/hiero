@@ -75,6 +75,7 @@ const editorActions = {
   addType: editorStore.getState().addType,
   removeType: editorStore.getState().removeType,
   renameType: editorStore.getState().renameType,
+  setTypeName: editorStore.getState().setTypeName,
   duplicateType: editorStore.getState().duplicateType,
   setTopology: editorStore.getState().setTopology,
   setSelectedIconGuideIndex: editorStore.getState().setSelectedIconGuideIndex,

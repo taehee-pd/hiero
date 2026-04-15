@@ -282,11 +282,21 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     // For fresh icon/variant switches, defer the heavy renderSvg() call
     // to the next animation frame so React can paint the loading overlay
     // first. Without this, the click-to-paint delay feels like a freeze.
+    //
+    // Minimum visible duration (MIN_OVERLAY_MS) keeps the spinner on screen
+    // long enough to perceive — without it, the two-rAF window (~16–32ms)
+    // was so short the overlay flashed invisibly. We still render the SVG
+    // immediately in the first rAF so interaction isn't actually delayed;
+    // the overlay just lingers over the already-painted canvas until the
+    // minimum elapses.
+    const MIN_OVERLAY_MS = 180;
     if (isNewIcon) {
       svg.innerHTML = '';
       setIsIconLoading(true);
-      const rafs: { first: number; second: number | null } = { first: 0, second: null };
-      rafs.first = requestAnimationFrame(() => {
+      const startTime = performance.now();
+      let rafId = 0;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      rafId = requestAnimationFrame(() => {
         renderSvg(
           {
             icon,
@@ -297,16 +307,16 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           svg,
         );
         lastRenderedKeyRef.current = nextKey;
-        // Keep the overlay on screen for one more frame so the spinner
-        // is perceivable even when the heavy work lands quickly.
-        rafs.second = requestAnimationFrame(() => {
+        const elapsed = performance.now() - startTime;
+        const remaining = Math.max(0, MIN_OVERLAY_MS - elapsed);
+        timeoutId = setTimeout(() => {
           setIsIconLoading(false);
-        });
+        }, remaining);
       });
       return () => {
-        cancelAnimationFrame(rafs.first);
-        if (rafs.second !== null) {
-          cancelAnimationFrame(rafs.second);
+        cancelAnimationFrame(rafId);
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
         }
       };
     }

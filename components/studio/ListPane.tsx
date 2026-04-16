@@ -188,8 +188,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           {listExpanded ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
-                  <ChevronLeft className="size-3.5" />
+                <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={toggleListPane} aria-label="Collapse icon list">
+                  <ChevronLeft className="size-[var(--icon-inner-size-md)]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Collapse</TooltipContent>
@@ -197,8 +197,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
-                  <ChevronRight className="size-3.5" />
+                <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={toggleListPane} aria-label="Expand icon list">
+                  <ChevronRight className="size-[var(--icon-inner-size-md)]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Expand</TooltipContent>
@@ -243,16 +243,16 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
-                    <Plus className="size-3.5" />
+                  <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={handleCreateBlankIcon} aria-label="New icon">
+                    <Plus className="size-[var(--icon-inner-size-md)]" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">New Icon</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-                    <FolderInput className="size-3.5" />
+                  <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
+                    <FolderInput className="size-[var(--icon-inner-size-md)]" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Import Icons</TooltipContent>
@@ -262,19 +262,19 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    className="h-7 w-7 shrink-0 rounded-lg text-primary hover:bg-primary/10 hover:text-primary"
+                    className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)] text-primary hover:bg-primary/10 hover:text-primary"
                     onClick={handleOpenExportDialog}
                     aria-label="Quick ZIP export"
                   >
-                    <ArrowDownToLine className="size-3.5" />
+                    <ArrowDownToLine className="size-[var(--icon-inner-size-md)]" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Quick ZIP (SVG package)</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
-                    <ChevronLeft className="size-3.5" />
+                  <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={toggleListPane} aria-label="Collapse icon list">
+                    <ChevronLeft className="size-[var(--icon-inner-size-md)]" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Collapse</TooltipContent>
@@ -283,8 +283,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           ) : (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
-                  <ChevronRight className="size-3.5" />
+                <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] shrink-0 rounded-[var(--radius-toolbar-action)]" onClick={toggleListPane} aria-label="Expand icon list">
+                  <ChevronRight className="size-[var(--icon-inner-size-md)]" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">Expand</TooltipContent>

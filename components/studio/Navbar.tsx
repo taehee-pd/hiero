@@ -381,8 +381,8 @@ export function Navbar() {
           {/* Save */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Save" onClick={() => void handleSave()}>
-                <Save className="size-3.5" />
+              <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] rounded-[var(--radius-toolbar-action)]" aria-label="Save" onClick={() => void handleSave()}>
+                <Save className="size-[var(--icon-inner-size-md)]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Save (Cmd/Ctrl+S)</TooltipContent>
@@ -391,16 +391,16 @@ export function Navbar() {
           {/* Undo/Redo */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Undo" onClick={undo}>
-                <Undo2 className="size-3.5" />
+              <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] rounded-[var(--radius-toolbar-action)]" aria-label="Undo" onClick={undo}>
+                <Undo2 className="size-[var(--icon-inner-size-md)]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Undo (Cmd/Ctrl+Z)</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Redo" onClick={redo}>
-                <Redo2 className="size-3.5" />
+              <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] rounded-[var(--radius-toolbar-action)]" aria-label="Redo" onClick={redo}>
+                <Redo2 className="size-[var(--icon-inner-size-md)]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Redo (Shift+Cmd/Ctrl+Z)</TooltipContent>
@@ -409,8 +409,8 @@ export function Navbar() {
           {/* Search */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Search icons" onClick={() => setCommandOpen(true)}>
-                <Search className="size-3.5" />
+              <Button variant="ghost" size="icon-sm" className="h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] rounded-[var(--radius-toolbar-action)]" aria-label="Search icons" onClick={() => setCommandOpen(true)}>
+                <Search className="size-[var(--icon-inner-size-md)]" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>

@@ -1751,7 +1751,7 @@ function RightSidebar({
 
 export function EditorShell({ initialIconId, embedded = false }: { initialIconId?: string; embedded?: boolean }) {
   const router = useRouter();
-  const currentIconId = useEditorStore((s) => s.currentIconId);
+  const _currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
   const currentTypeId = useEditorStore((s) => s.currentTypeId);
   const project = useEditorStore((s) => s.project);

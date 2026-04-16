@@ -31,6 +31,7 @@
     "check:runtime-size": "bun scripts/check-runtime-size.ts",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
+    "build-storybook": "storybook build",
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {

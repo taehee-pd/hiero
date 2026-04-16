@@ -1,7 +1,7 @@
 'use client';
 
 import type { IconChange } from '@/lib/sync-service/diff-source';
-import { Badge } from '@/components/ui/badge';
+import { Tag, type TagVariant } from '@/components/ds/tag';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 type SyncDiffPreviewProps = {
@@ -17,10 +17,10 @@ const KIND_LABELS: Record<IconChange['kind'], string> = {
   'metadata-only': 'Metadata updated',
 };
 
-const KIND_VARIANTS: Record<IconChange['kind'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const KIND_VARIANTS: Record<IconChange['kind'], TagVariant> = {
   added: 'default',
-  removed: 'destructive',
-  updated: 'secondary',
+  removed: 'danger',
+  updated: 'muted',
   'preview-only': 'outline',
   'metadata-only': 'outline',
 };
@@ -54,9 +54,9 @@ export function SyncDiffPreview({ iconChanges, fileCount }: SyncDiffPreviewProps
               className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
             >
               <span className="font-mono text-xs">{change.iconDir}</span>
-              <Badge variant={KIND_VARIANTS[change.kind]} className="text-[10px]">
+              <Tag variant={KIND_VARIANTS[change.kind]}>
                 {KIND_LABELS[change.kind]}
-              </Badge>
+              </Tag>
             </div>
           ))}
         </div>

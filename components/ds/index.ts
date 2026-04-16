@@ -33,3 +33,5 @@ export type {
   IconButtonRadius,
   IconButtonVariant,
 } from './icon-button';
+export { Tag } from './tag';
+export type { TagProps, TagVariant } from './tag';

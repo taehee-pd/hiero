@@ -10,7 +10,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Download, AlertTriangle, Info, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ds/tag';
 import { Label } from '@/components/ui/label';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { exportLottie, type LottieExportOptions } from '@/lib/export/export-lottie';
@@ -93,9 +93,7 @@ export function LottieExportPanel() {
           <FileJson className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Lottie Export</p>
         </div>
-        <Badge variant="secondary" className="text-[10px]">
-          Lottie 5.x
-        </Badge>
+        <Tag variant="muted">Lottie 5.x</Tag>
       </div>
 
       {/* Export options */}

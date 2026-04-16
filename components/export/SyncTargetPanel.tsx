@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ds/tag';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { toast } from '@/components/ui/use-toast';
@@ -208,12 +208,8 @@ function SyncTargetCard({
             <p className="text-sm font-medium text-foreground">{target.name}</p>
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
-            <Badge variant="secondary" className="text-[10px]">
-              {target.platform}
-            </Badge>
-            <Badge variant="outline" className="text-[10px]">
-              {target.deliveryMode}
-            </Badge>
+            <Tag variant="muted">{target.platform}</Tag>
+            <Tag>{target.deliveryMode}</Tag>
             {target.deliveryMode === 'local-directory' && target.localDirectory ? (
               <span className="text-[10px] text-muted-foreground">
                 {target.localDirectory.path}
@@ -230,32 +226,20 @@ function SyncTargetCard({
                   {target.npmRegistry!.packageName}
                 </span>
                 {target.npmRegistry!.lastPublishedVersion ? (
-                  <Badge variant="secondary" className="text-[10px]">
-                    v{target.npmRegistry!.lastPublishedVersion}
-                  </Badge>
+                  <Tag variant="muted">v{target.npmRegistry!.lastPublishedVersion}</Tag>
                 ) : null}
                 {nextVersion ? (
-                  <Badge variant="outline" className="text-[10px]">
-                    next {nextVersion}
-                  </Badge>
+                  <Tag>next {nextVersion}</Tag>
                 ) : null}
                 {target.autoPublish?.on === 'save' ? (
-                  <Badge variant="outline" className="text-[10px] text-green-600">
-                    auto-publish
-                  </Badge>
+                  <Tag variant="success">auto-publish</Tag>
                 ) : null}
                 {target.dryRun ? (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">
-                    dry-run
-                  </Badge>
+                  <Tag variant="warning">dry-run</Tag>
                 ) : null}
-                <Badge variant="outline" className="text-[10px] text-emerald-600">
-                  server token
-                </Badge>
+                <Tag variant="success">server token</Tag>
                 {isPending ? (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">
-                    pending
-                  </Badge>
+                  <Tag variant="warning">pending</Tag>
                 ) : null}
               </>
             ) : null}

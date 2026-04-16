@@ -2,7 +2,7 @@
 
 import type { Conflict } from '@/lib/sync-service/conflicts';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ds/tag';
 
 type SyncConflictPanelProps = {
   conflicts: Conflict[];
@@ -32,9 +32,9 @@ export function SyncConflictPanel({ conflicts }: SyncConflictPanelProps) {
           {conflict.iconDirs && conflict.iconDirs.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {conflict.iconDirs.map((dir) => (
-                <Badge key={dir} variant="outline" className="text-[10px]">
+                <Tag key={dir}>
                   {dir}
-                </Badge>
+                </Tag>
               ))}
             </div>
           )}

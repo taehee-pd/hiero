@@ -31,6 +31,7 @@
     "check:runtime-size": "bun scripts/check-runtime-size.ts",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
+    "build-storybook": "storybook build",
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {
@@ -111,6 +112,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitest/browser": "^3.2.4",
+    "chromatic": "^16.3.0",
     "eslint": "^10.0.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.9.0",

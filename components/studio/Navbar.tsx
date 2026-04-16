@@ -31,9 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { StatusBadge } from '@/components/ds/status-badge';
+import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -362,16 +361,9 @@ export function Navbar() {
             </button>
           )}
 
-          <Badge
-            variant="outline"
-            className={`h-5 shrink-0 rounded-full px-2 text-[10px] font-medium tracking-tight ${
-              isDirty
-                ? 'status-warning-surface border-[color:var(--border-warning)]'
-                : 'border-border/70 bg-background/80 text-muted-foreground'
-            }`}
-          >
+          <StatusBadge variant={isDirty ? 'warning' : 'neutral'}>
             {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}
-          </Badge>
+          </StatusBadge>
         </div>
 
         <div className="flex-1" />
@@ -379,42 +371,14 @@ export function Navbar() {
         {/* Right: quick actions */}
         <div className="flex items-center gap-0.5">
           {/* Save */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Save" onClick={() => void handleSave()}>
-                <Save className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Save (Cmd/Ctrl+S)</TooltipContent>
-          </Tooltip>
+          <IconButton icon={<Save />} aria-label="Save" onClick={() => void handleSave()} kbd={['Cmd', 'S']} />
 
           {/* Undo/Redo */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Undo" onClick={undo}>
-                <Undo2 className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Undo (Cmd/Ctrl+Z)</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Redo" onClick={redo}>
-                <Redo2 className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Redo (Shift+Cmd/Ctrl+Z)</TooltipContent>
-          </Tooltip>
+          <IconButton icon={<Undo2 />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />
+          <IconButton icon={<Redo2 />} aria-label="Redo" onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
 
           {/* Search */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="h-7 w-7 rounded-lg" aria-label="Search icons" onClick={() => setCommandOpen(true)}>
-                <Search className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Search (Cmd/Ctrl+K)</TooltipContent>
-          </Tooltip>
+          <IconButton icon={<Search />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
         </div>
       </header>
 

@@ -39,7 +39,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
-import { ColorPickerPopover } from './ColorPickerPopover';
+import { ColorField } from '@/components/ds/color-field';
 import { WeightCurveEditor } from './WeightCurveEditor';
 import {
   alignLayers,
@@ -2546,7 +2546,7 @@ function PaintField({
         <>
           <div className="flex items-center gap-1.5">
             {isColor && (
-              <ColorPickerPopover
+              <ColorField
                 value={normalizeHexColor(
                   paint?.mode === 'fixed' ? paint.value : undefined,
                 )}
@@ -2621,7 +2621,7 @@ function PaintField({
                 );
               })}
               {selectedStop && (
-                <ColorPickerPopover
+                <ColorField
                   value={normalizeHexColor(selectedStop.color, '#000000')}
                   onChange={(hex) =>
                     updateGradientStop(boundedSelectedStopIndex, (stop) => ({

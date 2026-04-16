@@ -2,8 +2,7 @@
 
 import { useCallback, useMemo, useState, useRef } from 'react';
 import { ArrowDownToLine, ChevronLeft, ChevronRight, FolderInput, Plus, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { IconButton } from '@/components/ds/icon-button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -186,23 +185,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
           {listExpanded ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
-                  <ChevronLeft className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Collapse</TooltipContent>
-            </Tooltip>
+            <IconButton icon={<ChevronLeft />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
-                  <ChevronRight className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Expand</TooltipContent>
-            </Tooltip>
+            <IconButton icon={<ChevronRight />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
           )}
         </div>
         {listExpanded ? (
@@ -241,54 +226,19 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           {listExpanded ? (
             <>
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={handleCreateBlankIcon} aria-label="New icon">
-                    <Plus className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">New Icon</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={() => setImportDialogOpen(true)} aria-label="Import icons">
-                    <FolderInput className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Import Icons</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="h-7 w-7 shrink-0 rounded-lg text-primary hover:bg-primary/10 hover:text-primary"
-                    onClick={handleOpenExportDialog}
-                    aria-label="Quick ZIP export"
-                  >
-                    <ArrowDownToLine className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Quick ZIP (SVG package)</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Collapse icon list">
-                    <ChevronLeft className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Collapse</TooltipContent>
-              </Tooltip>
+              <IconButton icon={<Plus />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
+              <IconButton icon={<FolderInput />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
+              <IconButton
+                icon={<ArrowDownToLine />}
+                aria-label="Quick ZIP export"
+                onClick={handleOpenExportDialog}
+                tooltip="Quick ZIP (SVG package)"
+                className="text-primary hover:bg-primary/10 hover:text-primary"
+              />
+              <IconButton icon={<ChevronLeft />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
             </>
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon-sm" className="h-7 w-7 shrink-0 rounded-lg" onClick={toggleListPane} aria-label="Expand icon list">
-                  <ChevronRight className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Expand</TooltipContent>
-            </Tooltip>
+            <IconButton icon={<ChevronRight />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
           )}
         </div>
 

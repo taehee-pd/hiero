@@ -20,3 +20,16 @@
 // with ColorPicker (moved from the deleted components/kibo-ui folder).
 
 export * from './color-picker';
+export { StatusBadge } from './status-badge';
+export type { StatusBadgeProps, StatusBadgeVariant } from './status-badge';
+export { KbdHint, resolveKey } from './kbd-hint';
+export type { KbdHintProps } from './kbd-hint';
+export { ColorField } from './color-field';
+export type { ColorFieldProps } from './color-field';
+export { IconButton } from './icon-button';
+export type {
+  IconButtonProps,
+  IconButtonSize,
+  IconButtonRadius,
+  IconButtonVariant,
+} from './icon-button';

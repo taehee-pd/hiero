@@ -162,17 +162,43 @@ Don't:
 
 ### Concrete dimensions
 
-| Element | Value |
-|---------|-------|
-| Navbar height | `40px` (h-10) |
-| Toolbar height | `38px` |
-| NavPane expanded | `200px` |
-| NavPane collapsed | `56px` (w-14) |
-| ListPane width | `260px` |
-| Inspector width | `260px` |
-| Panel padding | `12px` |
-| Panel gap | `8px` |
-| Section gap | `12px` |
+| Element | Value | CSS token |
+|---------|-------|-----------|
+| Navbar height | `40px` (h-10) | `--navbar-height` |
+| Toolbar height | `36–40px` (responsive clamp) | `--toolbar-height` (`--toolbar-height-min` / `--toolbar-height-max`) |
+| NavPane expanded | `200px` | `--navpane-width-expanded` |
+| NavPane collapsed | `56px` (w-14) | `--navpane-width-collapsed` |
+| ListPane width | `260px` | `--listpane-width` |
+| Inspector width | `260px` | `--inspector-width` |
+| Panel padding | `12px` | `--panel-padding` |
+| Panel gap | `8px` | `--panel-gap` |
+| Section gap | `12px` | `--section-gap` |
+
+### IconButton dimensions
+
+| Size | Frame | Inner icon | CSS tokens |
+|------|-------|------------|------------|
+| sm | `24px` | `12px` | `--button-icon-size-sm` / `--icon-inner-size-sm` |
+| md | `28px` | `14px` | `--button-icon-size-md` / `--icon-inner-size-md` |
+| lg | `32px` | `16px` | `--button-icon-size-lg` / `--icon-inner-size-lg` |
+
+Ghost icon buttons at 28px with 14px icons are the default for toolbar/navbar actions.
+
+### Radii
+
+| Context | Value | CSS token |
+|---------|-------|-----------|
+| Toolbar action | `0.5rem` (8px) | `--radius-toolbar-action` |
+| Panel navigation | `0.875rem` (14px) | `--radius-panel-nav` |
+| Pill / badge | `9999px` | `--radius-pill` |
+| Standard input | `0.5rem` (8px) | `--radius-input` |
+| Search input | `0.625rem` (10px) | `--radius-search` |
+
+### Range token pattern
+
+When a dimension needs responsive behavior, expose the range as three
+tokens: `--<name>-min`, `--<name>` (the `clamp()`), and `--<name>-max`.
+The toolbar height is the first instance of this pattern.
 
 ### Whitespace philosophy
 - **Purposeful breathing room**: Like ElevenLabs' Apple-like generosity but adapted for

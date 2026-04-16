@@ -19,7 +19,7 @@ import type { Effect, Layer } from '@/lib/schema/types';
 import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
 import { cn } from '@/lib/utils';
 import { EasingPicker, type EasingValue } from './EasingPicker';
-import { ColorPickerPopover } from './ColorPickerPopover';
+import { ColorField } from '@/components/ds/color-field';
 
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
@@ -402,7 +402,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                     <div className="space-y-1">
                       {(effect.palette ?? []).map((color, index) => (
                         <div key={index} className="flex items-center gap-2">
-                          <ColorPickerPopover
+                          <ColorField
                             value={color}
                             onChange={(hex) => {
                               const next = [...(effect.palette ?? [])];

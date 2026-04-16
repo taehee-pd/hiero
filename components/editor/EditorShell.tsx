@@ -90,10 +90,9 @@ import {
 } from '@/components/ui/context-menu';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
-import { ColorPickerPopover } from './ColorPickerPopover';
+import { ColorField } from '@/components/ds/color-field';
 import { TransitionPanel } from './TransitionPanel';
 import { AnimationStudioPanel } from './AnimationStudioPanel';
-import { EditorSidebarTabs } from './EditorSidebarTabs';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { ListPane } from '@/components/studio/ListPane';
 import { cn } from '@/lib/utils';
@@ -1326,15 +1325,31 @@ function RightSidebar({
             }
           }}
         />
-        <EditorSidebarTabs
-          ariaLabel="Right sidebar"
-          value={rightTab}
-          onChange={onRightTabChange}
-          options={[
-            { value: 'inspect', label: 'Inspect' },
-            { value: 'animation', label: 'Animation' },
-          ]}
-        />
+        <div className="flex items-center gap-1 min-h-[30px] px-0.5">
+          <ToggleGroup
+            type="single"
+            size="sm"
+            value={rightTab}
+            onValueChange={(v) => { if (v) onRightTabChange(v as typeof rightTab); }}
+            aria-label="Right sidebar"
+            className="inline-flex items-center gap-1"
+          >
+            <ToggleGroupItem
+              value="inspect"
+              aria-label="Inspect"
+              className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+            >
+              Inspect
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="animation"
+              aria-label="Animation"
+              className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+            >
+              Animation
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
@@ -1462,7 +1477,7 @@ function RightSidebar({
                 </div>
                 {fillMode === 'fixed' && (
                   <RowField label="Fill color">
-                    <ColorPickerPopover
+                    <ColorField
                       value={
                         selectedLayer.style.fill?.mode === 'fixed'
                           ? selectedLayer.style.fill.value
@@ -1482,7 +1497,7 @@ function RightSidebar({
                 )}
                 {strokeMode === 'fixed' && (
                   <RowField label="Stroke color">
-                    <ColorPickerPopover
+                    <ColorField
                       value={
                         selectedLayer.style.stroke?.mode === 'fixed'
                           ? selectedLayer.style.stroke.value

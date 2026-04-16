@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ds/status-badge';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useSyncPr } from '@/lib/sync-ui/use-sync-pr';
 import { isInProgress, canRetry } from '@/lib/sync-ui/sync-state';
@@ -88,15 +88,15 @@ export function SyncPrPanel({
   const statusBadge = (() => {
     switch (state.phase) {
       case 'pr_created':
-        return <Badge variant="default" className="text-[10px]">PR created</Badge>;
+        return <StatusBadge variant="info">PR created</StatusBadge>;
       case 'conflict_detected':
-        return <Badge variant="destructive" className="text-[10px]">Conflict</Badge>;
+        return <StatusBadge variant="danger">Conflict</StatusBadge>;
       case 'validation_failed':
-        return <Badge variant="destructive" className="text-[10px]">Failed</Badge>;
+        return <StatusBadge variant="danger">Failed</StatusBadge>;
       case 'auth_expired':
-        return <Badge variant="destructive" className="text-[10px]">Auth expired</Badge>;
+        return <StatusBadge variant="danger">Auth expired</StatusBadge>;
       case 'changes_not_synced':
-        return <Badge variant="secondary" className="text-[10px]">{state.iconChanges.length} changes</Badge>;
+        return <StatusBadge variant="accent">{state.iconChanges.length} changes</StatusBadge>;
       default:
         return null;
     }

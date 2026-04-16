@@ -111,6 +111,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitest/browser": "^3.2.4",
+    "chromatic": "^16.3.0",
     "eslint": "^10.0.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.9.0",

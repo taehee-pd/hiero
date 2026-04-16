@@ -12,7 +12,7 @@
     "format:check": "prettier --check \".github/workflows/web-app-ci.yml\" \"scripts/check-coverage.ts\" \".prettierrc.json\" \"package.json\" \"pnpm-lock.yaml\"",
     "test": "bun run test:core && bun run test:dom",
     "test:core": "bun test tests/*.test.ts",
-    "test:dom": "bun test tests/*.test.tsx",
+    "test:dom": "bun test tests/*.test.tsx tests/ds/*.test.tsx",
     "test:ci": "bun run test:core && bun run test:dom",
     "test:watch": "bun test --watch",
     "test:phase-a": "bun test tests/runtime-core.test.ts tests/runtime-dom.test.ts tests/runtime-dom-driver.test.ts tests/runtime-core-store.test.ts tests/export-runtime-json.test.ts tests/runtime-json-export.test.ts tests/runtime-react.test.tsx tests/runtime-react-phase4.test.tsx",

@@ -35,11 +35,9 @@ const preview: Preview = {
       appDirectory: true,
     },
     a11y: {
-      // Runs axe-core on every story render and reports violations in the
-      // addon panel. Plan §5 specifies this is ON by default from Phase 3
-      // onward; Phase 8 flips the mode to 'error' so violations break the
-      // build. Until then, violations are informational.
-      test: 'todo',
+      // Runs axe-core on every story render. Phase 8: flipped from 'todo'
+      // to 'error' so a11y violations break the Storybook Vitest build.
+      test: 'error',
       config: {},
     },
   },

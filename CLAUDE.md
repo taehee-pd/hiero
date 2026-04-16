@@ -87,24 +87,58 @@ components/
 ├── export/           # PublishPanel, ReleasePanel, export formats
 ├── persistence/      # AutoSaveProvider
 ├── runtime/          # Runtime preview
-├── ui/               # shadcn/ui components (57 files)
-└── kibo-ui/          # kibo-ui re-exports + color-picker
+├── ds/               # Contour Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
+├── ui/               # shadcn/ui primitives (Radix-based)
+└── kibo-ui/          # (deleted — migrated to ds/ in Phase 2)
 
 packages/coniva-cli/   # @contour/cli command-line tool
 figma-plugin/         # Figma plugin for exporting to Contour
 specs/                # Spec-kit documentation (21 specs)
 docs_canonical/       # Canonical reference docs (TASKS, ARCHITECTURE, DESIGN, etc.)
-tests/                # Bun test files (103+ tests)
+tests/                # Bun test files (1400+ tests)
+tests/ds/             # DS component tests (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
 ```
 
 ## Key Conventions
 
 - **Imports:** Use `@/` alias for all imports (resolves to project root)
-- **UI Components:** Always use shadcn/ui or kibo-ui — never raw `<select>`, `<input type="range">`, etc.
+- **UI Components:** Use `components/ds/*` for shared cross-feature UI, `components/ui/*` (shadcn/Radix) for primitives — never raw `<select>`, `<input type="range">`, etc.
 - **CSS:** Use Tailwind utilities + `wire-*` CSS classes for editor panels (defined in `app/globals.css`)
 - **State:** Custom store in `lib/editor-store/store.ts` — use `useEditorStore()` and `useEditorActions()` (built on `useSyncExternalStore`)
 - **Testing:** `pnpm test` — all tests must pass before committing (splits into core + dom; see bunfig.toml)
 - **Commits:** Author as `taehee-pd <j.taehee@icloud.com>` with Co-Authored-By Claude
+
+## Design System (components/ds/)
+
+Import shared cross-feature UI from `@/components/ds`:
+
+- **StatusBadge** — semantic status indicators (saved/unsaved, connected, error)
+- **Tag** — classification/metadata labels (platforms, versions, change kinds)
+- **KbdHint** — platform-aware keyboard shortcut display
+- **ColorField** — color swatch + hex input + optional opacity
+- **IconButton** — icon-only action button with auto Tooltip + kbd hints
+- **ColorPicker** — composition-based color picker (HSL, eye dropper, format switching)
+
+**Admission criteria** (all five required to add a new DS component):
+1. Same semantics across call sites
+2. Same a11y contract
+3. Same behavior (hover/focus/disabled/loading/error)
+4. Same change axis — moves together when redesigned
+5. DESIGN.md fidelity — no invented values
+
+Every DS component must have a `.stories.tsx` and a `tests/ds/*.test.tsx`.
+CI enforces this via `scripts/check-ds-exports.ts`.
+
+## Storybook
+
+```bash
+pnpm storybook          # Dev server on port 6006
+pnpm storybook:build    # Production build
+pnpm storybook:test     # Vitest addon (Chromium, headless)
+```
+
+Stories live alongside components: `components/**/*.stories.tsx`.
+Token documentation lives in `components/**/*.mdx`.
 
 ## Specs & Documentation
 

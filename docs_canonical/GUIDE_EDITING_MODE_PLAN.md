@@ -174,3 +174,19 @@ New file: none; v2 is mostly deletions + a few selector / action edits.
 1. Is the "selector redirection + writer branch" pattern preferable to an isolated "edit scope" abstraction (`state.editScope: IconScope | GuideMasterScope`) that every action reads explicitly? Redirection is a smaller diff; scope is more explicit and future-proof.
 2. Should we migrate the existing panel-authored `items: GuideItem[]` into equivalent `layers` on first enter, so users can edit them on canvas? Or keep items immutable-on-canvas and let the user re-draw?
 3. `selectCurrentIcon` returning `null` in guide mode — how should the handful of icon-dependent actions (symbol-component tagging, variant matrix generation, clipboard paste *into* an icon, sync/publish) behave while the mode is active? Grey them out, no-op, or auto-exit before running?
+
+## Decisions (locked 2026-04-17)
+
+1. **Explicit `state.editScope`** — replaces `guideEditingMode`. Shape:
+
+   ```ts
+   export type EditScope =
+     | { kind: 'icon'; iconId: string; variantId: string; typeId: string | null }
+     | { kind: 'guideMaster'; masterId: string };
+   ```
+
+   `currentIconId` / `currentVariantId` / `currentTypeId` stay on the state and always reflect the last-active icon (acting as a resume point). `editScope.kind` tells every action *what to operate on right now*. Entering a master flips `editScope.kind` to `'guideMaster'` without touching the icon fields; exiting rebuilds `editScope` from them.
+
+2. **Migrate `items` → `layers` on enter** — on the first enter of a given master, the `hline` / `vline` / `rect` / `ellipse` entries in `master.items` are converted to `Layer`s (with matching `primitive` metadata) and the original entries are dropped from `items`. `drawPoint` entries stay in `items` (they reference an icon layer and have no geometric footprint). The migration is idempotent because subsequent enters find no convertible entries.
+
+3. **Icon-dependent actions no-op in guide scope** — `applyComponentTag`, `generateVariantMatrix`, `upsertSymbolComponent`, `removeSymbolComponent`, clipboard paste into an icon, publish / sync actions, etc. each early-return when `editScope.kind !== 'icon'`. No tooltip noise required; the UI surfaces that already live on icon-only panels (e.g., symbol tools in the Inspector) simply do nothing when invoked in guide scope.

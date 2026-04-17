@@ -110,12 +110,6 @@ export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
   return SHAPE_SUB_TOOLS.find((shape) => shape.id === shapeSubTool)?.label ?? 'Shape';
 }
 
-// Guide items can only be rectangles, ellipses, and lines (hline/vline/rect/
-// ellipse kinds in the GuideItem schema). While guide editing mode is active,
-// the shape-picker is narrowed to this set — polygon/star have no guide
-// representation and would silently no-op if selected.
-const GUIDE_COMPATIBLE_SHAPES: ShapeType[] = ['rectangle', 'ellipse', 'line'];
-
 export const ToolPanel = memo(function ToolPanel({
   guidePanelOpen = false,
   layout = 'panel',
@@ -127,15 +121,10 @@ export const ToolPanel = memo(function ToolPanel({
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
-  const guideEditingActive = useEditorStore((s) => s.guideEditingMode.active);
   const { setShapeSubTool, setTool, toggleSnap, toggleGuidesVisible } = useEditorActions();
   const [shapePickerOpen, setShapePickerOpen] = useState(false);
   const [selectPickerOpen, setSelectPickerOpen] = useState(false);
   const isDock = layout === 'dock';
-
-  const visibleShapeSubTools = guideEditingActive
-    ? SHAPE_SUB_TOOLS.filter((shape) => GUIDE_COMPATIBLE_SHAPES.includes(shape.id))
-    : SHAPE_SUB_TOOLS;
 
   // Determine active select sub-tool
   const isSelectGroup = activeTool === 'select' || activeTool === 'direct-select';
@@ -330,7 +319,7 @@ export const ToolPanel = memo(function ToolPanel({
                   </Tooltip>
                   <PopoverContent side="right" align="start" className="w-44 p-2">
                     <div className="grid gap-1">
-                      {visibleShapeSubTools.map((shape) => {
+                      {SHAPE_SUB_TOOLS.map((shape) => {
                         const isSelected = shape.id === shapeSubTool;
                         return (
                           <Button

@@ -56,7 +56,9 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
         masters,
       }));
   }, [guideMasterList]);
-  const guideEditingMode = useEditorStore((s) => s.guideEditingMode);
+  const editScope = useEditorStore((s) => s.editScope);
+  const editingThisMaster = (masterId: string) =>
+    editScope.kind === 'guideMaster' && editScope.masterId === masterId;
   const {
     addGuideMaster,
     updateGuideMaster,
@@ -173,7 +175,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-2.5">
-          {guideEditingMode.active ? (
+          {editScope.kind === 'guideMaster' ? (
             <div
               className="flex items-start justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs"
               role="status"
@@ -320,30 +322,21 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       size="icon-sm"
                       className={cn(
                         'workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground',
-                        guideEditingMode.active &&
-                          guideEditingMode.masterId === selectedMaster.id &&
-                          'bg-primary/10 text-primary',
+                        editingThisMaster(selectedMaster.id) && 'bg-primary/10 text-primary',
                       )}
                       onClick={() => {
-                        if (
-                          guideEditingMode.active &&
-                          guideEditingMode.masterId === selectedMaster.id
-                        ) {
+                        if (editingThisMaster(selectedMaster.id)) {
                           exitGuideEditingMode();
                         } else {
                           enterGuideEditingMode(selectedMaster.id);
                         }
                       }}
                       aria-label={
-                        guideEditingMode.active &&
-                        guideEditingMode.masterId === selectedMaster.id
+                        editingThisMaster(selectedMaster.id)
                           ? 'Exit guide editing on canvas'
                           : 'Edit guides on canvas'
                       }
-                      aria-pressed={
-                        guideEditingMode.active &&
-                        guideEditingMode.masterId === selectedMaster.id
-                      }
+                      aria-pressed={editingThisMaster(selectedMaster.id)}
                       title="Edit guides on canvas"
                     >
                       <MousePointerSquareDashed className="size-3.5" />

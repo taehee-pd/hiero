@@ -1,15 +1,14 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import {
-  PathEditor,
-  applyGuideItemHandleDrag,
-  buildShapePathFromDrag,
-  hitTestGuideItemHandle,
-  primitiveToGuideItem,
-} from '../lib/editor-core';
+import { PathEditor } from '../lib/editor-core';
 import { buildPrimitivePath } from '../lib/editor-core/path-shapes';
-import { clearHistory } from '../lib/editor-store/history';
+import { clearHistory, undo } from '../lib/editor-store/history';
 import { editorStore } from '../lib/editor-store/store';
 import { SAMPLE_PROJECT } from '../lib/schema/sample-project';
+import {
+  selectCurrentType,
+  selectCurrentVariant,
+  selectCurrentIcon,
+} from '../lib/editor-store/selectors';
 import type { PrimitiveShape } from '../lib/schema/types';
 
 const originalWindow = (globalThis as { window?: unknown }).window;
@@ -46,6 +45,10 @@ function bootstrap() {
   clearHistory();
 }
 
+/**
+ * Seed a master with a couple of parametric items so we can assert the
+ * items → layers migration fires on first enter.
+ */
 function seedMaster() {
   const state = editorStore.getState();
   state.addGuideMaster({
@@ -53,11 +56,20 @@ function seedMaster() {
     name: 'Test master',
     targetSize: 24,
     viewBox: [0, 0, 24, 24],
-    items: [],
+    items: [
+      { kind: 'rect', x: 4, y: 4, width: 8, height: 6 },
+      { kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 3 },
+      { kind: 'hline', y: 8 },
+      {
+        kind: 'drawPoint',
+        layerId: 'some-layer',
+        t: 0.5,
+      },
+    ],
+    layers: {},
   });
-  // Bind the master to the current variant. `patchVariant` doesn't accept
-  // `guideMasterId`, so reach through the project state directly — this is
-  // the same pattern migration code uses.
+  // Bind the master to the current variant via direct project surgery
+  // (patchVariant doesn't accept guideMasterId).
   editorStore.setState((s) => {
     if (!s.project) return s;
     const icon = s.project.icons['icon-home'];
@@ -123,517 +135,454 @@ function pointerEvent(init: {
   } as unknown as PointerEvent;
 }
 
-describe('guide editing mode — store lifecycle', () => {
-  test('enter/exit toggles the mode and clears selection on enter', () => {
+describe('editScope lifecycle', () => {
+  test('enter flips editScope to guideMaster + clears selection', () => {
     bootstrap();
     const masterId = seedMaster();
 
     editorStore.getState().setSelection({ layerIds: ['roof'], pointIds: [] });
     editorStore.getState().enterGuideEditingMode(masterId);
-    const after = editorStore.getState();
-    expect(after.guideEditingMode).toEqual({ active: true, masterId });
-    expect(after.selection).toEqual({ layerIds: [], pointIds: [] });
 
+    const after = editorStore.getState();
+    expect(after.editScope).toEqual({ kind: 'guideMaster', masterId });
+    expect(after.selection).toEqual({ layerIds: [], pointIds: [] });
+  });
+
+  test('exit returns the scope to icon + keeps icon pointers intact', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const before = editorStore.getState();
+    const { currentIconId, currentVariantId, currentTypeId } = before;
+
+    editorStore.getState().enterGuideEditingMode(masterId);
     editorStore.getState().exitGuideEditingMode();
-    expect(editorStore.getState().guideEditingMode).toEqual({
-      active: false,
-      masterId: null,
-    });
+
+    const after = editorStore.getState();
+    expect(after.editScope).toEqual({ kind: 'icon' });
+    expect(after.currentIconId).toBe(currentIconId);
+    expect(after.currentVariantId).toBe(currentVariantId);
+    expect(after.currentTypeId).toBe(currentTypeId);
   });
 
   test('enter is a no-op when the target master does not exist', () => {
     bootstrap();
     editorStore.getState().enterGuideEditingMode('does-not-exist');
-    expect(editorStore.getState().guideEditingMode).toEqual({
-      active: false,
-      masterId: null,
-    });
+    expect(editorStore.getState().editScope).toEqual({ kind: 'icon' });
   });
 
-  test('switching variant exits guide editing mode', () => {
+  test('switching variant auto-exits guide editing mode', () => {
     bootstrap();
     const masterId = seedMaster();
     editorStore.getState().enterGuideEditingMode(masterId);
-    // SAMPLE_PROJECT has multiple variants for icon-home; pick any other one.
+
     const icon = editorStore.getState().project!.icons['icon-home'];
     const otherVariantId = Object.keys(icon.variants).find((id) => id !== 'v24');
-    if (!otherVariantId) return; // SAMPLE_PROJECT shape changed; skip.
+    if (!otherVariantId) return; // sample project changed; skip
+
     editorStore.getState().setCurrentVariant(otherVariantId);
-    expect(editorStore.getState().guideEditingMode.active).toBeFalse();
+    expect(editorStore.getState().editScope).toEqual({ kind: 'icon' });
   });
 
-  test('deleting the bound master exits guide editing mode', () => {
+  test('deleting the bound master auto-exits guide editing mode', () => {
     bootstrap();
     const masterId = seedMaster();
     editorStore.getState().enterGuideEditingMode(masterId);
     editorStore.getState().removeGuideMaster(masterId);
-    expect(editorStore.getState().guideEditingMode).toEqual({
-      active: false,
-      masterId: null,
-    });
+    expect(editorStore.getState().editScope).toEqual({ kind: 'icon' });
   });
 });
 
-describe('guide editing mode — canvas drag branches to GuideItem', () => {
-  test('drag creates a GuideItem on pointerup, no Layer added', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.setShapeSubTool('rectangle');
-    state.enterGuideEditingMode(masterId);
-
-    const layerCountBefore = Object.keys(
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers,
-    ).length;
-
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 100 }));
-
-    const master = editorStore.getState().project!.guideMasters![masterId];
-    expect(master.items.length).toBe(1);
-    expect(master.items[0]!.kind).toBe('rect');
-
-    const layerCountAfter = Object.keys(
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers,
-    ).length;
-    expect(layerCountAfter).toBe(layerCountBefore);
-
-    editor.destroy();
-  });
-
-  test('Escape cancel during drag commits nothing', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.setShapeSubTool('rectangle');
-    state.enterGuideEditingMode(masterId);
-
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
-
-    const master = editorStore.getState().project!.guideMasters![masterId];
-    expect(master.items).toHaveLength(0);
-
-    editor.destroy();
-  });
-
-  test('Escape with no drag in progress exits guide editing mode', () => {
+describe('items → layers migration on enter', () => {
+  test('migrates rect/ellipse/hline/vline into layers; keeps drawPoint in items', () => {
     bootstrap();
     const masterId = seedMaster();
     editorStore.getState().enterGuideEditingMode(masterId);
 
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
+    const master = editorStore.getState().project!.guideMasters![masterId];
+    // 3 geometric items → 3 layers; drawPoint stays in items.
+    expect(Object.keys(master.layers ?? {})).toHaveLength(3);
+    expect(master.items).toHaveLength(1);
+    expect(master.items[0]!.kind).toBe('drawPoint');
 
-    expect(editorStore.getState().guideEditingMode.active).toBeFalse();
-    editor.destroy();
+    // The migrated rect/ellipse layers should carry matching primitive
+    // metadata so the Inspector's Sides/Points surface generalises.
+    const layers = Object.values(master.layers ?? {});
+    const rectLayer = layers.find((l) => l.primitive?.kind === 'rectangle');
+    const ellipseLayer = layers.find((l) => l.primitive?.kind === 'ellipse');
+    expect(rectLayer).toBeDefined();
+    expect(ellipseLayer).toBeDefined();
   });
 
-  test('polygon sub-tool in guide mode does not commit a GuideItem', () => {
+  test('migration is idempotent — a second enter is a no-op', () => {
     bootstrap();
     const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+    const firstPass = editorStore.getState().project!.guideMasters![masterId];
+
+    editorStore.getState().exitGuideEditingMode();
+    editorStore.getState().enterGuideEditingMode(masterId);
+    const secondPass = editorStore.getState().project!.guideMasters![masterId];
+
+    expect(Object.keys(secondPass.layers ?? {}).length).toBe(
+      Object.keys(firstPass.layers ?? {}).length,
+    );
+    expect(secondPass.items.length).toBe(firstPass.items.length);
+  });
+});
+
+describe('selectors redirect to master layers in guide scope', () => {
+  test('selectCurrentIcon returns null', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+    expect(selectCurrentIcon(editorStore.getState())).toBeNull();
+  });
+
+  test('selectCurrentVariant synthesises a Variant from the master', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+
+    const variant = selectCurrentVariant(editorStore.getState());
+    expect(variant).not.toBeNull();
+    expect(variant!.size).toBe(24);
+    expect(variant!.id).toBe(`guide-master:${masterId}`);
+    // Layers reflect the migrated set.
+    expect(Object.keys(variant!.layers).length).toBeGreaterThan(0);
+  });
+
+  test('selectCurrentType returns the master snapshot', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+
+    const snap = selectCurrentType(editorStore.getState());
+    expect(snap).not.toBeNull();
+    expect(Object.keys(snap!.layers).length).toBeGreaterThan(0);
+  });
+});
+
+describe('shape-tool creation routes writes by scope', () => {
+  test('new shapes land on master.layers in guide scope (not on any icon)', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const iconLayersBefore = Object.keys(
+      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers,
+    ).length;
+
     const state = editorStore.getState();
     state.setTool('shape');
     state.setShapeSubTool('polygon');
     state.enterGuideEditingMode(masterId);
 
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 100 }));
-
-    const master = editorStore.getState().project!.guideMasters![masterId];
-    expect(master.items).toHaveLength(0);
-
-    editor.destroy();
-  });
-});
-
-describe('primitive shape metadata + invariant', () => {
-  test('shape-tool creation stamps a matching primitive on the new layer', () => {
-    bootstrap();
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.setShapeSubTool('polygon');
-    state.setShapePolygonSides(6);
+    const beforeMasterCount = Object.keys(
+      editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
+    ).length;
 
     const editor = new PathEditor(createMockSvg());
     (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
     (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
     (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
 
-    const layerId = editorStore.getState().selection.layerIds[0]!;
-    const layer =
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default
-        .layers[layerId];
-    expect(layer).toBeDefined();
-    expect(layer!.primitive?.kind).toBe('polygon');
-    if (layer!.primitive?.kind === 'polygon') {
-      expect(layer!.primitive.sides).toBe(6);
-    }
+    const master = editorStore.getState().project!.guideMasters![masterId]!;
+    expect(Object.keys(master.layers ?? {}).length).toBe(beforeMasterCount + 1);
+
+    // Icon's variant layers are untouched — the drawn shape went to the
+    // master, not the icon.
+    const iconLayersAfter = Object.keys(
+      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers,
+    ).length;
+    expect(iconLayersAfter).toBe(iconLayersBefore);
 
     editor.destroy();
   });
 
-  test('setLayerPrimitive regenerates path.d via the shared buildPrimitivePath helper', () => {
-    bootstrap();
-    const state = editorStore.getState();
-    const seeded: PrimitiveShape = {
-      kind: 'polygon',
-      cx: 12,
-      cy: 12,
-      r: 6,
-      sides: 5,
-    };
-    state.patchLayer('icon-home', 'roof', {
-      path: { d: buildPrimitivePath(seeded) },
-      primitive: seeded,
-    });
-
-    state.setLayerPrimitive('icon-home', 'roof', { ...seeded, sides: 8 });
-
-    const layer =
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers
-        .roof;
-    expect(layer.primitive?.kind).toBe('polygon');
-    if (layer.primitive?.kind === 'polygon') {
-      expect(layer.primitive.sides).toBe(8);
-    }
-    expect(layer.path!.d).toBe(buildPrimitivePath({ ...seeded, sides: 8 }));
-  });
-
-  test('patchLayer clears primitive + stamps formerPrimitiveKind when path is mutated', () => {
-    bootstrap();
-    const state = editorStore.getState();
-    const seeded: PrimitiveShape = {
-      kind: 'star',
-      cx: 12,
-      cy: 12,
-      outerR: 6,
-      innerR: 3,
-      points: 5,
-    };
-    state.patchLayer('icon-home', 'roof', {
-      path: { d: buildPrimitivePath(seeded) },
-      primitive: seeded,
-    });
-    // A mutation to path.d without supplying a primitive clears the metadata.
-    state.patchLayer('icon-home', 'roof', {
-      path: { d: 'M0 0 L10 10' },
-    });
-
-    const layer =
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers
-        .roof;
-    expect(layer.primitive).toBeUndefined();
-    expect(layer.formerPrimitiveKind).toBe('star');
-  });
-
-  test('setLayerPrimitive clears the formerPrimitiveKind breadcrumb', () => {
-    bootstrap();
-    const state = editorStore.getState();
-    const seeded: PrimitiveShape = {
-      kind: 'polygon',
-      cx: 12,
-      cy: 12,
-      r: 6,
-      sides: 5,
-    };
-    state.patchLayer('icon-home', 'roof', {
-      path: { d: buildPrimitivePath(seeded) },
-      primitive: seeded,
-    });
-    // Mutate path → primitive cleared, breadcrumb stamped
-    state.patchLayer('icon-home', 'roof', { path: { d: 'M0 0 L10 10' } });
-    expect(
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers
-        .roof.formerPrimitiveKind,
-    ).toBe('polygon');
-    // Re-parameterising clears the breadcrumb
-    state.setLayerPrimitive('icon-home', 'roof', { ...seeded, sides: 7 });
-    expect(
-      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers
-        .roof.formerPrimitiveKind,
-    ).toBeUndefined();
-  });
-});
-
-describe('guide shape preview state', () => {
-  test('is set during a guide-mode drag and cleared on commit', () => {
+  test('polygon + star are available in guide mode (same toolbar)', () => {
     bootstrap();
     const masterId = seedMaster();
     const state = editorStore.getState();
     state.setTool('shape');
-    state.setShapeSubTool('rectangle');
     state.enterGuideEditingMode(masterId);
 
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-
-    const preview = editorStore.getState().guideShapePreview;
-    expect(preview).not.toBeNull();
-    expect(preview!.masterId).toBe(masterId);
-    expect(preview!.primitive.kind).toBe('rectangle');
-
-    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 100 }));
-    expect(editorStore.getState().guideShapePreview).toBeNull();
-
-    editor.destroy();
-  });
-
-  test('is cleared when a guide-mode drag is cancelled', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.setShapeSubTool('rectangle');
-    state.enterGuideEditingMode(masterId);
-
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
-    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
-
-    expect(editorStore.getState().guideShapePreview).toBeNull();
-    editor.destroy();
-  });
-
-  test('exiting the mode drops any lingering preview', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    editorStore.getState().setGuideShapePreview({
-      masterId,
-      primitive: { kind: 'rectangle', x: 0, y: 0, width: 4, height: 4 },
-    });
-    editorStore.getState().exitGuideEditingMode();
-    expect(editorStore.getState().guideShapePreview).toBeNull();
+    for (const kind of ['polygon', 'star'] as const) {
+      state.setShapeSubTool(kind);
+      const editor = new PathEditor(createMockSvg());
+      const before = Object.keys(
+        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
+      ).length;
+      (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
+      (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
+      (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
+      const after = Object.keys(
+        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
+      ).length;
+      expect(after).toBe(before + 1);
+      editor.destroy();
+    }
   });
 });
 
-describe('guide item handle drag — pure helpers', () => {
-  test('rect top-left corner resize keeps the opposite corner fixed', () => {
-    const next = applyGuideItemHandleDrag(
-      { kind: 'rect', x: 4, y: 4, width: 8, height: 6 },
-      { kind: 'rect-corner', corner: 'tl' },
-      { x: 4, y: 4 },
-      { x: 6, y: 5 },
-    );
-    expect(next).toEqual({ kind: 'rect', x: 6, y: 5, width: 6, height: 5 });
+describe('layer-writers respect editScope', () => {
+  test('patchLayer writes to master.layers in guide scope', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+
+    const master = editorStore.getState().project!.guideMasters![masterId]!;
+    const someLayerId = Object.keys(master.layers ?? {})[0]!;
+    editorStore.getState().patchLayer('icon-home', someLayerId, { visible: false });
+
+    const updated = editorStore.getState().project!.guideMasters![masterId]!
+      .layers![someLayerId];
+    expect(updated!.visible).toBe(false);
+
+    // The icon's variant is not mutated.
+    const iconLayer = Object.values(
+      editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers,
+    )[0];
+    if (iconLayer) {
+      expect(iconLayer.visible).not.toBe(false);
+    }
   });
 
-  test('rect center handle translates the rect by the pointer delta', () => {
-    const next = applyGuideItemHandleDrag(
-      { kind: 'rect', x: 4, y: 4, width: 8, height: 6 },
-      { kind: 'rect-center' },
-      { x: 8, y: 7 },
-      { x: 10, y: 11 },
-    );
-    expect(next).toEqual({ kind: 'rect', x: 6, y: 8, width: 8, height: 6 });
+  test('setLayerPrimitive regenerates a master layer via the shared helper', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+
+    const master = editorStore.getState().project!.guideMasters![masterId]!;
+    // Pick the migrated rectangle layer.
+    const rectLayerId = Object.keys(master.layers ?? {}).find(
+      (id) => master.layers![id]!.primitive?.kind === 'rectangle',
+    )!;
+    expect(rectLayerId).toBeDefined();
+
+    const nextPrimitive: PrimitiveShape = {
+      kind: 'polygon',
+      cx: 12,
+      cy: 12,
+      r: 5,
+      sides: 7,
+    };
+    editorStore.getState().setLayerPrimitive('icon-home', rectLayerId, nextPrimitive);
+
+    const updated = editorStore.getState().project!.guideMasters![masterId]!
+      .layers![rectLayerId];
+    expect(updated!.primitive?.kind).toBe('polygon');
+    expect(updated!.path!.d).toBe(buildPrimitivePath(nextPrimitive));
   });
 
-  test('ellipse north cardinal resizes only ry', () => {
-    const next = applyGuideItemHandleDrag(
-      { kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 4 },
-      { kind: 'ellipse-cardinal', direction: 'n' },
-      { x: 12, y: 8 },
-      { x: 12, y: 5 },
-    );
-    expect(next).toEqual({ kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 7 });
-  });
+  test('removeSelectedLayers deletes from master.layers in guide scope', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
 
-  test('ellipse east cardinal resizes only rx', () => {
-    const next = applyGuideItemHandleDrag(
-      { kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 4 },
-      { kind: 'ellipse-cardinal', direction: 'e' },
-      { x: 16, y: 12 },
-      { x: 20, y: 12 },
-    );
-    expect(next).toEqual({ kind: 'ellipse', cx: 12, cy: 12, rx: 8, ry: 4 });
-  });
+    const layersBefore =
+      editorStore.getState().project!.guideMasters![masterId]!.layers ?? {};
+    const [firstId] = Object.keys(layersBefore);
+    if (!firstId) return;
 
-  test('hline/vline move along their axis only', () => {
-    const hline = applyGuideItemHandleDrag(
-      { kind: 'hline', y: 4 },
-      { kind: 'hline-body' },
-      { x: 5, y: 4 },
-      { x: 9, y: 7 },
-    );
-    expect(hline).toEqual({ kind: 'hline', y: 7 });
+    editorStore.getState().setSelection({ layerIds: [firstId], pointIds: [] });
+    editorStore.getState().removeSelectedLayers();
 
-    const vline = applyGuideItemHandleDrag(
-      { kind: 'vline', x: 4 },
-      { kind: 'vline-body' },
-      { x: 4, y: 5 },
-      { x: 9, y: 7 },
-    );
-    expect(vline).toEqual({ kind: 'vline', x: 9 });
-  });
-
-  test('hit test picks the nearest handle within radius', () => {
-    const rect = { kind: 'rect', x: 4, y: 4, width: 8, height: 6 } as const;
-    expect(hitTestGuideItemHandle(rect, { x: 4, y: 4 }, 0.5)).toEqual({
-      kind: 'rect-corner',
-      corner: 'tl',
-    });
-    expect(hitTestGuideItemHandle(rect, { x: 8, y: 7 }, 0.5)).toEqual({ kind: 'rect-center' });
-    expect(hitTestGuideItemHandle(rect, { x: 100, y: 100 }, 0.5)).toBeNull();
+    const layersAfter =
+      editorStore.getState().project!.guideMasters![masterId]!.layers ?? {};
+    expect(layersAfter[firstId]).toBeUndefined();
   });
 });
 
-describe('guide item handle drag — via PathEditor', () => {
-  test('dragging a rect corner resizes the item and commits via updateGuideItem', () => {
+describe('icon-dependent actions no-op in guide scope', () => {
+  test('upsertSymbolComponent no-ops when editing a master', () => {
     bootstrap();
     const masterId = seedMaster();
+    const iconBefore = editorStore.getState().project!.icons['icon-home'];
+    const componentsBefore = iconBefore.components;
+
+    editorStore.getState().enterGuideEditingMode(masterId);
     editorStore
       .getState()
-      .addGuideItem(masterId, { kind: 'rect', x: 4, y: 4, width: 8, height: 6 });
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.enterGuideEditingMode(masterId);
+      .upsertSymbolComponent('icon-home', { kind: 'badge', layerIds: ['roof'] });
 
-    const editor = new PathEditor(createMockSvg());
-    // The mock canvas maps client → svg at 10:1 scale (240/24). Pointer at
-    // (40, 40) in client space → (4, 4) in SVG — right on the rect's tl corner.
-    (editor as any).onPointerDown(pointerEvent({ clientX: 40, clientY: 40 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 60, clientY: 50 }));
-    (editor as any).onPointerUp(pointerEvent({ clientX: 60, clientY: 50 }));
-
-    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
-    expect(items).toHaveLength(1);
-    expect(items[0]).toEqual({ kind: 'rect', x: 6, y: 5, width: 6, height: 5 });
-
-    editor.destroy();
-  });
-
-  test('escape during a handle drag reverts to the original item', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    const originalRect = { kind: 'rect', x: 4, y: 4, width: 8, height: 6 } as const;
-    editorStore.getState().addGuideItem(masterId, originalRect);
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.enterGuideEditingMode(masterId);
-
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 40, clientY: 40 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 60, clientY: 50 }));
-    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
-
-    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
-    expect(items[0]).toEqual(originalRect);
-
-    editor.destroy();
-  });
-
-  test('dragging an hline commits the new y', () => {
-    bootstrap();
-    const masterId = seedMaster();
-    editorStore.getState().addGuideItem(masterId, { kind: 'hline', y: 6 });
-    const state = editorStore.getState();
-    state.setTool('shape');
-    state.enterGuideEditingMode(masterId);
-
-    const editor = new PathEditor(createMockSvg());
-    (editor as any).onPointerDown(pointerEvent({ clientX: 100, clientY: 60 }));
-    (editor as any).onPointerMove(pointerEvent({ clientX: 100, clientY: 120 }));
-    (editor as any).onPointerUp(pointerEvent({ clientX: 100, clientY: 120 }));
-
-    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
-    expect(items[0]).toEqual({ kind: 'hline', y: 12 });
-
-    editor.destroy();
+    const iconAfter = editorStore.getState().project!.icons['icon-home'];
+    expect(iconAfter.components).toEqual(componentsBefore);
   });
 });
 
-describe('primitiveToGuideItem helper', () => {
-  test('maps rectangle/ellipse primitives to matching GuideItems', () => {
-    const rect = buildShapePathFromDrag({
-      shapeType: 'rectangle',
-      start: { x: 0, y: 0 },
-      current: { x: 10, y: 10 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
+describe('adversarial: history, clipboard, race, synthetic ids', () => {
+  function makeSecondMaster() {
+    editorStore.getState().addGuideMaster({
+      id: 'test-master-b',
+      name: 'Test master B',
+      targetSize: 24,
+      viewBox: [0, 0, 24, 24],
+      items: [{ kind: 'rect', x: 2, y: 2, width: 10, height: 10 }],
+      layers: {},
     });
-    expect(primitiveToGuideItem(rect.primitive)).toEqual({
-      kind: 'rect',
-      x: 0,
-      y: 0,
-      width: 10,
-      height: 10,
-    });
+    return 'test-master-b';
+  }
 
-    const ellipse = buildShapePathFromDrag({
-      shapeType: 'ellipse',
-      start: { x: 0, y: 0 },
-      current: { x: 10, y: 10 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
-    });
-    expect(primitiveToGuideItem(ellipse.primitive)).toEqual({
-      kind: 'ellipse',
-      cx: 5,
-      cy: 5,
-      rx: 5,
-      ry: 5,
-    });
+  test('undo of a guide-scope edit keeps us in the same master', () => {
+    bootstrap();
+    const masterA = seedMaster();
+
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.setShapeSubTool('rectangle');
+
+    // Enter A. At this moment editScope flips to guideMaster(A) — and a
+    // snapshot is pushed with editScope=icon (the state BEFORE the enter).
+    state.enterGuideEditingMode(masterA);
+    const masterALayersBeforeDraw = Object.keys(
+      editorStore.getState().project!.guideMasters![masterA]!.layers ?? {},
+    ).length;
+
+    // Draw one shape on A. A snapshot is pushed capturing editScope=A
+    // (the state before the mutation).
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
+    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
+    editor.destroy();
+
+    // If the user is still in scope A (they haven't exited), undoing the
+    // draw should keep them in scope A. The popped snapshot's editScope
+    // was A, so restoration yields A.
+    undo();
+
+    const afterUndo = editorStore.getState();
+    expect(afterUndo.editScope).toEqual({ kind: 'guideMaster', masterId: masterA });
+    const masterAAfter = Object.keys(
+      afterUndo.project!.guideMasters![masterA]!.layers ?? {},
+    ).length;
+    expect(masterAAfter).toBe(masterALayersBeforeDraw);
   });
 
-  test('maps axis-aligned line primitives to hline / vline', () => {
-    const horizontal = buildShapePathFromDrag({
-      shapeType: 'line',
-      start: { x: 0, y: 5 },
-      current: { x: 10, y: 5 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
-    });
-    expect(primitiveToGuideItem(horizontal.primitive)).toEqual({ kind: 'hline', y: 5 });
 
-    const vertical = buildShapePathFromDrag({
-      shapeType: 'line',
-      start: { x: 7, y: 0 },
-      current: { x: 7, y: 10 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
-    });
-    expect(primitiveToGuideItem(vertical.primitive)).toEqual({ kind: 'vline', x: 7 });
+  test('deleting the active master during a drag does not resurrect it', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.setShapeSubTool('rectangle');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
+
+    // Master is deleted mid-drag. Pointerup must not write back anything.
+    editorStore.getState().removeGuideMaster(masterId);
+
+    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
+    const master = editorStore.getState().project!.guideMasters?.[masterId];
+    expect(master).toBeUndefined();
+    expect(editorStore.getState().editScope).toEqual({ kind: 'icon' });
+    editor.destroy();
   });
 
-  test('polygon/star primitives have no GuideItem equivalent', () => {
-    const polygon = buildShapePathFromDrag({
-      shapeType: 'polygon',
-      start: { x: 0, y: 0 },
-      current: { x: 10, y: 10 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
+  test('paste strips icon-only metadata when landing on a guide master', () => {
+    bootstrap();
+    // Load a clipboard payload that carries icon-only fields to exercise
+    // the strip behaviour.
+    editorStore.setState({
+      layerClipboard: [
+        {
+          id: 'payload',
+          role: 'primary',
+          groupId: 'group-1',
+          drawOrder: 2,
+          importMeta: { sourceTag: 'path' },
+          visible: true,
+          path: { d: 'M0 0 L10 10' },
+          style: {},
+        },
+      ],
     });
-    expect(primitiveToGuideItem(polygon.primitive)).toBeNull();
 
-    const star = buildShapePathFromDrag({
-      shapeType: 'star',
-      start: { x: 0, y: 0 },
-      current: { x: 10, y: 10 },
-      shiftKey: false,
-      altKey: false,
-      polygonSides: 5,
-      starPoints: 5,
-    });
-    expect(primitiveToGuideItem(star.primitive)).toBeNull();
+    const masterId = seedMaster();
+    editorStore.getState().enterGuideEditingMode(masterId);
+    editorStore.getState().pasteLayers();
+
+    const master = editorStore.getState().project!.guideMasters![masterId]!;
+    const pasted = Object.values(master.layers ?? {}).find((l) => l.id.startsWith('payload'));
+    expect(pasted).toBeDefined();
+    expect(pasted!.role).toBeUndefined();
+    expect(pasted!.groupId).toBeUndefined();
+    expect(pasted!.drawOrder).toBeUndefined();
+    expect(pasted!.importMeta).toBeUndefined();
+    expect(pasted!.path!.d).toBe('M0 0 L10 10');
+  });
+
+  test('icon-only actions no-op in guide scope', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const snapshotBefore = structuredClone(editorStore.getState().project);
+
+    editorStore.getState().enterGuideEditingMode(masterId);
+
+    // addVariant / removeVariant / patchVariant / applyDerivedVariant all
+    // must no-op. The icon dictionary should remain referentially equal
+    // relative to what we saved before the enter (modulo the migration
+    // which only touched guideMasters, not icons).
+    editorStore
+      .getState()
+      .addVariant('icon-home', { size: 72, name: 'No-op variant' });
+    editorStore.getState().removeVariant('icon-home', 'v24');
+    editorStore.getState().patchVariant('icon-home', 'v24', { size: 999 });
+
+    const after = editorStore.getState().project;
+    expect(after!.icons).toEqual(snapshotBefore!.icons);
+  });
+
+  test('synthetic variant ids are master-scoped and stable across reads', () => {
+    bootstrap();
+    const masterA = seedMaster();
+    const masterB = makeSecondMaster();
+
+    editorStore.getState().enterGuideEditingMode(masterA);
+    const aFirst = selectCurrentVariant(editorStore.getState());
+    const aSecond = selectCurrentVariant(editorStore.getState());
+    expect(aFirst).toBe(aSecond); // WeakMap cache — identity-stable.
+    expect(aFirst!.id).toBe(`guide-master:${masterA}`);
+
+    editorStore.getState().exitGuideEditingMode();
+    editorStore.getState().enterGuideEditingMode(masterB);
+    const b = selectCurrentVariant(editorStore.getState());
+    expect(b!.id).toBe(`guide-master:${masterB}`);
+    // A and B use different synthetic ids — no collision.
+    expect(b!.id).not.toBe(aFirst!.id);
+  });
+});
+
+describe('canvas toolbar remains identical in guide scope', () => {
+  test('every SHAPE_SUB_TOOLS entry is still authorable on the master', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.enterGuideEditingMode(masterId);
+
+    const kinds: Array<'rectangle' | 'ellipse' | 'polygon' | 'star' | 'line'> = [
+      'rectangle',
+      'ellipse',
+      'polygon',
+      'star',
+      'line',
+    ];
+    for (const kind of kinds) {
+      state.setShapeSubTool(kind);
+      const editor = new PathEditor(createMockSvg());
+      const before = Object.keys(
+        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
+      ).length;
+      (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
+      (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
+      (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
+      const after = Object.keys(
+        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
+      ).length;
+      expect(after).toBe(before + 1);
+      editor.destroy();
+    }
   });
 });

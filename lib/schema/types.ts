@@ -440,7 +440,25 @@ export type GuideMaster = {
   name: string;
   targetSize: number;
   viewBox: [number, number, number, number];
+  /**
+   * Parametric guides — `hline` / `vline` / `rect` / `ellipse` / `drawPoint`.
+   * Authored by the Guide panel's parameter form and feed the snap engine.
+   * On first enter of Guide editing mode, the geometric kinds (everything
+   * except `drawPoint`) are migrated into `layers` so the user can edit them
+   * with the normal toolbar. `drawPoint` stays here because it references a
+   * layer id and has no geometric footprint.
+   */
   items: GuideItem[];
+  /**
+   * Full-fat layer tree for this master. Edited on canvas via Guide editing
+   * mode with the same toolbar used for icon editing (select, pen, shape
+   * with every sub-tool, etc.). Contributes edge/anchor snap targets via
+   * the existing layer-bounds logic when the master is bound to a variant.
+   * Optional for back-compat with stored projects; normalised to `{}` by
+   * `migrateProjectForGuideMasters` and populated on first enter of Guide
+   * editing mode by the items → layers migration.
+   */
+  layers?: Record<string, Layer>;
 };
 
 export type GuideItem =

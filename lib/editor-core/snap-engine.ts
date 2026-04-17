@@ -98,6 +98,20 @@ export class SnapEngine {
       if (icon?.customGuides?.length) {
         this.collectGuideTargets(icon.customGuides, candidates);
       }
+
+      // While editing an icon, the master's editable `layers` (full-fat
+      // shapes authored on canvas via Guide editing mode) also contribute
+      // edge/anchor snap targets — they render as part of the guide
+      // overlay at this point. In guide scope, those same layers are
+      // already `currentState.layers`, so we skip to avoid duplicate
+      // collection.
+      if (
+        state.editScope.kind === 'icon' &&
+        guideMaster?.layers &&
+        Object.keys(guideMaster.layers).length > 0
+      ) {
+        this.collectLayerTargets(guideMaster.layers, options.sourceLayerId, candidates);
+      }
     }
 
     if (currentState?.layers) {

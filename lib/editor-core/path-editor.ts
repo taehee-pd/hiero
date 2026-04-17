@@ -70,38 +70,7 @@ type ShapePlacement = {
   pointerId: number;
   start: { x: number; y: number };
   previousSelection: SelectionState;
-  /**
-   * When truthy, the drag is authoring a `GuideItem` on this master rather
-   * than a `Layer` — no layer is created up front. On a valid pointerup we
-   * call `addGuideItem`; on cancel (Esc / pointer-cancel) nothing is
-   * committed. `layerId` is an empty string in this mode.
-   */
-  guideMasterId?: string;
 };
-
-/**
- * Handle identifier for a `GuideItem` being resized / moved on canvas.
- * `rect`/`ellipse` expose resize anchors + a center move anchor;
- * `hline`/`vline` are single-axis drags (the whole line is one move handle).
- */
-type GuideItemHandle =
-  | { kind: 'rect-corner'; corner: 'tl' | 'tr' | 'br' | 'bl' }
-  | { kind: 'rect-center' }
-  | { kind: 'ellipse-cardinal'; direction: 'n' | 'e' | 's' | 'w' }
-  | { kind: 'ellipse-center' }
-  | { kind: 'hline-body' }
-  | { kind: 'vline-body' };
-
-type GuideItemDrag = {
-  masterId: string;
-  itemIndex: number;
-  handle: GuideItemHandle;
-  originalItem: GuideItem;
-  pointerId: number;
-  pointerStart: { x: number; y: number };
-};
-
-const GUIDE_HANDLE_HIT_RADIUS_PX = 8;
 
 type BBoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 type SelectionBounds = {
@@ -222,8 +191,6 @@ export class PathEditor {
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private shapePlacement: ShapePlacement | null = null;
-  /** Drag state for move/resize of an existing GuideItem via overlay handle. */
-  private guideItemDrag: GuideItemDrag | null = null;
   private pointMarqueePlacement: PointMarqueePlacement | null = null;
   private selectionTransformPlacement: SelectionTransformPlacement | null = null;
   private layerResizePlacement: LayerResizePlacement | null = null;
@@ -320,23 +287,9 @@ export class PathEditor {
     }
 
     if (tool === 'shape') {
-      // In guide editing mode, pointer-down on an existing item's handle
-      // starts a move/resize drag on that item rather than a new shape.
-      if (state.guideEditingMode.active) {
-        const handleDrag = this.beginGuideItemDrag(e);
-        if (handleDrag) {
-          this.capturePointer(e.pointerId);
-          return;
-        }
-      }
       const placement = this.beginShapePlacement(e);
       if (placement) {
-        // Guide-mode placements do not create a layer, so selection stays
-        // empty. Regular placements select the newly created layer so
-        // subsequent edits (resize/move) target it directly.
-        if (!placement.guideMasterId) {
-          state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
-        }
+        state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
         this.capturePointer(e.pointerId);
       }
       return;
@@ -446,18 +399,15 @@ export class PathEditor {
 
   private createNewPenLayerAt(clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project || !state.currentVariantId) return null;
+    if (!state.project) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
     const snappedPoint = this.computeSnappedPoint(svgPoint);
 
-    const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantSnapshot(state, iconId);
-    if (!icon || !currentState) return null;
-
-    const ids = Object.keys(currentState.layers);
+    const currentLayers = this.readCurrentLayersForEditor();
+    if (!currentLayers) return null;
+    const ids = Object.keys(currentLayers);
     let index = 1;
     let nextLayerId = `path-${index}`;
     while (ids.includes(nextLayerId)) {
@@ -465,46 +415,18 @@ export class PathEditor {
       nextLayerId = `path-${index}`;
     }
 
-    editorStore.setState((s) => {
-      if (!s.project || !s.currentVariantId) return s;
-      const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantSnapshot(s, iconId);
-      if (!currentIcon || !currentIconState) return s;
-
-      const currentVariant = currentIcon.variants[s.currentVariantId];
-      return {
-        project: {
-          ...s.project,
-          icons: {
-            ...s.project.icons,
-            [iconId]: {
-              ...currentIcon,
-              variants: {
-                ...currentIcon.variants,
-                [s.currentVariantId]: {
-                  ...currentVariant,
-                  layers: {
-                    ...currentVariant.layers,
-                    [nextLayerId]: {
-                      id: nextLayerId,
-                      role: 'primary',
-                      visible: true,
-                      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
-                      style: {
-                        fill: { mode: 'fixed', value: 'none' },
-                        stroke: { mode: 'currentColor' },
-                        strokeWidth: 2,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      };
+    editorStore.getState().addLayer({
+      id: nextLayerId,
+      role: 'primary',
+      visible: true,
+      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
+      style: {
+        fill: { mode: 'fixed', value: 'none' },
+        stroke: { mode: 'currentColor' },
+        strokeWidth: 2,
+        lineCap: 'round',
+        lineJoin: 'round',
+      },
     });
 
     this.clearPendingPenHandle();
@@ -658,11 +580,6 @@ export class PathEditor {
 
     if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
       this.updateShapePreview(e);
-      return;
-    }
-
-    if (this.guideItemDrag && e.pointerId === this.guideItemDrag.pointerId) {
-      this.updateGuideItemDrag(e);
       return;
     }
 
@@ -1158,118 +1075,17 @@ export class PathEditor {
     state.setPointTransformLabel(preview.label);
   }
 
-  /**
-   * Hit-test the pointer against handle positions on the guide items of the
-   * currently bound master. Returns a live drag if a handle was hit.
-   *
-   * Called from `onPointerDown` before `beginShapePlacement` so an existing
-   * item grabs the pointer before a brand-new shape is authored.
-   */
-  private beginGuideItemDrag(e: PointerEvent): GuideItemDrag | null {
-    const state = editorStore.getState();
-    const { active, masterId } = state.guideEditingMode;
-    if (!active || !masterId) return null;
-    const master = state.project?.guideMasters?.[masterId];
-    if (!master?.items?.length) return null;
-
-    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
-    if (!svgPoint) return null;
-    const zoom = Math.max(state.viewport.zoom, 0.0001);
-    const hitRadius = GUIDE_HANDLE_HIT_RADIUS_PX / zoom;
-
-    // Iterate in reverse so the top-most rendered handle wins when two items
-    // overlap (items are painted in array order).
-    for (let idx = master.items.length - 1; idx >= 0; idx -= 1) {
-      const item = master.items[idx]!;
-      const handle = hitTestGuideItemHandle(item, svgPoint, hitRadius);
-      if (!handle) continue;
-
-      pauseHistory();
-      this.dragMode = 'shape';
-      this.isDragging = true;
-      this.guideItemDrag = {
-        masterId,
-        itemIndex: idx,
-        handle,
-        originalItem: structuredClone(item),
-        pointerId: e.pointerId,
-        pointerStart: svgPoint,
-      };
-      return this.guideItemDrag;
-    }
-
-    return null;
-  }
-
-  private updateGuideItemDrag(e: PointerEvent) {
-    if (!this.guideItemDrag) return;
-    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
-    if (!svgPoint) return;
-    const snapped = this.snapPointToGrid(svgPoint);
-    const next = applyGuideItemHandleDrag(
-      this.guideItemDrag.originalItem,
-      this.guideItemDrag.handle,
-      this.guideItemDrag.pointerStart,
-      snapped,
-    );
-    editorStore
-      .getState()
-      .updateGuideItem(this.guideItemDrag.masterId, this.guideItemDrag.itemIndex, next);
-  }
-
-  private commitGuideItemDrag() {
-    if (!this.guideItemDrag) return;
-    resumeHistory();
-    commitHistory('guide-item-edit');
-    this.guideItemDrag = null;
-    this.resetDrag();
-  }
-
-  private cancelGuideItemDrag() {
-    if (!this.guideItemDrag) return;
-    // Roll the item back to its pre-drag state, then discard the paused
-    // history entry so this drag leaves no trace.
-    editorStore
-      .getState()
-      .updateGuideItem(
-        this.guideItemDrag.masterId,
-        this.guideItemDrag.itemIndex,
-        this.guideItemDrag.originalItem,
-      );
-    discardHistory();
-    this.guideItemDrag = null;
-    this.resetDrag();
-  }
-
   private beginShapePlacement(e: PointerEvent): ShapePlacement | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project) return null;
+    if (!state.project) return null;
+    // Icon scope needs an icon pointer; guide scope operates on the master
+    // directly. `createShapeLayer` internally routes the write via the
+    // store's `writeCurrentLayers` chokepoint.
+    if (state.editScope.kind === 'icon' && !state.currentIconId) return null;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return null;
     const start = this.snapPointToGrid(svgPoint);
-
-    // Guide editing mode: the active shape-tool drag authors a GuideItem on
-    // the bound master. No Layer is created up front — the preview is
-    // rendered via the editor overlay and only committed on a valid
-    // pointerup. A cancel (Esc / pointer-cancel) leaves the master
-    // untouched.
-    const { active: guideModeActive, masterId: guideMasterId } =
-      state.guideEditingMode;
-    if (guideModeActive && guideMasterId && state.project.guideMasters?.[guideMasterId]) {
-      this.dragMode = 'shape';
-      this.isDragging = true;
-      this.dragLayerId = null;
-      this.shapePlacement = {
-        layerId: '',
-        pointerId: e.pointerId,
-        start,
-        previousSelection: state.selection,
-        guideMasterId,
-      };
-      return this.shapePlacement;
-    }
 
     const layerId = this.createShapeLayer(start);
     if (!layerId) return null;
@@ -1293,21 +1109,10 @@ export class PathEditor {
     const preview = this.buildShapePreview(this.shapePlacement.start, e);
     if (!preview) return;
 
-    // Guide-mode drags have no layer to patch; the ghost preview is held in
-    // the editor store (`guideShapePreview`) and consumed by the canvas
-    // overlay until pointerup commits the GuideItem.
-    if (this.shapePlacement.guideMasterId) {
-      editorStore.getState().setGuideShapePreview({
-        masterId: this.shapePlacement.guideMasterId,
-        primitive: preview.primitive,
-      });
-      return;
-    }
-
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) return;
-
+    // `patchLayer` routes by `editScope` internally — passing the icon id is a
+    // no-op in guide scope.
+    const iconId = state.currentIconId ?? '';
     state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
       primitive: preview.primitive,
@@ -1517,11 +1322,6 @@ export class PathEditor {
       return;
     }
 
-    if (this.guideItemDrag) {
-      this.cancelGuideItemDrag();
-      return;
-    }
-
     if (this.selectionTransformPlacement) {
       discardHistory();
       editorStore.getState().setPointTransformLabel(null);
@@ -1563,16 +1363,10 @@ export class PathEditor {
       return;
     }
 
-    if (this.guideItemDrag) {
-      this.cancelGuideItemDrag();
-      return;
-    }
-
     // Escape out of guide editing mode when no drag is in progress.
-    // In-progress drags are handled by `cancelShapePlacement` and
-    // `cancelGuideItemDrag` above.
+    // In-progress shape drags are handled by `cancelShapePlacement` above.
     const idleState = editorStore.getState();
-    if (idleState.guideEditingMode.active) {
+    if (idleState.editScope.kind === 'guideMaster') {
       idleState.exitGuideEditingMode();
       return;
     }
@@ -1616,11 +1410,6 @@ export class PathEditor {
 
     if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
       this.commitShapePlacement(e);
-      return;
-    }
-
-    if (this.guideItemDrag && e.pointerId === this.guideItemDrag.pointerId) {
-      this.commitGuideItemDrag();
       return;
     }
 
@@ -2264,12 +2053,6 @@ export class PathEditor {
     this.originalPathD = null;
     this.originalEditable = null;
     this.shapePlacement = null;
-    this.guideItemDrag = null;
-    // Safety net: guide-mode commit/cancel paths already clear the preview,
-    // but reset here too so it never outlives a drag.
-    if (editorStore.getState().guideShapePreview !== null) {
-      editorStore.getState().setGuideShapePreview(null);
-    }
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
     this.layerResizePlacement = null;
@@ -2369,14 +2152,14 @@ export class PathEditor {
 
   private createShapeLayer(start: { x: number; y: number }): string | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project || !state.currentVariantId) return null;
+    if (!state.project) return null;
 
-    const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantSnapshot(state, iconId);
-    if (!icon || !currentState) return null;
-
-    const ids = Object.keys(currentState.layers);
+    // Compute the next available shape-layer id against the layers the editor
+    // is currently operating on — icon variant or guide master, same code
+    // path.
+    const currentLayers = this.readCurrentLayersForEditor();
+    if (!currentLayers) return null;
+    const ids = Object.keys(currentLayers);
     let index = 1;
     let nextLayerId = `shape-${index}`;
     while (ids.includes(nextLayerId)) {
@@ -2393,54 +2176,35 @@ export class PathEditor {
       polygonSides: state.shapePolygonSides,
       starPoints: state.shapeStarPoints,
     });
-    const initialPath = initialShape.d;
-    const initialPrimitive = initialShape.primitive;
 
     pauseHistory();
-    editorStore.setState((s) => {
-      if (!s.project || !s.currentVariantId) return s;
-      const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantSnapshot(s, iconId);
-      if (!currentIcon || !currentIconState) return s;
-
-      const currentVariant = currentIcon.variants[s.currentVariantId];
-      return {
-        project: {
-          ...s.project,
-          icons: {
-            ...s.project.icons,
-            [iconId]: {
-              ...currentIcon,
-              variants: {
-                ...currentIcon.variants,
-                [s.currentVariantId]: {
-                  ...currentVariant,
-                  layers: {
-                    ...currentVariant.layers,
-                    [nextLayerId]: {
-                      id: nextLayerId,
-                      role: 'primary',
-                      visible: true,
-                      path: { d: initialPath },
-                      primitive: initialPrimitive,
-                      style: {
-                        fill: { mode: 'fixed', value: 'none' },
-                        stroke: { mode: 'currentColor' },
-                        strokeWidth: 2,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      };
+    editorStore.getState().addLayer({
+      id: nextLayerId,
+      role: 'primary',
+      visible: true,
+      path: { d: initialShape.d },
+      primitive: initialShape.primitive,
+      style: {
+        fill: { mode: 'fixed', value: 'none' },
+        stroke: { mode: 'currentColor' },
+        strokeWidth: 2,
+        lineCap: 'round',
+        lineJoin: 'round',
+      },
     });
 
     return nextLayerId;
+  }
+
+  private readCurrentLayersForEditor(): Record<string, Layer> | null {
+    const s = editorStore.getState();
+    if (!s.project) return null;
+    if (s.editScope.kind === 'guideMaster') {
+      return s.project.guideMasters?.[s.editScope.masterId]?.layers ?? null;
+    }
+    if (!s.currentIconId || !s.currentVariantId) return null;
+    const icon = s.project.icons[s.currentIconId];
+    return icon?.variants[s.currentVariantId]?.layers ?? null;
   }
 
   private buildShapePreview(start: { x: number; y: number }, e: PointerEvent) {
@@ -2471,27 +2235,7 @@ export class PathEditor {
     }
 
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) {
-      this.cancelShapePlacement();
-      return;
-    }
-
-    // Guide-editing-mode commit: append a new GuideItem to the bound master.
-    // Polygon/Star have no GuideItem representation — the toolbar filters them
-    // out of the shape picker in guide mode, but we defensively no-op here too.
-    if (this.shapePlacement.guideMasterId) {
-      const masterId = this.shapePlacement.guideMasterId;
-      const guideItem = primitiveToGuideItem(preview.primitive);
-      if (guideItem) {
-        state.addGuideItem(masterId, guideItem);
-        commitHistory('guide-draw');
-      }
-      editorStore.getState().setGuideShapePreview(null);
-      this.resetDrag();
-      return;
-    }
-
+    const iconId = state.currentIconId ?? '';
     state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
       primitive: preview.primitive,
@@ -2507,16 +2251,6 @@ export class PathEditor {
       layerIds: [],
       pointIds: [],
     };
-
-    // Guide-mode drags commit no state up front, so there is nothing to
-    // discard on the history stack and no layer to roll back. Just clear
-    // the transient overlay preview.
-    if (this.shapePlacement?.guideMasterId) {
-      editorStore.getState().setGuideShapePreview(null);
-      editorStore.getState().setSelection(previousSelection);
-      this.resetDrag();
-      return;
-    }
 
     discardHistory();
     editorStore.getState().setSelection(previousSelection);
@@ -2864,175 +2598,6 @@ function resolveSignedLength(primary: number, secondary: number, length: number)
   if (secondary > 0) return length;
   if (secondary < 0) return -length;
   return length;
-}
-
-/**
- * Map a primitive produced by `buildShapePathFromDrag` onto a `GuideItem`.
- * The `GuideItem` schema only covers `rect`, `ellipse`, `hline`, and `vline`
- * (plus draw-points, which are not produced by the shape tool), so
- * polygon/star return `null`. A horizontal/vertical line primitive is
- * mapped onto `hline`/`vline` when appropriate; generic diagonal lines have
- * no guide equivalent and return `null`.
- */
-/**
- * Hit-test a pointer position (in SVG coordinates) against the handles a
- * `GuideItem` exposes for canvas editing. Returns the handle that was hit,
- * or `null` if no handle is within `hitRadius` of the pointer.
- *
- *     rect  → 4 corners (resize) + 1 center (move)
- *     ell.  → 4 cardinals (resize rx/ry) + 1 center (move)
- *     h/v   → whole line (move along its axis)
- *     draw  → no handle (edited via the panel for now)
- */
-export function hitTestGuideItemHandle(
-  item: GuideItem,
-  pointer: { x: number; y: number },
-  hitRadius: number,
-): GuideItemHandle | null {
-  const within = (hx: number, hy: number) => {
-    const dx = pointer.x - hx;
-    const dy = pointer.y - hy;
-    return dx * dx + dy * dy <= hitRadius * hitRadius;
-  };
-
-  switch (item.kind) {
-    case 'rect': {
-      const x0 = item.x;
-      const y0 = item.y;
-      const x1 = item.x + item.width;
-      const y1 = item.y + item.height;
-      // Corners first so they win against the center when the rect is tiny.
-      if (within(x0, y0)) return { kind: 'rect-corner', corner: 'tl' };
-      if (within(x1, y0)) return { kind: 'rect-corner', corner: 'tr' };
-      if (within(x1, y1)) return { kind: 'rect-corner', corner: 'br' };
-      if (within(x0, y1)) return { kind: 'rect-corner', corner: 'bl' };
-      const cx = (x0 + x1) / 2;
-      const cy = (y0 + y1) / 2;
-      if (within(cx, cy)) return { kind: 'rect-center' };
-      return null;
-    }
-    case 'ellipse': {
-      if (within(item.cx, item.cy - item.ry))
-        return { kind: 'ellipse-cardinal', direction: 'n' };
-      if (within(item.cx + item.rx, item.cy))
-        return { kind: 'ellipse-cardinal', direction: 'e' };
-      if (within(item.cx, item.cy + item.ry))
-        return { kind: 'ellipse-cardinal', direction: 's' };
-      if (within(item.cx - item.rx, item.cy))
-        return { kind: 'ellipse-cardinal', direction: 'w' };
-      if (within(item.cx, item.cy)) return { kind: 'ellipse-center' };
-      return null;
-    }
-    case 'hline': {
-      // hline is infinite in X — a vertical-distance check is enough.
-      if (Math.abs(pointer.y - item.y) <= hitRadius) return { kind: 'hline-body' };
-      return null;
-    }
-    case 'vline': {
-      if (Math.abs(pointer.x - item.x) <= hitRadius) return { kind: 'vline-body' };
-      return null;
-    }
-    case 'drawPoint':
-      return null;
-  }
-}
-
-/**
- * Compute the next `GuideItem` for an in-progress handle drag. Uses the
- * original (pre-drag) item as a stable reference so the drag is driven by
- * absolute pointer position rather than per-frame deltas — that avoids
- * accumulated rounding error across many mousemove events.
- */
-export function applyGuideItemHandleDrag(
-  original: GuideItem,
-  handle: GuideItemHandle,
-  pointerStart: { x: number; y: number },
-  pointerCurrent: { x: number; y: number },
-): GuideItem {
-  switch (handle.kind) {
-    case 'rect-corner': {
-      if (original.kind !== 'rect') return original;
-      const x0 = handle.corner === 'tl' || handle.corner === 'bl' ? pointerCurrent.x : original.x;
-      const y0 = handle.corner === 'tl' || handle.corner === 'tr' ? pointerCurrent.y : original.y;
-      const x1 =
-        handle.corner === 'tr' || handle.corner === 'br'
-          ? pointerCurrent.x
-          : original.x + original.width;
-      const y1 =
-        handle.corner === 'bl' || handle.corner === 'br'
-          ? pointerCurrent.y
-          : original.y + original.height;
-      return {
-        kind: 'rect',
-        x: Math.min(x0, x1),
-        y: Math.min(y0, y1),
-        width: Math.abs(x1 - x0),
-        height: Math.abs(y1 - y0),
-      };
-    }
-    case 'rect-center': {
-      if (original.kind !== 'rect') return original;
-      const dx = pointerCurrent.x - pointerStart.x;
-      const dy = pointerCurrent.y - pointerStart.y;
-      return { ...original, x: original.x + dx, y: original.y + dy };
-    }
-    case 'ellipse-cardinal': {
-      if (original.kind !== 'ellipse') return original;
-      if (handle.direction === 'n' || handle.direction === 's') {
-        return { ...original, ry: Math.max(0, Math.abs(pointerCurrent.y - original.cy)) };
-      }
-      return { ...original, rx: Math.max(0, Math.abs(pointerCurrent.x - original.cx)) };
-    }
-    case 'ellipse-center': {
-      if (original.kind !== 'ellipse') return original;
-      const dx = pointerCurrent.x - pointerStart.x;
-      const dy = pointerCurrent.y - pointerStart.y;
-      return { ...original, cx: original.cx + dx, cy: original.cy + dy };
-    }
-    case 'hline-body': {
-      if (original.kind !== 'hline') return original;
-      return { ...original, y: pointerCurrent.y };
-    }
-    case 'vline-body': {
-      if (original.kind !== 'vline') return original;
-      return { ...original, x: pointerCurrent.x };
-    }
-  }
-}
-
-export function primitiveToGuideItem(primitive: PrimitiveShape): GuideItem | null {
-  switch (primitive.kind) {
-    case 'rectangle':
-      return {
-        kind: 'rect',
-        x: primitive.x,
-        y: primitive.y,
-        width: primitive.width,
-        height: primitive.height,
-      };
-    case 'ellipse':
-      return {
-        kind: 'ellipse',
-        cx: primitive.cx,
-        cy: primitive.cy,
-        rx: primitive.rx,
-        ry: primitive.ry,
-      };
-    case 'line': {
-      const dx = Math.abs(primitive.x2 - primitive.x1);
-      const dy = Math.abs(primitive.y2 - primitive.y1);
-      if (dx <= SHAPE_EMPTY_EPSILON) {
-        return { kind: 'vline', x: (primitive.x1 + primitive.x2) / 2 };
-      }
-      if (dy <= SHAPE_EMPTY_EPSILON) {
-        return { kind: 'hline', y: (primitive.y1 + primitive.y2) / 2 };
-      }
-      return null;
-    }
-    case 'polygon':
-    case 'star':
-      return null;
-  }
 }
 
 function translatePathPoint(point: PathPoint, dx: number, dy: number): void {

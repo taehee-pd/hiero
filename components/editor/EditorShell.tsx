@@ -93,11 +93,13 @@ import { ImportIconDialog } from './ImportIconDialog';
 import { ColorField } from '@/components/ds/color-field';
 import { TransitionPanel } from './TransitionPanel';
 import { AnimationStudioPanel } from './AnimationStudioPanel';
+import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { ListPane } from '@/components/studio/ListPane';
 import { cn } from '@/lib/utils';
 
 type RightTab = 'inspect' | 'animation';
+type LeftTab = 'icon' | 'guides';
 type DeleteIntent =
   | { type: 'variant'; id: string };
 type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
@@ -618,6 +620,8 @@ function LeftSidebar({
   onRenameType,
   onSetTypeName,
   onDuplicateType,
+  leftTab,
+  onLeftTabChange,
 }: {
   currentIcon: Icon | null;
   currentVariant: Variant | null;
@@ -641,6 +645,8 @@ function LeftSidebar({
   onRenameType: (oldId: string, newId: string) => void;
   onSetTypeName: (typeId: string, name: string) => void;
   onDuplicateType: (sourceId: string, newId: string) => void;
+  leftTab: LeftTab;
+  onLeftTabChange: (tab: LeftTab) => void;
 }) {
 
   return (
@@ -653,9 +659,43 @@ function LeftSidebar({
               onCommit={onRenameIcon}
             />
           </div>
+          <div className="flex items-center gap-1 min-h-[30px] px-0.5">
+            <ToggleGroup
+              type="single"
+              size="sm"
+              value={leftTab}
+              onValueChange={(v) => {
+                if (v) onLeftTabChange(v as LeftTab);
+              }}
+              aria-label="Left sidebar"
+              className="inline-flex items-center gap-1"
+            >
+              <ToggleGroupItem
+                value="icon"
+                aria-label="Icon"
+                className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+              >
+                Icon
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="guides"
+                aria-label="Guides"
+                className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+              >
+                Guides
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
       </div>
 
+      {leftTab === 'guides' ? (
+        <div className="min-h-0 flex-1">
+          <ScrollArea className="h-full">
+            <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
+          </ScrollArea>
+        </div>
+      ) : (
       <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
         <ResizablePanel defaultSize={38} minSize={18} maxSize={70}>
           <ScrollArea className="h-full">
@@ -798,6 +838,7 @@ function LeftSidebar({
           </ScrollArea>
         </ResizablePanel>
       </ResizablePanelGroup>
+      )}
     </aside>
   );
 }
@@ -1708,7 +1749,7 @@ function RightSidebar({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[220px]">
-                        No guide master assigned. Open the Guides panel in the toolbar to attach one.
+                        No guide master assigned. Open the Guides tab in the left sidebar to attach one.
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -1799,6 +1840,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   } = useEditorActions();
 
   const [rightTab, setRightTab] = useState<RightTab>('inspect');
+  const [leftTab, setLeftTab] = useState<LeftTab>('icon');
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newVariantSize, setNewVariantSize] = useState('32');
@@ -2198,6 +2240,8 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             onRenameType={(oldId, newId) => renameType(oldId, newId)}
             onSetTypeName={(typeId, name) => setTypeName(typeId, name)}
             onDuplicateType={(sourceId, newId) => duplicateType(sourceId, newId)}
+            leftTab={leftTab}
+            onLeftTabChange={setLeftTab}
           />
         </div>
 

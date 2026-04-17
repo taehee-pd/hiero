@@ -12,16 +12,10 @@ import {
   pauseHistory,
   resumeHistory,
 } from '@/lib/editor-store/history';
-import {
-  createEllipsePath,
-  createLinePath,
-  createPolygonPath,
-  createRectPath,
-  createStarPath,
-} from './path-shapes';
+import { buildPrimitivePath } from './path-shapes';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { EditablePath, PathPoint } from './path-model';
-import type { GuideItem, Layer } from '@/lib/schema/types';
+import type { GuideItem, Layer, PrimitiveShape } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
 
@@ -76,6 +70,18 @@ type ShapePlacement = {
   pointerId: number;
   start: { x: number; y: number };
   previousSelection: SelectionState;
+  /**
+   * When truthy, the drag is authoring a `GuideItem` on this master rather
+   * than a `Layer` — no layer is created up front. On a valid pointerup we
+   * call `addGuideItem`; on cancel (Esc / pointer-cancel) nothing is
+   * committed. `layerId` is an empty string in this mode.
+   */
+  guideMasterId?: string;
+};
+
+type GuideShapePreview = {
+  masterId: string;
+  primitive: PrimitiveShape;
 };
 type BBoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 type SelectionBounds = {
@@ -196,6 +202,13 @@ export class PathEditor {
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private shapePlacement: ShapePlacement | null = null;
+  /**
+   * Transient preview for a guide-editing-mode drag. The overlay consumes this
+   * via `subscribeGuideShapePreview` to render a ghost while the pointer is
+   * down. Cleared on pointerup (commit) or cancel.
+   */
+  private guideShapePreview: GuideShapePreview | null = null;
+  private guideShapePreviewListeners = new Set<() => void>();
   private pointMarqueePlacement: PointMarqueePlacement | null = null;
   private selectionTransformPlacement: SelectionTransformPlacement | null = null;
   private layerResizePlacement: LayerResizePlacement | null = null;
@@ -294,7 +307,12 @@ export class PathEditor {
     if (tool === 'shape') {
       const placement = this.beginShapePlacement(e);
       if (placement) {
-        state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
+        // Guide-mode placements do not create a layer, so selection stays
+        // empty. Regular placements select the newly created layer so
+        // subsequent edits (resize/move) target it directly.
+        if (!placement.guideMasterId) {
+          state.setSelection({ layerIds: [placement.layerId], pointIds: [] });
+        }
         this.capturePointer(e.pointerId);
       }
       return;
@@ -1119,6 +1137,28 @@ export class PathEditor {
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return null;
     const start = this.snapPointToGrid(svgPoint);
+
+    // Guide editing mode: the active shape-tool drag authors a GuideItem on
+    // the bound master. No Layer is created up front — the preview is
+    // rendered via the editor overlay and only committed on a valid
+    // pointerup. A cancel (Esc / pointer-cancel) leaves the master
+    // untouched.
+    const { active: guideModeActive, masterId: guideMasterId } =
+      state.guideEditingMode;
+    if (guideModeActive && guideMasterId && state.project.guideMasters?.[guideMasterId]) {
+      this.dragMode = 'shape';
+      this.isDragging = true;
+      this.dragLayerId = null;
+      this.shapePlacement = {
+        layerId: '',
+        pointerId: e.pointerId,
+        start,
+        previousSelection: state.selection,
+        guideMasterId,
+      };
+      return this.shapePlacement;
+    }
+
     const layerId = this.createShapeLayer(start);
     if (!layerId) return null;
 
@@ -1141,12 +1181,24 @@ export class PathEditor {
     const preview = this.buildShapePreview(this.shapePlacement.start, e);
     if (!preview) return;
 
+    // Guide-mode drags have no layer to patch; the preview is rendered
+    // from `guideShapePreview` by the overlay until pointerup.
+    if (this.shapePlacement.guideMasterId) {
+      this.guideShapePreview = {
+        masterId: this.shapePlacement.guideMasterId,
+        primitive: preview.primitive,
+      };
+      this.guideShapePreviewListeners.forEach((listener) => listener());
+      return;
+    }
+
     const state = editorStore.getState();
     const iconId = state.currentIconId;
     if (!iconId) return;
 
-    state.patchLayer(iconId,this.shapePlacement.layerId, {
+    state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
+      primitive: preview.primitive,
     });
   }
 
@@ -1391,6 +1443,14 @@ export class PathEditor {
 
     if (this.shapePlacement) {
       this.cancelShapePlacement();
+      return;
+    }
+
+    // Escape out of guide editing mode when no drag is in progress.
+    // In-progress drags are handled by `cancelShapePlacement` above.
+    const idleState = editorStore.getState();
+    if (idleState.guideEditingMode.active) {
+      idleState.exitGuideEditingMode();
       return;
     }
 
@@ -2076,6 +2136,12 @@ export class PathEditor {
     this.originalPathD = null;
     this.originalEditable = null;
     this.shapePlacement = null;
+    // Guide-mode preview is cleared by the commit/cancel paths explicitly,
+    // but reset here too so any stray state never outlives a drag.
+    if (this.guideShapePreview !== null) {
+      this.guideShapePreview = null;
+      this.guideShapePreviewListeners.forEach((listener) => listener());
+    }
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
     this.layerResizePlacement = null;
@@ -2173,6 +2239,19 @@ export class PathEditor {
     this.cleanup?.();
   }
 
+  /** Overlay API: read the transient guide-mode shape being drawn (if any). */
+  getGuideShapePreview(): GuideShapePreview | null {
+    return this.guideShapePreview;
+  }
+
+  /** Overlay API: subscribe to guide-mode preview changes. */
+  subscribeGuideShapePreview(listener: () => void): () => void {
+    this.guideShapePreviewListeners.add(listener);
+    return () => {
+      this.guideShapePreviewListeners.delete(listener);
+    };
+  }
+
   private createShapeLayer(start: { x: number; y: number }): string | null {
     const state = editorStore.getState();
     const iconId = state.currentIconId;
@@ -2190,7 +2269,7 @@ export class PathEditor {
       nextLayerId = `shape-${index}`;
     }
 
-    const initialPath = buildShapePathFromDrag({
+    const initialShape = buildShapePathFromDrag({
       shapeType: state.shapeSubTool,
       start,
       current: start,
@@ -2198,7 +2277,9 @@ export class PathEditor {
       altKey: false,
       polygonSides: state.shapePolygonSides,
       starPoints: state.shapeStarPoints,
-    }).d;
+    });
+    const initialPath = initialShape.d;
+    const initialPrimitive = initialShape.primitive;
 
     pauseHistory();
     editorStore.setState((s) => {
@@ -2226,6 +2307,7 @@ export class PathEditor {
                       role: 'primary',
                       visible: true,
                       path: { d: initialPath },
+                      primitive: initialPrimitive,
                       style: {
                         fill: { mode: 'fixed', value: 'none' },
                         stroke: { mode: 'currentColor' },
@@ -2280,8 +2362,25 @@ export class PathEditor {
       return;
     }
 
-    state.patchLayer(iconId,this.shapePlacement.layerId, {
+    // Guide-editing-mode commit: append a new GuideItem to the bound master.
+    // Polygon/Star have no GuideItem representation — the toolbar filters them
+    // out of the shape picker in guide mode, but we defensively no-op here too.
+    if (this.shapePlacement.guideMasterId) {
+      const masterId = this.shapePlacement.guideMasterId;
+      const guideItem = primitiveToGuideItem(preview.primitive);
+      if (guideItem) {
+        state.addGuideItem(masterId, guideItem);
+        commitHistory('guide-draw');
+      }
+      this.guideShapePreview = null;
+      this.guideShapePreviewListeners.forEach((listener) => listener());
+      this.resetDrag();
+      return;
+    }
+
+    state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
+      primitive: preview.primitive,
     });
 
     resumeHistory();
@@ -2294,6 +2393,17 @@ export class PathEditor {
       layerIds: [],
       pointIds: [],
     };
+
+    // Guide-mode drags commit no state up front, so there is nothing to
+    // discard on the history stack and no layer to roll back. Just clear
+    // the transient overlay preview.
+    if (this.shapePlacement?.guideMasterId) {
+      this.guideShapePreview = null;
+      this.guideShapePreviewListeners.forEach((listener) => listener());
+      editorStore.getState().setSelection(previousSelection);
+      this.resetDrag();
+      return;
+    }
 
     discardHistory();
     editorStore.getState().setSelection(previousSelection);
@@ -2481,7 +2591,7 @@ export function buildShapePathFromDrag(input: {
   altKey: boolean;
   polygonSides: number;
   starPoints: number;
-}): { d: string; isEmpty: boolean } {
+}): { d: string; isEmpty: boolean; primitive: PrimitiveShape } {
   const { shapeType, start, current, shiftKey, altKey, polygonSides, starPoints } = input;
   const dx = current.x - start.x;
   const dy = current.y - start.y;
@@ -2504,11 +2614,19 @@ export function buildShapePathFromDrag(input: {
           y: start.y + constrained.dy,
         };
 
+    const primitive: PrimitiveShape = {
+      kind: 'line',
+      x1: startPoint.x,
+      y1: startPoint.y,
+      x2: endPoint.x,
+      y2: endPoint.y,
+    };
     return {
-      d: createLinePath(startPoint.x, startPoint.y, endPoint.x, endPoint.y),
+      d: buildPrimitivePath(primitive),
       isEmpty:
         Math.abs(constrained.dx) <= SHAPE_EMPTY_EPSILON &&
         Math.abs(constrained.dy) <= SHAPE_EMPTY_EPSILON,
+      primitive,
     };
   }
 
@@ -2517,28 +2635,63 @@ export function buildShapePathFromDrag(input: {
   const centerY = box.y + box.height / 2;
 
   switch (shapeType) {
-    case 'rectangle':
-      return {
-        d: createRectPath(box.x, box.y, box.width, box.height),
-        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+    case 'rectangle': {
+      const primitive: PrimitiveShape = {
+        kind: 'rectangle',
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
       };
-    case 'ellipse':
       return {
-        d: createEllipsePath(centerX, centerY, box.width / 2, box.height / 2),
+        d: buildPrimitivePath(primitive),
         isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
+    }
+    case 'ellipse': {
+      const primitive: PrimitiveShape = {
+        kind: 'ellipse',
+        cx: centerX,
+        cy: centerY,
+        rx: box.width / 2,
+        ry: box.height / 2,
+      };
+      return {
+        d: buildPrimitivePath(primitive),
+        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+        primitive,
+      };
+    }
     case 'polygon': {
       const radius = Math.min(box.width, box.height) / 2;
+      const primitive: PrimitiveShape = {
+        kind: 'polygon',
+        cx: centerX,
+        cy: centerY,
+        r: radius,
+        sides: polygonSides,
+      };
       return {
-        d: createPolygonPath(centerX, centerY, radius, polygonSides),
+        d: buildPrimitivePath(primitive),
         isEmpty: radius <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
     }
     case 'star': {
       const outerRadius = Math.min(box.width, box.height) / 2;
+      const primitive: PrimitiveShape = {
+        kind: 'star',
+        cx: centerX,
+        cy: centerY,
+        outerR: outerRadius,
+        innerR: outerRadius / 2,
+        points: starPoints,
+      };
       return {
-        d: createStarPath(centerX, centerY, outerRadius, outerRadius / 2, starPoints),
+        d: buildPrimitivePath(primitive),
         isEmpty: outerRadius <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
     }
   }
@@ -2598,6 +2751,49 @@ function resolveSignedLength(primary: number, secondary: number, length: number)
   if (secondary > 0) return length;
   if (secondary < 0) return -length;
   return length;
+}
+
+/**
+ * Map a primitive produced by `buildShapePathFromDrag` onto a `GuideItem`.
+ * The `GuideItem` schema only covers `rect`, `ellipse`, `hline`, and `vline`
+ * (plus draw-points, which are not produced by the shape tool), so
+ * polygon/star return `null`. A horizontal/vertical line primitive is
+ * mapped onto `hline`/`vline` when appropriate; generic diagonal lines have
+ * no guide equivalent and return `null`.
+ */
+export function primitiveToGuideItem(primitive: PrimitiveShape): GuideItem | null {
+  switch (primitive.kind) {
+    case 'rectangle':
+      return {
+        kind: 'rect',
+        x: primitive.x,
+        y: primitive.y,
+        width: primitive.width,
+        height: primitive.height,
+      };
+    case 'ellipse':
+      return {
+        kind: 'ellipse',
+        cx: primitive.cx,
+        cy: primitive.cy,
+        rx: primitive.rx,
+        ry: primitive.ry,
+      };
+    case 'line': {
+      const dx = Math.abs(primitive.x2 - primitive.x1);
+      const dy = Math.abs(primitive.y2 - primitive.y1);
+      if (dx <= SHAPE_EMPTY_EPSILON) {
+        return { kind: 'vline', x: (primitive.x1 + primitive.x2) / 2 };
+      }
+      if (dy <= SHAPE_EMPTY_EPSILON) {
+        return { kind: 'hline', y: (primitive.y1 + primitive.y2) / 2 };
+      }
+      return null;
+    }
+    case 'polygon':
+    case 'star':
+      return null;
+  }
 }
 
 function translatePathPoint(point: PathPoint, dx: number, dy: number): void {

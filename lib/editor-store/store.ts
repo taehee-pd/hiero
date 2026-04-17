@@ -9,6 +9,7 @@ import type {
   IconSetTypeDef,
   Icon,
   Layer,
+  PrimitiveShape,
   TopologyContract,
   Effect,
   GuideMaster,
@@ -40,6 +41,7 @@ import type {
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
+import { buildPrimitivePath } from '@/lib/editor-core/path-shapes';
 import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
@@ -68,6 +70,13 @@ export type EditorState = {
   shapeSubTool: ShapeType;
   shapePolygonSides: number;
   shapeStarPoints: number;
+  /**
+   * Guide editing mode. When `active`, canvas shape-tool drags emit `GuideItem`s
+   * on the referenced master instead of creating `Layer`s. Entered from the
+   * guide panel's per-master "Edit on canvas" toggle. Auto-exits on icon/state
+   * change, variant-size switch, or deletion of the bound master.
+   */
+  guideEditingMode: { active: boolean; masterId: string | null };
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
   pendingPenHandle: PendingPenHandleState | null;
@@ -174,6 +183,10 @@ export type EditorActions = {
   setShapeSubTool(shapeSubTool: ShapeType): void;
   setShapePolygonSides(sides: number): void;
   setShapeStarPoints(points: number): void;
+  enterGuideEditingMode(masterId: string): void;
+  exitGuideEditingMode(): void;
+  /** Write a new primitive onto an existing layer AND regenerate path.d. */
+  setLayerPrimitive(iconId: string, layerId: string, next: PrimitiveShape): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
   setPendingPenHandle(handle: PendingPenHandleState | null): void;
@@ -322,6 +335,7 @@ const initialState: EditorState = {
   shapeSubTool: 'rectangle',
   shapePolygonSides: 5,
   shapeStarPoints: 5,
+  guideEditingMode: { active: false, masterId: null },
   pointMarquee: null,
   pointTransformLabel: null,
   pendingPenHandle: null,
@@ -1081,6 +1095,7 @@ function buildWorkspaceState(
     guidesVisible: true,
     guideStyle: 'subtle',
     viewport: { zoom: 12, panX: 0, panY: 0 },
+    guideEditingMode: { active: false, masterId: null },
     pointMarquee: null,
     pointTransformLabel: null,
     pendingPenHandle: null,
@@ -1725,6 +1740,8 @@ function createActions(): EditorActions {
           activeSnapGuides: [],
           pointMarquee: null,
           transitionPreview: null,
+          // Lifecycle safety: guide editing mode is scoped to the active icon.
+          guideEditingMode: { active: false, masterId: null },
         };
       });
     },
@@ -1746,6 +1763,9 @@ function createActions(): EditorActions {
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           transitionPreview: null,
+          // Variant switch usually means a different target size → different
+          // guide master. Exit guide editing to avoid editing the wrong master.
+          guideEditingMode: { active: false, masterId: null },
         };
       });
     },
@@ -2024,6 +2044,16 @@ function createActions(): EditorActions {
         if (!icon || !variant || !layer) return s;
 
         const nextLayer = { ...layer, ...patch };
+        // Invariant: `path.d` is canonical. When `path` is patched without an
+        // explicit new primitive, the primitive metadata is stale and must be
+        // cleared. We stash the kind on `formerPrimitiveKind` as a breadcrumb
+        // so the Inspector can explain why polygon/star controls are no
+        // longer available. Shape-tool drags and `setLayerPrimitive` supply
+        // `primitive` in the same patch to preserve it.
+        if (patch.path && !('primitive' in patch) && layer.primitive) {
+          nextLayer.formerPrimitiveKind = layer.primitive.kind;
+          delete nextLayer.primitive;
+        }
         const nextLayers = {
           ...variant.layers,
           [layerId]: nextLayer,
@@ -2338,6 +2368,69 @@ function createActions(): EditorActions {
       editorStoreApi.setState({ shapeStarPoints: clampInteger(points, 2) });
     },
 
+    enterGuideEditingMode(masterId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.guideMasters?.[masterId]) return s;
+        // Drop layer/point selection so the canvas clearly reflects
+        // "editing guides, not layers".
+        return {
+          guideEditingMode: { active: true, masterId },
+          selection: { layerIds: [], pointIds: [] },
+        };
+      });
+    },
+
+    exitGuideEditingMode() {
+      editorStoreApi.setState({
+        guideEditingMode: { active: false, masterId: null },
+      });
+    },
+
+    setLayerPrimitive(iconId, layerId, next) {
+      const nextPath = buildPrimitivePath(next);
+      // Route through the same setState pattern as `patchLayer` so the
+      // path-clears-primitive invariant stays co-located. `primitive` is
+      // supplied in the patch so it is preserved rather than cleared.
+      editorStoreApi.setState((s) => {
+        if (!s.project || !s.currentVariantId) return s;
+        const icon = s.project.icons[iconId];
+        const variant = icon?.variants[s.currentVariantId];
+        const layer = variant?.layers[layerId];
+        if (!icon || !variant || !layer) return s;
+
+        // Re-parameterising clears the "former primitive" breadcrumb, since
+        // the layer now has a live primitive again.
+        const { formerPrimitiveKind: _unused, ...layerWithoutBreadcrumb } = layer;
+        const nextLayer: Layer = {
+          ...layerWithoutBreadcrumb,
+          path: { ...(layer.path ?? {}), d: nextPath },
+          primitive: next,
+        };
+        const nextLayers = { ...variant.layers, [layerId]: nextLayer };
+
+        if (variant.topology?.locked) {
+          const nextTopology = computeTopology({
+            layers: nextLayers,
+            topology: variant.topology,
+          });
+          const compatibility = areTopologiesCompatible(variant.topology, nextTopology);
+          if (!compatibility.compatible) {
+            throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
+          }
+        }
+
+        return {
+          project: {
+            ...s.project,
+            icons: {
+              ...s.project.icons,
+              [iconId]: replaceVariantLayers(icon, s.currentVariantId, nextLayers),
+            },
+          },
+        };
+      });
+    },
+
     setPointMarquee(marquee) {
       editorStoreApi.setState({ pointMarquee: marquee });
     },
@@ -2449,12 +2542,20 @@ function createActions(): EditorActions {
         const nextGuideMasters = { ...s.project.guideMasters };
         delete nextGuideMasters[id];
 
+        // Lifecycle safety: if the deleted master was the one being edited on
+        // canvas, exit guide editing mode.
+        const nextGuideEditingMode =
+          s.guideEditingMode.masterId === id
+            ? { active: false, masterId: null }
+            : s.guideEditingMode;
+
         return {
           project: {
             ...s.project,
             meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
             guideMasters: Object.keys(nextGuideMasters).length > 0 ? nextGuideMasters : undefined,
           },
+          guideEditingMode: nextGuideEditingMode,
         };
       });
     },
@@ -3476,8 +3577,15 @@ function createActions(): EditorActions {
           if (!liveIcon || !liveVariant || !primaryLayer?.path) return s;
 
           const nextLayers = { ...liveVariant.layers };
+          // Boolean ops mutate path topology directly, bypassing `patchLayer`.
+          // Uphold the same invariant here: clear any stale `primitive` and,
+          // if one was present, record its kind for the Inspector affordance.
+          const { primitive: droppedPrimitive, ...primaryWithoutPrimitive } = primaryLayer;
           nextLayers[primaryLayerId] = {
-            ...primaryLayer,
+            ...primaryWithoutPrimitive,
+            ...(droppedPrimitive
+              ? { formerPrimitiveKind: droppedPrimitive.kind }
+              : {}),
             path: {
               ...primaryLayer.path,
               d: result,

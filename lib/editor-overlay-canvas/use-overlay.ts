@@ -22,6 +22,12 @@ export type OverlayOptions = {
   guideSet?: OverlayGuideSet;
   guidesVisible?: boolean;
   guideStyle?: 'subtle' | 'strong';
+  /**
+   * True when the active guide master is being edited on canvas. Promotes
+   * guide rendering to the `strong` variant so the user can see where they
+   * are drawing, even if the user had picked the subtle style for review.
+   */
+  guideEditingActive?: boolean;
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
@@ -73,6 +79,7 @@ export function useCanvasOverlay(
         guideSet,
         guidesVisible,
         guideStyle,
+        guideEditingActive,
         pointBBox,
         pointMarquee,
         pointBBoxLabel,
@@ -93,13 +100,19 @@ export function useCanvasOverlay(
         new scope.Point(left + (x - vx) * scale, top + (y - vy) * scale);
 
       if (guidesVisible !== false && guideSet?.items?.length) {
+        // Promote guide rendering to the `strong` style while the user is
+        // editing guides on canvas, so in-progress work is always legible
+        // regardless of the saved preference.
+        const effectiveGuideStyle: 'subtle' | 'strong' = guideEditingActive
+          ? 'strong'
+          : guideStyle ?? 'subtle';
         drawGuideItems(
           scope,
           guideSet.items,
           viewBox,
           guideSet.viewBox,
           toScreen,
-          guideStyle ?? 'subtle',
+          effectiveGuideStyle,
         );
       }
       const boundary = new scope.Path.Rectangle({

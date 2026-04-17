@@ -107,6 +107,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
+  const guideEditingActive = useEditorStore((s) => s.guideEditingMode.active);
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const transitionPreview = useEditorStore((s) => s.transitionPreview);
@@ -669,6 +670,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     guideSet: activeGuideSet,
     guidesVisible,
     guideStyle,
+    guideEditingActive,
     pointBBox,
     pointMarquee,
     pointBBoxLabel: pointTransformLabel,

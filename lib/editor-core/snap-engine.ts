@@ -87,12 +87,17 @@ export class SnapEngine {
       this.collectViewBoxCenterTargets(viewBox, candidates);
     }
 
-    if (guideMaster?.items?.length) {
-      this.collectGuideTargets(guideMaster.items, candidates);
-    }
+    // Guides contribute snap targets only when they are visible. Toggling the
+    // toolbar guide-visibility off therefore disables guide snapping too —
+    // pixel/grid/edge snapping remain gated only by `snapEnabled`.
+    if (state.guidesVisible) {
+      if (guideMaster?.items?.length) {
+        this.collectGuideTargets(guideMaster.items, candidates);
+      }
 
-    if (icon?.customGuides?.length) {
-      this.collectGuideTargets(icon.customGuides, candidates);
+      if (icon?.customGuides?.length) {
+        this.collectGuideTargets(icon.customGuides, candidates);
+      }
     }
 
     if (currentState?.layers) {

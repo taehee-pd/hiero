@@ -110,6 +110,12 @@ export function getShapeSubToolLabel(shapeSubTool: ShapeType): string {
   return SHAPE_SUB_TOOLS.find((shape) => shape.id === shapeSubTool)?.label ?? 'Shape';
 }
 
+// Guide items can only be rectangles, ellipses, and lines (hline/vline/rect/
+// ellipse kinds in the GuideItem schema). While guide editing mode is active,
+// the shape-picker is narrowed to this set — polygon/star have no guide
+// representation and would silently no-op if selected.
+const GUIDE_COMPATIBLE_SHAPES: ShapeType[] = ['rectangle', 'ellipse', 'line'];
+
 export const ToolPanel = memo(function ToolPanel({
   guidePanelOpen = false,
   layout = 'panel',
@@ -121,10 +127,15 @@ export const ToolPanel = memo(function ToolPanel({
   const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
+  const guideEditingActive = useEditorStore((s) => s.guideEditingMode.active);
   const { setShapeSubTool, setTool, toggleSnap, toggleGuidesVisible } = useEditorActions();
   const [shapePickerOpen, setShapePickerOpen] = useState(false);
   const [selectPickerOpen, setSelectPickerOpen] = useState(false);
   const isDock = layout === 'dock';
+
+  const visibleShapeSubTools = guideEditingActive
+    ? SHAPE_SUB_TOOLS.filter((shape) => GUIDE_COMPATIBLE_SHAPES.includes(shape.id))
+    : SHAPE_SUB_TOOLS;
 
   // Determine active select sub-tool
   const isSelectGroup = activeTool === 'select' || activeTool === 'direct-select';
@@ -165,7 +176,9 @@ export const ToolPanel = memo(function ToolPanel({
               key={tool.id}
               className={cn(
                 'flex items-center',
-                (isShapeTool || isSelectEntry) && isActive && 'gap-1',
+                // Chevron is now always visible on shape/select, so always
+                // carry the gap — not only when the tool is active.
+                (isShapeTool || isSelectEntry) && 'gap-1',
               )}
             >
               <Tooltip>
@@ -242,7 +255,7 @@ export const ToolPanel = memo(function ToolPanel({
                 </TooltipContent>
               </Tooltip>
 
-              {isSelectEntry && isActive ? (
+              {isSelectEntry ? (
                 <Popover open={selectPickerOpen} onOpenChange={setSelectPickerOpen}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -293,7 +306,7 @@ export const ToolPanel = memo(function ToolPanel({
                 </Popover>
               ) : null}
 
-              {isShapeTool && isActive ? (
+              {isShapeTool ? (
                 <Popover open={shapePickerOpen} onOpenChange={setShapePickerOpen}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -317,7 +330,7 @@ export const ToolPanel = memo(function ToolPanel({
                   </Tooltip>
                   <PopoverContent side="right" align="start" className="w-44 p-2">
                     <div className="grid gap-1">
-                      {SHAPE_SUB_TOOLS.map((shape) => {
+                      {visibleShapeSubTools.map((shape) => {
                         const isSelected = shape.id === shapeSubTool;
                         return (
                           <Button

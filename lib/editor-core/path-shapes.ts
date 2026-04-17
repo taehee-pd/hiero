@@ -1,3 +1,5 @@
+import type { PrimitiveShape } from '@/lib/schema/types';
+
 const KAPPA = 0.5522847498;
 const EPSILON = 1e-9;
 
@@ -173,6 +175,39 @@ export function createLinePath(
 ): string {
   assertFiniteNumbers({ x1, y1, x2, y2 });
   return [moveTo(x1, y1), lineTo(x2, y2)].join(' ');
+}
+
+/**
+ * Single entry point for turning a `PrimitiveShape` into a canonical path
+ * string. Used at shape creation, during shape-drag preview, and by the store
+ * action `setLayerPrimitive` — guaranteeing the Inspector and the canvas use
+ * the exact same geometry.
+ */
+export function buildPrimitivePath(primitive: PrimitiveShape): string {
+  switch (primitive.kind) {
+    case 'rectangle':
+      return createRectPath(
+        primitive.x,
+        primitive.y,
+        primitive.width,
+        primitive.height,
+        primitive.radius ?? 0,
+      );
+    case 'ellipse':
+      return createEllipsePath(primitive.cx, primitive.cy, primitive.rx, primitive.ry);
+    case 'polygon':
+      return createPolygonPath(primitive.cx, primitive.cy, primitive.r, primitive.sides);
+    case 'star':
+      return createStarPath(
+        primitive.cx,
+        primitive.cy,
+        primitive.outerR,
+        primitive.innerR,
+        primitive.points,
+      );
+    case 'line':
+      return createLinePath(primitive.x1, primitive.y1, primitive.x2, primitive.y2);
+  }
 }
 
 function createRegularVertices(

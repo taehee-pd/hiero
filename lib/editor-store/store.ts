@@ -77,6 +77,15 @@ export type EditorState = {
    * change, variant-size switch, or deletion of the bound master.
    */
   guideEditingMode: { active: boolean; masterId: string | null };
+  /**
+   * Transient in-progress guide shape (shown as a ghost while a pointer is
+   * down in guide editing mode). Set by `PathEditor` during the drag, cleared
+   * on commit/cancel. Not persisted.
+   */
+  guideShapePreview: {
+    masterId: string;
+    primitive: PrimitiveShape;
+  } | null;
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
   pendingPenHandle: PendingPenHandleState | null;
@@ -185,6 +194,7 @@ export type EditorActions = {
   setShapeStarPoints(points: number): void;
   enterGuideEditingMode(masterId: string): void;
   exitGuideEditingMode(): void;
+  setGuideShapePreview(preview: EditorState['guideShapePreview']): void;
   /** Write a new primitive onto an existing layer AND regenerate path.d. */
   setLayerPrimitive(iconId: string, layerId: string, next: PrimitiveShape): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
@@ -336,6 +346,7 @@ const initialState: EditorState = {
   shapePolygonSides: 5,
   shapeStarPoints: 5,
   guideEditingMode: { active: false, masterId: null },
+  guideShapePreview: null,
   pointMarquee: null,
   pointTransformLabel: null,
   pendingPenHandle: null,
@@ -1096,6 +1107,7 @@ function buildWorkspaceState(
     guideStyle: 'subtle',
     viewport: { zoom: 12, panX: 0, panY: 0 },
     guideEditingMode: { active: false, masterId: null },
+    guideShapePreview: null,
     pointMarquee: null,
     pointTransformLabel: null,
     pendingPenHandle: null,
@@ -2383,7 +2395,12 @@ function createActions(): EditorActions {
     exitGuideEditingMode() {
       editorStoreApi.setState({
         guideEditingMode: { active: false, masterId: null },
+        guideShapePreview: null,
       });
+    },
+
+    setGuideShapePreview(preview) {
+      editorStoreApi.setState({ guideShapePreview: preview });
     },
 
     setLayerPrimitive(iconId, layerId, next) {

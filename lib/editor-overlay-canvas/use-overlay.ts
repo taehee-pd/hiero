@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import type { ViewportState, SelectionState } from '@/lib/editor-store/types';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
-import type { Layer, GuideItem, GuideSet } from '@/lib/schema/types';
+import type { Layer, GuideItem, GuideSet, PrimitiveShape } from '@/lib/schema/types';
 import {
   loadPaperGlobal,
   type PaperGlobal,
@@ -28,6 +28,12 @@ export type OverlayOptions = {
    * are drawing, even if the user had picked the subtle style for review.
    */
   guideEditingActive?: boolean;
+  /**
+   * Transient in-progress guide shape (ghost) being authored by the user.
+   * Rendered as a dashed shape until pointerup commits it as a `GuideItem`
+   * on the master. Only rendered while guide editing mode is active.
+   */
+  guideShapePreview?: { masterId: string; primitive: PrimitiveShape } | null;
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
@@ -80,6 +86,7 @@ export function useCanvasOverlay(
         guidesVisible,
         guideStyle,
         guideEditingActive,
+        guideShapePreview,
         pointBBox,
         pointMarquee,
         pointBBoxLabel,
@@ -114,6 +121,29 @@ export function useCanvasOverlay(
           toScreen,
           effectiveGuideStyle,
         );
+      }
+
+      // Ghost: in-progress guide shape while the user is dragging. Only drawn
+      // while guide editing mode is active and the preview master matches the
+      // currently-rendered master.
+      if (
+        guideEditingActive &&
+        guidesVisible !== false &&
+        guideShapePreview &&
+        guideSet &&
+        guideShapePreview.masterId === guideSet.id
+      ) {
+        drawGuideShapePreview(scope, guideShapePreview.primitive, toScreen);
+      }
+
+      // Interactive handles: one handle per existing guide item while in
+      // editing mode, so users can pick a handle and drag to move/resize.
+      if (
+        guideEditingActive &&
+        guidesVisible !== false &&
+        guideSet?.items?.length
+      ) {
+        drawGuideItemHandles(scope, guideSet.items, viewBox, guideSet.viewBox, toScreen);
       }
       const boundary = new scope.Path.Rectangle({
         rectangle: new scope.Rectangle(left, top, renderWidth, renderHeight),
@@ -448,6 +478,140 @@ function drawGuideItems(
         point.strokeColor = null;
         break;
       }
+    }
+  }
+}
+
+/** Dashed, accent-coloured ghost of the shape the user is currently drawing. */
+function drawGuideShapePreview(
+  scope: PaperScopeInstance,
+  primitive: PrimitiveShape,
+  toScreen: (x: number, y: number) => PaperPoint,
+) {
+  const stroke = new scope.Color('rgba(96,165,250,0.9)');
+  const dash = [5, 4];
+  switch (primitive.kind) {
+    case 'rectangle': {
+      const from = toScreen(primitive.x, primitive.y);
+      const to = toScreen(primitive.x + primitive.width, primitive.y + primitive.height);
+      const rect = new scope.Path.Rectangle({
+        from,
+        to,
+        strokeColor: stroke,
+        strokeWidth: 1,
+      });
+      rect.fillColor = null;
+      rect.dashArray = dash;
+      break;
+    }
+    case 'ellipse': {
+      const center = toScreen(primitive.cx, primitive.cy);
+      const east = toScreen(primitive.cx + primitive.rx, primitive.cy);
+      const north = toScreen(primitive.cx, primitive.cy - primitive.ry);
+      const rx = Math.abs(east.x - center.x);
+      const ry = Math.abs(center.y - north.y);
+      const ellipse = new scope.Path.Ellipse({
+        center,
+        radius: new scope.Size(rx, ry),
+        strokeColor: stroke,
+        strokeWidth: 1,
+      });
+      ellipse.fillColor = null;
+      ellipse.dashArray = dash;
+      break;
+    }
+    case 'line': {
+      const a = toScreen(primitive.x1, primitive.y1);
+      const b = toScreen(primitive.x2, primitive.y2);
+      const line = new scope.Path.Line(a, b);
+      line.strokeColor = stroke;
+      line.strokeWidth = 1;
+      line.dashArray = dash;
+      break;
+    }
+    // Polygon / star primitives never appear in guide mode (filtered in the
+    // toolbar + defensive no-op in the commit path), so no ghost for them.
+    case 'polygon':
+    case 'star':
+      break;
+  }
+}
+
+/**
+ * Draw small square handles at each item's resize / move anchor positions.
+ * Pointer hit-testing happens in `PathEditor`; this function only paints.
+ */
+function drawGuideItemHandles(
+  scope: PaperScopeInstance,
+  items: GuideItem[],
+  viewBox: [number, number, number, number],
+  guideViewBox: [number, number, number, number] | undefined,
+  toScreen: (x: number, y: number) => PaperPoint,
+) {
+  const [vx, vy, vw, vh] = viewBox;
+  const [guideX, guideY, guideW, guideH] = guideViewBox ?? viewBox;
+  const scaleX = guideW > 0 ? vw / guideW : 1;
+  const scaleY = guideH > 0 ? vh / guideH : 1;
+  const mapX = (x: number) => vx + (x - guideX) * scaleX;
+  const mapY = (y: number) => vy + (y - guideY) * scaleY;
+
+  const handleStroke = new scope.Color('rgba(96,165,250,0.95)');
+  const handleFill = new scope.Color('rgba(15,23,42,0.95)');
+
+  const paintSquare = (cx: number, cy: number) => {
+    const center = toScreen(cx, cy);
+    const size = 8;
+    const square = new scope.Path.Rectangle({
+      from: new scope.Point(center.x - size / 2, center.y - size / 2),
+      to: new scope.Point(center.x + size / 2, center.y + size / 2),
+      strokeColor: handleStroke,
+      strokeWidth: 1.5,
+    });
+    square.fillColor = handleFill;
+  };
+
+  const paintDot = (cx: number, cy: number) => {
+    const center = toScreen(cx, cy);
+    const dot = new scope.Path.Circle({ center, radius: 4, fillColor: handleStroke });
+    dot.strokeColor = null;
+  };
+
+  for (const item of items) {
+    switch (item.kind) {
+      case 'rect': {
+        const x0 = mapX(item.x);
+        const y0 = mapY(item.y);
+        const x1 = mapX(item.x + item.width);
+        const y1 = mapY(item.y + item.height);
+        paintSquare(x0, y0);
+        paintSquare(x1, y0);
+        paintSquare(x1, y1);
+        paintSquare(x0, y1);
+        paintDot((x0 + x1) / 2, (y0 + y1) / 2);
+        break;
+      }
+      case 'ellipse': {
+        const cx = mapX(item.cx);
+        const cy = mapY(item.cy);
+        paintSquare(cx, mapY(item.cy - item.ry));
+        paintSquare(mapX(item.cx + item.rx), cy);
+        paintSquare(cx, mapY(item.cy + item.ry));
+        paintSquare(mapX(item.cx - item.rx), cy);
+        paintDot(cx, cy);
+        break;
+      }
+      case 'hline': {
+        const y = mapY(item.y);
+        paintDot(vx + vw / 2, y);
+        break;
+      }
+      case 'vline': {
+        const x = mapX(item.x);
+        paintDot(x, vy + vh / 2);
+        break;
+      }
+      case 'drawPoint':
+        break;
     }
   }
 }

@@ -1,5 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
-import { PathEditor, buildShapePathFromDrag, primitiveToGuideItem } from '../lib/editor-core';
+import {
+  PathEditor,
+  applyGuideItemHandleDrag,
+  buildShapePathFromDrag,
+  hitTestGuideItemHandle,
+  primitiveToGuideItem,
+} from '../lib/editor-core';
 import { buildPrimitivePath } from '../lib/editor-core/path-shapes';
 import { clearHistory } from '../lib/editor-store/history';
 import { editorStore } from '../lib/editor-store/store';
@@ -355,6 +361,194 @@ describe('primitive shape metadata + invariant', () => {
       editorStore.getState().project!.icons['icon-home'].variants.v24.types!.default.layers
         .roof.formerPrimitiveKind,
     ).toBeUndefined();
+  });
+});
+
+describe('guide shape preview state', () => {
+  test('is set during a guide-mode drag and cleared on commit', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.setShapeSubTool('rectangle');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
+
+    const preview = editorStore.getState().guideShapePreview;
+    expect(preview).not.toBeNull();
+    expect(preview!.masterId).toBe(masterId);
+    expect(preview!.primitive.kind).toBe('rectangle');
+
+    (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 100 }));
+    expect(editorStore.getState().guideShapePreview).toBeNull();
+
+    editor.destroy();
+  });
+
+  test('is cleared when a guide-mode drag is cancelled', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.setShapeSubTool('rectangle');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 30 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 100 }));
+    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
+
+    expect(editorStore.getState().guideShapePreview).toBeNull();
+    editor.destroy();
+  });
+
+  test('exiting the mode drops any lingering preview', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().setGuideShapePreview({
+      masterId,
+      primitive: { kind: 'rectangle', x: 0, y: 0, width: 4, height: 4 },
+    });
+    editorStore.getState().exitGuideEditingMode();
+    expect(editorStore.getState().guideShapePreview).toBeNull();
+  });
+});
+
+describe('guide item handle drag — pure helpers', () => {
+  test('rect top-left corner resize keeps the opposite corner fixed', () => {
+    const next = applyGuideItemHandleDrag(
+      { kind: 'rect', x: 4, y: 4, width: 8, height: 6 },
+      { kind: 'rect-corner', corner: 'tl' },
+      { x: 4, y: 4 },
+      { x: 6, y: 5 },
+    );
+    expect(next).toEqual({ kind: 'rect', x: 6, y: 5, width: 6, height: 5 });
+  });
+
+  test('rect center handle translates the rect by the pointer delta', () => {
+    const next = applyGuideItemHandleDrag(
+      { kind: 'rect', x: 4, y: 4, width: 8, height: 6 },
+      { kind: 'rect-center' },
+      { x: 8, y: 7 },
+      { x: 10, y: 11 },
+    );
+    expect(next).toEqual({ kind: 'rect', x: 6, y: 8, width: 8, height: 6 });
+  });
+
+  test('ellipse north cardinal resizes only ry', () => {
+    const next = applyGuideItemHandleDrag(
+      { kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 4 },
+      { kind: 'ellipse-cardinal', direction: 'n' },
+      { x: 12, y: 8 },
+      { x: 12, y: 5 },
+    );
+    expect(next).toEqual({ kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 7 });
+  });
+
+  test('ellipse east cardinal resizes only rx', () => {
+    const next = applyGuideItemHandleDrag(
+      { kind: 'ellipse', cx: 12, cy: 12, rx: 4, ry: 4 },
+      { kind: 'ellipse-cardinal', direction: 'e' },
+      { x: 16, y: 12 },
+      { x: 20, y: 12 },
+    );
+    expect(next).toEqual({ kind: 'ellipse', cx: 12, cy: 12, rx: 8, ry: 4 });
+  });
+
+  test('hline/vline move along their axis only', () => {
+    const hline = applyGuideItemHandleDrag(
+      { kind: 'hline', y: 4 },
+      { kind: 'hline-body' },
+      { x: 5, y: 4 },
+      { x: 9, y: 7 },
+    );
+    expect(hline).toEqual({ kind: 'hline', y: 7 });
+
+    const vline = applyGuideItemHandleDrag(
+      { kind: 'vline', x: 4 },
+      { kind: 'vline-body' },
+      { x: 4, y: 5 },
+      { x: 9, y: 7 },
+    );
+    expect(vline).toEqual({ kind: 'vline', x: 9 });
+  });
+
+  test('hit test picks the nearest handle within radius', () => {
+    const rect = { kind: 'rect', x: 4, y: 4, width: 8, height: 6 } as const;
+    expect(hitTestGuideItemHandle(rect, { x: 4, y: 4 }, 0.5)).toEqual({
+      kind: 'rect-corner',
+      corner: 'tl',
+    });
+    expect(hitTestGuideItemHandle(rect, { x: 8, y: 7 }, 0.5)).toEqual({ kind: 'rect-center' });
+    expect(hitTestGuideItemHandle(rect, { x: 100, y: 100 }, 0.5)).toBeNull();
+  });
+});
+
+describe('guide item handle drag — via PathEditor', () => {
+  test('dragging a rect corner resizes the item and commits via updateGuideItem', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore
+      .getState()
+      .addGuideItem(masterId, { kind: 'rect', x: 4, y: 4, width: 8, height: 6 });
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    // The mock canvas maps client → svg at 10:1 scale (240/24). Pointer at
+    // (40, 40) in client space → (4, 4) in SVG — right on the rect's tl corner.
+    (editor as any).onPointerDown(pointerEvent({ clientX: 40, clientY: 40 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 60, clientY: 50 }));
+    (editor as any).onPointerUp(pointerEvent({ clientX: 60, clientY: 50 }));
+
+    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({ kind: 'rect', x: 6, y: 5, width: 6, height: 5 });
+
+    editor.destroy();
+  });
+
+  test('escape during a handle drag reverts to the original item', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    const originalRect = { kind: 'rect', x: 4, y: 4, width: 8, height: 6 } as const;
+    editorStore.getState().addGuideItem(masterId, originalRect);
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 40, clientY: 40 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 60, clientY: 50 }));
+    (editor as any).onKeyDown({ key: 'Escape' } as KeyboardEvent);
+
+    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
+    expect(items[0]).toEqual(originalRect);
+
+    editor.destroy();
+  });
+
+  test('dragging an hline commits the new y', () => {
+    bootstrap();
+    const masterId = seedMaster();
+    editorStore.getState().addGuideItem(masterId, { kind: 'hline', y: 6 });
+    const state = editorStore.getState();
+    state.setTool('shape');
+    state.enterGuideEditingMode(masterId);
+
+    const editor = new PathEditor(createMockSvg());
+    (editor as any).onPointerDown(pointerEvent({ clientX: 100, clientY: 60 }));
+    (editor as any).onPointerMove(pointerEvent({ clientX: 100, clientY: 120 }));
+    (editor as any).onPointerUp(pointerEvent({ clientX: 100, clientY: 120 }));
+
+    const items = editorStore.getState().project!.guideMasters![masterId]!.items;
+    expect(items[0]).toEqual({ kind: 'hline', y: 12 });
+
+    editor.destroy();
   });
 });
 

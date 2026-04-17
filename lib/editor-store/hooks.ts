@@ -97,6 +97,7 @@ const editorActions = {
   setShapeStarPoints: editorStore.getState().setShapeStarPoints,
   enterGuideEditingMode: editorStore.getState().enterGuideEditingMode,
   exitGuideEditingMode: editorStore.getState().exitGuideEditingMode,
+  setGuideShapePreview: editorStore.getState().setGuideShapePreview,
   setLayerPrimitive: editorStore.getState().setLayerPrimitive,
   setPointMarquee: editorStore.getState().setPointMarquee,
   setPointTransformLabel: editorStore.getState().setPointTransformLabel,

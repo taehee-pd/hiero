@@ -23,4 +23,10 @@ export type { PathPoint, PathSegment, SubPath, EditablePath, NodeType } from './
 export { computeSnap, SnapEngine } from './snap-engine';
 export type { SnapTarget, SnapResult, ComputeSnapOptions } from './snap-engine';
 
-export { PathEditor, buildShapePathFromDrag, primitiveToGuideItem } from './path-editor';
+export {
+  PathEditor,
+  applyGuideItemHandleDrag,
+  buildShapePathFromDrag,
+  hitTestGuideItemHandle,
+  primitiveToGuideItem,
+} from './path-editor';

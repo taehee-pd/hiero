@@ -45,6 +45,21 @@ Open [http://localhost:3000](http://localhost:3000).
 - `pnpm validate:source-export` — validate canonical `icons/` + `manifest.json` source exports
 - `pnpm compile:from-source -- --source <dir> --out <dir> --package-name <name> --package-version <version> [--generate-react]` — compile from canonical source export input
 
+## Storybook
+
+Browse the component library and design tokens:
+
+```bash
+pnpm storybook           # Dev server on http://localhost:6006
+pnpm storybook:build     # Production build
+pnpm storybook:test      # Run Vitest addon tests (headless Chromium)
+```
+
+The design system barrel is `components/ds/` — shared cross-feature components
+(StatusBadge, Tag, KbdHint, ColorField, IconButton, ColorPicker). Primitives
+live in `components/ui/` (shadcn/Radix). See `specs/design-system-storybook.plan.md`
+for the full design system plan.
+
 ## Integration Guides
 
 - [Framework Integration Playbook](docs/guides/framework-integration-playbook.md) — decision guide for choosing the right integration path, delivery modes, platform capabilities, and CI setup

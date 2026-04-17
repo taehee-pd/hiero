@@ -31,7 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Tag } from '@/components/ds/tag';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { exportSourcePayload } from '@/lib/sync-source';
 import {
@@ -239,7 +239,7 @@ function LocalDirectoryCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">Local directory</p>
-            <Badge variant="secondary" className="text-[9px]">snapshot</Badge>
+            <Tag variant="muted" className="text-[9px]">snapshot</Tag>
           </div>
           <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
             {target.outputDir}
@@ -280,7 +280,7 @@ function GitPrCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">Git PR</p>
-            <Badge variant="secondary" className="text-[9px]">snapshot</Badge>
+            <Tag variant="muted" className="text-[9px]">snapshot</Tag>
           </div>
           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
             {target.owner}/{target.repo} → {target.baseBranch}
@@ -337,7 +337,7 @@ function NpmRegistryCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">npm registry</p>
-            <Badge variant="secondary" className="text-[9px]">snapshot</Badge>
+            <Tag variant="muted" className="text-[9px]">snapshot</Tag>
           </div>
           <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">
             {target.packageName}

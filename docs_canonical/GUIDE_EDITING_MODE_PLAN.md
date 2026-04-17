@@ -1,7 +1,7 @@
 # Guide Editing Mode + Shape Tool Upgrades — Plan
 
 **Branch:** `claude/add-guide-editing-mode-uQ5cs`
-**Status:** Plan under review (passed `/plan-eng-review`; pending Codex second opinion)
+**Status:** Validated — passed `/plan-eng-review` and Codex second opinion. Ready to implement.
 **Date:** 2026-04-17
 
 ## Problem statement
@@ -57,6 +57,8 @@ So roughly ~60% of the "shape tools" request is already wired; the real work is 
 - On shape-tool creation in `path-editor.ts`, populate `primitive` alongside baked `path.d`.
 - Add store action `setLayerPrimitive(layerId, next)` that regenerates `path.d` via the existing `path-shapes.ts` helpers — **no forked regen logic**.
 - In `InspectorPanel.tsx`, when the selected layer has `primitive.kind === 'polygon' | 'star'`, render a `Sides` (polygon) / `Points` (star) number input. On change, dispatch `setLayerPrimitive`.
+- **Invariant (hard rule, documented in code + tests):** `path.d` is canonical; `primitive` is optional metadata that is cleared whenever path topology is modified outside primitive-regeneration flows (node editing, boolean ops, import, etc.). All such mutations route through a single `updateLayerPath` chokepoint that clears `primitive` unless a new one is supplied.
+- **Inspector affordance:** when a polygon/star layer's `primitive` has been cleared by a path mutation, the Inspector shows a short helper line (e.g. *"Shape was modified — regenerate to edit points"*) instead of silently hiding the control.
 
 ### C. Guide editing mode
 
@@ -66,10 +68,10 @@ So roughly ~60% of the "shape tools" request is already wired; the real work is 
   ```
   with actions `enterGuideEditingMode(masterId)` / `exitGuideEditingMode()`.
 - **Guide panel (`components/editor/GuideMasterPanel.tsx`):** add an "Edit on canvas" toggle per master. Disable when the master has no owning variant size or the project has no master for the current variant.
-- **Canvas shape creation (`lib/editor-core/path-editor.ts`):** when `guideEditingMode.active`, branch shape drags to emit `GuideItem`s on the active master instead of creating layers. Commit only on pointerup so the in-progress drag doesn't spawn duplicate items (GuideItem has no `id`, it's identified by index).
+- **Canvas shape creation (`lib/editor-core/path-editor.ts`):** when `guideEditingMode.active`, branch shape drags to emit `GuideItem`s on the active master instead of creating layers. Commit only on a successful `pointerup` — `Esc` / pointer-cancel must abort without mutating the master (GuideItem has no `id`, it's identified by index, so duplicates are especially costly).
 - **Shape sub-tool filtering (`components/editor/ToolPanel.tsx`):** while `guideEditingMode.active`, filter `SHAPE_SUB_TOOLS` in the dropdown to `rectangle | ellipse | line` (polygon/star have no `GuideItem` variant).
 - **Overlay (`lib/editor-overlay-canvas/use-overlay.ts`):** render simple drag handles on the active master's items while mode is active.
-- **Exit:** Escape key, toggling the panel button off, or switching variant/icon deactivates the mode.
+- **Exit (lifecycle safety):** the mode must auto-exit on any of: Escape keypress, toggling the panel button off, icon or icon-state change, variant-size switch (guide masters are size-keyed), or deletion of the bound master. Covered by store subscriptions + explicit reset in the relevant actions.
 
 ### D. Guide visibility gates guide snapping
 
@@ -82,6 +84,7 @@ So roughly ~60% of the "shape tools" request is already wired; the real work is 
 - Polygon/star rotation handles on canvas.
 - Inner-radius ratio slider for Star beyond the numeric Points field.
 - Dedicated keyboard shortcut for guide editing mode (can reuse `G` later; for now entry is via the panel only).
+- Dedicated `hline` / `vline` insertion hotkeys — Codex confirms: line tool + axis snapping is sufficient for this phase; track as a follow-up UX task.
 - Snapping to polygon vertices / star points beyond current center/edge targets.
 - Guide item IDs (stay index-based; revisit if drag UX requires it).
 
@@ -161,3 +164,33 @@ pnpm build
 1. Is the `primitive` + `updateLayerPath` chokepoint the right level of abstraction, or should we instead split primitive layers into their own `Layer` subtype (discriminated union) to make the invariant unforgeable?
 2. Should guide editing mode also allow adding `hline` / `vline` guides via a dedicated hotkey, or is "line tool with snapping to axis" sufficient?
 3. Is there a cleaner way to surface "this layer was created as a polygon/star" than adding `primitive` — e.g., a side-table keyed by `layerId` to avoid touching the core `Layer` type?
+
+## Codex validation (2026-04-17)
+
+**Outcome: validated with minor clarifications.** The plan is implementable within the current architecture and aligns with all four stated requirements (separate guide editing mode, guide visibility gating guide snapping, always-visible chevron, polygon/star point editing in Inspector).
+
+### Decisions on the open questions
+
+1. **Keep `primitive` + `updateLayerPath` chokepoint.** Change stays local — avoids a broad discriminated-union migration across every layer creation/update callsite. Encode one hard invariant (in both code comment and tests): **`path.d` is canonical; `primitive` is optional metadata that is cleared whenever path topology is modified outside primitive-regeneration flows.** Revisit a strict `Layer` union only when future features require richer primitive semantics (corner-radius editing, parametric transforms, etc.).
+2. **Do not add `hline` / `vline` hotkeys in this phase.** The line tool + axis snapping covers the requirement; dedicated horizontal/vertical guide insertion is a follow-up UX task.
+3. **Extend `Layer` with optional `primitive` rather than using a side-table.** Side-tables introduce sync hazards on copy/duplicate/delete/undo. Localising metadata on `Layer` keeps history, serialization, and clipboard flows coherent with the existing state mechanics. The stale-data risk is already handled by the chokepoint-clearing rule above.
+
+### Additional implementation guardrails (Codex additions)
+
+- **Mode lifecycle safety** — exit `guideEditingMode` automatically on:
+  - icon / icon-state change,
+  - variant-size switch (current guide master is size-keyed),
+  - deletion of the master that the mode is bound to.
+- **Pointer semantics** — cancelling a drag (`Esc` / pointer-cancel event) must **not** commit a `GuideItem`. Commit only on a valid `pointerup` that completes the drag.
+- **Inspector affordance** — when polygon / star controls are unavailable because `primitive` was cleared by a path mutation, show a short helper line (e.g. *"Shape was modified — regenerate to edit points"*) instead of silently hiding the field with no explanation.
+
+### Acceptance checklist (used to validate implementation)
+
+- [ ] With Guide editing mode active, drawing a shape creates a `GuideItem` only — **no** `Layer` is added.
+- [ ] With Guide editing mode inactive, drawing a shape creates a `Layer` only — **no** `GuideItem` is added.
+- [ ] `guidesVisible=false` removes guide snap targets while preserving pixel/grid snap behaviour under `snapEnabled`.
+- [ ] Shape chevron is visible even when the shape tool is inactive; selecting a menu item activates the shape tool.
+- [ ] Polygon / Star layer Inspector shows editable sides/points and regenerates `path.d` through the shared `path-shapes.ts` helpers (no forked regeneration).
+- [ ] Non-primitive path operations (node edit, boolean ops, path imports) clear `primitive` and the polygon / star controls hide with the helper text above.
+- [ ] Guide editing mode exits on icon/state change, variant-size switch, and guide master deletion.
+- [ ] `Esc` / pointer-cancel during a guide-mode drag commits nothing.

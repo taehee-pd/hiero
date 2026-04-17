@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
 import {
   Tooltip,
   TooltipTrigger,
@@ -43,8 +42,6 @@ interface IconButtonProps
   variant?: IconButtonVariant;
   /** Replaces icon with Spinner; sets aria-busy; keeps tooltip text. */
   loading?: boolean;
-  /** Radix slot pattern for DropdownMenu.Trigger / Popover.Trigger. */
-  asChild?: boolean;
 }
 
 const sizeClasses: Record<IconButtonSize, string> = {
@@ -84,6 +81,13 @@ const variantClasses: Record<IconButtonVariant, string> = {
  * - Loading swaps icon for Spinner, sets aria-busy, keeps tooltip.
  * - Icon sized by CSS class only; callers cannot set size inline.
  * - Named export only per STYLEGUIDE.md.
+ *
+ * Usage as a Radix Trigger: React 19 automatically forwards refs to
+ * function components, so wrapping IconButton in
+ *   <DropdownMenu.Trigger asChild><IconButton ... /></DropdownMenu.Trigger>
+ * works without IconButton needing its own `asChild` prop. (A prior
+ * `asChild` prop on IconButton was removed because Slot would forward
+ * button props to the SVG icon rather than a real button element.)
  */
 function IconButton({
   icon,
@@ -95,16 +99,13 @@ function IconButton({
   radius = 'toolbar',
   variant = 'ghost',
   loading = false,
-  asChild = false,
   className,
   disabled,
   ...rest
 }: IconButtonProps) {
-  const Comp = asChild ? Slot : 'button';
-
   const button = (
-    <Comp
-      type={asChild ? undefined : 'button'}
+    <button
+      type="button"
       aria-label={ariaLabel}
       aria-busy={loading || undefined}
       disabled={disabled || loading}
@@ -121,7 +122,7 @@ function IconButton({
       {...rest}
     >
       {loading ? <Spinner className={size === 'sm' ? 'size-3' : size === 'lg' ? 'size-4' : 'size-3.5'} /> : icon}
-    </Comp>
+    </button>
   );
 
   if (tooltip === false) return button;

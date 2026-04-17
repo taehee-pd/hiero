@@ -22,6 +22,22 @@ test('renders multiple keys in KbdGroup', () => {
   expect(kbds.length).toBe(3);
 });
 
+test('resolveKey defaults to non-Mac (hydration-safe default)', () => {
+  // Called without isMac flag, resolveKey must return the non-Mac label.
+  // This is the SSR-safe default: server + first client render always
+  // emits the same labels; platform-specific labels only appear after
+  // useEffect flips isMac on the client.
+  expect(resolveKey('cmd')).toBe('Ctrl');
+  expect(resolveKey('alt')).toBe('Alt');
+  expect(resolveKey('shift')).toBe('Shift');
+});
+
+test('resolveKey with isMac=true returns Mac symbols', () => {
+  expect(resolveKey('cmd', true)).toBe('⌘');
+  expect(resolveKey('alt', true)).toBe('⌥');
+  expect(resolveKey('shift', true)).toBe('⇧');
+});
+
 test('resolveKey uppercases single character keys', () => {
   expect(resolveKey('v')).toBe('V');
   expect(resolveKey('a')).toBe('A');
@@ -32,8 +48,7 @@ test('resolveKey passes through unknown multi-char keys', () => {
 });
 
 test('resolveKey handles escape', () => {
-  const result = resolveKey('Escape');
-  expect(result).toBe('Esc');
+  expect(resolveKey('Escape')).toBe('Esc');
 });
 
 test('resolveKey handles arrow keys', () => {

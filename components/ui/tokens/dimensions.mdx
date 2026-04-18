@@ -6,31 +6,50 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 Sourced from `/DESIGN.md` §5 "Layout Principles > Concrete dimensions"
 and §9 agent prompt example ("ghost icon buttons at 28px with 14px
-icons"). These are the canonical pane and chrome sizes.
+icons"). These are the canonical pane and chrome sizes — every value
+below is a named CSS variable in `app/globals.css` so DS components
+can reference them instead of hardcoding magic numbers.
 
 ## Studio chrome
 
-| Element | Value |
-|---|---|
-| Navbar height | `40px` (h-10) |
-| Toolbar height | `38px` (with a `clamp(36px, 2.375rem, 40px)` responsive range — §9 #9) |
-| NavPane expanded | `200px` |
-| NavPane collapsed | `56px` (w-14) |
-| ListPane width | `260px` |
-| Inspector width | `260px` |
-| Panel padding | `12px` |
-| Panel gap | `8px` |
-| Section gap | `12px` |
+| Token | Value | Element |
+|---|---|---|
+| `--navbar-height` | `40px` | top navbar |
+| `--toolbar-height-min` | `36px` | toolbar height — lower bound |
+| `--toolbar-height` | `clamp(36px, 2.375rem, 40px)` | toolbar height — responsive |
+| `--toolbar-height-max` | `40px` | toolbar height — upper bound |
+| `--navpane-width-expanded` | `200px` | NavPane (expanded) |
+| `--navpane-width-collapsed` | `56px` | NavPane (collapsed) |
+| `--listpane-width` | `260px` | ListPane width |
+| `--inspector-width` | `260px` | Inspector width |
+| `--panel-padding` | `12px` | internal panel padding |
+| `--panel-gap` | `8px` | gap between sibling controls |
+| `--section-gap` | `clamp(4px, 0.375rem, 8px)` | gap between sections |
 
-Phase 7 of `specs/design-system-storybook.plan.md` adds these as named
-CSS variables (`--navbar-height`, `--toolbar-height-{min,max}`,
-`--navpane-width-{expanded,collapsed}`, `--listpane-width`,
-`--inspector-width`, etc.) so DS components can reference them instead
-of hardcoding magic numbers.
+## Form fields
+
+| Token | Value | Use |
+|---|---|---|
+| `--field-height-sm` | `clamp(26px, 1.75rem, 30px)` | dense field (filters, inline) |
+| `--field-height-md` | `clamp(30px, 2rem, 34px)` | default control height |
+| `--field-height-lg` | `clamp(34px, 2.25rem, 38px)` | comfortable control height |
+
+## Pills & status
+
+| Token | Value | Use |
+|---|---|---|
+| `--pill-height-sm` | `20px` | inline status chip |
+| `--pill-height-md` | `24px` | default pill / badge |
 
 ## Icon buttons
 
 Per `/DESIGN.md` §9: "ghost icon buttons at **28px** with **14px** icons".
+
+| Frame token | Inner token | Frame | Inner |
+|---|---|---|---|
+| `--button-icon-size-sm` | `--icon-inner-size-sm` | `24px` | `12px` |
+| `--button-icon-size-md` | `--icon-inner-size-md` | `28px` | `14px` |
+| `--button-icon-size-lg` | `--icon-inner-size-lg` | `32px` | `16px` |
 
 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 16 }}>
   {[

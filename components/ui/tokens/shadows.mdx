@@ -23,6 +23,8 @@ with a dark canvas.
     { name: '--shadow-md', label: 'Level 2 — shadow-md' },
     { name: '--shadow-lg', label: 'Level 3 — shadow-lg (dialogs)' },
     { name: '--shadow-panel', label: 'Feature lift — shadow-panel' },
+    { name: '--shadow-stage', label: 'Stage lift — canvas / preview surfaces' },
+    { name: '--shadow-error', label: 'Error halo — destructive surfaces' },
   ].map(({ name, label }) => (
     <div
       key={name}
@@ -44,13 +46,17 @@ with a dark canvas.
 
 ## Levels
 
-| Level | Treatment | Use |
-|-------|-----------|-----|
-| 0 Flat | No shadow | Background surfaces, text blocks |
-| 0.5 Inset edge | `inset 0 0 0 0.5px var(--border)` | Panel internal edge definition |
-| 1 Outline ring | `0 0 0 1px var(--border), 0 1px 2px var(--darker-100)` | Shadow-as-border for cards |
-| 2 Elevated | `0 1px 2px + 0 4px 12px` | Prominent cards, dropdowns |
-| 3 Feature lift | `0 8px 24px var(--darker-200), 0 0 0 1px var(--border)` | Dialogs, popovers |
+| Level | Token | Use |
+|-------|-------|-----|
+| 0 Flat | — | Background surfaces, text blocks |
+| 0.5 Inset edge | `--shadow-inset-edge` | Panel internal edge definition |
+| 1 Outline ring | `--shadow-outline` | Shadow-as-border for cards |
+| 1 Subtle lift | `--shadow-sm` | Resting cards, subtle elevation |
+| 2 Elevated | `--shadow-md` | Prominent cards, dropdowns |
+| 3 Feature lift | `--shadow-lg` | Dialogs, popovers |
+| Panel | `--shadow-panel` | Floating panels (color picker, command menu) |
+| Stage | `--shadow-stage` | Canvas / preview stage surfaces |
+| Error | `--shadow-error` | Destructive surfaces (validation halos) |
 
 ## Don't
 

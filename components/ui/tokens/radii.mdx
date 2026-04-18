@@ -8,16 +8,16 @@ Sourced from `/DESIGN.md` §4 "Component Stylings > Buttons" and §9
 example prompts. Generous radius is structural — `/DESIGN.md` §8
 explicitly bans sharp corners (less than 6px) on interactive elements.
 
-## Canonical values
+## Canonical roles
 
 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginTop: 16 }}>
   {[
-    { name: 'toolbar action', radius: 8, css: '0.5rem' },
-    { name: 'search input', radius: 10, css: '0.625rem' },
-    { name: 'panel nav', radius: 14, css: '0.875rem' },
-    { name: 'card / icon tile', radius: 14, css: '0.875rem' },
-    { name: 'pill / CTA', radius: 9999, css: '9999px' },
-  ].map(({ name, radius, css }) => (
+    { name: 'toolbar action', token: '--radius-toolbar-action', radius: 8, css: '0.5rem' },
+    { name: 'search input', token: '--radius-search', radius: 10, css: '0.625rem' },
+    { name: 'panel nav', token: '--radius-panel-nav', radius: 14, css: '0.875rem' },
+    { name: 'card / icon tile', token: '--radius-panel-nav', radius: 14, css: '0.875rem' },
+    { name: 'pill / CTA', token: '--radius-pill', radius: 9999, css: '9999px' },
+  ].map(({ name, token, radius, css }) => (
     <div key={name} style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
       <div
         style={{
@@ -31,10 +31,33 @@ explicitly bans sharp corners (less than 6px) on interactive elements.
       <div style={{ fontSize: 11, fontWeight: 550, color: 'var(--foreground)', textAlign: 'center' }}>
         {name}
       </div>
+      <code style={{ fontSize: 10, color: 'var(--foreground-tertiary)', textAlign: 'center' }}>{token}</code>
       <code style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>{css}</code>
     </div>
   ))}
 </div>
+
+## Token reference
+
+| Token | Value | Where it's used |
+|---|---|---|
+| `--radius-toolbar-action` | `0.5rem` (8px) | toolbar action buttons, standard text inputs |
+| `--radius-input` | `0.5rem` (8px) | input field corners |
+| `--radius-search` | `0.625rem` (10px) | search inputs |
+| `--radius-panel-nav` | `0.875rem` (14px) | panel navigation items, icon grid tiles |
+| `--radius-pill` | `9999px` | full pill — primary CTAs, badges, accent-soft chips |
+
+## Tailwind v4 scale
+
+Tailwind utilities (`rounded-sm`, `rounded`, `rounded-md`, `rounded-lg`,
+`rounded-xl`) resolve through these `@theme` aliases. They derive from
+the structural `--radius` base (`0.375rem`, 6px).
+
+| Token | Value | Tailwind utility |
+|---|---|---|
+| `--radius` | `0.375rem` (6px) | `rounded` |
+| `--radius-md` | `calc(var(--radius) - 2px)` | `rounded-md` |
+| `--radius-lg` | `var(--radius)` | `rounded-lg` |
 
 ## Usage rules (DESIGN.md §4 + §9)
 

@@ -10,7 +10,22 @@ Sourced from `/DESIGN.md` §7 "Motion & Interaction Feedback".
 > Motion should communicate state change, not decorate. Keep transitions
 > short and utility-like for editor responsiveness.
 
-## Concrete timing
+## Duration tokens
+
+The Cuneiform editor deliberately compresses transition timing to
+near-instant — long animations interrupt authoring flow.
+
+| Token | Value | Use |
+|---|---|---|
+| `--duration-fast` | `50ms` | hover / active state, resting → focused |
+| `--duration-normal` | `50ms` | default transition duration (currently aliased to `--duration-fast`) |
+
+Tailwind v4 utilities (`transition`, `duration-*`) resolve their
+default through `--default-transition-duration` (also `50ms`). Internal
+Tailwind machinery uses `--tw-duration` and `--tw-animation-duration`
+under the hood — those are runtime-managed, never set them directly.
+
+## Concrete timing per interaction
 
 | Interaction | Duration | Easing |
 |---|---|---|

@@ -31,8 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ds';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -362,16 +362,9 @@ export function Navbar() {
             </button>
           )}
 
-          <Badge
-            variant="outline"
-            className={`h-5 shrink-0 rounded-full px-2 text-[10px] font-medium tracking-tight ${
-              isDirty
-                ? 'status-warning-surface border-[color:var(--border-warning)]'
-                : 'border-border/70 bg-background/80 text-muted-foreground'
-            }`}
-          >
+          <StatusBadge variant={isDirty ? 'warning' : 'neutral'} size="sm">
             {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}
-          </Badge>
+          </StatusBadge>
         </div>
 
         <div className="flex-1" />

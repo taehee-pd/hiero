@@ -31,7 +31,9 @@
     "check:runtime-size": "bun scripts/check-runtime-size.ts",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "storybook:test": "vitest --project=storybook"
+    "build-storybook": "storybook build",
+    "storybook:test": "vitest --project=storybook",
+    "chromatic": "npx chromatic --project-token=chpt_deba03c55a73f2e"
   },
   "dependencies": {
     "@fontsource/work-sans": "^5.2.8",
@@ -111,6 +113,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitest/browser": "^3.2.4",
+    "chromatic": "^16.3.0",
     "eslint": "^10.0.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.9.0",

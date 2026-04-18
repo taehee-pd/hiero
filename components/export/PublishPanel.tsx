@@ -17,7 +17,7 @@ import { Upload, RefreshCw, Server, Circle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ds';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { exportSourcePayload } from '@/lib/sync-source';
 import { publishSourceFiles, pingDevServer } from '@/lib/live-sync/publish-transport';
@@ -250,22 +250,22 @@ export function PublishPanel() {
 function ConnectionBadge({ status }: { status: ConnectionStatus }) {
   if (status === 'connected') {
     return (
-      <Badge variant="outline" className="text-[9px] py-0 text-emerald-600 border-emerald-200">
+      <StatusBadge variant="success" size="sm" className="text-[9px]">
         connected
-      </Badge>
+      </StatusBadge>
     );
   }
   if (status === 'disconnected') {
     return (
-      <Badge variant="outline" className="text-[9px] py-0 status-warning-surface">
+      <StatusBadge variant="warning" size="sm" className="text-[9px]">
         disconnected
-      </Badge>
+      </StatusBadge>
     );
   }
   return (
-    <Badge variant="outline" className="text-[9px] py-0 text-muted-foreground">
+    <StatusBadge variant="neutral" size="sm" className="text-[9px]">
       …
-    </Badge>
+    </StatusBadge>
   );
 }
 

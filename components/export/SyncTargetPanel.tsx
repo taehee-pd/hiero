@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ds';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { toast } from '@/components/ui/use-toast';
@@ -240,22 +241,22 @@ function SyncTargetCard({
                   </Badge>
                 ) : null}
                 {target.autoPublish?.on === 'save' ? (
-                  <Badge variant="outline" className="text-[10px] text-green-600">
+                  <StatusBadge variant="success" size="sm" className="text-[10px]">
                     auto-publish
-                  </Badge>
+                  </StatusBadge>
                 ) : null}
                 {target.dryRun ? (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">
+                  <StatusBadge variant="warning" size="sm" className="text-[10px]">
                     dry-run
-                  </Badge>
+                  </StatusBadge>
                 ) : null}
-                <Badge variant="outline" className="text-[10px] text-emerald-600">
+                <StatusBadge variant="success" size="sm" className="text-[10px]">
                   server token
-                </Badge>
+                </StatusBadge>
                 {isPending ? (
-                  <Badge variant="outline" className="text-[10px] text-amber-600">
+                  <StatusBadge variant="warning" size="sm" className="text-[10px]">
                     pending
-                  </Badge>
+                  </StatusBadge>
                 ) : null}
               </>
             ) : null}

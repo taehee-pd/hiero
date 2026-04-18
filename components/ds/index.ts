@@ -20,3 +20,9 @@
 // with ColorPicker (moved from the deleted components/kibo-ui folder).
 
 export * from './color-picker';
+export { StatusBadge } from './status-badge';
+export type {
+  StatusBadgeProps,
+  StatusBadgeVariant,
+  StatusBadgeSize,
+} from './status-badge';

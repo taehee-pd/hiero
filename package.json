@@ -30,8 +30,8 @@
     "release:icons:dry-run": "bun scripts/release-icons-dry-run.ts",
     "check:runtime-size": "bun scripts/check-runtime-size.ts",
     "storybook": "storybook dev -p 6006",
-    "storybook:build": "storybook build",
-    "build-storybook": "storybook build",
+    "storybook:build": "storybook build --stats-json",
+    "build-storybook": "storybook build --stats-json",
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {

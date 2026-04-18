@@ -1,6 +1,5 @@
 import { editorStore } from '@/lib/editor-store/store';
 import {
-  selectCurrentIcon,
   selectCurrentVariant,
   selectCurrentType,
 } from '@/lib/editor-store/selectors';
@@ -12,7 +11,7 @@ import {
   pauseHistory,
   resumeHistory,
 } from '@/lib/editor-store/history';
-import { buildPrimitivePath } from './path-shapes';
+import { buildPrimitivePath, translatePrimitive } from './path-shapes';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { EditablePath, PathPoint } from './path-model';
 import type { GuideItem, Layer, PrimitiveShape } from '@/lib/schema/types';
@@ -388,10 +387,11 @@ export class PathEditor {
     const selectedLayerId = state.selection.layerIds[0] ?? null;
     if (!selectedLayerId) return null;
 
-    const iconId = state.currentIconId;
-    if (!iconId) return null;
-
-    const selectedPath = getActiveVariantSnapshot(state, iconId)?.layers[selectedLayerId]?.path?.d;
+    // Read through the scope-aware reader so guide-master layers (created
+    // via the first pen click while in guide scope) can be reopened for
+    // continuation. The icon-only `getActiveVariantSnapshot` would return
+    // null in guide scope and force every click into a brand-new path.
+    const selectedPath = this.readCurrentLayersForEditor()?.[selectedLayerId]?.path?.d;
     if (!selectedPath || !isPathDirectlyEditable(selectedPath)) return null;
 
     return selectedLayerId;
@@ -440,10 +440,12 @@ export class PathEditor {
     pointerId: number,
   ): PenPlacement | 'closed' | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) return null;
-
-    const layer = getActiveVariantSnapshot(state, iconId)?.layers[layerId];
+    // Scope-aware lookup so guide-master layers (created on the first pen
+    // click while in guide scope) can be continued. `patchLayer` below also
+    // routes by `editScope`, so the first arg is a placeholder that the
+    // store ignores in guide scope.
+    const iconId = state.currentIconId ?? '';
+    const layer = this.readCurrentLayersForEditor()?.[layerId];
     if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
@@ -505,9 +507,12 @@ export class PathEditor {
 
   private startLayerDrag(layerId: string, clientX: number, clientY: number) {
     const state = editorStore.getState();
-    const icon = selectCurrentIcon(state);
+    // `selectCurrentType` is scope-aware (resolves to the master in guide
+    // scope), so we don't need an icon here. The previous `selectCurrentIcon`
+    // gate was load-bearing for icon scope but bailed out in guide scope and
+    // made guide-master layers unmovable.
     const currentState = selectCurrentType(state);
-    if (!icon || !currentState) return;
+    if (!currentState) return;
     const layer = currentState.layers[layerId];
     if (!layer) return;
 
@@ -1537,6 +1542,13 @@ export class PathEditor {
           x: 0,
           y: 0,
         },
+        // Pure translation preserves the parametric description; carry the
+        // primitive through so `patchLayer`'s "drop primitive on path patch"
+        // invariant doesn't strip Inspector controls (sides, points, radius)
+        // after a simple move.
+        ...(layer.primitive
+          ? { primitive: translatePrimitive(layer.primitive, dx, dy) }
+          : null),
       });
     } else {
       // For non-editable paths (circles, complex shapes), persist the move via transform

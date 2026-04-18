@@ -183,6 +183,39 @@ export function createLinePath(
  * action `setLayerPrimitive` — guaranteeing the Inspector and the canvas use
  * the exact same geometry.
  */
+/**
+ * Translate a primitive's anchor coordinates by (dx, dy) without changing its
+ * shape parameters. Used by `commitLayerDrag` to keep the parametric metadata
+ * in sync with a translated `path.d` so the Inspector doesn't lose
+ * polygon/star/rect controls after a simple move. Anything that mutates
+ * topology non-uniformly (point drag, control drag, boolean ops) must still
+ * drop `primitive` via `patchLayer`'s invariant.
+ */
+export function translatePrimitive(
+  primitive: PrimitiveShape,
+  dx: number,
+  dy: number,
+): PrimitiveShape {
+  switch (primitive.kind) {
+    case 'rectangle':
+      return { ...primitive, x: primitive.x + dx, y: primitive.y + dy };
+    case 'ellipse':
+      return { ...primitive, cx: primitive.cx + dx, cy: primitive.cy + dy };
+    case 'polygon':
+      return { ...primitive, cx: primitive.cx + dx, cy: primitive.cy + dy };
+    case 'star':
+      return { ...primitive, cx: primitive.cx + dx, cy: primitive.cy + dy };
+    case 'line':
+      return {
+        ...primitive,
+        x1: primitive.x1 + dx,
+        y1: primitive.y1 + dy,
+        x2: primitive.x2 + dx,
+        y2: primitive.y2 + dy,
+      };
+  }
+}
+
 export function buildPrimitivePath(primitive: PrimitiveShape): string {
   switch (primitive.kind) {
     case 'rectangle':

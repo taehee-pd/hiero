@@ -12,57 +12,305 @@ page diffs.
 > **Reserve strong accent saturation for primary actions, focus indicators,
 > and active states.** Use `--primary-soft` for selected backgrounds,
 > active pane highlights, hover badges. Use warm surface treatment
-> (`--surface-warm`) for featured CTA areas.
+> (`--bg-toolbar`) for featured CTA areas.
+
+export const Swatch = ({ name, label, columns = 2 }) => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: 12,
+      border: '1px solid var(--border)',
+      borderRadius: 12,
+      background: 'var(--background)',
+      color: 'var(--foreground)',
+    }}
+  >
+    <span
+      aria-hidden="true"
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        background: `var(${name})`,
+        border: '1px solid var(--border)',
+        flex: 'none',
+      }}
+    />
+    <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
+      <code style={{ fontSize: 12 }}>{name}</code>
+      {label ? <span style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>{label}</span> : null}
+    </div>
+  </div>
+);
+
+export const Grid = ({ children, columns = 2 }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 12, marginTop: 16 }}>
+    {children}
+  </div>
+);
 
 ## Core semantic roles
 
-<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
-  {[
-    { name: '--background', label: 'background / shell' },
-    { name: '--background-secondary', label: 'panel surface' },
-    { name: '--surface-warm', label: 'warm surface (feature CTA)' },
-    { name: '--foreground', label: 'text primary' },
-    { name: '--foreground-secondary', label: 'text secondary' },
-    { name: '--foreground-tertiary', label: 'text tertiary / muted' },
-    { name: '--border', label: 'border / separators' },
-    { name: '--border-subtle', label: 'border subtle' },
-    { name: '--primary', label: 'accent (brand / action)' },
-    { name: '--primary-soft', label: 'accent soft' },
-    { name: '--foreground-success', label: 'foreground — success' },
-    { name: '--foreground-warning', label: 'foreground — warning' },
-    { name: '--foreground-danger', label: 'foreground — danger' },
-  ].map(({ name, label }) => (
-    <div
-      key={name}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: 12,
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        background: 'var(--background)',
-        color: 'var(--foreground)',
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          background: `var(${name})`,
-          border: '1px solid var(--border)',
-          flex: 'none',
-        }}
-      />
-      <div style={{ display: 'grid', gap: 2 }}>
-        <code style={{ fontSize: 12 }}>{name}</code>
-        <span style={{ fontSize: 11, color: 'var(--foreground-secondary)' }}>{label}</span>
-      </div>
-    </div>
-  ))}
-</div>
+The 13 tokens that power 95% of the UI. Reach for these first.
+
+<Grid columns={2}>
+  <Swatch name="--background" label="background / shell" />
+  <Swatch name="--background-secondary" label="panel surface" />
+  <Swatch name="--bg-toolbar" label="warm surface (feature CTA)" />
+  <Swatch name="--foreground" label="text primary" />
+  <Swatch name="--foreground-secondary" label="text secondary" />
+  <Swatch name="--foreground-tertiary" label="text tertiary / muted" />
+  <Swatch name="--border" label="border / separators" />
+  <Swatch name="--border-subtle" label="border subtle" />
+  <Swatch name="--primary" label="accent (brand / action)" />
+  <Swatch name="--primary-soft" label="accent soft" />
+  <Swatch name="--foreground-success" label="foreground — success" />
+  <Swatch name="--foreground-warning" label="foreground — warning" />
+  <Swatch name="--foreground-danger" label="foreground — danger" />
+</Grid>
+
+## Backgrounds
+
+<Grid columns={2}>
+  <Swatch name="--background" label="page / shell" />
+  <Swatch name="--background-secondary" label="panel surface" />
+  <Swatch name="--background-hover" label="hover overlay" />
+  <Swatch name="--background-highlight" label="highlight (selected row)" />
+  <Swatch name="--background-success" label="success surface" />
+  <Swatch name="--background-warning" label="warning surface" />
+  <Swatch name="--background-warning-alt" label="warning surface alt" />
+  <Swatch name="--background-danger" label="danger surface" />
+  <Swatch name="--bg-sidebar" label="sidebar surface" />
+  <Swatch name="--bg-toolbar" label="toolbar surface" />
+  <Swatch name="--bg-content" label="content surface" />
+</Grid>
+
+## Foregrounds
+
+<Grid columns={2}>
+  <Swatch name="--foreground" label="text primary" />
+  <Swatch name="--foreground-secondary" label="text secondary" />
+  <Swatch name="--foreground-tertiary" label="text muted" />
+  <Swatch name="--foreground-fixed-white" label="fixed-white text (on dark surfaces)" />
+  <Swatch name="--foreground-highlight" label="text on highlight" />
+  <Swatch name="--foreground-success" label="success text" />
+  <Swatch name="--foreground-warning" label="warning text" />
+  <Swatch name="--foreground-danger" label="danger text" />
+</Grid>
+
+## Borders
+
+<Grid columns={2}>
+  <Swatch name="--border" label="default border" />
+  <Swatch name="--border-secondary" label="border secondary (stronger)" />
+  <Swatch name="--border-tertiary" label="border tertiary (strongest)" />
+  <Swatch name="--border-subtle" label="border subtle" />
+  <Swatch name="--border-separator" label="separator line" />
+  <Swatch name="--border-level-2" label="layered border level 2" />
+  <Swatch name="--border-level-3" label="layered border level 3" />
+  <Swatch name="--border-selected" label="selected outline" />
+  <Swatch name="--border-success" label="success border" />
+  <Swatch name="--border-warning" label="warning border" />
+  <Swatch name="--border-danger" label="danger border" />
+</Grid>
+
+## Rings & focus
+
+<Grid columns={2}>
+  <Swatch name="--ring" label="default focus ring" />
+</Grid>
+
+## Brand & accent
+
+<Grid columns={2}>
+  <Swatch name="--primary" label="primary brand color" />
+  <Swatch name="--primary-foreground" label="text on primary" />
+  <Swatch name="--primary-soft" label="primary soft (selected bg)" />
+</Grid>
+
+## Surface roles (shadcn)
+
+The semantic role tokens consumed by shadcn/ui primitives. Each
+surface ships with its own foreground pair to guarantee contrast.
+
+<Grid columns={2}>
+  <Swatch name="--card" label="card surface" />
+  <Swatch name="--card-foreground" label="card text" />
+  <Swatch name="--popover" label="popover surface" />
+  <Swatch name="--popover-foreground" label="popover text" />
+  <Swatch name="--secondary" label="secondary surface" />
+  <Swatch name="--secondary-foreground" label="secondary text" />
+  <Swatch name="--muted" label="muted surface" />
+  <Swatch name="--muted-foreground" label="muted text" />
+  <Swatch name="--accent" label="accent surface" />
+  <Swatch name="--accent-foreground" label="accent text" />
+  <Swatch name="--destructive" label="destructive surface" />
+  <Swatch name="--destructive-foreground" label="destructive text" />
+  <Swatch name="--input" label="input field border" />
+</Grid>
+
+## Chart series
+
+Used by analytics / metric visualizations.
+
+<Grid columns={5}>
+  <Swatch name="--chart-1" label="series 1" />
+  <Swatch name="--chart-2" label="series 2" />
+  <Swatch name="--chart-3" label="series 3" />
+  <Swatch name="--chart-4" label="series 4" />
+  <Swatch name="--chart-5" label="series 5" />
+</Grid>
+
+## Sidebar scope
+
+A discrete palette so the navigation rail can theme independently
+from the main canvas surface.
+
+<Grid columns={2}>
+  <Swatch name="--sidebar" label="sidebar background" />
+  <Swatch name="--sidebar-foreground" label="sidebar text" />
+  <Swatch name="--sidebar-primary" label="sidebar primary action" />
+  <Swatch name="--sidebar-primary-foreground" label="sidebar primary text" />
+  <Swatch name="--sidebar-accent" label="sidebar accent surface" />
+  <Swatch name="--sidebar-accent-foreground" label="sidebar accent text" />
+  <Swatch name="--sidebar-border" label="sidebar border" />
+  <Swatch name="--sidebar-ring" label="sidebar focus ring" />
+</Grid>
+
+## Canvas
+
+<Grid columns={2}>
+  <Swatch name="--canvas-bg" label="canvas background" />
+</Grid>
+
+## Editor mode (`.editor-mode` scope)
+
+Warm-paper skin applied within the icon editor surface only. Defined
+under the `.editor-mode` class scope, so swatches here render against
+the active theme's editor palette.
+
+<Grid columns={2}>
+  <Swatch name="--editor-panel" label="editor panel surface" />
+  <Swatch name="--editor-panel-strong" label="editor panel surface (strong)" />
+  <Swatch name="--editor-border" label="editor border" />
+  <Swatch name="--editor-border-strong" label="editor border (strong)" />
+  <Swatch name="--editor-ink" label="editor ink (text/handles)" />
+  <Swatch name="--editor-muted" label="editor muted text" />
+  <Swatch name="--editor-accent" label="editor accent" />
+  <Swatch name="--editor-accent-soft" label="editor accent soft" />
+  <Swatch name="--editor-stage-bg" label="editor stage background" />
+</Grid>
+
+## Foundational palette
+
+Raw color primitives. Prefer semantic tokens above; reach for
+primitives only when composing new semantic tokens.
+
+### Greyscale
+
+<Grid columns={4}>
+  <Swatch name="--greyscale-000" label="#FFFFFF" />
+  <Swatch name="--greyscale-100" label="#F3F7FA" />
+  <Swatch name="--greyscale-200" label="#CBD1D6" />
+  <Swatch name="--greyscale-400" label="#7E8991" />
+  <Swatch name="--greyscale-600" label="#3C464D" />
+  <Swatch name="--greyscale-700" label="#21282D" />
+  <Swatch name="--greyscale-800" label="#090D10" />
+  <Swatch name="--greyscale-900" label="#0A0A0A" />
+</Grid>
+
+### Blue
+
+<Grid columns={4}>
+  <Swatch name="--blue-100" />
+  <Swatch name="--blue-200" />
+  <Swatch name="--blue-300" />
+  <Swatch name="--blue-400" />
+  <Swatch name="--blue-500" />
+  <Swatch name="--blue-600" />
+  <Swatch name="--blue-700" />
+  <Swatch name="--blue-800" />
+</Grid>
+
+### Red
+
+<Grid columns={4}>
+  <Swatch name="--red-100" />
+  <Swatch name="--red-200" />
+  <Swatch name="--red-300" />
+  <Swatch name="--red-400" />
+  <Swatch name="--red-500" />
+  <Swatch name="--red-600" />
+  <Swatch name="--red-700" />
+  <Swatch name="--red-800" />
+</Grid>
+
+### Green
+
+<Grid columns={4}>
+  <Swatch name="--green-100" />
+  <Swatch name="--green-200" />
+  <Swatch name="--green-300" />
+  <Swatch name="--green-400" />
+  <Swatch name="--green-500" />
+  <Swatch name="--green-600" />
+  <Swatch name="--green-700" />
+  <Swatch name="--green-800" />
+</Grid>
+
+### Yellow
+
+<Grid columns={4}>
+  <Swatch name="--yellow-100" />
+  <Swatch name="--yellow-200" />
+  <Swatch name="--yellow-300" />
+  <Swatch name="--yellow-400" />
+  <Swatch name="--yellow-500" />
+  <Swatch name="--yellow-600" />
+  <Swatch name="--yellow-700" />
+  <Swatch name="--yellow-800" />
+</Grid>
+
+### Purple
+
+<Grid columns={4}>
+  <Swatch name="--purple-300" />
+  <Swatch name="--purple-400" />
+</Grid>
+
+### Teal
+
+<Grid columns={4}>
+  <Swatch name="--teal-300" />
+  <Swatch name="--teal-400" />
+</Grid>
+
+### Darker (alpha-on-black overlays)
+
+<Grid columns={4}>
+  <Swatch name="--darker-000" />
+  <Swatch name="--darker-100" />
+  <Swatch name="--darker-200" />
+  <Swatch name="--darker-300" />
+  <Swatch name="--darker-400" />
+  <Swatch name="--darker-500" />
+  <Swatch name="--darker-700" />
+</Grid>
+
+### Lighter (alpha-on-white overlays)
+
+<Grid columns={4}>
+  <Swatch name="--lighter-000" />
+  <Swatch name="--lighter-200" />
+  <Swatch name="--lighter-300" />
+  <Swatch name="--lighter-400" />
+  <Swatch name="--lighter-500" />
+  <Swatch name="--lighter-600" />
+  <Swatch name="--lighter-700" />
+  <Swatch name="--lighter-900" />
+</Grid>
 
 ## Light / dark reference values
 
@@ -74,7 +322,7 @@ whichever theme is currently active via the toolbar.
 |---------|-------|------|
 | Background | `#FFFFFF` | `#0A0A0A` |
 | Surface | `#F3F7FA` | `#21282D` |
-| Warm surface | `rgba(243,247,250,0.8)` | `rgba(33,40,45,0.8)` |
+| Toolbar surface | `rgba(246,246,246,0.82)` | `rgba(38,38,38,0.85)` |
 | Text | `#090D10` | `#FFFFFF` |
 | Text secondary | `#3C464D` | `#CBD1D6` |
 | Text muted | `#7E8991` | `#7E8991` |
@@ -89,3 +337,4 @@ whichever theme is currently active via the toolbar.
 - **Do** preserve panel/surface hierarchy through tone and border contrast before reaching for shadow.
 - **Don't** introduce new chroma families without an explicit product decision.
 - **Don't** raise accent saturation for ambient decoration.
+- **Don't** reach for foundational palette tokens (`--blue-400`, `--greyscale-700`) inside components — compose a semantic token instead.

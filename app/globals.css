@@ -13,9 +13,7 @@
   --greyscale-000: #FFFFFF;
   --greyscale-100: #F3F7FA;
   --greyscale-200: #CBD1D6;
-  --greyscale-300: #A3ACB3;
   --greyscale-400: #7E8991;
-  --greyscale-500: #5B676F;
   --greyscale-600: #3C464D;
   --greyscale-700: #21282D;
   --greyscale-800: #090D10;
@@ -62,24 +60,12 @@
   --yellow-800: #220000;
 
   /* Purple */
-  --purple-100: #FFEDFF;
-  --purple-200: #E9C1FF;
   --purple-300: #D292FF;
   --purple-400: #BA5FFF;
-  --purple-500: #9F2AFC;
-  --purple-600: #7E00D0;
-  --purple-700: #5A0097;
-  --purple-800: #38085E;
 
   /* Teal */
-  --teal-100: #DAFFFB;
-  --teal-200: #9FE8DC;
   --teal-300: #55CFBD;
   --teal-400: #00B4A0;
-  --teal-500: #009682;
-  --teal-600: #007564;
-  --teal-700: #005447;
-  --teal-800: #00342C;
 
   /* Darker (black + alpha) */
   --darker-000: rgba(0, 0, 0, 0);
@@ -88,21 +74,16 @@
   --darker-300: rgba(0, 0, 0, 0.20);
   --darker-400: rgba(0, 0, 0, 0.30);
   --darker-500: rgba(0, 0, 0, 0.50);
-  --darker-600: rgba(0, 0, 0, 0.80);
   --darker-700: rgba(0, 0, 0, 0.85);
-  --darker-800: rgba(0, 0, 0, 0.90);
-  --darker-900: rgba(0, 0, 0, 0.95);
 
   /* Lighter (white + alpha) */
   --lighter-000: rgba(255, 255, 255, 0);
-  --lighter-100: rgba(255, 255, 255, 0.05);
   --lighter-200: rgba(255, 255, 255, 0.10);
   --lighter-300: rgba(255, 255, 255, 0.20);
   --lighter-400: rgba(255, 255, 255, 0.40);
   --lighter-500: rgba(255, 255, 255, 0.70);
   --lighter-600: rgba(255, 255, 255, 0.80);
   --lighter-700: rgba(255, 255, 255, 0.85);
-  --lighter-800: rgba(255, 255, 255, 0.90);
   --lighter-900: rgba(255, 255, 255, 0.95);
 
   /* ── System Typography Stacks ── */
@@ -193,7 +174,6 @@
   /* ── Border Levels ── */
   --border-subtle: rgba(0, 0, 0, 0.06);
   --border-separator: rgba(0, 0, 0, 0.1);
-  --border-level-1: var(--border-subtle);
   --border-level-2: var(--border-separator);
   --border-level-3: rgba(0, 0, 0, 0.16);
 }
@@ -208,48 +188,33 @@
   --background: var(--greyscale-000);
   --background-secondary: var(--greyscale-100);
   --background-hover: var(--darker-200);
-  --background-inverse: var(--greyscale-900);
-  --background-ghost: var(--lighter-000);
-  --background-highlight-alt: var(--blue-400);
   --background-highlight: var(--blue-100);
-  --background-danger-alt: var(--red-400);
   --background-danger: var(--red-100);
-  --background-success-alt: var(--green-400);
   --background-success: var(--green-100);
   --background-warning-alt: var(--yellow-400);
   --background-warning: var(--yellow-100);
-  --background-disabled: var(--greyscale-200);
 
   /* ── Foreground ── */
   --foreground: var(--greyscale-800);
   --foreground-secondary: var(--greyscale-600);
   --foreground-tertiary: var(--greyscale-400);
-  --foreground-inverse: var(--greyscale-000);
   --foreground-fixed-white: var(--greyscale-000);
-  --foreground-fixed-black: var(--greyscale-900);
   --foreground-highlight: var(--blue-600);
   --foreground-danger: var(--red-600);
   --foreground-success: var(--green-600);
   --foreground-warning: var(--yellow-600);
-  --foreground-disabled: var(--darker-500);
-  --foreground-ghost: var(--darker-300);
 
   /* ── Border ── */
   --border: var(--darker-100);
   --border-secondary: var(--darker-200);
   --border-tertiary: var(--darker-300);
-  --border-inverse: var(--lighter-500);
-  --border-ghost: var(--darker-000);
   --border-selected: var(--blue-500);
   --border-danger: var(--red-500);
   --border-success: var(--green-500);
   --border-warning: var(--yellow-500);
-  --border-disabled: var(--darker-200);
 
   /* ── Ring ── */
   --ring: var(--darker-700);
-  --ring-secondary: var(--darker-400);
-  --ring-inverse: var(--lighter-700);
 
   /* ── shadcn/ui compatibility ── */
   --card: var(--greyscale-000);
@@ -289,10 +254,6 @@
 
   /* ── Editor ── */
   --canvas-bg: var(--greyscale-000);
-  --canvas-grid: var(--darker-200);
-  --selection: var(--blue-500);
-  --handle: var(--greyscale-800);
-  --toolbar-bg: rgba(255, 255, 255, 0.76);
 
   /* ── Accent Soft ── */
   --primary-soft: rgba(49, 134, 238, 0.08);
@@ -317,46 +278,32 @@
   --background: var(--greyscale-900);
   --background-secondary: var(--greyscale-700);
   --background-hover: var(--lighter-400);
-  --background-inverse: var(--greyscale-000);
-  --background-ghost: var(--darker-000);
-  --background-highlight-alt: var(--greyscale-900);
   --background-highlight: var(--blue-700);
-  --background-danger-alt: var(--red-400);
   --background-danger: var(--red-700);
-  --background-success-alt: var(--green-400);
   --background-success: var(--green-700);
   --background-warning-alt: var(--yellow-400);
   --background-warning: var(--yellow-700);
-  --background-disabled: var(--greyscale-600);
 
   /* ── Foreground ── */
   --foreground: var(--greyscale-000);
   --foreground-secondary: var(--greyscale-200);
   --foreground-tertiary: var(--greyscale-400);
-  --foreground-inverse: var(--greyscale-900);
   --foreground-highlight: var(--blue-300);
   --foreground-danger: var(--red-300);
   --foreground-success: var(--green-300);
   --foreground-warning: var(--yellow-300);
-  --foreground-disabled: var(--lighter-700);
-  --foreground-ghost: var(--lighter-400);
 
   /* ── Border ── */
   --border: var(--lighter-300);
   --border-secondary: var(--lighter-400);
   --border-tertiary: var(--lighter-500);
-  --border-inverse: var(--darker-700);
-  --border-ghost: var(--lighter-000);
   --border-selected: var(--blue-300);
   --border-danger: var(--red-300);
   --border-success: var(--green-300);
   --border-warning: var(--yellow-300);
-  --border-disabled: var(--lighter-400);
 
   /* ── Ring ── */
   --ring: var(--lighter-900);
-  --ring-secondary: var(--lighter-600);
-  --ring-inverse: var(--darker-700);
 
   /* ── shadcn/ui compatibility ── */
   --card: var(--greyscale-900);
@@ -394,10 +341,6 @@
 
   /* ── Editor ── */
   --canvas-bg: var(--greyscale-900);
-  --canvas-grid: var(--lighter-200);
-  --selection: var(--blue-300);
-  --handle: var(--greyscale-000);
-  --toolbar-bg: rgba(10, 10, 10, 0.78);
 
   /* ── Vibrancy (dark) ── */
   --bg-sidebar: rgba(30, 30, 30, 0.78);
@@ -407,7 +350,6 @@
   --border-separator: rgba(255, 255, 255, 0.1);
 
   /* ── Dark Border Levels ── */
-  --border-level-1: var(--border-subtle);
   --border-level-2: var(--border-separator);
   --border-level-3: rgba(255, 255, 255, 0.18);
 
@@ -491,17 +433,10 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-input: var(--input);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
 
   /* ── Sidebar ── */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
@@ -511,44 +446,24 @@
   --color-primary-soft: var(--primary-soft);
 
   /* ── Status colors (semantic surfaces) ── */
-  --color-background-danger: var(--background-danger);
   --color-background-warning: var(--background-warning);
   --color-background-warning-alt: var(--background-warning-alt);
-  --color-background-success: var(--background-success);
-  --color-background-highlight: var(--background-highlight);
-  --color-foreground-danger: var(--foreground-danger);
-  --color-foreground-warning: var(--foreground-warning);
-  --color-foreground-success: var(--foreground-success);
-  --color-foreground-highlight: var(--foreground-highlight);
   --color-foreground-fixed-white: var(--foreground-fixed-white);
-  --color-border-danger: var(--border-danger);
   --color-border-warning: var(--border-warning);
-  --color-border-success: var(--border-success);
 
   /* ── Primitive: Blue (used by components via Tailwind utilities) ── */
   --color-blue-100: var(--blue-100);
-  --color-blue-200: var(--blue-200);
   --color-blue-300: var(--blue-300);
-  --color-blue-400: var(--blue-400);
   --color-blue-500: var(--blue-500);
   --color-blue-600: var(--blue-600);
-  --color-blue-700: var(--blue-700);
-  --color-blue-800: var(--blue-800);
 
   /* ── Primitive: Red ── */
-  --color-red-100: var(--red-100);
-  --color-red-200: var(--red-200);
   --color-red-300: var(--red-300);
   --color-red-400: var(--red-400);
   --color-red-500: var(--red-500);
-  --color-red-600: var(--red-600);
-  --color-red-700: var(--red-700);
-  --color-red-800: var(--red-800);
 
   /* ── Primitive: Green ── */
   --color-green-100: var(--green-100);
-  --color-green-200: var(--green-200);
-  --color-green-300: var(--green-300);
   --color-green-400: var(--green-400);
   --color-green-500: var(--green-500);
   --color-green-600: var(--green-600);
@@ -557,12 +472,8 @@
 
   /* ── Primitive: Yellow ── */
   --color-yellow-100: var(--yellow-100);
-  --color-yellow-200: var(--yellow-200);
-  --color-yellow-300: var(--yellow-300);
-  --color-yellow-400: var(--yellow-400);
   --color-yellow-500: var(--yellow-500);
   --color-yellow-600: var(--yellow-600);
-  --color-yellow-700: var(--yellow-700);
   --color-yellow-800: var(--yellow-800);
 
 }

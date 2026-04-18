@@ -3,16 +3,16 @@
 /**
  * ReleasePanel — Lane 2 (Release Distribution) editor surface.
  *
- * Polls the contour dev server's /api/status endpoint to discover release
- * targets configured in the consumer repo's contour.config.ts. Once connected,
+ * Polls the cuneiform dev server's /api/status endpoint to discover release
+ * targets configured in the consumer repo's cuneiform.config.ts. Once connected,
  * renders a card for each target:
  *
- *   local-directory  →  "Push Source" (sends to dev server; user runs `contour build`)
+ *   local-directory  →  "Push Source" (sends to dev server; user runs `cuneiform build`)
  *   git-pr           →  delegates to SyncPrPanel
- *   npm-registry     →  "Push Source" (sends to dev server; user runs `contour publish`)
+ *   npm-registry     →  "Push Source" (sends to dev server; user runs `cuneiform publish`)
  *
  * When the dev server is unreachable a placeholder guides the user to run
- * `contour dev` in the consumer repo.
+ * `cuneiform dev` in the consumer repo.
  *
  * Corresponds to screen 9C in specs/ui/screens.md.
  */
@@ -173,7 +173,7 @@ export function ReleasePanel() {
         </div>
       ) : connectionStatus === 'connected' && releaseTargets.length === 0 ? (
         <p className="text-[10px] text-muted-foreground text-center py-2">
-          No release targets in <code className="font-mono">contour.config.ts</code>.
+          No release targets in <code className="font-mono">cuneiform.config.ts</code>.
         </p>
       ) : (
         <ReleasePlaceholder devServerUrl={devServerUrl} />
@@ -222,7 +222,7 @@ function LocalDirectoryCard({
         setLastPushedAt(new Date().toISOString());
         toast({
           title: 'Source pushed',
-          description: `Run \`contour build\` in the consumer repo to write snapshot to ${target.outputDir}`,
+          description: `Run \`cuneiform build\` in the consumer repo to write snapshot to ${target.outputDir}`,
         });
       } else {
         toast({ title: 'Push failed', description: result.error, variant: 'destructive' });
@@ -247,7 +247,7 @@ function LocalDirectoryCard({
           {lastPushedAt && (
             <p className="text-[10px] text-emerald-600 mt-0.5 flex items-center gap-1">
               <CheckCircle2 className="size-2.5" />
-              Source pushed — run <code className="font-mono">contour build</code> to write snapshot
+              Source pushed — run <code className="font-mono">cuneiform build</code> to write snapshot
             </p>
           )}
         </div>
@@ -320,7 +320,7 @@ function NpmRegistryCard({
       if (result.kind === 'success') {
         toast({
           title: 'Source pushed',
-          description: `Run \`contour publish\` in the consumer repo to release ${target.packageName}`,
+          description: `Run \`cuneiform publish\` in the consumer repo to release ${target.packageName}`,
         });
       } else {
         toast({ title: 'Push failed', description: result.error, variant: 'destructive' });
@@ -369,11 +369,11 @@ function ReleasePlaceholder({ devServerUrl }: { devServerUrl: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border/60 px-4 py-5 text-center">
       <p className="text-xs text-muted-foreground">
-        Run <code className="font-mono">contour dev</code> in the consumer repo to connect.
+        Run <code className="font-mono">cuneiform dev</code> in the consumer repo to connect.
       </p>
       <p className="mt-1 text-[10px] text-muted-foreground font-mono">{devServerUrl}</p>
       <p className="mt-2 text-[10px] text-muted-foreground">
-        Release targets from <code className="font-mono">contour.config.ts</code> will appear here.
+        Release targets from <code className="font-mono">cuneiform.config.ts</code> will appear here.
       </p>
     </div>
   );

@@ -5,9 +5,9 @@
 
 ## Overview
 
-This spec defines the install-time configuration contract for Contour as a repo-native icon authoring platform.
+This spec defines the install-time configuration contract for Cuneiform as a repo-native icon authoring platform.
 
-The config file lives at the host repository root as `contour.config.ts`. Its job is to tell Contour:
+The config file lives at the host repository root as `cuneiform.config.ts`. Its job is to tell Cuneiform:
 
 - where canonical icon source lives
 - which host surfaces should update live during development
@@ -22,7 +22,7 @@ This replaces the older idea that one `SyncTarget` abstraction should own both d
 
 ## Goals
 
-- Make Contour installable into an existing repo
+- Make Cuneiform installable into an existing repo
 - Keep the host repo as the durable source of truth for shared icon source
 - Separate live feedback from release sync
 - Keep the config explicit and boring
@@ -37,13 +37,13 @@ This replaces the older idea that one `SyncTarget` abstraction should own both d
 
 ```typescript
 export default {
-  sourceDir: 'contour',
+  sourceDir: 'cuneiform',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.contour/cache/app',
+      cacheDir: '.cuneiform/cache/app',
     },
   ],
   releaseTargets: [
@@ -58,10 +58,10 @@ export default {
 
 ## Types
 
-### ContourConfig
+### CuneiformConfig
 
 ```typescript
-type ContourConfig = {
+type CuneiformConfig = {
   sourceDir: string;
   hostTargets: HostTarget[];
   releaseTargets?: ReleaseTarget[];
@@ -132,7 +132,7 @@ type NpmRegistryReleaseTarget = {
 Expected structure:
 
 ```text
-contour/
+cuneiform/
   manifest.json
   icons/
     alert/

@@ -29,7 +29,7 @@ export type AnimationProgressSnapshot = {
  * ```
  *
  * The hook re-renders on every external state change. For per-frame
- * rendering (60fps), prefer the `onFrame` prop on `ContourIcon` instead.
+ * rendering (60fps), prefer the `onFrame` prop on `CuneiformIcon` instead.
  */
 export function useAnimationProgress(
   driverRef: React.RefObject<{

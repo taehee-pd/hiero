@@ -1,6 +1,6 @@
 {
-  "name": "Export to Contour",
-  "id": "contour-export-to-contour",
+  "name": "Export to Cuneiform",
+  "id": "cuneiform-export-to-cuneiform",
   "api": "1.0.0",
   "editorType": ["figma"],
   "main": "code.js",

@@ -18,7 +18,7 @@ When in doubt, match the surrounding file rather than imposing a new house style
 Observed naming patterns:
 
 - React feature components in `components/editor/`, `components/explorer/`, and `components/export/` use PascalCase file names and component names.
-- Shared UI modules in `components/ui/` (shadcn/Radix primitives) and `components/ds/` (the cross-feature Contour design system layer) use lowercase file names, following shadcn-style conventions. The prior `components/kibo-ui/` facade was removed in the Phase 2 refactor documented in `specs/design-system-storybook.plan.md`.
+- Shared UI modules in `components/ui/` (shadcn/Radix primitives) and `components/ds/` (the cross-feature Cuneiform design system layer) use lowercase file names, following shadcn-style conventions. The prior `components/kibo-ui/` facade was removed in the Phase 2 refactor documented in `specs/design-system-storybook.plan.md`.
 - Library modules in `lib/` generally use lowercase or kebab-case file names with camelCase exports.
 - Tests use `*.test.ts` and `*.test.tsx`.
 
@@ -60,5 +60,5 @@ sentence case. The only remaining `text-transform` rule is one
 
 - A root-level ESLint flat config (`eslint.config.mjs`) exists with `no-explicit-any` and `exhaustive-deps` errors enabled.
 - Prettier is committed at the root (`.prettierrc.json`, `.prettierignore`) and enforced in CI via `format:check`.
-- Product naming uses `Contour` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).
+- Product naming uses `Cuneiform` as the canonical name. Legacy `icophone` identifiers remain only in compatibility surfaces (project files, update env vars).
 - `desktop/` retains build artifacts from the pre-R1 Electrobun shell but has no active source code. Do not add new modules there.

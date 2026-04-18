@@ -1,6 +1,6 @@
 {
-  "name": "Contour",
-  "short_name": "Contour",
+  "name": "Cuneiform",
+  "short_name": "Cuneiform",
   "description": "Icon design studio for stateful, animated SVG icons",
   "start_url": "/",
   "display": "standalone",
@@ -18,7 +18,7 @@
       "type": "image/png"
     },
     {
-      "src": "/contour.svg",
+      "src": "/cuneiform.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }

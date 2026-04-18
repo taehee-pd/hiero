@@ -79,7 +79,7 @@ import {
 
 export function Toolbar() {
   const router = useRouter();
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Contour');
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Cuneiform');
   const zoom = useEditorStore((s) => s.viewport.zoom);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
@@ -133,8 +133,8 @@ export function Toolbar() {
   // keybinding fires (`handleEditorKeyDown` dispatches the custom event).
   useEffect(() => {
     const handler = () => setShortcutsOpen(true);
-    window.addEventListener('contour:open-shortcuts', handler as EventListener);
-    return () => window.removeEventListener('contour:open-shortcuts', handler as EventListener);
+    window.addEventListener('cuneiform:open-shortcuts', handler as EventListener);
+    return () => window.removeEventListener('cuneiform:open-shortcuts', handler as EventListener);
   }, []);
 
   const runNewProject = useCallback(() => {
@@ -171,7 +171,7 @@ export function Toolbar() {
         editorStore.getState().loadProject(json);
       } else {
         clearCurrentProjectPath();
-        showToolbarError('Invalid Contour workspace file.');
+        showToolbarError('Invalid Cuneiform workspace file.');
       }
     } catch {
       clearCurrentProjectPath();

@@ -1,15 +1,15 @@
 # Flutter Integration Guide
 
-Use Contour icons in Flutter apps with full animation and state support.
+Use Cuneiform icons in Flutter apps with full animation and state support.
 
-This guide assumes you are consuming generated Flutter output from the Contour export pipeline.
+This guide assumes you are consuming generated Flutter output from the Cuneiform export pipeline.
 
 ## Install
 
 ```yaml
 # pubspec.yaml
 dependencies:
-  contour_icons: ^1.0.0
+  cuneiform_icons: ^1.0.0
 ```
 
 ```bash
@@ -19,12 +19,12 @@ flutter pub get
 ## Basic Usage
 
 ```dart
-import 'package:contour_icons/contour_icons.dart';
+import 'package:cuneiform_icons/cuneiform_icons.dart';
 
 class MyWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ContourIcon(
+    return CuneiformIcon(
       name: 'home',
       size: 24,
     );
@@ -51,7 +51,7 @@ class _InteractiveIconState extends State<InteractiveIcon> {
       onTap: () => setState(() {
         _state = _state == 'default' ? 'active' : 'default';
       }),
-      child: ContourIcon(
+      child: CuneiformIcon(
         name: 'home',
         state: _state,
         animate: true,
@@ -64,14 +64,14 @@ class _InteractiveIconState extends State<InteractiveIcon> {
 ## Variants
 
 ```dart
-ContourIcon(name: 'home', variant: '32px')
-ContourIcon(name: 'home', variant: 'filled')
+CuneiformIcon(name: 'home', variant: '32px')
+CuneiformIcon(name: 'home', variant: 'filled')
 ```
 
 ## Effects
 
 ```dart
-ContourIcon(
+CuneiformIcon(
   name: 'bell',
   effect: 'bounce',
   onEffectComplete: (effectId) => print('$effectId done'),
@@ -81,7 +81,7 @@ ContourIcon(
 ## Variable Value
 
 ```dart
-ContourIcon(
+CuneiformIcon(
   name: 'wifi',
   variableValue: 0.75, // 0.0 to 1.0
 )
@@ -92,7 +92,7 @@ ContourIcon(
 ```dart
 Semantics(
   label: 'Home',
-  child: ContourIcon(name: 'home'),
+  child: CuneiformIcon(name: 'home'),
 )
 ```
 
@@ -101,15 +101,15 @@ Semantics(
 Respects `MediaQuery.of(context).disableAnimations` by default.
 
 ```dart
-ContourIcon(name: 'home', reduceMotion: false) // Force animations
+CuneiformIcon(name: 'home', reduceMotion: false) // Force animations
 ```
 
 ## Controller API
 
 ```dart
-final controller = ContourIconController();
+final controller = CuneiformIconController();
 
-ContourIcon(
+CuneiformIcon(
   name: 'home',
   controller: controller,
 )

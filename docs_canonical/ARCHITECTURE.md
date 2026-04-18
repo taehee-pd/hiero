@@ -55,7 +55,7 @@ These modules support the editor UI but do not define the canonical document sha
   hosts the external adapter SDK plus built-in source adapters
   (Lucide, Heroicons, Phosphor, Material Symbols, Figma).
 - `app/api/import/`: API routes for all import adapters (Figma, Heroicons, Lucide, Material Symbols, Phosphor). Figma PAT is per-request, never stored.
-- `figma-plugin/export-to-coniva/`: Figma plugin for exporting components to Contour.
+- `figma-plugin/export-to-cuneiform/`: Figma plugin for exporting components to Cuneiform.
 - `docs_canonical/IMPORT_ADAPTER_SDK.md`: canonical import-adapter lifecycle and testing requirements.
 - `lib/export/`: produces SVG, runtime JSON, Lottie JSON, compiled icon
   artifacts, package manifests, change diffs, and generated component outputs.
@@ -71,7 +71,7 @@ These modules support the editor UI but do not define the canonical document sha
 
 - `lib/live-sync/`: real-time publish transport, dev server, file watcher, incremental rebuild, and output writer.
 - `lib/install-config/`: installation configuration for icon packages.
-- `packages/coniva-cli/`: `@contour/cli` command-line tool for icon operations.
+- `packages/cuneiform-cli/`: `@cuneiform/cli` command-line tool for icon operations.
 - `components/export/PublishPanel.tsx`: UI for Lane 1 live sync publishing.
 - `components/export/ReleasePanel.tsx`: UI for Lane 2 versioned releases.
 
@@ -120,7 +120,7 @@ The sync service (`lib/sync-service/`) is a layered module:
 
 | File | Platform | Output |
 |------|----------|--------|
-| `react-adapter.ts` | React/TypeScript | `ContourIcon`-wrapping `.tsx` components with typed props |
+| `react-adapter.ts` | React/TypeScript | `CuneiformIcon`-wrapping `.tsx` components with typed props |
 | `swift-adapter.ts` | Swift (SwiftUI/UIKit) | `.swift` views with state enums, SVG path parsing |
 | `flutter-adapter.ts` | Flutter/Dart | `StatefulWidget` classes with `CustomPainter`, `AnimatedSwitcher` |
 | `downgrade-rules.ts` | All non-React | Platform-specific feature downgrade configs and rule application |
@@ -135,7 +135,7 @@ The repository contains multiple runtime-focused layers:
 
 - `lib/runtime-core/`: unified autoMorph (automatic strategy selection with intrinsic interpolation), transition resolution, easing, scheduling, morph interpolation, cross-icon morphing, topology detection, open-path guards, state-machine behavior, and cubic weight interpolation
 - `lib/runtime-dom/`: DOM renderer/driver for runtime icons
-- `lib/runtime-react/`: React wrapper components (`ContourIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
+- `lib/runtime-react/`: React wrapper components (`CuneiformIcon` with `forwardRef`), hooks (`useIconState`, `useAnimationProgress`), and imperative handle API
 - `lib/runtime-sdk/`: compiled icon rendering primitives and renderer logic
 
 These layers consume icon data after authoring/export rather than participating in editor state directly.
@@ -160,7 +160,7 @@ The default morph strategy is now `'auto'`, which delegates to `autoMorph()`. Th
 
 ### Platform Boundary
 
-Contour is a web-only application. Platform abstraction is minimal:
+Cuneiform is a web-only application. Platform abstraction is minimal:
 
 - `lib/platform/bridge.ts`: web-only environment abstraction
 - `lib/platform/routes.ts`: route helpers
@@ -175,7 +175,7 @@ Contour is a web-only application. Platform abstraction is minimal:
 - `lib/sync-service/auto-publish.ts`: debounced auto-publish scheduler/cancel manager
 - `lib/live-sync/publish-transport.ts`: real-time publish transport
 - `lib/install-config/`: installation configuration for icon packages
-- `packages/coniva-cli/`: `@contour/cli` CLI for CI integration
+- `packages/cuneiform-cli/`: `@cuneiform/cli` CLI for CI integration
 - `components/export/PublishPanel.tsx`: Lane 1 live sync UI
 - `components/export/ReleasePanel.tsx`: Lane 2 versioned release UI
 

@@ -7,7 +7,7 @@
 
 ## Overview
 
-Contour uses a single-screen StudioLayout (similar to Sanity Studio) as the
+Cuneiform uses a single-screen StudioLayout (similar to Sanity Studio) as the
 primary workspace at `/`. The StudioLayout combines a navigation sidebar, icon
 list pane, and embedded editor into one unified screen. The legacy Explorer shell
 and the standalone Editor route (`/editor/[iconId]`) still exist as alternative
@@ -94,8 +94,8 @@ The landing view showing all icon sets in a grid.
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 │                                                             │
 │  ┌─ Recent Projects ──────────────────────────────────────┐ │
-│  │  project-a.contour  ·  3 days ago  [Load] [×]           │ │
-│  │  project-b.contour  ·  1 week ago  [Load] [×]           │ │
+│  │  project-a.cuneiform  ·  3 days ago  [Load] [×]           │ │
+│  │  project-b.cuneiform  ·  1 week ago  [Load] [×]           │ │
 │  └────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -140,7 +140,7 @@ Entered by clicking an icon set card.
 ### 1C. Explorer Right Panel (Publish & Export)
 
 > **Changed:** Sync targets have been replaced by repo-native distribution.
-> This panel shows the publish status from `contour.config.ts` and export options.
+> This panel shows the publish status from `cuneiform.config.ts` and export options.
 
 Appears as a collapsible right panel or sheet.
 
@@ -148,7 +148,7 @@ Appears as a collapsible right panel or sheet.
 ┌─ Distribution ──────────────────────┐
 │                                      │
 │  ┌─ Repo Publish ────────────────┐  │
-│  │  Config: contour.config.ts ✓   │  │
+│  │  Config: cuneiform.config.ts ✓   │  │
 │  │                               │  │
 │  │  Host: react                  │  │
 │  │    → src/components/icons/    │  │
@@ -436,7 +436,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 │  │  Paste mode:                                        │   │
 │  │  Plugin payload JSON                                │   │
 │  │  ┌──────────────────────────────────────────────┐   │   │
-│  │  │ {"version":"1","source":"contour-figma-       │   │   │
+│  │  │ {"version":"1","source":"cuneiform-figma-       │   │   │
 │  │  │  plugin","icons":[...]}                      │   │   │
 │  │  └──────────────────────────────────────────────┘   │   │
 │  │  "Export from the Figma plugin, then paste here."   │   │
@@ -505,7 +505,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 │  Format                                                    │
 │  ○ SVG (single icon)                                       │
 │  ○ SVG Package (all icons, ZIP)                            │
-│  ○ Runtime JSON (.contour.json)                             │
+│  ○ Runtime JSON (.cuneiform.json)                             │
 │  ○ React Library (npm-ready TypeScript)                    │
 │  ○ Lottie JSON                                             │
 │                                                            │
@@ -638,13 +638,13 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 ## Screen 9: Install & Publish Configuration
 
 > **Changed:** Per-target sync (local / GitHub PR / npm) has been replaced by
-> repo-native distribution configured via `contour.config.ts` at the repo root.
+> repo-native distribution configured via `cuneiform.config.ts` at the repo root.
 > The UI shows the current config status and provides publish actions.
 
 ### 9A. Host Targets (Live Dev)
 
 ```
-┌─ Host Targets (from contour.config.ts) ────────────────────┐
+┌─ Host Targets (from cuneiform.config.ts) ────────────────────┐
 │                                                            │
 │  Source Dir   src/icons/source                             │
 │  Out Dir      src/icons/generated                          │
@@ -681,7 +681,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 ```
 ┌─ Config ──────────────────────────────────────────────────┐
 │                                                            │
-│  Config File   contour.config.ts  ✓ Found                   │
+│  Config File   cuneiform.config.ts  ✓ Found                   │
 │  Source Dir    src/icons/source   ✓ 24 icons                │
 │  Last Publish  2h ago (changed-only, 3 icons)              │
 │                                                            │
@@ -735,7 +735,7 @@ Accessible from both Explorer and Editor. Each tab has distinct UI structure.
 
 ## Screen 11: Runtime Demo (`/runtime-demo`, `/demo/runtime`)
 
-Standalone demo pages that render icons using the Contour runtime outside of
+Standalone demo pages that render icons using the Cuneiform runtime outside of
 the editor context. Useful for testing runtime transitions, embedding previews,
 and validating compiled icon output.
 

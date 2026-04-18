@@ -5,8 +5,8 @@ import { AlertTriangle, CheckCircle2, Link2, Loader2, Search } from 'lucide-reac
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   buildPluginImportEntries,
-  parseContourPluginPayload,
-} from '@/lib/import/contour-plugin-payload';
+  parseCuneiformPluginPayload,
+} from '@/lib/import/cuneiform-plugin-payload';
 import { parseFigmaUrl } from '@/lib/import/adapters/figma-source';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,7 +34,7 @@ type Prepared = {
 
 type LibrarySourceId =
   | 'raw-svg'
-  | 'contour-plugin'
+  | 'cuneiform-plugin'
   | 'lucide'
   | 'heroicons'
   | 'phosphor'
@@ -47,7 +47,7 @@ const LIBRARY_SOURCES: Array<{
   badges?: string[];
 }> = [
   { id: 'raw-svg', label: 'Raw SVG' },
-  { id: 'contour-plugin', label: 'Contour Plugin', badges: ['Batch', 'Figma export'] },
+  { id: 'cuneiform-plugin', label: 'Cuneiform Plugin', badges: ['Batch', 'Figma export'] },
   { id: 'figma', label: 'Figma', badges: ['Searchable', 'File URL'] },
   { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
   { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
@@ -257,7 +257,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
       setPrepared(null);
       setPluginImportSummary(null);
       try {
-        const payload = parseContourPluginPayload(payloadText);
+        const payload = parseCuneiformPluginPayload(payloadText);
         const entries = buildPluginImportEntries(payload);
         dispatch({ type: 'start_importing' });
 
@@ -372,7 +372,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Import icon</DialogTitle>
           <DialogDescription>
-            Paste SVG, import a Contour Figma plugin payload, or fetch icons from built-in libraries.
+            Paste SVG, import a Cuneiform Figma plugin payload, or fetch icons from built-in libraries.
           </DialogDescription>
         </DialogHeader>
 
@@ -534,9 +534,9 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                 </>
               )}
             </div>
-          ) : sourceId === 'contour-plugin' ? (
+          ) : sourceId === 'cuneiform-plugin' ? (
             <Tabs defaultValue="paste">
-              <TabsList aria-label="Contour plugin import mode">
+              <TabsList aria-label="Cuneiform plugin import mode">
                 <TabsTrigger value="paste">Paste JSON</TabsTrigger>
                 <TabsTrigger value="upload">Upload JSON</TabsTrigger>
               </TabsList>
@@ -547,7 +547,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                   value={pluginPayloadText}
                   onChange={(e) => setPluginPayloadText(e.target.value)}
                   className="min-h-40"
-                  placeholder='{"version":"1","source":"contour-figma-plugin","icons":[...]}'
+                  placeholder='{"version":"1","source":"cuneiform-figma-plugin","icons":[...]}'
                 />
                 <p className="text-[11px] text-muted-foreground">
                   Export from the Figma plugin, then paste the JSON payload here to import one or more icons.

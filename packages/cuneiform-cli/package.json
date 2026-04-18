@@ -1,26 +1,26 @@
 {
-  "name": "@contour/cli",
+  "name": "@cuneiform/cli",
   "version": "0.2.0",
-  "description": "Contour CLI — repo-native icon authoring for host repositories",
+  "description": "Cuneiform CLI — repo-native icon authoring for host repositories",
   "author": "taehee-pd <j.taehee@icloud.com>",
   "license": "MIT",
-  "homepage": "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/coniva-cli#readme",
+  "homepage": "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/cuneiform-cli#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/taehee-pd/icon-authoring-tool.git",
-    "directory": "packages/coniva-cli"
+    "directory": "packages/cuneiform-cli"
   },
   "bugs": {
     "url": "https://github.com/taehee-pd/icon-authoring-tool/issues"
   },
   "bin": {
-    "contour": "./dist/bin.js"
+    "cuneiform": "./dist/bin.js"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "contour",
+    "cuneiform",
     "icons",
     "icon-authoring",
     "cli",

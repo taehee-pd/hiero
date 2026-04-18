@@ -1,11 +1,11 @@
 /**
  * Publish transport — pushes canonical source files from the editor to the
- * consumer repo's contour dev server.
+ * consumer repo's cuneiform dev server.
  *
  * Browser-safe: no Node.js imports. Works in both Next.js and desktop contexts.
  *
  * Transport model:
- *   Editor  ──POST──▶  contour dev server (localhost:4400)  ──writes──▶  sourceDir
+ *   Editor  ──POST──▶  cuneiform dev server (localhost:4400)  ──writes──▶  sourceDir
  *
  * The dev server receives the files, writes them to sourceDir, and immediately
  * triggers an incremental rebuild. This gives the editor a single consistent
@@ -21,7 +21,7 @@ import type { PublishRequest, PublishResult } from './types';
 const DEFAULT_DEV_SERVER_URL = 'http://localhost:4400';
 
 /**
- * Publish canonical source files to the consumer repo via the contour dev
+ * Publish canonical source files to the consumer repo via the cuneiform dev
  * server HTTP API.
  *
  * The files array should be the full output of `exportSourcePayload()`:
@@ -93,7 +93,7 @@ export async function publishSourceFiles(request: PublishRequest): Promise<Publi
       return {
         kind: 'error',
         transport: 'api-push',
-        error: `Could not connect to contour dev server at ${baseUrl}. Run \`contour dev\` in the consumer repo first.`,
+        error: `Could not connect to cuneiform dev server at ${baseUrl}. Run \`cuneiform dev\` in the consumer repo first.`,
       };
     }
 
@@ -116,7 +116,7 @@ export type DevServerReleaseTarget = {
 };
 
 /**
- * Fetch the full status from the contour dev server, including release targets.
+ * Fetch the full status from the cuneiform dev server, including release targets.
  * Returns the status payload on success, or an error on failure.
  */
 export async function pingDevServer(

@@ -164,7 +164,7 @@ function resolveCollections(
 }
 
 function getCompiledIconSchemaVersion(schemaUri: string): string {
-  const match = schemaUri.match(/^https:\/\/(?:contour|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
+  const match = schemaUri.match(/^https:\/\/(?:cuneiform|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
   if (!match) {
     throw new Error(`Unexpected compiled icon schema URI: ${schemaUri}`);
   }

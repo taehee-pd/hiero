@@ -4,9 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { Icon, IconType } from '../lib/schema';
 import {
-  ContourIcon,
-  type ContourIconHandle,
-  type ContourIconProps,
+  CuneiformIcon,
+  type CuneiformIconHandle,
+  type CuneiformIconProps,
   useIconState,
   useAnimationProgress,
   type AnimationProgressSnapshot,
@@ -101,9 +101,9 @@ function makeTestIcon(): Icon {
 // ---------------------------------------------------------------------------
 
 describe('D1 — Imperative ref API', () => {
-  test('ContourIconHandle type has all required methods', () => {
+  test('CuneiformIconHandle type has all required methods', () => {
     // Type-level test: verify the handle type is structurally correct
-    const handle: ContourIconHandle = {
+    const handle: CuneiformIconHandle = {
       transitionTo: () => {},
       triggerEffect: () => {},
       cancelEffect: () => {},
@@ -120,11 +120,11 @@ describe('D1 — Imperative ref API', () => {
     expect(typeof handle.setVariableDrawProgress).toBe('function');
   });
 
-  test('ContourIcon accepts ref prop (forwardRef)', () => {
-    const ref = createRef<ContourIconHandle>();
+  test('CuneiformIcon accepts ref prop (forwardRef)', () => {
+    const ref = createRef<CuneiformIconHandle>();
 
     function TestComponent() {
-      return <ContourIcon ref={ref} icon={makeTestIcon()} />;
+      return <CuneiformIcon ref={ref} icon={makeTestIcon()} />;
     }
 
     // SSR: ref is not populated on server, but component renders without error
@@ -133,10 +133,10 @@ describe('D1 — Imperative ref API', () => {
     expect(html).toContain('viewBox="0 0 24 24"');
   });
 
-  test('ContourIcon renders correctly with ref and other props', () => {
-    const ref = createRef<ContourIconHandle>();
+  test('CuneiformIcon renders correctly with ref and other props', () => {
+    const ref = createRef<CuneiformIconHandle>();
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         ref={ref}
         icon={makeTestIcon()}
         size={32}
@@ -155,9 +155,9 @@ describe('D1 — Imperative ref API', () => {
 // ---------------------------------------------------------------------------
 
 describe('D2 — Gesture props', () => {
-  test('ContourIcon accepts hoverState and tapState props', () => {
+  test('CuneiformIcon accepts hoverState and tapState props', () => {
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         hoverState="hover"
         tapState="active"
@@ -171,20 +171,20 @@ describe('D2 — Gesture props', () => {
     // When hoverState or tapState is set, the container div should have
     // pointer event handlers (verified at the prop type level since SSR
     // doesn't serialize event handlers)
-    const props: ContourIconProps = {
+    const props: CuneiformIconProps = {
       icon: makeTestIcon(),
       hoverState: 'hover',
       onHoverStart: () => {},
       onHoverEnd: () => {},
     };
     // The component accepts these without error
-    const html = renderToStaticMarkup(<ContourIcon {...props} />);
+    const html = renderToStaticMarkup(<CuneiformIcon {...props} />);
     expect(html).toContain('<svg');
   });
 
   test('gesture event callbacks are optional', () => {
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         hoverState="hover"
         // No onHoverStart/End callbacks — should not error
@@ -195,7 +195,7 @@ describe('D2 — Gesture props', () => {
 
   test('tapState props are accepted without error', () => {
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         tapState="active"
         onTapStart={() => {}}
@@ -209,7 +209,7 @@ describe('D2 — Gesture props', () => {
     // When both state and hoverState are specified, the component should render
     // with the explicit state
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         state="active"
         hoverState="hover"
@@ -226,9 +226,9 @@ describe('D2 — Gesture props', () => {
 // ---------------------------------------------------------------------------
 
 describe('D3 — Animation callbacks', () => {
-  test('ContourIcon accepts onTransitionStart/Complete/onEffectComplete', () => {
+  test('CuneiformIcon accepts onTransitionStart/Complete/onEffectComplete', () => {
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         onTransitionStart={(from, to) => {}}
         onTransitionComplete={(from, to) => {}}
@@ -240,12 +240,12 @@ describe('D3 — Animation callbacks', () => {
 
   test('callback prop types are correct', () => {
     // Type-level test
-    const startCb: ContourIconProps['onTransitionStart'] = (from: string, to: string) => {
+    const startCb: CuneiformIconProps['onTransitionStart'] = (from: string, to: string) => {
       expect(typeof from).toBe('string');
       expect(typeof to).toBe('string');
     };
-    const completeCb: ContourIconProps['onTransitionComplete'] = (from: string, to: string) => {};
-    const effectCb: ContourIconProps['onEffectComplete'] = (id: string) => {};
+    const completeCb: CuneiformIconProps['onTransitionComplete'] = (from: string, to: string) => {};
+    const effectCb: CuneiformIconProps['onEffectComplete'] = (id: string) => {};
 
     expect(typeof startCb).toBe('function');
     expect(typeof completeCb).toBe('function');
@@ -258,9 +258,9 @@ describe('D3 — Animation callbacks', () => {
 // ---------------------------------------------------------------------------
 
 describe('D4 — Animation progress visibility', () => {
-  test('onFrame prop is accepted by ContourIcon', () => {
+  test('onFrame prop is accepted by CuneiformIcon', () => {
     const html = renderToStaticMarkup(
-      <ContourIcon
+      <CuneiformIcon
         icon={makeTestIcon()}
         onFrame={(progress, stateId) => {}}
       />,
@@ -318,8 +318,8 @@ describe('D4 — Animation progress visibility', () => {
 // ---------------------------------------------------------------------------
 
 describe('Backward compatibility', () => {
-  test('ContourIcon still renders correctly without new props', () => {
-    const html = renderToStaticMarkup(<ContourIcon icon={makeTestIcon()} />);
+  test('CuneiformIcon still renders correctly without new props', () => {
+    const html = renderToStaticMarkup(<CuneiformIcon icon={makeTestIcon()} />);
     expect(html).toContain('width:24px');
     expect(html).toContain('height:24px');
     expect(html).toContain('<svg');
@@ -330,12 +330,12 @@ describe('Backward compatibility', () => {
 
   test('SSR renders accessibility attributes unchanged', () => {
     const htmlDecorative = renderToStaticMarkup(
-      <ContourIcon icon={makeTestIcon()} />,
+      <CuneiformIcon icon={makeTestIcon()} />,
     );
     expect(htmlDecorative).toContain('aria-hidden="true"');
 
     const htmlLabeled = renderToStaticMarkup(
-      <ContourIcon icon={makeTestIcon()} label="Arrow" />,
+      <CuneiformIcon icon={makeTestIcon()} label="Arrow" />,
     );
     expect(htmlLabeled).toContain('role="img"');
     expect(htmlLabeled).toContain('aria-label="Arrow"');

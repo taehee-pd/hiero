@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Export to Contour</title>
+    <title>Export to Cuneiform</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -89,8 +89,8 @@
   <body>
     <main>
       <section class="card">
-        <h1>Export selection to Contour</h1>
-        <p>Select one or more vector or component nodes in Figma, then export a JSON payload you can paste into Contour.</p>
+        <h1>Export selection to Cuneiform</h1>
+        <p>Select one or more vector or component nodes in Figma, then export a JSON payload you can paste into Cuneiform.</p>
       </section>
 
       <section class="card">
@@ -105,7 +105,7 @@
 
       <section class="card">
         <h2>Payload</h2>
-        <textarea id="payload" readonly aria-label="Contour plugin export payload"></textarea>
+        <textarea id="payload" readonly aria-label="Cuneiform plugin export payload"></textarea>
       </section>
     </main>
 
@@ -138,7 +138,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'contour-figma-export.json';
+        link.download = 'cuneiform-figma-export.json';
         link.click();
         URL.revokeObjectURL(url);
         setStatus('Downloaded payload JSON.', false);

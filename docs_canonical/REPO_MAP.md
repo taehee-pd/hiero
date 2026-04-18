@@ -14,8 +14,8 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/`: Next.js App Router entrypoints, API routes, and global app setup.
 - `components/`: React UI, split into product surfaces (`editor/`, `explorer/`, `studio/`, `export/`, `persistence/`, `runtime/`) and shared UI (`ui/`, `kibo-ui/`).
 - `lib/`: domain logic and non-route code.
-- `packages/coniva-cli/`: `@contour/cli` command-line tool for icon operations.
-- `figma-plugin/`: Figma plugin for exporting to Contour.
+- `packages/cuneiform-cli/`: `@cuneiform/cli` command-line tool for icon operations.
+- `figma-plugin/`: Figma plugin for exporting to Cuneiform.
 - `scripts/`: repository-level helper scripts, including icon compilation and validation.
 - `tests/`: Bun test suites (102+ files), snapshots, fixtures, and helpers.
 - `specs/`: technical specification documents (21 specs).
@@ -31,7 +31,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `app/layout.tsx`: global app shell, theme setup, `AutoSaveProvider`.
 - `app/runtime-demo/page.tsx`: Phase 4 runtime validation demo.
 - `app/demo/runtime/page.tsx`: runtime execution demo.
-- `packages/coniva-cli/src/bin.ts`: CLI entry point.
+- `packages/cuneiform-cli/src/bin.ts`: CLI entry point.
 - `scripts/compile-icons.ts`: CLI wrapper around the compile/export pipeline.
 - `scripts/compile-from-source.ts`: CI build path from canonical source exports.
 
@@ -89,7 +89,7 @@ Workspace support is implemented in the schema and editor store.
 ## Known Conflicts / Notes
 
 - Legacy operational docs were normalized to repository-relative links.
-- Product name is `Contour`. Root package metadata uses `contour`.
+- Product name is `Cuneiform`. Root package metadata uses `cuneiform`.
 - Legacy docs in `docs/plans/` contain historical design material. Use `docs/plans/STATUS.md` as the entrypoint, and treat canonical docs as repository truth.
 - The `desktop/` directory retains build artifacts but is no longer part of the active source architecture. The `docs/desktop-*.md` files were removed on 2026-04-13.
 - Superseded planning docs (`docs_canonical/LAYOUT_REVAMP.md`, `docs_canonical/EXPORT_GAP_PLAN.md`, `docs_canonical/UX_AUDIT_TASKS.md`, `docs_canonical/notion-ia-screens.md`, `docs/IA-REDESIGN.md`) were removed on 2026-04-13 after their scope fully shipped. The archived production-readiness gap analysis lives in `docs_canonical/PLAN.md`.

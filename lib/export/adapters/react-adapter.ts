@@ -1,6 +1,6 @@
 /**
- * React adapter — generates React components from the Contour Icon schema,
- * embedding the full Icon payload and wrapping it with ContourIcon.
+ * React adapter — generates React components from the Cuneiform Icon schema,
+ * embedding the full Icon payload and wrapping it with CuneiformIcon.
  *
  * This is a pure transform (no I/O). The caller is responsible for writing
  * the generated files to disk.
@@ -30,7 +30,7 @@ export type ReactAdapterInput = {
 };
 
 export type ReactAdapterOptions = {
-  /** Package import path for runtime. Default: '@contour/runtime-react' */
+  /** Package import path for runtime. Default: '@cuneiform/runtime-react' */
   runtimePackage?: string;
   /** Emit TypeScript (.tsx). Default: true */
   typescript?: boolean;
@@ -57,7 +57,7 @@ export function generateReactFromRuntime(
   icons: ReactAdapterInput[],
   options?: ReactAdapterOptions,
 ): ReactAdapterResult {
-  const runtimePackage = options?.runtimePackage ?? '@contour/runtime-react';
+  const runtimePackage = options?.runtimePackage ?? '@cuneiform/runtime-react';
   const typescript = options?.typescript !== false;
   const outputDir = options?.outputDir ?? 'src';
   const ext = typescript ? '.tsx' : '.jsx';
@@ -163,7 +163,7 @@ function generateComponent(params: ComponentGenParams): string {
   const lines: string[] = [];
 
   // Imports
-  lines.push(`import { ContourIcon } from '${runtimePackage}';`);
+  lines.push(`import { CuneiformIcon } from '${runtimePackage}';`);
   if (typescript) {
     lines.push(`import type { Icon } from '${runtimePackage}';`);
     lines.push("import type { CSSProperties } from 'react';");
@@ -219,7 +219,7 @@ function generateComponent(params: ComponentGenParams): string {
   );
 
   lines.push('  return (');
-  lines.push('    <ContourIcon');
+  lines.push('    <CuneiformIcon');
   lines.push(
     typescript
       ? '      icon={typedIconData}'

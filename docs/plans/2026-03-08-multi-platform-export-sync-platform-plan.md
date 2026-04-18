@@ -7,7 +7,7 @@ last-reviewed: 2026-03-18
 
 ## Goal
 
-Turn Contour into a platform that can export and sync icon systems into multiple application ecosystems from one authoring source:
+Turn Cuneiform into a platform that can export and sync icon systems into multiple application ecosystems from one authoring source:
 
 - React codebases
 - Swift / SwiftUI apps

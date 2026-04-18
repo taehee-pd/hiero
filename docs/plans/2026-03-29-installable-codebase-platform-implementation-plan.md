@@ -9,7 +9,7 @@ Date: 2026-03-29
 
 ## Outcome
 
-Ship Contour as an installable, repo-local platform that teams can add to their existing codebase and use to import icons from Figma, make Contour the source of truth, and publish directly into the current React codebase.
+Ship Cuneiform as an installable, repo-local platform that teams can add to their existing codebase and use to import icons from Figma, make Cuneiform the source of truth, and publish directly into the current React codebase.
 
 ## Phase 0: Lock the product contract
 
@@ -17,9 +17,9 @@ Ship Contour as an installable, repo-local platform that teams can add to their 
 
 - Approve the repo-installed product model
 - Approve the storage contract:
-  - committed canonical source in `contour/`
-  - gitignored local drafts in `.contour/local/`
-  - disposable live build cache in `.contour/cache/`
+  - committed canonical source in `cuneiform/`
+  - gitignored local drafts in `.cuneiform/local/`
+  - disposable live build cache in `.cuneiform/cache/`
   - generated outputs in host-specific directories for snapshot mode
 - Approve package names and config shape
 - Approve the abstraction split between `HostTarget` and `ReleaseTarget`
@@ -34,7 +34,7 @@ This phase matters because package boundaries and storage shape will cascade thr
 
 ### Work
 
-- Create `contour.config.ts` schema and loader
+- Create `cuneiform.config.ts` schema and loader
 - Add repo identity resolution so local cache and editor sessions can bind to the current host repo
 - Add validation errors for missing or invalid target directories
 - Remove `project.syncTargets` from the product plan instead of migrating it
@@ -55,7 +55,7 @@ This phase matters because package boundaries and storage shape will cascade thr
 ### Work
 
 - Formalize the committed source directory contract around existing `lib/sync-source/`
-- Add a repo-local draft persistence adapter for `.contour/local/`
+- Add a repo-local draft persistence adapter for `.cuneiform/local/`
 - Keep IndexedDB as a browser cache mirror, not authoritative storage
 - Add recovery and dirty-state reconciliation on app launch
 - ensure local drafts do not reintroduce per-icon multi-state assumptions
@@ -69,18 +69,18 @@ This phase matters because package boundaries and storage shape will cascade thr
 ### Exit criteria
 
 - user can crash or refresh without losing draft work
-- user can always rebuild generated outputs from `contour/` alone
+- user can always rebuild generated outputs from `cuneiform/` alone
 
 ## Phase 3: Build the CLI shell
 
 ### Work
 
-- Create `contour init`
-- Create `contour dev`
-- Create `contour watch`
-- Create `contour codegen`
-- Create `contour validate`
-- Create `contour sync`
+- Create `cuneiform init`
+- Create `cuneiform dev`
+- Create `cuneiform watch`
+- Create `cuneiform codegen`
+- Create `cuneiform validate`
+- Create `cuneiform sync`
 
 ### Command behavior
 
@@ -93,11 +93,11 @@ This phase matters because package boundaries and storage shape will cascade thr
 
 ### Suggested package
 
-- `packages/contour-cli`
+- `packages/cuneiform-cli`
 
 ### Exit criteria
 
-- a fresh repo can install and bootstrap Contour without manual file scaffolding
+- a fresh repo can install and bootstrap Cuneiform without manual file scaffolding
 
 ## Phase 4: Reshape the product model and extract reusable boundaries
 
@@ -117,9 +117,9 @@ This phase matters because package boundaries and storage shape will cascade thr
 
 ### Suggested package split
 
-- `packages/contour-core`
-- `packages/contour-runtime-react`
-- `packages/contour-cli`
+- `packages/cuneiform-core`
+- `packages/cuneiform-runtime-react`
+- `packages/cuneiform-cli`
 
 ### Key refactor rule
 
@@ -151,7 +151,7 @@ Do not rewrite working logic. Move and stabilize boundaries around the modules a
 
 ### Exit criteria
 
-- Contour publishes directly into the current React codebase
+- Cuneiform publishes directly into the current React codebase
 - changed-icon-only work is the default path
 - no product behavior depends on legacy `syncTargets`
 
@@ -184,8 +184,8 @@ Do not rewrite working logic. Move and stabilize boundaries around the modules a
 ### Work
 
 - expose the editor shell as an embeddable route or component package
-- support opening Contour within a host app for teams that want a Sanity-like integrated UI
-- keep `contour dev` as the fallback for environments where embedding is costly
+- support opening Cuneiform within a host app for teams that want a Sanity-like integrated UI
+- keep `cuneiform dev` as the fallback for environments where embedding is costly
 
 ### Important rule
 
@@ -193,13 +193,13 @@ This is phase 8 because embedding is product polish, not the shortest path to in
 
 ### Exit criteria
 
-- at least one reference host can mount the Contour editor in-process
+- at least one reference host can mount the Cuneiform editor in-process
 
 ## Phase 9: CI, migration, and docs
 
 ### Work
 
-- add `contour validate` to CI examples
+- add `cuneiform validate` to CI examples
 - document repo install guides for generic React design-system repos
 - document Storybook only as a reference app strategy if explored later
 - add migration docs from standalone and npm-publish-first workflows
@@ -230,10 +230,10 @@ This is phase 8 because embedding is product polish, not the shortest path to in
 
 ### End-to-end checks
 
-- `contour init` on empty fixture repos
-- `contour dev` launches against repo config
-- `contour codegen` produces stable outputs
-- `contour validate` passes in CI-mode fixtures
+- `cuneiform init` on empty fixture repos
+- `cuneiform dev` launches against repo config
+- `cuneiform codegen` produces stable outputs
+- `cuneiform validate` passes in CI-mode fixtures
 - Figma ingress to direct React publish works without manual SVG-to-code labor
 
 ## Recommended implementation order
@@ -324,8 +324,8 @@ Mitigation:
 
 This initiative is done when:
 
-- a user installs Contour into an existing repo with one command
-- shared icon source lives in Git under `contour/`
+- a user installs Cuneiform into an existing repo with one command
+- shared icon source lives in Git under `cuneiform/`
 - local drafts survive refreshes and crashes without becoming the source of truth
 - direct React codebase publishing works without Storybook-specific behavior
 - runtime icon-to-icon transition behavior is part of the first-class product, not deferred
@@ -336,4 +336,4 @@ This initiative is done when:
 
 - We are optimizing for installable adoption before real-time collaboration.
 - Filesystem-first workflow is the desired default even when web hosting is available.
-- The current standalone app remains valuable as the shell behind `contour dev`.
+- The current standalone app remains valuable as the shell behind `cuneiform dev`.

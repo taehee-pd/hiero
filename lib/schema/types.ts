@@ -1,4 +1,4 @@
-// Contour Schema Types — canonical data model for icon projects.
+// Cuneiform Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
 // ---------------------------------------------------------------------------

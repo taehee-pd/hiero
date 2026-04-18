@@ -19,7 +19,7 @@ import { buildPackageJson } from '@/lib/sync-service/connectors/npm-connector';
 // ---------------------------------------------------------------------------
 
 type NpmPublishBody = {
-  /** Current Contour project to compile. */
+  /** Current Cuneiform project to compile. */
   project: Project;
   /** Sync target describing platform + registry config. */
   target: SyncTarget;
@@ -166,7 +166,7 @@ async function executeNpmPublish(opts: {
   const execFileAsync = promisify(execFile);
 
   // Create temp directory
-  const cwd = await mkdtemp(join(tmpdir(), 'contour-npm-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'cuneiform-npm-'));
 
   try {
     if (!opts.target.npmRegistry?.registry || !opts.target.npmRegistry.packageName) {

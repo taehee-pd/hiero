@@ -6,7 +6,7 @@ import { SAMPLE_WORKSPACE } from '../lib/schema/sample-project';
 
 /**
  * R6 regression tests (docs_canonical/NEXT_PHASES.md §R6):
- * - UX-2.5 — Global `?` key dispatches `contour:open-shortcuts`.
+ * - UX-2.5 — Global `?` key dispatches `cuneiform:open-shortcuts`.
  *
  * UX-2.2 (unified breadcrumb) was deliberately left out of R6; the
  * top-of-editor project/icon label stays as a plain heading.
@@ -22,7 +22,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
     bootstrap();
   });
 
-  test('`?` keydown fires a `contour:open-shortcuts` CustomEvent', () => {
+  test('`?` keydown fires a `cuneiform:open-shortcuts` CustomEvent', () => {
     let fired = false;
     const listener = () => {
       fired = true;
@@ -46,7 +46,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
       return;
     }
 
-    g.addEventListener!('contour:open-shortcuts', listener as EventListener);
+    g.addEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     try {
       handleEditorKeyDown({
         key: '?',
@@ -59,11 +59,11 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
       } as unknown as KeyboardEvent);
       expect(fired).toBeTrue();
     } finally {
-      g.removeEventListener!('contour:open-shortcuts', listener as EventListener);
+      g.removeEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     }
   });
 
-  test('Shift+/ also fires `contour:open-shortcuts` (US layout fallback)', () => {
+  test('Shift+/ also fires `cuneiform:open-shortcuts` (US layout fallback)', () => {
     let fired = false;
     const listener = () => {
       fired = true;
@@ -74,7 +74,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
     };
     if (typeof g.addEventListener !== 'function') return;
 
-    g.addEventListener!('contour:open-shortcuts', listener as EventListener);
+    g.addEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     try {
       handleEditorKeyDown({
         key: '/',
@@ -87,7 +87,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
       } as unknown as KeyboardEvent);
       expect(fired).toBeTrue();
     } finally {
-      g.removeEventListener!('contour:open-shortcuts', listener as EventListener);
+      g.removeEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     }
   });
 
@@ -102,7 +102,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
     };
     if (typeof g.addEventListener !== 'function') return;
 
-    g.addEventListener!('contour:open-shortcuts', listener as EventListener);
+    g.addEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     try {
       handleEditorKeyDown({
         key: '?',
@@ -115,7 +115,7 @@ describe('R6 · UX-2.5 — `?` key opens the shortcuts cheat sheet', () => {
       } as unknown as KeyboardEvent);
       expect(fired).toBeFalse();
     } finally {
-      g.removeEventListener!('contour:open-shortcuts', listener as EventListener);
+      g.removeEventListener!('cuneiform:open-shortcuts', listener as EventListener);
     }
   });
 });

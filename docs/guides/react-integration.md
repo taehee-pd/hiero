@@ -1,6 +1,6 @@
 # React Integration Guide
 
-Install your published Contour icon package and render animated, stateful icons in any React app.
+Install your published Cuneiform icon package and render animated, stateful icons in any React app.
 
 This guide assumes your compiled package exposes:
 
@@ -17,11 +17,11 @@ npm install @your-scope/icons
 ## Basic Usage
 
 ```tsx
-import { ContourIcon } from '@your-scope/icons/react';
+import { CuneiformIcon } from '@your-scope/icons/react';
 import homeIcon from '@your-scope/icons/icons/home.compiled.json';
 
 function App() {
-  return <ContourIcon icon={homeIcon} size={24} />;
+  return <CuneiformIcon icon={homeIcon} size={24} />;
 }
 ```
 
@@ -32,8 +32,8 @@ If your package generator emits named wrappers instead of raw JSON imports, the 
 Pass `label` for a visible icon with an accessible name. Omit `label` for decorative icons (`aria-hidden` is set automatically).
 
 ```tsx
-<ContourIcon icon={homeIcon} label="Home" />
-<ContourIcon icon={homeIcon} /> {/* decorative, aria-hidden */}
+<CuneiformIcon icon={homeIcon} label="Home" />
+<CuneiformIcon icon={homeIcon} /> {/* decorative, aria-hidden */}
 ```
 
 ## Variants & States
@@ -42,11 +42,11 @@ Icons can have multiple variants (sizes/weights) and states (default, active, ho
 
 ```tsx
 {/* Select a variant by name or size */}
-<ContourIcon icon={homeIcon} variant="24px" />
-<ContourIcon icon={homeIcon} variant={32} />
+<CuneiformIcon icon={homeIcon} variant="24px" />
+<CuneiformIcon icon={homeIcon} variant={32} />
 
 {/* Set the active state */}
-<ContourIcon icon={homeIcon} state="active" />
+<CuneiformIcon icon={homeIcon} state="active" />
 ```
 
 ## State Transitions (Animation)
@@ -56,7 +56,7 @@ Enable `animate` to transition between states with the icon's authored animation
 ```tsx
 const [isActive, setIsActive] = useState(false);
 
-<ContourIcon
+<CuneiformIcon
   icon={homeIcon}
   state={isActive ? 'active' : 'default'}
   animate
@@ -69,7 +69,7 @@ const [isActive, setIsActive] = useState(false);
 Use `hoverState` and `tapState` for automatic hover/press interactions:
 
 ```tsx
-<ContourIcon
+<CuneiformIcon
   icon={homeIcon}
   hoverState="hover"
   tapState="active"
@@ -82,7 +82,7 @@ Use `hoverState` and `tapState` for automatic hover/press interactions:
 Trigger named effects (bounce, shake, pulse, etc.) independently from state:
 
 ```tsx
-<ContourIcon
+<CuneiformIcon
   icon={homeIcon}
   effect="bounce"
   onEffectComplete={(id) => console.log(`effect ${id} done`)}
@@ -95,14 +95,14 @@ Use a ref for programmatic control:
 
 ```tsx
 import { useRef } from 'react';
-import type { ContourIconHandle } from '@your-scope/icons/react';
+import type { CuneiformIconHandle } from '@your-scope/icons/react';
 
 function App() {
-  const ref = useRef<ContourIconHandle>(null);
+  const ref = useRef<CuneiformIconHandle>(null);
 
   return (
     <>
-      <ContourIcon icon={homeIcon} ref={ref} animate />
+      <CuneiformIcon icon={homeIcon} ref={ref} animate />
       <button onClick={() => ref.current?.transitionTo('active')}>
         Activate
       </button>
@@ -114,7 +114,7 @@ function App() {
 }
 ```
 
-### ContourIconHandle Methods
+### CuneiformIconHandle Methods
 
 | Method | Description |
 |--------|-------------|
@@ -130,7 +130,7 @@ function App() {
 For icons with variable rendering (like Wi-Fi signal bars):
 
 ```tsx
-<ContourIcon icon={wifiIcon} variableValue={0.75} />
+<CuneiformIcon icon={wifiIcon} variableValue={0.75} />
 ```
 
 ## Reduced Motion
@@ -138,14 +138,14 @@ For icons with variable rendering (like Wi-Fi signal bars):
 Respects `prefers-reduced-motion` by default. Override per-icon:
 
 ```tsx
-<ContourIcon icon={homeIcon} reduceMotion={false} animate />
-<ContourIcon icon={homeIcon} reduceMotion="system" /> {/* default */}
+<CuneiformIcon icon={homeIcon} reduceMotion={false} animate />
+<CuneiformIcon icon={homeIcon} reduceMotion="system" /> {/* default */}
 ```
 
 ## Animation Callbacks
 
 ```tsx
-<ContourIcon
+<CuneiformIcon
   icon={homeIcon}
   animate
   onTransitionStart={(from, to) => {}}
@@ -159,7 +159,7 @@ Respects `prefers-reduced-motion` by default. Override per-icon:
 ## Styling
 
 ```tsx
-<ContourIcon
+<CuneiformIcon
   icon={homeIcon}
   size={32}
   color="currentColor"
@@ -183,8 +183,8 @@ All types are exported:
 
 ```tsx
 import type {
-  ContourIconProps,
-  ContourIconHandle,
+  CuneiformIconProps,
+  CuneiformIconHandle,
 } from '@your-scope/icons/react';
 ```
 

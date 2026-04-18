@@ -156,7 +156,7 @@ type ActivePreview = {
 
 const DEBUG_OVERLAY_ENABLED =
   typeof process !== 'undefined' &&
-  process.env?.NEXT_PUBLIC_CONTOUR_DEBUG === '1';
+  process.env?.NEXT_PUBLIC_CUNEIFORM_DEBUG === '1';
 
 // ---------------------------------------------------------------------------
 // TransitionPanel — main exported component
@@ -528,7 +528,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
           Transition
         </p>
         <p className="text-[length:var(--text-label)] text-muted-foreground">
-          Pick a target icon — Contour automatically picks the best morph.
+          Pick a target icon — Cuneiform automatically picks the best morph.
         </p>
       </div>
 

@@ -7,7 +7,7 @@ last-reviewed: 2026-03-18
 
 ## Goal
 
-Make Contour export an icon set directly into a target application codebase instead of assuming the primary delivery mechanism is a standalone npm package.
+Make Cuneiform export an icon set directly into a target application codebase instead of assuming the primary delivery mechanism is a standalone npm package.
 
 The target may be:
 

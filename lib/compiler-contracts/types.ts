@@ -1,11 +1,11 @@
 import type { SpringConfig } from '@/lib/schema/types';
 
 export const COMPILED_ICON_SCHEMA_URI =
-  'https://contour.dev/schemas/compiled-icon/1.0.0' as const;
+  'https://cuneiform.dev/schemas/compiled-icon/1.0.0' as const;
 export const PACKAGE_MANIFEST_SCHEMA_URI =
-  'https://contour.dev/schemas/manifest/1.0.0' as const;
+  'https://cuneiform.dev/schemas/manifest/1.0.0' as const;
 export const ICON_CHANGE_RECORD_SCHEMA_URI =
-  'https://contour.dev/schemas/change-record/1.0.0' as const;
+  'https://cuneiform.dev/schemas/change-record/1.0.0' as const;
 
 export type CompiledRenderingMode =
   | 'monochrome'

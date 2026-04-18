@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines Contour's icon schema.
+This spec defines Cuneiform's icon schema.
 
 The core model is:
 

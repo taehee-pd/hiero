@@ -22,7 +22,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Contour',
+  title: 'Cuneiform',
   description: 'Icon design studio for stateful, animated SVG icons',
   icons: {
     icon: [
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
       {
-        url: '/contour.svg?v=2',
+        url: '/cuneiform.svg?v=2',
         type: 'image/svg+xml',
       },
     ],

@@ -3,7 +3,7 @@
 **Created:** 2026-04-13
 **Branch:** `claude/improve-animate-morphing-CmPkM`
 **Owner:** taehee-pd
-**Scope:** (1) Eliminate morphing-strategy confusion and warnings from the Animate panel; (2) Reorganize the panel around the SF Symbols 7 layout patterns from [WWDC 2025 session 337](https://developer.apple.com/videos/play/wwdc2025/337/); (3) Prepare `@contour/cli` for its first npm publish.
+**Scope:** (1) Eliminate morphing-strategy confusion and warnings from the Animate panel; (2) Reorganize the panel around the SF Symbols 7 layout patterns from [WWDC 2025 session 337](https://developer.apple.com/videos/play/wwdc2025/337/); (3) Prepare `@cuneiform/cli` for its first npm publish.
 
 ---
 
@@ -137,7 +137,7 @@ user.
 - Keep `computeReadiness()` and `analyzeTopologyCompatibility()` in
   `lib/runtime-core/` — they remain the backbone of `autoMorph()`.
 - Stop rendering `MorphReadinessIndicator` in `TransitionPanel`.
-- Add a single dev-only badge behind `process.env.NEXT_PUBLIC_CONTOUR_DEBUG === '1'`
+- Add a single dev-only badge behind `process.env.NEXT_PUBLIC_CUNEIFORM_DEBUG === '1'`
   that shows the chosen strategy + readiness score in the bottom-right of the
   preview, so we can still diagnose regressions locally.
 - Emit the topology-mismatch signals through the existing sync-ui analytics hook
@@ -152,7 +152,7 @@ SF Symbols' three playback modes map cleanly to the existing
 already supports `'linear' | 'from-center' | 'from-edges' | 'random' |
 'individually'`. The revamp collapses these to three pills matching Apple's model:
 
-| WWDC mode       | Contour stagger mode        | Default duration offset |
+| WWDC mode       | Cuneiform stagger mode        | Default duration offset |
 |-----------------|-----------------------------|-------------------------|
 | By Layer        | `linear` (staggered)        | 40ms between layers     |
 | Whole Symbol    | (new) `simultaneous`        | 0                       |
@@ -195,19 +195,19 @@ Add `'simultaneous'` to the stagger union in `lib/schema/types.ts` and resolve i
 
 ---
 
-## 3. npm Deploy Preparation (`@contour/cli`)
+## 3. npm Deploy Preparation (`@cuneiform/cli`)
 
-`packages/coniva-cli/package.json` ships a `@contour/cli` stub at `0.1.0` but has
+`packages/cuneiform-cli/package.json` ships a `@cuneiform/cli` stub at `0.1.0` but has
 never been published. The existing `icons-package-release.yml` workflow publishes
 *generated icon packages* (`npm publish ./dist/icons-package --access public`,
 `.github/workflows/icons-package-release.yml:103`) — not the CLI itself.
 
 ### 3.1 Pre-publish checklist
 
-- [ ] **Rename check.** The package is named `@contour/cli` but lives under
-  `packages/coniva-cli/`. Decide on final scope (`@contour/cli` or `@coniva/cli`)
+- [ ] **Rename check.** The package is named `@cuneiform/cli` but lives under
+  `packages/cuneiform-cli/`. Decide on final scope (`@cuneiform/cli` or `@cuneiform/cli`)
   before first publish — the name is immutable for the first 72h on npm.
-- [ ] **Reserve the scope.** Verify the `@contour` org exists on npmjs.com (or
+- [ ] **Reserve the scope.** Verify the `@cuneiform` org exists on npmjs.com (or
   create it) and that `taehee-pd` has publish rights.
 - [ ] **Fill in `package.json` metadata** required for a clean npm listing:
   - `author`, `repository.url`, `bugs.url`, `homepage`
@@ -217,7 +217,7 @@ never been published. The existing `icons-package-release.yml` workflow publishe
   claim — Bun is a dev dependency, not a runtime requirement.
 - [ ] **Smoke-test the built binary.**
   ```bash
-  cd packages/coniva-cli
+  cd packages/cuneiform-cli
   bun run build
   node dist/bin.js --help
   npm pack --dry-run     # verify only dist/ ships
@@ -249,9 +249,9 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      - run: cd packages/coniva-cli && bun install --frozen-lockfile
-      - run: cd packages/coniva-cli && bun run build
-      - run: cd packages/coniva-cli && npm publish --provenance --access public
+      - run: cd packages/cuneiform-cli && bun install --frozen-lockfile
+      - run: cd packages/cuneiform-cli && bun run build
+      - run: cd packages/cuneiform-cli && npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
@@ -264,8 +264,8 @@ exact commit — no more "trust us, this is the right code" story.
 - Use standalone `cli-vX.Y.Z` tags so CLI releases are decoupled from the web app.
 - First publish: bump to `0.2.0` (not `1.0.0`) to signal that the CLI surface is
   still evolving.
-- Document in `packages/coniva-cli/README.md`:
-  - `npm install -g @contour/cli`
+- Document in `packages/cuneiform-cli/README.md`:
+  - `npm install -g @cuneiform/cli`
   - Minimum Node version
   - Known limitations (what the CLI does *not* yet do)
 
@@ -277,7 +277,7 @@ Before the first `cli-v0.2.0` tag is pushed:
 2. `bun install --frozen-lockfile` passes from a clean checkout.
 3. A maintainer has run `npm publish --dry-run` locally and eyeballed the tarball
    contents.
-4. The `@contour` npm org has at least two owners to avoid bus-factor-of-one.
+4. The `@cuneiform` npm org has at least two owners to avoid bus-factor-of-one.
 
 ---
 
@@ -301,7 +301,7 @@ changelog coherent:
   correct; this plan only changes how it is surfaced.
 - Redesigning the Effects library (`lib/animation/presets.ts`) — presets keep their
   current names; they are simply re-grouped in the UI.
-- Publishing the web app itself to npm or any registry. Contour remains a
+- Publishing the web app itself to npm or any registry. Cuneiform remains a
   Next.js-hosted product per
   `docs_canonical/NEXT_PHASES.md:3-5`.
 - Figma plugin publishing — tracked separately under `figma-plugin/`.
@@ -310,14 +310,14 @@ changelog coherent:
 
 ## 6. Resolved Questions
 
-1. **Final scope name** — ship as **`@contour/cli`**. The product is Contour, so the
-   manifest name wins. The package directory stays `packages/coniva-cli/` for now
+1. **Final scope name** — ship as **`@cuneiform/cli`**. The product is Cuneiform, so the
+   manifest name wins. The package directory stays `packages/cuneiform-cli/` for now
    (renaming the directory is a separate, non-blocking cleanup tracked out of band).
 2. **Merge TransitionPanel + AnimationStudioPanel, or keep two tabs?** — **Merge
    them.** WWDC 337 endorses a single unified Animate surface. `AnimationStudioPanel`
    collapses into the new `AnimatePanel`'s "Animation" section per §2.6.
 3. **Dev-debug overlay opt-in** — **Retain the current
-   `NEXT_PUBLIC_CONTOUR_DEBUG` env-var gate.** A rebuild to toggle is acceptable
+   `NEXT_PUBLIC_CUNEIFORM_DEBUG` env-var gate.** A rebuild to toggle is acceptable
    for a diagnostics-only surface, and the env var keeps the overlay out of the
    production bundle entirely.
 
@@ -351,8 +351,8 @@ Actions:
   `components/explorer/**`, and `components/export/**`. Replace with plain
   sentence-case labels — the existing `font-medium tracking-tight
   text-muted-foreground` recipe is enough hierarchy without shouting.
-- Rewrite literal `ALL-CAPS` strings in the UI to sentence case: "CONTOUR" →
-  "Contour", "SIZES" → "Sizes", "STATES" → "States", "SAVED EFFECTS" → "Saved
+- Rewrite literal `ALL-CAPS` strings in the UI to sentence case: "CUNEIFORM" →
+  "Cuneiform", "SIZES" → "Sizes", "STATES" → "States", "SAVED EFFECTS" → "Saved
   effects", "24PX" → "24 px", "LAYER" / "POSITION" / "DOCUMENT" / "SOURCE ICON"
   / "VARIANT" / "STRATEGY" / "EASING" → sentence-case equivalents. Keep unit
   suffixes lowercase (`px`, `deg`, `ms`).
@@ -379,7 +379,7 @@ and (b) code comments explaining why we removed it.
 | Checkmark shows in both selected and unselected states | Med | Fix the checkbox component so the unselected state renders no glyph. Reuse the shadcn `Checkbox` primitive. |
 | Search bar has no clear (X) button; no zero-results empty state | Med | Add an X clear button inside the `Input` and render "No icons match {query}" when the filtered list is empty. |
 | ZIP download button triggers a silent instant download | Crit | Route through a new export dialog (or at minimum a toast confirming the download started). Offer format/size options and style the ZIP button distinctly from non-destructive icon-only buttons. |
-| Relationship between sidebar ZIP and the Contour menu Export submenu is unexplained | Med | Consolidate all export actions under a single "Export" entry point. If both exist, label them unambiguously ("Quick ZIP" vs "Full Export Options"). |
+| Relationship between sidebar ZIP and the Cuneiform menu Export submenu is unexplained | Med | Consolidate all export actions under a single "Export" entry point. If both exist, label them unambiguously ("Quick ZIP" vs "Full Export Options"). |
 
 ### 7.3 Middle Panel — Layers & Variants
 
@@ -478,6 +478,6 @@ items folded in:
 - `lib/runtime-core/topology-detection.ts:24-28` — warning message sources
 - `specs/editor/animation-tab.md` — current spec (to be rewritten)
 - `specs/editor/cross-icon-transitions.md` — current spec (to be trimmed)
-- `packages/coniva-cli/package.json` — CLI manifest to finalize
+- `packages/cuneiform-cli/package.json` — CLI manifest to finalize
 - `.github/workflows/icons-package-release.yml:81-103` — existing npm publish
   pattern to mirror

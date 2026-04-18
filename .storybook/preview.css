@@ -9,3 +9,15 @@
   --font-geist-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-geist-mono: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
 }
+
+/* Override the app-wide scroll lock from globals.css (html/body are set to
+   height: 100%; overflow: hidden for the single-screen Contour workspace).
+   Storybook needs scrolling inside its preview iframe, so we unlock it here. */
+html,
+body,
+#storybook-root,
+.sb-show-main {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}

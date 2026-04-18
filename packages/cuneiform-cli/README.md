@@ -1,6 +1,6 @@
-# `@contour/cli`
+# `@cuneiform/cli`
 
-The Contour command-line tool. Lets a host repository drive the
+The Cuneiform command-line tool. Lets a host repository drive the
 icon-authoring workflow without opening the web app — scaffold, validate,
 run a live integration dev server, and produce a deterministic snapshot
 build.
@@ -12,9 +12,9 @@ build.
 ## Install
 
 ```bash
-npm install -g @contour/cli
+npm install -g @cuneiform/cli
 # or, scoped to a project:
-npm install --save-dev @contour/cli
+npm install --save-dev @cuneiform/cli
 ```
 
 The package is published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements),
@@ -25,44 +25,44 @@ commit that built it.
 
 - **Node ≥ 18.** No Bun runtime requirement — `bun` is a build-time dev
   dependency, not a runtime dependency.
-- A repo with a `contour.config.ts` (run `contour init` if you don't have
+- A repo with a `cuneiform.config.ts` (run `cuneiform init` if you don't have
   one yet).
 
 ## Commands
 
 ```bash
-contour init               # Scaffold contour.config.ts and source directory
-contour dev [--port N]     # Live integration dev server (Lane 1)
-contour build              # Deterministic snapshot build (Lane 2)
-contour validate           # Validate config + source files
+cuneiform init               # Scaffold cuneiform.config.ts and source directory
+cuneiform dev [--port N]     # Live integration dev server (Lane 1)
+cuneiform build              # Deterministic snapshot build (Lane 2)
+cuneiform validate           # Validate config + source files
 ```
 
-Run `contour <command> --help` for per-command flags.
+Run `cuneiform <command> --help` for per-command flags.
 
-### `contour init`
+### `cuneiform init`
 
-Creates a `contour.config.ts` file in the current directory plus a sample
+Creates a `cuneiform.config.ts` file in the current directory plus a sample
 `icons/` source folder. Safe to run more than once — it skips files that
 already exist.
 
-### `contour dev`
+### `cuneiform dev`
 
 Starts the **live integration dev server** that the editor uses to push
-edits into your repo. The server speaks the same protocol as Contour's
+edits into your repo. The server speaks the same protocol as Cuneiform's
 hosted Studio "Publish" panel; you can point your local Studio at
 `http://localhost:4400` (or whatever `--port` you set) and edits land in
 your repo as you make them.
 
-### `contour build`
+### `cuneiform build`
 
 Runs the **deterministic snapshot build**. Reads everything under
-`icons/` per `contour.config.ts`, validates it, and writes the published
+`icons/` per `cuneiform.config.ts`, validates it, and writes the published
 package layout to the configured `releaseTargets`. Output is byte-stable
 across runs for the same input — safe to commit.
 
-### `contour validate`
+### `cuneiform validate`
 
-Validates `contour.config.ts` and every icon source file against the
+Validates `cuneiform.config.ts` and every icon source file against the
 schema. Exits non-zero on any error. Use it as a pre-commit hook or in CI.
 
 ## Versioning
@@ -76,14 +76,14 @@ publishes the package to npm with provenance.
 
 The 0.2.x line is intentionally narrow:
 
-- **No project sync UI.** `contour dev` runs the integration server but
+- **No project sync UI.** `cuneiform dev` runs the integration server but
   does not yet ship its own TUI. Use the hosted Studio for the visual
   workflow.
 - **No managed transitions.** The CLI can build and validate icon
   packages, but it does not yet expose a way to author cross-icon
   transitions from the terminal — that flow still lives in the web app's
   Animate panel (see [`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md`](../../docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md)).
-- **No watch mode for `contour build`.** Re-run on save manually for now.
+- **No watch mode for `cuneiform build`.** Re-run on save manually for now.
 - **No GitHub PR sync.** Use the hosted Studio's Publish → GitHub PR flow.
 
 If a feature you need is missing, file an issue at

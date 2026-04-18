@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec describes the intended user workflow for Contour as a repo-native icon authoring platform.
+This spec describes the intended user workflow for Cuneiform as a repo-native icon authoring platform.
 
 It is not a screen inventory. It is the product workflow that the screens must support.
 
@@ -13,7 +13,7 @@ It is not a screen inventory. It is the product workflow that the screens must s
 
 ```text
 Import from Figma once,
-then Contour owns the icon system
+then Cuneiform owns the icon system
 and publishes to the codebase.
 ```
 
@@ -33,25 +33,25 @@ Why:
 
 ### Step 1: Figma ingress
 
-The designer exports icons from Figma using a Contour plugin.
+The designer exports icons from Figma using a Cuneiform plugin.
 
 Expected result:
 
-- the payload lands in Contour without manual SVG-by-SVG cleanup
+- the payload lands in Cuneiform without manual SVG-by-SVG cleanup
 - imported icons become canonical source candidates
 
-### Step 2: Contour becomes SSOT
+### Step 2: Cuneiform becomes SSOT
 
-After import, the user edits icons in Contour.
+After import, the user edits icons in Cuneiform.
 
 Expected result:
 
-- icon structure, variants, transitions, and metadata are owned by Contour
+- icon structure, variants, transitions, and metadata are owned by Cuneiform
 - Figma is no longer treated as co-equal authority
 
 ### Step 3: Repo-aware editing
 
-Contour is opened against the current codebase context.
+Cuneiform is opened against the current codebase context.
 
 Expected result:
 
@@ -73,15 +73,15 @@ In some cases, the team re-syncs icon outputs or metadata back to Figma.
 
 Expected result:
 
-- back-sync is possible, but it does not move SSOT away from Contour
+- back-sync is possible, but it does not move SSOT away from Cuneiform
 
 ## Workflow Diagram
 
 ```text
 Designer in Figma
   -> Export via plugin
-  -> Contour import
-  -> Contour editing and ownership
+  -> Cuneiform import
+  -> Cuneiform editing and ownership
   -> Publish into host React repo
   -> host codebase consumes outputs
   -> optional back-sync to Figma
@@ -92,11 +92,11 @@ Designer in Figma
 - import should feel like starting the system, not like dropping files into a converter
 - publishing should feel codebase-native
 - the host codebase should be the first convincing proof of value
-- the user should understand when Contour, not Figma, owns the icon set
+- the user should understand when Cuneiform, not Figma, owns the icon set
 
 ## Non-Goals
 
-- Contour should not feel like a generic "send icons to many destinations" panel
+- Cuneiform should not feel like a generic "send icons to many destinations" panel
 - the first-time workflow should not depend on package registry setup
 - the user should not need to manually reference individual SVG files in React
 
@@ -110,8 +110,8 @@ Message should point to Figma ingress first for the initial wedge.
 
 The system should clearly show:
 
-- icons are inside Contour
-- Contour is now authoritative
+- icons are inside Cuneiform
+- Cuneiform is now authoritative
 - publish to repo is the next meaningful action
 
 ### Published with live host
@@ -126,17 +126,17 @@ The system should clearly show:
 The system should clearly show:
 
 - Figma sync is downstream
-- it does not replace Contour ownership
+- it does not replace Cuneiform ownership
 
 ## Key Copy Principles
 
 - talk about "publish to codebase", not "export files"
 - talk about "import from Figma", not "sync from Figma"
-- avoid language that implies Figma and Contour are equal sources of truth
+- avoid language that implies Figma and Cuneiform are equal sources of truth
 
 ## Testing Requirements
 
 - initial user path from Figma ingress to first React publish is clear
-- users can tell when Contour becomes authoritative
+- users can tell when Cuneiform becomes authoritative
 - repo-native workflow is understandable without extra docs
 - back-sync does not confuse source-of-truth ownership

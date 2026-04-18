@@ -1,4 +1,4 @@
-# Contour - IMPLEMENTATION.md
+# Cuneiform - IMPLEMENTATION.md
 
 This document tracks implementation progress against the planned architecture and phased roadmap.
 
@@ -70,7 +70,7 @@ This document tracks implementation progress against the planned architecture an
 - [x] Snapshot SVG rendering helpers also exist for payload-driven React/SSR playback. (`lib/runtime-dom/snapshot-renderer.tsx`)
 
 ### `runtime-react`
-- [x] In addition to `ContourIcon`/`useIconState`, direct runtime-json hooks/components exist for payload-driven playback. (`lib/runtime-react/icon.tsx`, `lib/runtime-react/use-icon.ts`)
+- [x] In addition to `CuneiformIcon`/`useIconState`, direct runtime-json hooks/components exist for payload-driven playback. (`lib/runtime-react/icon.tsx`, `lib/runtime-react/use-icon.ts`)
 - [x] A dedicated runtime-json demo route exists for end-to-end validation. (`app/runtime-demo/page.tsx`)
 
 ### `apps/web`
@@ -123,8 +123,8 @@ Detailed runtime planning now lives in [docs/plans/2026-03-08-runtime-library-im
 - [x] Add browser-level tests for mount/update/unmount behavior. (`tests/runtime-dom.test.ts`, `tests/runtime-svg-renderer.test.tsx`)
 
 ### Phase R4 - Runtime React (complete)
-- [x] Build the runtime React surfaces on top of the runtime store. (`lib/runtime-react/ContourIcon.tsx`, `lib/runtime-react/icon.tsx`, `lib/runtime-react/useIconState.ts`, `lib/runtime-react/use-icon.ts`)
-- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/ContourIcon.tsx`, `lib/runtime-react/use-icon.ts`, `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
+- [x] Build the runtime React surfaces on top of the runtime store. (`lib/runtime-react/CuneiformIcon.tsx`, `lib/runtime-react/icon.tsx`, `lib/runtime-react/useIconState.ts`, `lib/runtime-react/use-icon.ts`)
+- [x] Wire `useSyncExternalStore` subscriptions and prop-driven state changes. (`lib/runtime-react/CuneiformIcon.tsx`, `lib/runtime-react/use-icon.ts`, `IconDriver.subscribe()` in `lib/runtime-dom/driver.ts`)
 - [x] Add integration coverage for controlled and uncontrolled animation flows. (`tests/runtime-react.test.tsx` — 9 tests)
 - [x] Add a demo icon path in the app for end-to-end validation. (`app/demo/runtime/page.tsx` — Hamburger/Close + Chevron + export pipeline validation)
 - [x] Keep the payload-first runtime-json React adapter path and SSR snapshot renderer alongside the mainline API. (`tests/runtime-react-phase4.test.tsx`, `app/runtime-demo/page.tsx`)

@@ -3,7 +3,7 @@
 **Phase:** M
 **Module:** `lib/export/export-lottie.ts`
 
-Converts a Contour `Icon` + `variantId` to a
+Converts a Cuneiform `Icon` + `variantId` to a
 [Lottie 5.x JSON](https://lottiefiles.github.io/lottie-docs/) object
 suitable for playback by `lottie-web`, dotLottie, or the native
 platform Lottie runtimes.
@@ -92,7 +92,7 @@ type LottieBezier = {
 
 #### Paint shapes
 
-| Contour `PaintRef.mode` | Lottie shape |
+| Cuneiform `PaintRef.mode` | Lottie shape |
 |---|---|
 | `'currentColor'` | `fl` with color `[0,0,0,1]` (black placeholder) |
 | `'fixed'` | `fl` with decoded hex → `[r,g,b,1]` |
@@ -166,7 +166,7 @@ Emit a Lottie `tm` (trim path) modifier in the shape group:
 
 ## Downgrade Rules (Lottie)
 
-| Contour feature | Lottie behaviour | Diagnostic |
+| Cuneiform feature | Lottie behaviour | Diagnostic |
 |---|---|---|
 | `variableValue` | Emitted as static opacity at `value=0.5` | `warn: variableValue-not-representable` |
 | `spring` easing | Approximated as `ease-in-out` (0.42,0,0.58,1) | `info: spring-easing-approximated` |

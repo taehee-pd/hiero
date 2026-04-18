@@ -161,7 +161,7 @@ imports.
 │    Feature-local presentational leaves live beside their │  explorer/, export/
 │    containers (components/editor/ui/…, etc.)            │
 ├──────────────────────────────────────────────────────────┤
-│ 2. Contour DS (components/ds)                            │  NARROW, by admission
+│ 2. Cuneiform DS (components/ds)                            │  NARROW, by admission
 │    Only cross-feature components with a stable semantic │
 │    contract AND at least two consumers outside one      │
 │    feature family.                                       │

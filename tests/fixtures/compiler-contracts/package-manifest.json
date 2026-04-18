@@ -1,7 +1,7 @@
 {
-  "$schema": "https://contour.dev/schemas/manifest/1.0.0",
+  "$schema": "https://cuneiform.dev/schemas/manifest/1.0.0",
   "package": {
-    "name": "@contour/icons",
+    "name": "@cuneiform/icons",
     "version": "1.2.0",
     "builtAt": "2026-03-09T09:00:00.000Z",
     "iconSchemaVersion": "1.0.0",

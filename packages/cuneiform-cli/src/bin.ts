@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * Contour CLI entry point.
+ * Cuneiform CLI entry point.
  *
  * Usage:
- *   contour init              Scaffold contour.config.ts and source directory
- *   contour dev [--port N]    Start live integration dev server (Lane 1)
- *   contour build             Deterministic snapshot build (Lane 2)
- *   contour validate          Validate config and source files
+ *   cuneiform init              Scaffold cuneiform.config.ts and source directory
+ *   cuneiform dev [--port N]    Start live integration dev server (Lane 1)
+ *   cuneiform build             Deterministic snapshot build (Lane 2)
+ *   cuneiform validate          Validate config and source files
  *
  * Run via bun:
- *   bun packages/contour-cli/src/bin.ts <command>
+ *   bun packages/cuneiform-cli/src/bin.ts <command>
  *
  * Or after linking:
- *   contour <command>
+ *   cuneiform <command>
  */
 
 import { runInit } from './commands/init';
@@ -46,11 +46,11 @@ function parseFlags(argv: string[]): Record<string, string | boolean> {
 // Main
 // ---------------------------------------------------------------------------
 
-// Parse all args: flags can appear anywhere (e.g. `contour --version`, `contour dev --port 4401`)
+// Parse all args: flags can appear anywhere (e.g. `cuneiform --version`, `cuneiform dev --port 4401`)
 const allArgs = process.argv.slice(2);
 const flags = parseFlags(allArgs);
 // Find the first positional arg that is not a flag key or flag value.
-// This handles `contour --config contour.config.ts build` → command = "build".
+// This handles `cuneiform --config cuneiform.config.ts build` → command = "build".
 const command = (() => {
   for (let i = 0; i < allArgs.length; i++) {
     const a = allArgs[i]!;
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
       break;
     default:
       if (command) {
-        console.error(`[contour] Unknown command: "${command}"\n`);
+        console.error(`[cuneiform] Unknown command: "${command}"\n`);
         printUsage();
         process.exit(1);
       } else {
@@ -102,20 +102,20 @@ async function main(): Promise<void> {
 
 function printUsage(): void {
   console.log(`
-contour — repo-native icon authoring by Contour
+cuneiform — repo-native icon authoring by Cuneiform
 
 Usage:
-  contour <command> [options]
+  cuneiform <command> [options]
 
 Commands:
-  init              Scaffold contour.config.ts and source directory
+  init              Scaffold cuneiform.config.ts and source directory
   dev               Start live integration dev server (Lane 1)
   build             Deterministic snapshot build (Lane 2)
   validate          Validate config and source files
 
 Options:
   --port <n>        Dev server port (default: 4400)
-  --config <path>   Path to contour.config.ts (default: ./contour.config.ts)
+  --config <path>   Path to cuneiform.config.ts (default: ./cuneiform.config.ts)
   --out <path>      Output directory override for build
   --secret <token>  Shared secret for dev server API auth
   --version         Print version
@@ -124,6 +124,6 @@ Options:
 }
 
 main().catch((err: unknown) => {
-  console.error(`[contour] ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`[cuneiform] ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

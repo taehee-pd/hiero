@@ -101,7 +101,7 @@ There is no per-binding strategy badge in the panel. Layer matching still
 happens inside `buildDefaultLayerBindings()` (matched by layer id with
 unmatched layers tagged as added/removed), but the user does not see a
 runtime-language readout per row. Debugging that information is available via
-`NEXT_PUBLIC_CONTOUR_DEBUG=1` and the dev-only badge in `TransitionPanel`.
+`NEXT_PUBLIC_CUNEIFORM_DEBUG=1` and the dev-only badge in `TransitionPanel`.
 
 ## Edge Cases
 

@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines the reviewed transition model for Contour.
+This spec defines the reviewed transition model for Cuneiform.
 
 The old schema mixed:
 

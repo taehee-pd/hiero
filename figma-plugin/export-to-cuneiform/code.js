@@ -85,7 +85,7 @@ async function exportSelection() {
     type: 'export-ready',
     payload: {
       version: '1',
-      source: 'contour-figma-plugin',
+      source: 'cuneiform-figma-plugin',
       exportedAt: new Date().toISOString(),
       fileName: figma.root.name || 'Figma File',
       icons,

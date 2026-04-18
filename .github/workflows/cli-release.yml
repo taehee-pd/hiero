@@ -1,7 +1,7 @@
-name: CLI Release (@contour/cli)
+name: CLI Release (@cuneiform/cli)
 
 # Mirrors the icons-package-release.yml pattern but scoped to
-# packages/coniva-cli. Triggered manually OR by pushing a `cli-vX.Y.Z` tag,
+# packages/cuneiform-cli. Triggered manually OR by pushing a `cli-vX.Y.Z` tag,
 # per docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md §3.2 / §3.3.
 
 on:
@@ -40,11 +40,11 @@ jobs:
         run: bun run lint
 
       - name: Build CLI
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: bun run build
 
       - name: Smoke-test built binary
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: |
           node dist/bin.js --help || true
           node dist/bin.js --version || true
@@ -56,18 +56,18 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Pack tarball (dry run)
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: npm pack --dry-run
 
       - name: Pack tarball
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: npm pack
 
       - name: Upload tarball artifact
         uses: actions/upload-artifact@v4
         with:
-          name: contour-cli-tarball
-          path: 'packages/coniva-cli/*.tgz'
+          name: cuneiform-cli-tarball
+          path: 'packages/cuneiform-cli/*.tgz'
 
   publish:
     needs: build-validate
@@ -97,16 +97,16 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build CLI
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: bun run build
 
       - name: Smoke-test built binary
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         run: |
           node dist/bin.js --help || true
 
       - name: Publish to npm with provenance
-        working-directory: packages/coniva-cli
+        working-directory: packages/cuneiform-cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public

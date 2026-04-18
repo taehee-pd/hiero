@@ -79,7 +79,7 @@ import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platfor
 import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
 
 export function Navbar() {
-  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Contour');
+  const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Cuneiform');
   const isDirty = useEditorStore((s) => s.isDirty);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
@@ -167,8 +167,8 @@ export function Navbar() {
   // event so this handler stays UI-agnostic.
   useEffect(() => {
     const handler = () => setShortcutsOpen(true);
-    window.addEventListener('contour:open-shortcuts', handler as EventListener);
-    return () => window.removeEventListener('contour:open-shortcuts', handler as EventListener);
+    window.addEventListener('cuneiform:open-shortcuts', handler as EventListener);
+    return () => window.removeEventListener('cuneiform:open-shortcuts', handler as EventListener);
   }, []);
 
   const showToolbarError = useCallback((message: string) => {
@@ -195,7 +195,7 @@ export function Navbar() {
       const json = JSON.parse(result.data);
       if (isWorkspace(json)) editorStore.getState().loadWorkspace(json);
       else if (isProject(json)) editorStore.getState().loadProject(json);
-      else { clearCurrentProjectPath(); showToolbarError('Invalid Contour workspace file.'); }
+      else { clearCurrentProjectPath(); showToolbarError('Invalid Cuneiform workspace file.'); }
     } catch { clearCurrentProjectPath(); showToolbarError('Failed to parse JSON file.'); }
   }, [showToolbarError]);
 
@@ -255,13 +255,13 @@ export function Navbar() {
                 <span
                   className="inline-block h-3 shrink-0 bg-foreground"
                   role="img"
-                  aria-label="Contour logo"
+                  aria-label="Cuneiform logo"
                   style={{
                     aspectRatio: '2144 / 408',
-                    maskImage: 'url(/contour_wordmark.svg)',
+                    maskImage: 'url(/cuneiform_wordmark.svg)',
                     maskSize: 'contain',
                     maskRepeat: 'no-repeat',
-                    WebkitMaskImage: 'url(/contour_wordmark.svg)',
+                    WebkitMaskImage: 'url(/cuneiform_wordmark.svg)',
                     WebkitMaskSize: 'contain',
                     WebkitMaskRepeat: 'no-repeat',
                   }}

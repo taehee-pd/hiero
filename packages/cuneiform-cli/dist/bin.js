@@ -20,30 +20,47 @@ var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, 
 // package.json
 var require_package = __commonJS((exports, module) => {
   module.exports = {
-    name: "@contour/cli",
-    version: "0.1.0",
-    description: "Contour CLI — repo-native icon authoring for host repositories",
+    name: "@cuneiform/cli",
+    version: "0.2.0",
+    description: "Cuneiform CLI — repo-native icon authoring for host repositories",
+    author: "taehee-pd <j.taehee@icloud.com>",
+    license: "MIT",
+    homepage: "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/cuneiform-cli#readme",
+    repository: {
+      type: "git",
+      url: "https://github.com/taehee-pd/icon-authoring-tool.git",
+      directory: "packages/cuneiform-cli"
+    },
+    bugs: {
+      url: "https://github.com/taehee-pd/icon-authoring-tool/issues"
+    },
     bin: {
-      contour: "./dist/bin.js"
+      cuneiform: "./dist/bin.js"
     },
     engines: {
-      node: ">=18",
-      bun: ">=1.0"
+      node: ">=18"
     },
     keywords: [
-      "contour",
+      "cuneiform",
       "icons",
+      "icon-authoring",
       "cli",
-      "icon-authoring"
+      "svg",
+      "design-system"
     ],
     type: "module",
-    license: "MIT",
     files: [
-      "dist"
+      "dist",
+      "README.md"
     ],
+    publishConfig: {
+      access: "public",
+      provenance: true
+    },
     scripts: {
       build: "bun build src/bin.ts --outfile dist/bin.js --target node",
-      prepare: "bun run build"
+      prepare: "bun run build",
+      prepublishOnly: "bun run build"
     }
   };
 });
@@ -52,16 +69,16 @@ var require_package = __commonJS((exports, module) => {
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-var CONFIG_TEMPLATE = `import type { ContourConfig } from '@contour/cli';
+var CONFIG_TEMPLATE = `import type { CuneiformConfig } from '@cuneiform/cli';
 
 export default {
-  sourceDir: 'contour',
+  sourceDir: 'cuneiform',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.contour/cache/app',
+      cacheDir: '.cuneiform/cache/app',
     },
   ],
   releaseTargets: [
@@ -71,7 +88,7 @@ export default {
       outputDir: 'src/icons/generated',
     },
   ],
-} satisfies ContourConfig;
+} satisfies CuneiformConfig;
 `;
 function emptyManifest() {
   return JSON.stringify({
@@ -83,49 +100,49 @@ function emptyManifest() {
 `;
 }
 async function runInit(cwd, _flags) {
-  const configPath = path.join(cwd, "contour.config.ts");
-  const sourceDirPath = path.join(cwd, "contour");
+  const configPath = path.join(cwd, "cuneiform.config.ts");
+  const sourceDirPath = path.join(cwd, "cuneiform");
   const iconsDirPath = path.join(sourceDirPath, "icons");
   const manifestPath = path.join(sourceDirPath, "manifest.json");
   let anyCreated = false;
   if (!existsSync(configPath)) {
     await writeFile(configPath, CONFIG_TEMPLATE, "utf8");
-    log("created", "contour.config.ts");
+    log("created", "cuneiform.config.ts");
     anyCreated = true;
   } else {
-    log("exists ", "contour.config.ts");
+    log("exists ", "cuneiform.config.ts");
   }
   if (!existsSync(sourceDirPath)) {
     await mkdir(sourceDirPath, { recursive: true });
-    log("created", "contour/");
+    log("created", "cuneiform/");
     anyCreated = true;
   }
   if (!existsSync(iconsDirPath)) {
     await mkdir(iconsDirPath, { recursive: true });
-    log("created", "contour/icons/");
+    log("created", "cuneiform/icons/");
     anyCreated = true;
   }
   if (!existsSync(manifestPath)) {
     await writeFile(manifestPath, emptyManifest(), "utf8");
-    log("created", "contour/manifest.json");
+    log("created", "cuneiform/manifest.json");
     anyCreated = true;
   }
   if (anyCreated) {
     console.log(`
-[contour] Initialized successfully.
+[cuneiform] Initialized successfully.
 
 Next steps:
-  1.  Run \`contour dev\` to start the live integration server
-  2.  Open the Contour editor and connect to this repository
+  1.  Run \`cuneiform dev\` to start the live integration server
+  2.  Open the Cuneiform editor and connect to this repository
        (set the dev server URL to http://localhost:4400)
-  3.  Publish icons from the editor — they will appear in contour/icons/
-  4.  Run \`contour build\` to produce a snapshot build for CI
-  5.  Commit contour/ to version-control as your canonical icon source
+  3.  Publish icons from the editor — they will appear in cuneiform/icons/
+  4.  Run \`cuneiform build\` to produce a snapshot build for CI
+  5.  Commit cuneiform/ to version-control as your canonical icon source
 
-See docs at https://contour.dev/docs/getting-started
+See docs at https://cuneiform.dev/docs/getting-started
 `);
   } else {
-    console.log("[contour] Already initialized — nothing to create.");
+    console.log("[cuneiform] Already initialized — nothing to create.");
   }
 }
 function log(action, file) {
@@ -319,7 +336,7 @@ function isObject(value) {
 }
 // ../../lib/install-config/load-config.ts
 function loadConfig(raw, configPath) {
-  const label = configPath ?? "contour.config.ts";
+  const label = configPath ?? "cuneiform.config.ts";
   if (raw === null || raw === undefined) {
     return { ok: false, error: `${label}: default export is missing or undefined.` };
   }
@@ -470,30 +487,27 @@ function generateSyncSourceManifest(entries, generatedAt) {
 }
 
 // ../../lib/schema/types.ts
-function buildDefaultLegacyState(v) {
-  const fallbackState = Object.values(v.states ?? {})[0];
+function buildDefaultIconType(v) {
+  const fallbackType = Object.values(v.types ?? {})[0];
   return {
-    id: v.defaultState ?? fallbackState?.id ?? "default",
-    layers: v.layers ?? fallbackState?.layers ?? {},
-    topology: v.topology ?? fallbackState?.topology
+    id: v.defaultType ?? fallbackType?.id ?? "default",
+    layers: v.layers ?? fallbackType?.layers ?? {},
+    topology: v.topology ?? fallbackType?.topology
   };
 }
-function getVariantDefaultStateId(v) {
-  return v.defaultState ?? Object.keys(v.states ?? {})[0] ?? "default";
+function getVariantDefaultTypeId(v) {
+  return v.defaultType ?? Object.keys(v.types ?? {})[0] ?? "default";
 }
-function getVariantState(v, stateId) {
-  const resolvedStateId = stateId ?? getVariantDefaultStateId(v);
-  const state = v.states?.[resolvedStateId];
-  if (state) {
+function getVariantType(v, typeId) {
+  const resolvedTypeId = typeId ?? getVariantDefaultTypeId(v);
+  const iconType = v.types?.[resolvedTypeId];
+  if (iconType) {
     return {
-      ...state,
-      topology: state.topology ?? v.topology
+      ...iconType,
+      topology: iconType.topology ?? v.topology
     };
   }
-  if (resolvedStateId && resolvedStateId !== "default" && v.states && Object.keys(v.states).length > 0) {
-    console.warn(`[contour] State "${resolvedStateId}" not found in variant "${v.id}". Falling back to default layers.`);
-  }
-  return buildDefaultLegacyState(v);
+  return buildDefaultIconType(v);
 }
 
 // ../../lib/rendering/resolve-layer-style.ts
@@ -602,7 +616,7 @@ function exportSvgString(icon, variantId, stateId, tokens, renderingMode) {
   const variant = icon.variants[variantId];
   if (!variant)
     return "";
-  const state = getVariantState(variant, stateId);
+  const state = getVariantType(variant, stateId);
   const effectiveRenderingMode = resolveVariantRenderingMode(renderingMode ?? variant.renderingMode);
   const [vx, vy, vw, vh] = variant.viewBox;
   const lines = [];
@@ -1050,9 +1064,9 @@ async function projectFromSourceDir(sourceDir, options) {
   return projectFromSourceFiles(files, options);
 }
 // ../../lib/compiler-contracts/types.ts
-var COMPILED_ICON_SCHEMA_URI = "https://contour.dev/schemas/compiled-icon/1.0.0";
-var PACKAGE_MANIFEST_SCHEMA_URI = "https://contour.dev/schemas/manifest/1.0.0";
-var ICON_CHANGE_RECORD_SCHEMA_URI = "https://contour.dev/schemas/change-record/1.0.0";
+var COMPILED_ICON_SCHEMA_URI = "https://cuneiform.dev/schemas/compiled-icon/1.0.0";
+var PACKAGE_MANIFEST_SCHEMA_URI = "https://cuneiform.dev/schemas/manifest/1.0.0";
+var ICON_CHANGE_RECORD_SCHEMA_URI = "https://cuneiform.dev/schemas/change-record/1.0.0";
 // ../../lib/compiler-contracts/validators.ts
 function isObject3(val) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
@@ -1952,7 +1966,7 @@ function resolveCollections(options) {
   return options.collections ?? {};
 }
 function getCompiledIconSchemaVersion(schemaUri) {
-  const match = schemaUri.match(/^https:\/\/(?:contour|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
+  const match = schemaUri.match(/^https:\/\/(?:cuneiform|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
   if (!match) {
     throw new Error(`Unexpected compiled icon schema URI: ${schemaUri}`);
   }
@@ -2013,7 +2027,7 @@ export const iconMeta: IconComponentMeta = ${serializeCode({
       id: entry.id,
       name: entry.name,
       componentName: entry.componentName,
-      schema: "https://contour.dev/schemas/compiled-icon/1.0.0",
+      schema: "https://cuneiform.dev/schemas/compiled-icon/1.0.0",
       version: entry.version,
       availableSizes: entry.supportedSizes,
       availableModes: entry.supportedModes
@@ -2043,7 +2057,7 @@ const iconData = {
   id: ${JSON.stringify(iconId)},
   name: ${JSON.stringify(componentName)},
   componentName: ${JSON.stringify(componentName)},
-  $schema: 'https://contour.dev/schemas/compiled-icon/1.0.0',
+  $schema: 'https://cuneiform.dev/schemas/compiled-icon/1.0.0',
   meta: {
     category: '',
     tags: [],
@@ -2279,7 +2293,7 @@ function generatePackageReadme(packageName, version, icons) {
   const sampleIcon = icons[0]?.id ?? "icon-name";
   return `# ${packageName}
 
-> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Contour](https://contour.dev).
+> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Cuneiform](https://cuneiform.dev).
 
 ## Install
 
@@ -2290,24 +2304,24 @@ npm install ${packageName}
 ## Quick Start (React)
 
 \`\`\`tsx
-import { ContourIcon } from '${packageName}/react';
+import { CuneiformIcon } from '${packageName}/react';
 import icon from '${packageName}/icons/${sampleIcon}.compiled.json';
 
 function App() {
-  return <ContourIcon icon={icon} size={24} animate />;
+  return <CuneiformIcon icon={icon} size={24} animate />;
 }
 \`\`\`
 
 ## State Transitions
 
 \`\`\`tsx
-<ContourIcon icon={icon} state="active" animate />
+<CuneiformIcon icon={icon} state="active" animate />
 \`\`\`
 
 ## Effects
 
 \`\`\`tsx
-<ContourIcon icon={icon} effect="bounce" />
+<CuneiformIcon icon={icon} effect="bounce" />
 \`\`\`
 
 ## Icons (${iconCount})
@@ -2316,7 +2330,7 @@ ${iconList}
 
 ---
 
-*v${version} — generated by Contour*
+*v${version} — generated by Cuneiform*
 `;
 }
 function serializeCanonicalJson(value) {
@@ -2553,7 +2567,7 @@ async function runBuild(repoRoot, config, previousSourceFiles, opts) {
   try {
     compiled = compileProject(project, {
       package: {
-        name: "contour-live",
+        name: "cuneiform-live",
         version: "0.0.0",
         builtAt
       }
@@ -2649,7 +2663,7 @@ function watchSourceDir(sourceDir, onChanged, debounceMs = DEFAULT_DEBOUNCE_MS) 
 
 // ../../lib/live-sync/dev-server.ts
 async function startDevServer(serverConfig) {
-  const { repoRoot, contour: config, port } = serverConfig;
+  const { repoRoot, cuneiform: config, port } = serverConfig;
   const state = {
     iconCount: 0,
     lastBuildAt: null,
@@ -2657,25 +2671,25 @@ async function startDevServer(serverConfig) {
     watching: false,
     previousSourceFiles: null
   };
-  console.log(`[contour] Starting dev server on port ${port}...`);
-  console.log(`[contour] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
-  console.log(`[contour] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
+  console.log(`[cuneiform] Starting dev server on port ${port}...`);
+  console.log(`[cuneiform] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
+  console.log(`[cuneiform] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
   const initialBuild = await fullRebuild(repoRoot, config);
   applyBuildResult(state, initialBuild);
   if (initialBuild.kind === "success") {
-    console.log(`[contour] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
+    console.log(`[cuneiform] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
   } else if (initialBuild.kind === "error") {
-    console.warn(`[contour] Initial build failed: ${initialBuild.error}`);
-    console.warn(`[contour] Continuing — server will retry on file change.`);
+    console.warn(`[cuneiform] Initial build failed: ${initialBuild.error}`);
+    console.warn(`[cuneiform] Continuing — server will retry on file change.`);
   }
   const sourceDir = path7.resolve(repoRoot, config.sourceDir);
   const watcher = watchSourceDir(sourceDir, async () => {
     const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
     applyBuildResult(state, result);
     if (result.kind === "success") {
-      console.log(`[contour] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+      console.log(`[cuneiform] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
     } else if (result.kind === "error") {
-      console.warn(`[contour] Rebuild failed: ${result.error}`);
+      console.warn(`[cuneiform] Rebuild failed: ${result.error}`);
     }
   });
   state.watching = watcher.active;
@@ -2686,7 +2700,7 @@ async function startDevServer(serverConfig) {
     server.on("error", reject);
     server.listen(port, "127.0.0.1", resolve);
   });
-  console.log(`[contour] Listening on http://localhost:${port}`);
+  console.log(`[cuneiform] Listening on http://localhost:${port}`);
   return {
     port,
     async close() {
@@ -2698,7 +2712,7 @@ async function startDevServer(serverConfig) {
 }
 async function handleRequest(req, res, serverConfig, state) {
   const { method, url } = req;
-  const { repoRoot, contour: config, apiSecret } = serverConfig;
+  const { repoRoot, cuneiform: config, apiSecret } = serverConfig;
   const requestOrigin = req.headers["origin"];
   if (requestOrigin) {
     res.setHeader("Access-Control-Allow-Origin", requestOrigin);
@@ -2731,12 +2745,12 @@ async function handleRequest(req, res, serverConfig, state) {
       sendJson(res, 404, { error: "Not found" });
     }
   } catch (err) {
-    console.error(`[contour] Unhandled request error:`, err);
+    console.error(`[cuneiform] Unhandled request error:`, err);
     sendJson(res, 500, { error: "Internal server error" });
   }
 }
 async function handleGetStatus(res, serverConfig, state) {
-  const { repoRoot, contour: config, port } = serverConfig;
+  const { repoRoot, cuneiform: config, port } = serverConfig;
   const status = {
     ok: true,
     repoRoot,
@@ -2806,7 +2820,7 @@ async function handlePostIcons(req, res, repoRoot, config, state) {
   const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
   applyBuildResult(state, result);
   if (result.kind === "success") {
-    console.log(`[contour] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+    console.log(`[cuneiform] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
   }
   sendJson(res, 200, {
     ok: true,
@@ -2903,13 +2917,13 @@ function extractIconList(sourceFiles) {
 
 // src/commands/dev.ts
 async function runDev(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "contour.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "cuneiform.config.ts");
   const rawPort = flags["port"];
   const port = typeof rawPort === "string" && /^\d+$/.test(rawPort) ? parseInt(rawPort, 10) : 4400;
   const apiSecret = typeof flags["secret"] === "string" ? flags["secret"] : undefined;
   if (!existsSync2(configPath)) {
-    console.error(`[contour] Config not found: ${path8.relative(cwd, configPath)}`);
-    console.error(`         Run \`contour init\` to scaffold contour.config.ts`);
+    console.error(`[cuneiform] Config not found: ${path8.relative(cwd, configPath)}`);
+    console.error(`         Run \`cuneiform init\` to scaffold cuneiform.config.ts`);
     process.exit(1);
   }
   let config;
@@ -2917,24 +2931,24 @@ async function runDev(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[contour] Config invalid:
+      console.error(`[cuneiform] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const server = await startDevServer({
     repoRoot: cwd,
-    contour: config,
+    cuneiform: config,
     port,
     apiSecret
   });
   const shutdown = async () => {
     console.log(`
-[contour] Shutting down...`);
+[cuneiform] Shutting down...`);
     await server.close();
     process.exit(0);
   };
@@ -2948,10 +2962,10 @@ import path9 from "node:path";
 import { existsSync as existsSync3 } from "node:fs";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
 async function runBuild2(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "contour.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "cuneiform.config.ts");
   const outOverride = typeof flags["out"] === "string" ? flags["out"] : undefined;
   if (!existsSync3(configPath)) {
-    console.error(`[contour] Config not found: ${path9.relative(cwd, configPath)}`);
+    console.error(`[cuneiform] Config not found: ${path9.relative(cwd, configPath)}`);
     process.exit(1);
   }
   let config;
@@ -2959,58 +2973,58 @@ async function runBuild2(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[contour] Config invalid:
+      console.error(`[cuneiform] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const releaseTargets = config.releaseTargets ?? [];
   if (releaseTargets.length === 0 && !outOverride) {
-    console.error(`[contour] No releaseTargets configured and --out not provided.
-         Add a local-directory target to contour.config.ts or pass --out <dir>.`);
+    console.error(`[cuneiform] No releaseTargets configured and --out not provided.
+         Add a local-directory target to cuneiform.config.ts or pass --out <dir>.`);
     process.exit(1);
   }
   const sourceDir = path9.resolve(cwd, config.sourceDir);
   if (!existsSync3(sourceDir)) {
-    console.error(`[contour] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`contour init\` to create it`);
+    console.error(`[cuneiform] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`cuneiform init\` to create it`);
     process.exit(1);
   }
-  console.log(`[contour] Loading source from ${config.sourceDir}...`);
+  console.log(`[cuneiform] Loading source from ${config.sourceDir}...`);
   let project;
   try {
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
-    console.error(`[contour] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
   if (iconCount === 0) {
-    console.warn(`[contour] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
+    console.warn(`[cuneiform] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
   }
-  console.log(`[contour] Compiling ${iconCount} icon(s)...`);
+  console.log(`[cuneiform] Compiling ${iconCount} icon(s)...`);
   const builtAt = new Date().toISOString();
   let compiled;
   try {
     compiled = compileProject(project, {
       package: {
-        name: "contour-build",
+        name: "cuneiform-build",
         version: "0.0.0",
         builtAt
       }
     });
   } catch (err) {
-    console.error(`[contour] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[cuneiform] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const localDirTargets = outOverride ? [{ kind: "local-directory", outputMode: "snapshot", outputDir: outOverride }] : releaseTargets.filter((t) => t.kind === "local-directory");
   for (const target of localDirTargets) {
     const outDir = path9.resolve(cwd, target.outputDir);
-    console.log(`[contour] Writing to ${target.outputDir}...`);
+    console.log(`[cuneiform] Writing to ${target.outputDir}...`);
     for (const file of compiled.files) {
       const targetPath = path9.join(outDir, file.path);
       await mkdir4(path9.dirname(targetPath), { recursive: true });
@@ -3021,46 +3035,46 @@ ${result.error}`);
   for (const target of releaseTargets) {
     if (target.kind === "git-pr") {
       console.log(`
-[contour] git-pr target: ${target.owner}/${target.repo}
-         To open a pull request, use the Create PR action in the Contour editor.`);
+[cuneiform] git-pr target: ${target.owner}/${target.repo}
+         To open a pull request, use the Create PR action in the Cuneiform editor.`);
     }
     if (target.kind === "npm-registry") {
       console.log(`
-[contour] npm-registry target: ${target.packageName}
-         To publish to npm, use the Release action in the Contour editor.`);
+[cuneiform] npm-registry target: ${target.packageName}
+         To publish to npm, use the Release action in the Cuneiform editor.`);
     }
   }
   const elapsedMs = Date.now() - new Date(builtAt).getTime();
   console.log(`
-[contour] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
+[cuneiform] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
 }
 
 // src/commands/validate.ts
 import path10 from "node:path";
 import { existsSync as existsSync4 } from "node:fs";
 async function runValidate(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "contour.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "cuneiform.config.ts");
   let exitCode = 0;
   if (!existsSync4(configPath)) {
-    console.error(`[contour] Config not found: ${path10.relative(cwd, configPath)}`);
-    console.error(`         Run \`contour init\` to scaffold contour.config.ts`);
+    console.error(`[cuneiform] Config not found: ${path10.relative(cwd, configPath)}`);
+    console.error(`         Run \`cuneiform init\` to scaffold cuneiform.config.ts`);
     process.exit(1);
   }
   let rawModule;
   try {
     rawModule = await import(configPath);
   } catch (err) {
-    console.error(`[contour] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const loadResult = loadConfig(rawModule.default, configPath);
   if (!loadResult.ok) {
-    console.error(`[contour] Config invalid:
+    console.error(`[cuneiform] Config invalid:
 ${loadResult.error}`);
     process.exit(1);
   }
   const config = loadResult.config;
-  console.log(`[contour] Config`);
+  console.log(`[cuneiform] Config`);
   console.log(`   sourceDir:       ${config.sourceDir}`);
   console.log(`   hostTargets:     ${config.hostTargets.length}`);
   console.log(`   releaseTargets:  ${(config.releaseTargets ?? []).length}`);
@@ -3068,8 +3082,8 @@ ${loadResult.error}`);
   const sourceDir = path10.resolve(cwd, config.sourceDir);
   if (!existsSync4(sourceDir)) {
     console.error(`
-[contour] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`contour init\` to create it`);
+[cuneiform] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`cuneiform init\` to create it`);
     process.exit(1);
   }
   let project;
@@ -3077,7 +3091,7 @@ ${loadResult.error}`);
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
     console.error(`
-[contour] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
@@ -3085,27 +3099,27 @@ ${loadResult.error}`);
     try {
       const payload = exportSourcePayload(project);
       console.log(`
-[contour] Source`);
+[cuneiform] Source`);
       console.log(`   icons:   ${iconCount}`);
       console.log(`   files:   ${payload.files.length}`);
       console.log(`   status:  OK`);
     } catch (err) {
       console.error(`
-[contour] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
+[cuneiform] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
       exitCode = 1;
     }
   } else {
     console.log(`
-[contour] Source`);
-    console.log(`   icons:   0  (no icons — run \`contour init\` to populate from the editor)`);
+[cuneiform] Source`);
+    console.log(`   icons:   0  (no icons — run \`cuneiform init\` to populate from the editor)`);
     console.log(`   status:  OK`);
   }
   if (exitCode === 0) {
     console.log(`
-[contour] Validation passed`);
+[cuneiform] Validation passed`);
   } else {
     console.error(`
-[contour] Validation failed`);
+[cuneiform] Validation failed`);
     process.exit(exitCode);
   }
 }
@@ -3168,7 +3182,7 @@ async function main() {
       break;
     default:
       if (command) {
-        console.error(`[contour] Unknown command: "${command}"
+        console.error(`[cuneiform] Unknown command: "${command}"
 `);
         printUsage();
         process.exit(1);
@@ -3179,20 +3193,20 @@ async function main() {
 }
 function printUsage() {
   console.log(`
-contour — repo-native icon authoring by Contour
+cuneiform — repo-native icon authoring by Cuneiform
 
 Usage:
-  contour <command> [options]
+  cuneiform <command> [options]
 
 Commands:
-  init              Scaffold contour.config.ts and source directory
+  init              Scaffold cuneiform.config.ts and source directory
   dev               Start live integration dev server (Lane 1)
   build             Deterministic snapshot build (Lane 2)
   validate          Validate config and source files
 
 Options:
   --port <n>        Dev server port (default: 4400)
-  --config <path>   Path to contour.config.ts (default: ./contour.config.ts)
+  --config <path>   Path to cuneiform.config.ts (default: ./cuneiform.config.ts)
   --out <path>      Output directory override for build
   --secret <token>  Shared secret for dev server API auth
   --version         Print version
@@ -3200,6 +3214,6 @@ Options:
 `);
 }
 main().catch((err) => {
-  console.error(`[contour] ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`[cuneiform] ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

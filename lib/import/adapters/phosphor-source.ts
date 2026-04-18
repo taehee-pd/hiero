@@ -4,7 +4,7 @@
  * Source: @phosphor-icons/core — ships raw SVG files in assets/{weight}/.
  * 6 weights: thin, light, regular, bold, fill, duotone.
  *
- * Weight mapping to Contour:
+ * Weight mapping to Cuneiform:
  * - thin → ultralight
  * - light → light
  * - regular → regular
@@ -39,8 +39,8 @@ export type PhosphorIconData = {
 // ---------------------------------------------------------------------------
 
 /**
- * Phosphor weight → Contour weight name mapping.
- * Only weights that map to Contour's weight system are included.
+ * Phosphor weight → Cuneiform weight name mapping.
+ * Only weights that map to Cuneiform's weight system are included.
  * fill and duotone are rendering styles, not weights.
  */
 export const PHOSPHOR_WEIGHT_MAP: Record<string, string> = {
@@ -118,13 +118,13 @@ export function loadPhosphorWeightPaths(
 ): Record<string, string | null> {
   const result: Record<string, string | null> = {};
 
-  for (const [phosphorWeight, contourWeight] of Object.entries(PHOSPHOR_WEIGHT_MAP)) {
+  for (const [phosphorWeight, cuneiformWeight] of Object.entries(PHOSPHOR_WEIGHT_MAP)) {
     const data = loadPhosphorIcon(iconName, phosphorWeight as PhosphorWeight);
     if (data) {
       const d = extractFirstPathD(data.svgContent);
-      result[contourWeight] = d;
+      result[cuneiformWeight] = d;
     } else {
-      result[contourWeight] = null;
+      result[cuneiformWeight] = null;
     }
   }
 

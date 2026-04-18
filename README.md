@@ -1,6 +1,6 @@
-# Contour — Contour
+# Cuneiform — Cuneiform
 
-A Next.js-based icon authoring studio with SF Symbols-grade animation capabilities. Contour provides a single-screen workspace for creating, animating, and distributing production-ready icons.
+A Next.js-based icon authoring studio with SF Symbols-grade animation capabilities. Cuneiform provides a single-screen workspace for creating, animating, and distributing production-ready icons.
 
 ## Tech Stack
 
@@ -63,10 +63,10 @@ for the full design system plan.
 ## Integration Guides
 
 - [Framework Integration Playbook](docs/guides/framework-integration-playbook.md) — decision guide for choosing the right integration path, delivery modes, platform capabilities, and CI setup
-- [React Integration Guide](docs/guides/react-integration.md) — full `<ContourIcon>` API reference (props, imperative handle, gestures, callbacks)
+- [React Integration Guide](docs/guides/react-integration.md) — full `<CuneiformIcon>` API reference (props, imperative handle, gestures, callbacks)
 - [Swift Integration Guide](docs/guides/swift-integration.md) — SwiftUI and UIKit integration
 - [Flutter Integration Guide](docs/guides/flutter-integration.md) — Dart widget integration
-- [Figma Plugin Export](docs/guides/figma-plugin-export.md) — export icons from Figma into Contour
+- [Figma Plugin Export](docs/guides/figma-plugin-export.md) — export icons from Figma into Cuneiform
 
 ## Project Structure
 
@@ -88,7 +88,7 @@ lib/
 │                       # morph, topology, transition resolver, draw executor,
 │                       # hybrid compositor, open-path guard, cubic weight interpolation
 ├── runtime-dom/        # DOM renderer, IconDriver
-├── runtime-react/      # ContourIcon React component, hooks
+├── runtime-react/      # CuneiformIcon React component, hooks
 ├── runtime-sdk/        # Compiled icon rendering primitives
 ├── editor-core/        # Path editor, snap engine, keyboard, topology,
 │                       # boolean ops, shape generation
@@ -109,8 +109,8 @@ lib/
 ├── compiler-contracts/ # Export format types and validators
 └── integrations/       # External service integration points
 
-packages/contour-cli/    # @contour/cli — command-line icon operations
-figma-plugin/           # Figma plugin for exporting to Contour
+packages/cuneiform-cli/    # @cuneiform/cli — command-line icon operations
+figma-plugin/           # Figma plugin for exporting to Cuneiform
 scripts/                # Build, compile, validate, release scripts
 tests/                  # Bun test files (102+ test files)
 specs/                  # Spec-kit documentation (21 specs)
@@ -122,7 +122,7 @@ docs_canonical/         # Canonical reference documentation
 
 ### Generated React component API
 
-The React codegen path emits per-icon wrapper components that call `ContourIcon` and embed each icon payload.
+The React codegen path emits per-icon wrapper components that call `CuneiformIcon` and embed each icon payload.
 
 Generated components expose icon-specific TypeScript unions for:
 - variant IDs and sizes
@@ -187,7 +187,7 @@ After a PR sync merges source files, this is the only build path used in CI:
 bun scripts/compile-from-source.ts \
   --source . \
   --out ./.artifacts/icons \
-  --package-name @contour/icons \
+  --package-name @cuneiform/icons \
   --package-version 1.0.0 \
   --generate-react
 ```
@@ -200,7 +200,7 @@ For compiling directly from a project/workspace JSON file (editor-local only, no
 bun scripts/compile-icons.ts \
   --project tests/fixtures/e2e/compiler-project.json \
   --out ./.artifacts/icons \
-  --package-name @contour/icons \
+  --package-name @cuneiform/icons \
   --package-version 1.0.0 \
   --generate-react
 ```
@@ -235,13 +235,13 @@ ICONS_PACKAGE_VERSION=1.2.3 bun run build:icons:package
 ### Local validation
 
 ```bash
-bun run validate:icons:package --package-name @contour/icons --package-version 1.2.3
+bun run validate:icons:package --package-name @cuneiform/icons --package-version 1.2.3
 ```
 
 ### Local release dry-run
 
 ```bash
-bun run release:icons:dry-run --package-version 1.2.3 --package-name @contour/icons
+bun run release:icons:dry-run --package-version 1.2.3 --package-name @cuneiform/icons
 ```
 
 This dry-run builds, validates, and runs `npm pack --dry-run` against `dist/icons-package`.
@@ -266,24 +266,24 @@ This repository uses explicit version input for package publishing.
 ### Consumer usage (React / Next.js)
 
 ```tsx
-import { IcChevronRight } from '@contour/icons';
-import Play24 from '@contour/icons/sizes/24/IcPlay';
-import { IcPlay } from '@contour/icons/collections/media';
+import { IcChevronRight } from '@cuneiform/icons';
+import Play24 from '@cuneiform/icons/sizes/24/IcPlay';
+import { IcPlay } from '@cuneiform/icons/collections/media';
 ```
 
 Per-icon import:
 
 ```tsx
-import IcChevronRight from '@contour/icons/icons/IcChevronRight';
+import IcChevronRight from '@cuneiform/icons/icons/IcChevronRight';
 ```
 
 ## Repo-Native Distribution
 
-Contour supports a two-lane distribution model:
+Cuneiform supports a two-lane distribution model:
 
 - **Lane 1 — Live Sync:** Real-time publish transport (`lib/live-sync/`) with local-directory, git-pr, and npm-registry connectors. UI via `PublishPanel`.
-- **Lane 2 — Release:** Versioned releases with changelog generation via `ReleasePanel`. Supports `@contour/cli` for CI integration.
-- **CLI:** `packages/contour-cli/` — `@contour/cli` command-line tool for icon operations.
+- **Lane 2 — Release:** Versioned releases with changelog generation via `ReleasePanel`. Supports `@cuneiform/cli` for CI integration.
+- **CLI:** `packages/cuneiform-cli/` — `@cuneiform/cli` command-line tool for icon operations.
 
 ## GitHub PR Sync Pipeline
 
@@ -352,9 +352,9 @@ Environment-variable-based rollout control:
 
 ## Figma Import
 
-Contour supports importing icons directly from Figma:
+Cuneiform supports importing icons directly from Figma:
 
-- **Figma plugin** (`figma-plugin/export-to-contour/`) exports selected components
+- **Figma plugin** (`figma-plugin/export-to-cuneiform/`) exports selected components
 - **API route** (`app/api/import/figma/route.ts`) accepts Figma PATs per-request (never stored server-side)
 - **Import dialog** in the editor UI for batch import with preview
 

@@ -69,7 +69,7 @@ describe('compiled icon export adapter', () => {
     const compiled = exportCompiledIcon(structuredClone(SAMPLE_PROJECT), 'icon-home');
     const malformed = {
       ...compiled,
-      $schema: 'https://contour.dev/schemas/compiled-icon/2.0.0',
+      $schema: 'https://cuneiform.dev/schemas/compiled-icon/2.0.0',
     };
 
     expect(() => validateCompiledIconOrThrow(malformed)).toThrow(

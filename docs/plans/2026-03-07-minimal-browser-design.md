@@ -9,7 +9,7 @@ Date: 2026-03-07
 
 ## Context
 
-Contour already has both an explorer and an editor. The current redesign direction is to stop treating the explorer like a landing page and instead make both screens feel like one quiet tool.
+Cuneiform already has both an explorer and an editor. The current redesign direction is to stop treating the explorer like a landing page and instead make both screens feel like one quiet tool.
 
 ## Approved Direction
 

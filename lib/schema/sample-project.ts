@@ -8,7 +8,7 @@ import { createWorkspaceFromProject } from './workspace';
 const BASE_SAMPLE_PROJECT: Project = {
   version: '1.0',
   meta: {
-    name: 'Contour Starter',
+    name: 'Cuneiform Starter',
     createdAt: '2026-03-03T00:00:00Z',
     updatedAt: '2026-03-03T00:00:00Z',
   },

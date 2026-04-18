@@ -1,6 +1,6 @@
 # Framework Integration Playbook
 
-How to get Contour icons into your product — from compiled artifacts to rendering in production.
+How to get Cuneiform icons into your product — from compiled artifacts to rendering in production.
 
 This guide helps you **choose the right integration path** and covers cross-cutting concerns (delivery, CI, versioning, platform capabilities) that the per-framework guides don't. For API details, see the framework-specific guide linked in each section.
 
@@ -10,7 +10,7 @@ This guide helps you **choose the right integration path** and covers cross-cutt
 
 | Your stack | Integration path | API surface | Guide |
 |------------|-----------------|-------------|-------|
-| React / Next.js | `<ContourIcon>` component | Full (transitions, effects, gestures, variable draw) | [React guide](./react-integration.md) |
+| React / Next.js | `<CuneiformIcon>` component | Full (transitions, effects, gestures, variable draw) | [React guide](./react-integration.md) |
 | Vue / Nuxt | `createIcon()` driver | Full (transitions, effects, variable draw) | [Vanilla JS API](#vanilla-js--vue--angular--svelte) |
 | Angular | `createIcon()` driver | Full | [Vanilla JS API](#vanilla-js--vue--angular--svelte) |
 | Svelte / SvelteKit | `createIcon()` driver | Full | [Vanilla JS API](#vanilla-js--vue--angular--svelte) |
@@ -22,7 +22,7 @@ This guide helps you **choose the right integration path** and covers cross-cutt
 
 ## Delivery modes
 
-Contour supports three ways to deliver compiled icons to consumer apps. Configure these in the editor's **Sync Targets** panel (Explorer → sidebar → Sync Targets → Add Target).
+Cuneiform supports three ways to deliver compiled icons to consumer apps. Configure these in the editor's **Sync Targets** panel (Explorer → sidebar → Sync Targets → Add Target).
 
 ### Local directory
 
@@ -53,10 +53,10 @@ Best for versioned distribution. Publishes a complete package with compiled icon
 ICONS_PACKAGE_VERSION=1.2.3 bun run build:icons:package
 
 # Validate
-bun run validate:icons:package --package-name @contour/icons --package-version 1.2.3
+bun run validate:icons:package --package-name @cuneiform/icons --package-version 1.2.3
 
 # Dry-run release
-bun run release:icons:dry-run --package-version 1.2.3 --package-name @contour/icons
+bun run release:icons:dry-run --package-version 1.2.3 --package-name @cuneiform/icons
 ```
 
 CI workflow: `.github/workflows/icons-package-release.yml` — builds and validates on push to `main`, publishes on manual dispatch with `publish=true`.
@@ -97,7 +97,7 @@ Editor project → source export → compile → adapters → package
 corepack pnpm compile:from-source \
   --source <source-dir> \
   --out <out-dir> \
-  --package-name @contour/icons \
+  --package-name @cuneiform/icons \
   --package-version 1.0.0 \
   --generate-react
 ```
@@ -151,7 +151,7 @@ Cross-icon transitions are embedded in the compiled output. In product code, tri
 **React (via generated components):**
 ```tsx
 // Import the generated wrapper — it includes the compiled icon payload
-import IcPlay from '@contour/icons/icons/IcPlay';
+import IcPlay from '@cuneiform/icons/icons/IcPlay';
 
 // State change triggers the authored cross-icon transition
 <IcPlay state={isPlaying ? 'pause' : 'play'} animate />
@@ -166,21 +166,21 @@ driver.transitionTo('pause'); // Runtime resolves cross-icon endpoint
 
 ## React / Next.js
 
-Install the published package and use the `<ContourIcon>` component.
+Install the published package and use the `<CuneiformIcon>` component.
 
 ```bash
-npm install @contour/icons
+npm install @cuneiform/icons
 ```
 
 ```tsx
-import { IcChevronRight } from '@contour/icons';
+import { IcChevronRight } from '@cuneiform/icons';
 // Or per-icon import for tree-shaking:
-import IcChevronRight from '@contour/icons/icons/IcChevronRight';
+import IcChevronRight from '@cuneiform/icons/icons/IcChevronRight';
 // Or by size:
-import Play24 from '@contour/icons/sizes/24/IcPlay';
+import Play24 from '@cuneiform/icons/sizes/24/IcPlay';
 ```
 
-Generated components wrap `<ContourIcon>` with embedded payloads and typed prop unions for variants, states, and effects.
+Generated components wrap `<CuneiformIcon>` with embedded payloads and typed prop unions for variants, states, and effects.
 
 For **Next.js App Router**: icon components must render in client components (`'use client'`).
 
@@ -190,10 +190,10 @@ For **Next.js App Router**: icon components must render in client components (`'
 
 ## Vanilla JS / Vue / Angular / Svelte
 
-Use `createIcon()` from the `@contour/runtime-dom` package to mount icons in any DOM container. Icon data is the `Icon` schema object — your build pipeline (or the icons package's generated TypeScript) provides it.
+Use `createIcon()` from the `@cuneiform/runtime-dom` package to mount icons in any DOM container. Icon data is the `Icon` schema object — your build pipeline (or the icons package's generated TypeScript) provides it.
 
 ```ts
-import { createIcon } from '@contour/runtime-dom';
+import { createIcon } from '@cuneiform/runtime-dom';
 
 // iconData is the Icon schema object, typically embedded in generated components
 // or loaded from your own artifact pipeline
@@ -236,15 +236,15 @@ In all cases, call `driver.transitionTo()` or `driver.triggerEffect()` in respon
 Generated Swift adapter output ships as an SPM package.
 
 ```swift
-import ContourIcons
+import CuneiformIcons
 
 // SwiftUI
-ContourIcon("home", size: 24)
-ContourIcon("home", state: iconState, animate: true)
-ContourIcon("bell", effect: "bounce")
+CuneiformIcon("home", size: 24)
+CuneiformIcon("home", state: iconState, animate: true)
+CuneiformIcon("bell", effect: "bounce")
 
 // UIKit
-let iconView = ContourIconView(name: "home", size: 24)
+let iconView = CuneiformIconView(name: "home", size: 24)
 iconView.setState("active", animated: true)
 ```
 
@@ -259,11 +259,11 @@ Requires iOS 16+ / macOS 13+. Some web-only features (morph, variable draw) are 
 Generated Dart adapter output ships as a pub package.
 
 ```dart
-import 'package:contour_icons/contour_icons.dart';
+import 'package:cuneiform_icons/cuneiform_icons.dart';
 
-ContourIcon(name: 'home', size: 24)
-ContourIcon(name: 'home', state: _state, animate: true)
-ContourIcon(name: 'bell', effect: 'bounce')
+CuneiformIcon(name: 'home', size: 24)
+CuneiformIcon(name: 'home', state: _state, animate: true)
+CuneiformIcon(name: 'bell', effect: 'bounce')
 ```
 
 Requires Flutter 3.0+ / Dart 2.17+. Same capability downgrades as Swift — see the [capability matrix](#platform-capability-matrix).

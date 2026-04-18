@@ -1,5 +1,5 @@
 export type {
-  ContourConfig,
+  CuneiformConfig,
   HostTarget,
   ReactAppHostTarget,
   ReleaseTarget,

@@ -4,12 +4,12 @@ import {
   computeStaleFiles,
   parseManifest,
   serializeManifest,
-  type ContourManifest,
+  type CuneiformManifest,
 } from '../lib/export/adapters/manifest-cleanup';
 
 describe('computeStaleFiles', () => {
   test('detects files removed between generations', () => {
-    const previous: ContourManifest = {
+    const previous: CuneiformManifest = {
       version: '1.0',
       generatedAt: '2026-01-01T00:00:00Z',
       platform: 'react',
@@ -24,7 +24,7 @@ describe('computeStaleFiles', () => {
   });
 
   test('returns empty array when all files still present', () => {
-    const previous: ContourManifest = {
+    const previous: CuneiformManifest = {
       version: '1.0',
       generatedAt: '2026-01-01T00:00:00Z',
       platform: 'react',
@@ -64,7 +64,7 @@ describe('parseManifest', () => {
   });
 
   test('parses valid manifest', () => {
-    const manifest: ContourManifest = {
+    const manifest: CuneiformManifest = {
       version: '1.0',
       generatedAt: '2026-01-01T00:00:00Z',
       platform: 'react',
@@ -77,7 +77,7 @@ describe('parseManifest', () => {
 
 describe('round-trip', () => {
   test('parseManifest(serializeManifest(m)) deep equals m', () => {
-    const original: ContourManifest = {
+    const original: CuneiformManifest = {
       version: '1.0',
       generatedAt: '2026-03-19T10:30:00Z',
       platform: 'swift',

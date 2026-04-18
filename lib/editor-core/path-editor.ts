@@ -1368,14 +1368,6 @@ export class PathEditor {
       return;
     }
 
-    // Escape out of guide editing mode when no drag is in progress.
-    // In-progress shape drags are handled by `cancelShapePlacement` above.
-    const idleState = editorStore.getState();
-    if (idleState.editScope.kind === 'guideMaster') {
-      idleState.exitGuideEditingMode();
-      return;
-    }
-
     if (this.selectionTransformPlacement) {
       discardHistory();
       editorStore.getState().setPointTransformLabel(null);
@@ -1396,9 +1388,20 @@ export class PathEditor {
       return;
     }
 
-    if (!this.isDragging) return;
-    resumeHistory();
-    this.resetDrag();
+    if (this.isDragging) {
+      resumeHistory();
+      this.resetDrag();
+      return;
+    }
+
+    // Escape out of guide editing mode only when no drag is active. The
+    // drag-cancel branches above must run first; otherwise flipping
+    // `editScope` mid-drag leaves stale placements that a later pointerup
+    // would commit in the wrong scope.
+    const idleState = editorStore.getState();
+    if (idleState.editScope.kind === 'guideMaster') {
+      idleState.exitGuideEditingMode();
+    }
   }
 
   private onPointerUp(e: PointerEvent) {

@@ -2745,11 +2745,15 @@ function createActions(): EditorActions {
         delete nextGuideMasters[id];
 
         // Lifecycle safety: if the deleted master was the one being edited on
-        // canvas, snap the scope back to icon.
-        const nextEditScope: EditScope =
-          s.editScope.kind === 'guideMaster' && s.editScope.masterId === id
-            ? { kind: 'icon' }
-            : s.editScope;
+        // canvas, snap the scope back to icon and drop the master-scoped
+        // selection — those layer IDs no longer exist, and carrying them
+        // across the scope flip risks targeting unrelated icon layers if
+        // IDs collide.
+        const wasEditingDeletedMaster =
+          s.editScope.kind === 'guideMaster' && s.editScope.masterId === id;
+        const nextEditScope: EditScope = wasEditingDeletedMaster
+          ? { kind: 'icon' }
+          : s.editScope;
 
         return {
           project: {
@@ -2758,6 +2762,9 @@ function createActions(): EditorActions {
             guideMasters: Object.keys(nextGuideMasters).length > 0 ? nextGuideMasters : undefined,
           },
           editScope: nextEditScope,
+          ...(wasEditingDeletedMaster
+            ? { selection: { layerIds: [], pointIds: [] } }
+            : null),
         };
       });
     },

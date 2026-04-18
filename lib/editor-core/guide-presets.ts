@@ -54,6 +54,7 @@ function createScaledGuideMaster(size: number): GuideMaster {
     targetSize: size,
     viewBox: [0, 0, size, size],
     items: BASE_ITEMS.map((item) => scaleGuideItem(item, factor)),
+    layers: {},
   };
 }
 
@@ -76,6 +77,7 @@ export function createGuideMaster24(): GuideMaster {
       { kind: 'hline', y: 12 },
       { kind: 'vline', x: 12 },
     ],
+    layers: {},
   };
 }
 

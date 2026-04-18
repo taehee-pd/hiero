@@ -22,6 +22,13 @@ export type OverlayOptions = {
   guideSet?: OverlayGuideSet;
   guidesVisible?: boolean;
   guideStyle?: 'subtle' | 'strong';
+  /**
+   * True when the canvas is editing a guide master (not an icon). Promotes
+   * the master's `items` rendering to the `strong` style for legibility —
+   * the master's `layers` are already rendered as first-class content via
+   * the usual layer render path.
+   */
+  guideEditingActive?: boolean;
   pointBBox?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointMarquee?: { minX: number; minY: number; maxX: number; maxY: number } | null;
   pointBBoxLabel?: { width: number; height: number } | null;
@@ -73,6 +80,7 @@ export function useCanvasOverlay(
         guideSet,
         guidesVisible,
         guideStyle,
+        guideEditingActive,
         pointBBox,
         pointMarquee,
         pointBBoxLabel,
@@ -93,13 +101,20 @@ export function useCanvasOverlay(
         new scope.Point(left + (x - vx) * scale, top + (y - vy) * scale);
 
       if (guidesVisible !== false && guideSet?.items?.length) {
+        // Promote parametric guide rendering (hline / vline / rect / ellipse)
+        // to the `strong` style while the user is editing guides on canvas,
+        // so they read as active reference while the master's `layers` are
+        // the live-editable content.
+        const effectiveGuideStyle: 'subtle' | 'strong' = guideEditingActive
+          ? 'strong'
+          : guideStyle ?? 'subtle';
         drawGuideItems(
           scope,
           guideSet.items,
           viewBox,
           guideSet.viewBox,
           toScreen,
-          guideStyle ?? 'subtle',
+          effectiveGuideStyle,
         );
       }
       const boundary = new scope.Path.Rectangle({

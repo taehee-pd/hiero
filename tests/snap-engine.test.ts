@@ -301,4 +301,65 @@ describe('snap engine', () => {
 
     engine.destroy();
   });
+
+  test('guidesVisible=false drops guide targets while grid snap still fires', () => {
+    const project = createProjectFixture();
+    project.icons.snap.variants.v24.guideMasterId = 'primary-guides';
+
+    const state = {
+      ...editorStore.getState(),
+      project,
+      currentIconId: 'snap',
+      currentVariantId: 'v24',
+      currentTypeId: 'default',
+      snapEnabled: true,
+      guidesVisible: false,
+      viewport: { zoom: 4, panX: 0, panY: 0 },
+    } as EditorStore;
+
+    const store = createMockStore(state);
+    const engine = new SnapEngine(store);
+
+    // Point is near the vline at x=6 — guide should no longer attract it.
+    const result = engine.computeSnap(
+      { x: 6.05, y: 17.9 },
+      { sourceLayerId: 'moving', tolerancePx: 3, gridStep: 0.5 },
+    );
+
+    expect(result.guides.some((guide) => guide.type === 'guide')).toBeFalse();
+    // Grid/edge/anchor snap is still live; just not the guide master.
+    expect(result.snappedX || result.snappedY).toBeTrue();
+
+    engine.destroy();
+  });
+
+  test('guidesVisible=true regression: guide target still contributes', () => {
+    const project = createProjectFixture();
+    project.icons.snap.variants.v24.guideMasterId = 'primary-guides';
+
+    const state = {
+      ...editorStore.getState(),
+      project,
+      currentIconId: 'snap',
+      currentVariantId: 'v24',
+      currentTypeId: 'default',
+      snapEnabled: true,
+      guidesVisible: true,
+      viewport: { zoom: 4, panX: 0, panY: 0 },
+    } as EditorStore;
+
+    const store = createMockStore(state);
+    const engine = new SnapEngine(store);
+
+    const result = engine.computeSnap(
+      { x: 5.95, y: 17.9 },
+      { sourceLayerId: 'moving', tolerancePx: 3, gridStep: 0 },
+    );
+
+    expect(result.x).toBe(6);
+    expect(result.y).toBe(18);
+    expect(result.guides.some((guide) => guide.type === 'guide')).toBeTrue();
+
+    engine.destroy();
+  });
 });

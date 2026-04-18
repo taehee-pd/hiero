@@ -165,7 +165,9 @@ export const ToolPanel = memo(function ToolPanel({
               key={tool.id}
               className={cn(
                 'flex items-center',
-                (isShapeTool || isSelectEntry) && isActive && 'gap-1',
+                // Chevron is now always visible on shape/select, so always
+                // carry the gap — not only when the tool is active.
+                (isShapeTool || isSelectEntry) && 'gap-1',
               )}
             >
               <Tooltip>
@@ -242,7 +244,7 @@ export const ToolPanel = memo(function ToolPanel({
                 </TooltipContent>
               </Tooltip>
 
-              {isSelectEntry && isActive ? (
+              {isSelectEntry ? (
                 <Popover open={selectPickerOpen} onOpenChange={setSelectPickerOpen}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -293,7 +295,7 @@ export const ToolPanel = memo(function ToolPanel({
                 </Popover>
               ) : null}
 
-              {isShapeTool && isActive ? (
+              {isShapeTool ? (
                 <Popover open={shapePickerOpen} onOpenChange={setShapePickerOpen}>
                   <Tooltip>
                     <TooltipTrigger asChild>

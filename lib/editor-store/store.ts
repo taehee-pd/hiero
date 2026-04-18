@@ -9,6 +9,7 @@ import type {
   IconSetTypeDef,
   Icon,
   Layer,
+  PrimitiveShape,
   TopologyContract,
   Effect,
   GuideMaster,
@@ -40,10 +41,27 @@ import type {
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
+import { buildPrimitivePath } from '@/lib/editor-core/path-shapes';
 import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
 import type { SnapTarget } from '@/lib/editor-core/snap-engine';
 import type { InterpolatedValues, ResolvedTransition } from '@/lib/runtime-core';
 import { interpolateTransitionValues } from '@/lib/runtime-core';
+
+/**
+ * What the editor canvas + inspector + layer panel are operating on right
+ * now. The vast majority of time this is `kind: 'icon'`. `kind: 'guideMaster'`
+ * is entered from the Guide panel; while it's active, every layer-mutating
+ * store action routes writes onto the master's `layers` instead of the icon
+ * variant's `layers`, and selectors reshape the "current" snapshot so
+ * downstream panels see the master as if it were a variant.
+ *
+ * Icon-scope-only actions (symbol tagging, variant matrix, paste *into* an
+ * icon, publish/sync) early-return when `kind !== 'icon'` — there is no
+ * meaningful icon to operate on.
+ */
+export type EditScope =
+  | { kind: 'icon' }
+  | { kind: 'guideMaster'; masterId: string };
 
 export type EditorState = {
   workspace: Workspace | null;
@@ -68,6 +86,18 @@ export type EditorState = {
   shapeSubTool: ShapeType;
   shapePolygonSides: number;
   shapeStarPoints: number;
+  /**
+   * Describes *what the canvas is currently editing*. `kind: 'icon'` is the
+   * normal case — Inspector, Layer panel, PathEditor, and the snap engine
+   * operate on the referenced icon variant's layers. `kind: 'guideMaster'`
+   * is entered from the Guide panel's "Edit on canvas" toggle; the icon is
+   * hidden and all editing operates on the master's `layers` instead.
+   *
+   * `currentIconId` / `currentVariantId` / `currentTypeId` remain valid while
+   * in guide scope — they hold the resume point that `exitGuideEditingMode`
+   * restores.
+   */
+  editScope: EditScope;
   pointMarquee: PointMarqueeState | null;
   pointTransformLabel: PointTransformLabelState | null;
   pendingPenHandle: PendingPenHandleState | null;
@@ -159,6 +189,13 @@ export type EditorActions = {
   setStateTopology(iconId: string, typeId: string, topology: TopologyContract | undefined): void;
   setSelectedIconGuideIndex(index: number | null): void;
   patchLayer(iconId: string, layerId: string, patch: Partial<Layer>): void;
+  /**
+   * Append a freshly-created layer to whatever the editor is currently
+   * scoped to — the active icon variant in icon scope, or the bound guide
+   * master in guide scope. Used by `PathEditor` for shape- and pen-tool
+   * layer creation so callers don't have to branch on scope themselves.
+   */
+  addLayer(layer: Layer): void;
   renameLayer(iconId: string, oldLayerId: string, newLayerId: string): void;
   setLayerVisibility(iconId: string, layerId: string, visible: boolean): void;
   setClipMask(clipLayerId: string, targetLayerIds: string[]): void;
@@ -174,6 +211,10 @@ export type EditorActions = {
   setShapeSubTool(shapeSubTool: ShapeType): void;
   setShapePolygonSides(sides: number): void;
   setShapeStarPoints(points: number): void;
+  enterGuideEditingMode(masterId: string): void;
+  exitGuideEditingMode(): void;
+  /** Write a new primitive onto an existing layer AND regenerate path.d. */
+  setLayerPrimitive(iconId: string, layerId: string, next: PrimitiveShape): void;
   setPointMarquee(marquee: PointMarqueeState | null): void;
   setPointTransformLabel(label: PointTransformLabelState | null): void;
   setPendingPenHandle(handle: PendingPenHandleState | null): void;
@@ -287,6 +328,13 @@ type TemporalSnapshot = {
   project: Project | null;
   activeIconSetId: string | null;
   isDirty: boolean;
+  /**
+   * The `editScope` at the time the snapshot was pushed. Restoring it on
+   * undo / redo keeps history entries replay-correct: an edit authored in
+   * guide scope is only re-applied to the master if the user is (or is
+   * returned to) that master.
+   */
+  editScope: EditScope;
 };
 
 type TemporalState = {
@@ -322,6 +370,7 @@ const initialState: EditorState = {
   shapeSubTool: 'rectangle',
   shapePolygonSides: 5,
   shapeStarPoints: 5,
+  editScope: { kind: 'icon' },
   pointMarquee: null,
   pointTransformLabel: null,
   pendingPenHandle: null,
@@ -366,13 +415,24 @@ function pushHistorySnapshot(
   project: Project | null,
   activeIconSetId: string | null,
   isDirty: boolean,
+  editScope: EditScope,
 ) {
-  pastStates.push({ workspace, project, activeIconSetId, isDirty });
+  pastStates.push({ workspace, project, activeIconSetId, isDirty, editScope });
   if (pastStates.length > MAX_HISTORY) pastStates.shift();
   futureStates.length = 0;
 }
 
 function applySnapshot(snapshot: TemporalSnapshot) {
+  // Restore the editScope this snapshot was captured under so an edit made
+  // in guide scope replays into the right surface. Importantly, if the
+  // snapshot's master has since been deleted, fall back to icon scope to
+  // avoid routing writes into a missing master.
+  const snapshotScope: EditScope =
+    snapshot.editScope.kind === 'guideMaster' &&
+    !snapshot.project?.guideMasters?.[snapshot.editScope.masterId]
+      ? { kind: 'icon' }
+      : snapshot.editScope;
+
   const variant = getVariantById(
     snapshot.project,
     currentState.currentIconId,
@@ -384,6 +444,7 @@ function applySnapshot(snapshot: TemporalSnapshot) {
     project: snapshot.project,
     activeIconSetId: snapshot.activeIconSetId,
     isDirty: snapshot.isDirty,
+    editScope: snapshotScope,
     currentTypeId: variant ? getVariantDefaultTypeId(variant) : null,
     renderingMode: getResolvedRenderingMode(variant),
     selection: { layerIds: [], pointIds: [] },
@@ -407,6 +468,7 @@ const temporalState: TemporalState = {
       project: currentState.project,
       activeIconSetId: currentState.activeIconSetId,
       isDirty: currentState.isDirty,
+      editScope: currentState.editScope,
     });
     applySnapshot(prev);
   },
@@ -420,6 +482,7 @@ const temporalState: TemporalState = {
       project: currentState.project,
       activeIconSetId: currentState.activeIconSetId,
       isDirty: currentState.isDirty,
+      editScope: currentState.editScope,
     });
     applySnapshot(next);
   },
@@ -442,6 +505,7 @@ const temporalState: TemporalState = {
       project: currentState.project,
       activeIconSetId: currentState.activeIconSetId,
       isDirty: currentState.isDirty,
+      editScope: currentState.editScope,
     };
   },
 
@@ -476,6 +540,7 @@ const temporalState: TemporalState = {
         transactionBase.project,
         transactionBase.activeIconSetId,
         transactionBase.isDirty,
+        transactionBase.editScope,
       );
     }
     transactionBase = undefined;
@@ -537,13 +602,20 @@ const editorStoreApi = {
 
     if (prev.project !== next.project) {
       if (tracking) {
-        pushHistorySnapshot(prev.workspace, prev.project, prev.activeIconSetId, prev.isDirty);
+        pushHistorySnapshot(
+          prev.workspace,
+          prev.project,
+          prev.activeIconSetId,
+          prev.isDirty,
+          prev.editScope,
+        );
       } else if (transactionBase === undefined) {
         transactionBase = {
           workspace: prev.workspace,
           project: prev.project,
           activeIconSetId: prev.activeIconSetId,
           isDirty: prev.isDirty,
+          editScope: prev.editScope,
         };
       }
     }
@@ -596,6 +668,7 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
             targetSize: fallbackSize,
             viewBox: fallbackViewBox,
             items: [],
+            layers: {},
           };
           continue;
         }
@@ -620,6 +693,7 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
             targetSize: size,
             viewBox: variant.viewBox,
             items: guideSet.items,
+            layers: {},
           };
         }
       }
@@ -665,6 +739,15 @@ function migrateProjectForGuideMasters(project: ProjectInput): Project {
       ];
     }),
   ) as Project['icons'];
+
+  // Backfill `layers: {}` on any pre-existing guide masters that were loaded
+  // from an older project JSON. New authoring on canvas happens through the
+  // `layers` field; legacy `items` still render for snap.
+  for (const [masterId, master] of Object.entries(nextGuideMasters)) {
+    if (!master.layers) {
+      nextGuideMasters[masterId] = { ...master, layers: {} };
+    }
+  }
 
   return {
     ...project,
@@ -953,6 +1036,97 @@ function replaceVariantLayers(
   };
 }
 
+/**
+ * Read the layer record the editor is currently operating on. In icon scope
+ * this is the active variant's layers; in guide scope it is the bound
+ * master's `layers`. Returns `null` when there is no valid scope (e.g. no
+ * project loaded, or the referenced master/icon/variant has gone missing).
+ */
+function readCurrentLayers(s: EditorState): Record<string, Layer> | null {
+  if (!s.project) return null;
+  if (s.editScope.kind === 'guideMaster') {
+    const master = s.project.guideMasters?.[s.editScope.masterId];
+    return master?.layers ?? null;
+  }
+  if (!s.currentIconId || !s.currentVariantId) return null;
+  const icon = s.project.icons[s.currentIconId];
+  return icon?.variants[s.currentVariantId]?.layers ?? null;
+}
+
+/**
+ * Chokepoint for every layer-writing store action. The `mutate` function
+ * takes the current layer record and returns a fully-formed replacement
+ * (it must preserve layer identity — primitive-clearing is the caller's
+ * responsibility via `patchLayer`'s invariant).
+ *
+ * If `mutate` returns the input record (or throws), no state patch is
+ * produced. Otherwise the helper returns a `Partial<EditorState>` the
+ * caller can fold into `setState((s) => ({ ...s, ...patch }))`.
+ *
+ * In guide scope the write lands on `master.layers`; the topology-lock
+ * check (icon-scope-only) is skipped.
+ */
+function writeCurrentLayers(
+  s: EditorState,
+  mutate: (prev: Record<string, Layer>) => Record<string, Layer>,
+  opts: { nextTopology?: TopologyContract | undefined } = {},
+): Partial<EditorState> | null {
+  if (!s.project) return null;
+
+  if (s.editScope.kind === 'guideMaster') {
+    const masterId = s.editScope.masterId;
+    const master = s.project.guideMasters?.[masterId];
+    if (!master) {
+      // Deletion race: a pending drag/commit targeted a master that no
+      // longer exists. Leave the project untouched; `removeGuideMaster`
+      // already snapped the scope back to icon.
+      if (typeof console !== 'undefined') {
+        console.warn(
+          `[editor-store] Dropped guide-master write — master "${masterId}" no longer exists.`,
+        );
+      }
+      return null;
+    }
+    const prev = master.layers ?? {};
+    const next = mutate(prev);
+    if (next === prev) return null;
+    return {
+      project: {
+        ...s.project,
+        meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
+        guideMasters: {
+          ...s.project.guideMasters,
+          [master.id]: { ...master, layers: next },
+        },
+      },
+    };
+  }
+
+  if (!s.currentIconId || !s.currentVariantId) return null;
+  const icon = s.project.icons[s.currentIconId];
+  if (!icon) return null;
+  const variant = icon.variants[s.currentVariantId];
+  if (!variant) return null;
+  const next = mutate(variant.layers);
+  if (next === variant.layers) return null;
+
+  // Topology lock is an icon-scope invariant; masters don't carry it.
+  const nextTopology =
+    'nextTopology' in opts && opts.nextTopology !== undefined
+      ? opts.nextTopology
+      : variant.topology;
+
+  return {
+    project: {
+      ...s.project,
+      icons: {
+        ...s.project.icons,
+        [s.currentIconId]: replaceVariantLayers(icon, s.currentVariantId, next, nextTopology),
+      },
+    },
+  };
+}
+
 function getFirstIconId(project: Project | null | undefined) {
   return project ? (Object.keys(project.icons)[0] ?? null) : null;
 }
@@ -1081,6 +1255,7 @@ function buildWorkspaceState(
     guidesVisible: true,
     guideStyle: 'subtle',
     viewport: { zoom: 12, panX: 0, panY: 0 },
+    editScope: { kind: 'icon' },
     pointMarquee: null,
     pointTransformLabel: null,
     pendingPenHandle: null,
@@ -1380,6 +1555,8 @@ function createActions(): EditorActions {
 
     addVariant(iconId, variantInput) {
       editorStoreApi.setState((s) => {
+        // Icon-scope only: variants belong to icons, not masters.
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon) return s;
@@ -1479,6 +1656,7 @@ function createActions(): EditorActions {
 
     removeVariant(iconId, variantId) {
       editorStoreApi.setState((s) => {
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon || !icon.variants[variantId]) return s;
@@ -1522,6 +1700,7 @@ function createActions(): EditorActions {
 
     patchVariant(iconId, variantId, patch) {
       editorStoreApi.setState((s) => {
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[variantId];
@@ -1725,6 +1904,9 @@ function createActions(): EditorActions {
           activeSnapGuides: [],
           pointMarquee: null,
           transitionPreview: null,
+          // Lifecycle safety: guide editing is scoped to the active icon +
+          // variant size, so drop it on an icon switch.
+          editScope: { kind: 'icon' },
         };
       });
     },
@@ -1746,6 +1928,9 @@ function createActions(): EditorActions {
           selectedIconGuideIndex: null,
           selection: { layerIds: [], pointIds: [] },
           transitionPreview: null,
+          // Variant switch usually means a different target size → different
+          // guide master. Exit guide editing to avoid editing the wrong master.
+          editScope: { kind: 'icon' },
         };
       });
     },
@@ -2015,48 +2200,95 @@ function createActions(): EditorActions {
     },
 
     patchLayer(iconId: string, layerId: string, patch: Partial<Layer>) {
+      // `iconId` is ignored in guide scope — the master's layers are the
+      // target. In icon scope we only honour writes when `iconId` matches
+      // the active icon (matches the pre-editScope behaviour since callers
+      // always passed `s.currentIconId`).
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
         if (!patch) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        const layer = variant?.layers[layerId];
-        if (!icon || !variant || !layer) return s;
+        if (s.editScope.kind === 'icon' && iconId !== s.currentIconId) return s;
+
+        const currentLayers = readCurrentLayers(s);
+        if (!currentLayers) return s;
+        const layer = currentLayers[layerId];
+        if (!layer) return s;
 
         const nextLayer = { ...layer, ...patch };
-        const nextLayers = {
-          ...variant.layers,
-          [layerId]: nextLayer,
-        };
-
-        if (variant.topology?.locked && patch.path) {
-          const nextTopology = computeTopology({ layers: nextLayers, topology: variant.topology });
-          const compatibility = areTopologiesCompatible(variant.topology, nextTopology);
-          if (!compatibility.compatible) {
-            throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
-          }
+        // Invariant: `path.d` is canonical. When `path` is patched without an
+        // explicit new primitive, the primitive metadata is stale and must be
+        // cleared. We stash the kind on `formerPrimitiveKind` as a breadcrumb
+        // so the Inspector can explain why polygon/star controls are no
+        // longer available. Shape-tool drags and `setLayerPrimitive` supply
+        // `primitive` in the same patch to preserve it.
+        if (patch.path && !('primitive' in patch) && layer.primitive) {
+          nextLayer.formerPrimitiveKind = layer.primitive.kind;
+          delete nextLayer.primitive;
         }
 
-        return {
-          project: {
-            ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: replaceVariantLayers(icon, s.currentVariantId, nextLayers),
-            },
-          },
-        };
+        const patchState = writeCurrentLayers(s, (prev) => {
+          const nextLayers = { ...prev, [layerId]: nextLayer };
+          // Topology-lock check only applies in icon scope (masters don't
+          // carry topology). Throw the same error shape as before.
+          if (s.editScope.kind === 'icon' && patch.path) {
+            const variant = s.project?.icons[s.currentIconId!]?.variants[s.currentVariantId!];
+            if (variant?.topology?.locked) {
+              const nextTopology = computeTopology({
+                layers: nextLayers,
+                topology: variant.topology,
+              });
+              const compatibility = areTopologiesCompatible(variant.topology, nextTopology);
+              if (!compatibility.compatible) {
+                throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
+              }
+            }
+          }
+          return nextLayers;
+        });
+        return patchState ?? s;
       });
     },
 
     renameLayer(iconId, oldLayerId, newLayerId) {
       editorStoreApi.setState((s) => {
+        if (oldLayerId === newLayerId) return s;
+        if (s.editScope.kind === 'guideMaster') {
+          // Masters don't carry components or topology, so the rename is a
+          // flat key swap on `master.layers` + selection update.
+          const layers = readCurrentLayers(s);
+          if (!layers || !layers[oldLayerId] || layers[newLayerId]) return s;
+          const patch = writeCurrentLayers(s, (prev) => {
+            const nextLayers: Record<string, Layer> = {};
+            for (const [key, l] of Object.entries(prev)) {
+              if (key === oldLayerId) {
+                nextLayers[newLayerId] = { ...l, id: newLayerId };
+              } else {
+                nextLayers[key] =
+                  l.clipPathLayerId === oldLayerId
+                    ? { ...l, clipPathLayerId: newLayerId }
+                    : l;
+              }
+            }
+            return nextLayers;
+          });
+          if (!patch) return s;
+          return {
+            ...patch,
+            selection: s.selection.layerIds.includes(oldLayerId)
+              ? {
+                  ...s.selection,
+                  layerIds: s.selection.layerIds.map((id) =>
+                    id === oldLayerId ? newLayerId : id,
+                  ),
+                }
+              : s.selection,
+          };
+        }
+
         if (!s.project || !s.currentVariantId) return s;
         const icon = s.project.icons[iconId];
         const variant = icon?.variants[s.currentVariantId];
         const layer = variant?.layers[oldLayerId];
         if (!icon || !variant || !layer) return s;
-        if (oldLayerId === newLayerId) return s;
         if (variant.layers[newLayerId]) return s;
 
         // Rebuild layers Record preserving insertion order
@@ -2136,24 +2368,13 @@ function createActions(): EditorActions {
 
     setLayerVisibility(iconId, layerId, visible) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentVariantId) return s;
-        const icon = s.project.icons[iconId];
-        const variant = icon?.variants[s.currentVariantId];
-        const layer = variant?.layers[layerId];
-        if (!icon || !variant || !layer) return s;
-
-        return {
-          project: {
-            ...s.project,
-            icons: {
-              ...s.project.icons,
-              [iconId]: replaceVariantLayers(icon, s.currentVariantId, {
-                ...variant.layers,
-                [layerId]: { ...layer, visible },
-              }),
-            },
-          },
-        };
+        if (s.editScope.kind === 'icon' && iconId !== s.currentIconId) return s;
+        const layers = readCurrentLayers(s);
+        const layer = layers?.[layerId];
+        if (!layers || !layer) return s;
+        return (
+          writeCurrentLayers(s, (prev) => ({ ...prev, [layerId]: { ...layer, visible } })) ?? s
+        );
       });
     },
 
@@ -2338,6 +2559,80 @@ function createActions(): EditorActions {
       editorStoreApi.setState({ shapeStarPoints: clampInteger(points, 2) });
     },
 
+    enterGuideEditingMode(masterId) {
+      editorStoreApi.setState((s) => {
+        if (!s.project?.guideMasters?.[masterId]) return s;
+        // Migrate this master's items -> layers on first enter, so the user
+        // can edit the panel-parameter guides with the full toolbar. The
+        // migration is idempotent because it drops the converted items.
+        const migratedProject = migrateMasterItemsToLayers(s.project, masterId);
+        return {
+          project: migratedProject,
+          editScope: { kind: 'guideMaster', masterId },
+          // Drop layer/point selection so the canvas clearly reflects
+          // "editing guides, not the icon".
+          selection: { layerIds: [], pointIds: [] },
+        };
+      });
+    },
+
+    exitGuideEditingMode() {
+      editorStoreApi.setState({
+        editScope: { kind: 'icon' },
+        selection: { layerIds: [], pointIds: [] },
+      });
+    },
+
+    addLayer(layer) {
+      editorStoreApi.setState((s) => {
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
+        if (layers[layer.id]) return s;
+        return (
+          writeCurrentLayers(s, (prev) => ({ ...prev, [layer.id]: layer })) ?? s
+        );
+      });
+    },
+
+    setLayerPrimitive(iconId, layerId, next) {
+      const nextPath = buildPrimitivePath(next);
+      editorStoreApi.setState((s) => {
+        if (s.editScope.kind === 'icon' && iconId !== s.currentIconId) return s;
+        const currentLayers = readCurrentLayers(s);
+        if (!currentLayers) return s;
+        const layer = currentLayers[layerId];
+        if (!layer) return s;
+
+        // Re-parameterising clears the "former primitive" breadcrumb, since
+        // the layer now has a live primitive again.
+        const { formerPrimitiveKind: _unused, ...layerWithoutBreadcrumb } = layer;
+        const nextLayer: Layer = {
+          ...layerWithoutBreadcrumb,
+          path: { ...(layer.path ?? {}), d: nextPath },
+          primitive: next,
+        };
+
+        const patchState = writeCurrentLayers(s, (prev) => {
+          const nextLayers = { ...prev, [layerId]: nextLayer };
+          if (s.editScope.kind === 'icon') {
+            const variant = s.project?.icons[s.currentIconId!]?.variants[s.currentVariantId!];
+            if (variant?.topology?.locked) {
+              const nextTopology = computeTopology({
+                layers: nextLayers,
+                topology: variant.topology,
+              });
+              const compatibility = areTopologiesCompatible(variant.topology, nextTopology);
+              if (!compatibility.compatible) {
+                throw new Error(`Topology is locked: ${compatibility.mismatches.join(' ')}`);
+              }
+            }
+          }
+          return nextLayers;
+        });
+        return patchState ?? s;
+      });
+    },
+
     setPointMarquee(marquee) {
       editorStoreApi.setState({ pointMarquee: marquee });
     },
@@ -2449,12 +2744,27 @@ function createActions(): EditorActions {
         const nextGuideMasters = { ...s.project.guideMasters };
         delete nextGuideMasters[id];
 
+        // Lifecycle safety: if the deleted master was the one being edited on
+        // canvas, snap the scope back to icon and drop the master-scoped
+        // selection — those layer IDs no longer exist, and carrying them
+        // across the scope flip risks targeting unrelated icon layers if
+        // IDs collide.
+        const wasEditingDeletedMaster =
+          s.editScope.kind === 'guideMaster' && s.editScope.masterId === id;
+        const nextEditScope: EditScope = wasEditingDeletedMaster
+          ? { kind: 'icon' }
+          : s.editScope;
+
         return {
           project: {
             ...s.project,
             meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
             guideMasters: Object.keys(nextGuideMasters).length > 0 ? nextGuideMasters : undefined,
           },
+          editScope: nextEditScope,
+          ...(wasEditingDeletedMaster
+            ? { selection: { layerIds: [], pointIds: [] } }
+            : null),
         };
       });
     },
@@ -3012,6 +3322,9 @@ function createActions(): EditorActions {
     generateVariantMatrix(iconId, options) {
       const createdVariantIds: string[] = [];
       editorStoreApi.setState((s) => {
+        // Icon-scope only: there is no icon to materialise variants for while
+        // the canvas is editing a guide master.
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon) return s;
@@ -3095,6 +3408,8 @@ function createActions(): EditorActions {
 
     upsertSymbolComponent(iconId, component) {
       editorStoreApi.setState((s) => {
+        // Icon-scope only: components live on icons, not on guide masters.
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon) return s;
@@ -3123,6 +3438,8 @@ function createActions(): EditorActions {
 
     removeSymbolComponent(iconId, kind) {
       editorStoreApi.setState((s) => {
+        // Icon-scope only: components live on icons, not on guide masters.
+        if (s.editScope.kind !== 'icon') return s;
         if (!s.project) return s;
         const icon = s.project.icons[iconId];
         if (!icon?.components?.[kind]) return s;
@@ -3147,32 +3464,24 @@ function createActions(): EditorActions {
 
     removeSelectedLayers() {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
         const selectedLayerIds = Array.from(new Set(s.selection.layerIds));
         if (selectedLayerIds.length === 0) return s;
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
 
-        const icon = s.project.icons[s.currentIconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
-
-        const nextLayers = { ...variant.layers };
-        let removed = false;
-        for (const layerId of selectedLayerIds) {
-          if (!nextLayers[layerId]) continue;
-          delete nextLayers[layerId];
-          removed = true;
-        }
-        if (!removed) return s;
-
+        const patch = writeCurrentLayers(s, (prev) => {
+          const next = { ...prev };
+          let removed = false;
+          for (const layerId of selectedLayerIds) {
+            if (!next[layerId]) continue;
+            delete next[layerId];
+            removed = true;
+          }
+          return removed ? next : prev;
+        });
+        if (!patch) return s;
         return {
-          project: {
-            ...s.project,
-            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
-            icons: {
-              ...s.project.icons,
-              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
-            },
-          },
+          ...patch,
           selection: {
             layerIds: [],
             pointIds: [],
@@ -3186,13 +3495,11 @@ function createActions(): EditorActions {
 
     copySelectedLayers() {
       const s = editorStoreApi.getState();
-      if (!s.project || !s.currentIconId || !s.currentVariantId) return;
-      const icon = s.project.icons[s.currentIconId];
-      const variant = icon?.variants[s.currentVariantId];
-      if (!icon || !variant) return;
+      const layers = readCurrentLayers(s);
+      if (!layers) return;
       const selectedIds = Array.from(new Set(s.selection.layerIds));
       const clipboard = selectedIds
-        .map((id) => variant.layers[id])
+        .map((id) => layers[id])
         .filter((layer): layer is Layer => Boolean(layer))
         .map((layer) => JSON.parse(JSON.stringify(layer)) as Layer);
       editorStoreApi.setState({ layerClipboard: clipboard });
@@ -3200,50 +3507,58 @@ function createActions(): EditorActions {
 
     pasteLayers() {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
-        const icon = s.project.icons[s.currentIconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
         if (s.layerClipboard.length === 0) return s;
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
 
-        const nextLayers = { ...variant.layers };
-        const usedIds = new Set(Object.keys(nextLayers));
         const newIds: string[] = [];
-        // First pass: allocate fresh ids and build an old → new id map so we
-        // can rewrite intra-clipboard references (e.g. `clipPathLayerId`) in
-        // the second pass. Without this, a pasted mask + masked-layer pair
-        // still points at the original mask, which breaks the self-contained
-        // paste contract described in the PR #128 review (P1).
-        const idMap = new Map<string, string>();
-        const cloned: Layer[] = [];
-        for (const clipLayer of s.layerClipboard) {
-          let candidate = `${clipLayer.id}-copy`;
-          let n = 1;
-          while (usedIds.has(candidate)) {
-            n += 1;
-            candidate = `${clipLayer.id}-copy-${n}`;
+        const patch = writeCurrentLayers(s, (prev) => {
+          const nextLayers = { ...prev };
+          const usedIds = new Set(Object.keys(nextLayers));
+          const idMap = new Map<string, string>();
+          const cloned: Layer[] = [];
+          for (const clipLayer of s.layerClipboard) {
+            let candidate = `${clipLayer.id}-copy`;
+            let n = 1;
+            while (usedIds.has(candidate)) {
+              n += 1;
+              candidate = `${clipLayer.id}-copy-${n}`;
+            }
+            usedIds.add(candidate);
+            idMap.set(clipLayer.id, candidate);
+            // Pasting into a guide master strips fields that refer back to
+            // icon-scoped context and can't be honoured on a master:
+            //   - `importMeta` — SVG-import provenance of the source icon
+            //   - `role` — variable-value bucket (icon-only)
+            //   - `groupId` — references an icon layer group
+            //   - `drawOrder` — draw-animation ordering on an icon variant
+            // Masks are preserved when the mask + masked layers are pasted
+            // together; cross-scope dangling references are dropped below.
+            const normalised =
+              s.editScope.kind === 'guideMaster'
+                ? normaliseLayerForGuideScope(clipLayer)
+                : (JSON.parse(JSON.stringify(clipLayer)) as Layer);
+            cloned.push(normalised);
           }
-          usedIds.add(candidate);
-          idMap.set(clipLayer.id, candidate);
-          cloned.push(JSON.parse(JSON.stringify(clipLayer)) as Layer);
-        }
-        for (let i = 0; i < cloned.length; i++) {
-          const clone = cloned[i]!;
-          const newId = idMap.get(clone.id)!;
-          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
-          nextLayers[newId] = remapped;
-          newIds.push(newId);
-        }
-
+          for (const clone of cloned) {
+            const newId = idMap.get(clone.id)!;
+            const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+            // Drop a clip reference that doesn't resolve in the new scope.
+            if (
+              remapped.clipPathLayerId &&
+              !nextLayers[remapped.clipPathLayerId] &&
+              !idMap.has(remapped.clipPathLayerId)
+            ) {
+              remapped.clipPathLayerId = undefined;
+            }
+            nextLayers[newId] = remapped;
+            newIds.push(newId);
+          }
+          return nextLayers;
+        });
+        if (!patch) return s;
         return {
-          project: {
-            ...s.project,
-            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
-            icons: {
-              ...s.project.icons,
-              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
-            },
-          },
+          ...patch,
           selection: {
             layerIds: newIds,
             pointIds: [],
@@ -3255,54 +3570,42 @@ function createActions(): EditorActions {
 
     duplicateSelectedLayers() {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
-        const icon = s.project.icons[s.currentIconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
         const selectedIds = Array.from(new Set(s.selection.layerIds));
         if (selectedIds.length === 0) return s;
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
 
-        const nextLayers = { ...variant.layers };
-        const usedIds = new Set(Object.keys(nextLayers));
         const newIds: string[] = [];
-        // First pass: allocate fresh ids for every selected layer so the
-        // second pass can remap intra-selection references. Same rationale
-        // as `pasteLayers` above: duplicating a mask together with its
-        // masked layers must produce a self-contained copy whose clip
-        // references point at the new mask, not the original.
-        const idMap = new Map<string, string>();
-        const srcLayers: Layer[] = [];
-        for (const srcId of selectedIds) {
-          const src = variant.layers[srcId];
-          if (!src) continue;
-          let candidate = `${srcId}-copy`;
-          let n = 1;
-          while (usedIds.has(candidate)) {
-            n += 1;
-            candidate = `${srcId}-copy-${n}`;
+        const patch = writeCurrentLayers(s, (prev) => {
+          const nextLayers = { ...prev };
+          const usedIds = new Set(Object.keys(nextLayers));
+          const idMap = new Map<string, string>();
+          const srcLayers: Layer[] = [];
+          for (const srcId of selectedIds) {
+            const src = prev[srcId];
+            if (!src) continue;
+            let candidate = `${srcId}-copy`;
+            let n = 1;
+            while (usedIds.has(candidate)) {
+              n += 1;
+              candidate = `${srcId}-copy-${n}`;
+            }
+            usedIds.add(candidate);
+            idMap.set(srcId, candidate);
+            srcLayers.push(src);
           }
-          usedIds.add(candidate);
-          idMap.set(srcId, candidate);
-          srcLayers.push(src);
-        }
-        for (const src of srcLayers) {
-          const newId = idMap.get(src.id)!;
-          const clone = JSON.parse(JSON.stringify(src)) as Layer;
-          const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
-          nextLayers[newId] = remapped;
-          newIds.push(newId);
-        }
-        if (newIds.length === 0) return s;
-
+          for (const src of srcLayers) {
+            const newId = idMap.get(src.id)!;
+            const clone = JSON.parse(JSON.stringify(src)) as Layer;
+            const remapped = remapLayerReferences({ ...clone, id: newId }, idMap);
+            nextLayers[newId] = remapped;
+            newIds.push(newId);
+          }
+          return newIds.length > 0 ? nextLayers : prev;
+        });
+        if (!patch) return s;
         return {
-          project: {
-            ...s.project,
-            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
-            icons: {
-              ...s.project.icons,
-              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
-            },
-          },
+          ...patch,
           selection: {
             layerIds: newIds,
             pointIds: [],
@@ -3314,93 +3617,74 @@ function createActions(): EditorActions {
 
     reorderSelectedLayers(direction) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
-        const icon = s.project.icons[s.currentIconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
         const selected = new Set(s.selection.layerIds);
         if (selected.size === 0) return s;
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
 
-        const keys = Object.keys(variant.layers);
-        const selectedKeys = keys.filter((k) => selected.has(k));
-        const unselectedKeys = keys.filter((k) => !selected.has(k));
-        if (selectedKeys.length === 0) return s;
+        return (
+          writeCurrentLayers(s, (prev) => {
+            const keys = Object.keys(prev);
+            const selectedKeys = keys.filter((k) => selected.has(k));
+            const unselectedKeys = keys.filter((k) => !selected.has(k));
+            if (selectedKeys.length === 0) return prev;
 
-        let nextKeys: string[];
-        if (direction === 'front') {
-          nextKeys = [...unselectedKeys, ...selectedKeys];
-        } else if (direction === 'back') {
-          nextKeys = [...selectedKeys, ...unselectedKeys];
-        } else {
-          nextKeys = [...keys];
-          const delta = direction === 'up' ? -1 : 1;
-          const indices = selectedKeys
-            .map((k) => keys.indexOf(k))
-            .sort((a, b) => (delta < 0 ? a - b : b - a));
-          for (const idx of indices) {
-            const target = idx + delta;
-            if (target < 0 || target >= nextKeys.length) continue;
-            const tmp = nextKeys[idx]!;
-            nextKeys[idx] = nextKeys[target]!;
-            nextKeys[target] = tmp;
-          }
-        }
+            let nextKeys: string[];
+            if (direction === 'front') {
+              nextKeys = [...unselectedKeys, ...selectedKeys];
+            } else if (direction === 'back') {
+              nextKeys = [...selectedKeys, ...unselectedKeys];
+            } else {
+              nextKeys = [...keys];
+              const delta = direction === 'up' ? -1 : 1;
+              const indices = selectedKeys
+                .map((k) => keys.indexOf(k))
+                .sort((a, b) => (delta < 0 ? a - b : b - a));
+              for (const idx of indices) {
+                const target = idx + delta;
+                if (target < 0 || target >= nextKeys.length) continue;
+                const tmp = nextKeys[idx]!;
+                nextKeys[idx] = nextKeys[target]!;
+                nextKeys[target] = tmp;
+              }
+            }
 
-        const nextLayers: Record<string, Layer> = {};
-        for (const k of nextKeys) {
-          const layer = variant.layers[k];
-          if (layer) nextLayers[k] = layer;
-        }
-
-        return {
-          project: {
-            ...s.project,
-            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
-            icons: {
-              ...s.project.icons,
-              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
-            },
-          },
-        };
+            const nextLayers: Record<string, Layer> = {};
+            for (const k of nextKeys) {
+              const layer = prev[k];
+              if (layer) nextLayers[k] = layer;
+            }
+            return nextLayers;
+          }) ?? s
+        );
       });
     },
 
     moveLayerToIndex(layerId, index) {
       editorStoreApi.setState((s) => {
-        if (!s.project || !s.currentIconId || !s.currentVariantId) return s;
-        const icon = s.project.icons[s.currentIconId];
-        const variant = icon?.variants[s.currentVariantId];
-        if (!icon || !variant) return s;
-        const keys = Object.keys(variant.layers);
-        const srcIdx = keys.indexOf(layerId);
-        if (srcIdx < 0) return s;
-        const clamped = Math.max(0, Math.min(keys.length - 1, index));
-        if (srcIdx === clamped) return s;
+        const layers = readCurrentLayers(s);
+        if (!layers) return s;
 
-        const nextKeys = [...keys];
-        nextKeys.splice(srcIdx, 1);
-        // The caller passes a target index from the ORIGINAL array (the drop
-        // target row's position before removal). When the source was above the
-        // target, the splice above shifts every later index down by one, so we
-        // need to decrement the insertion point to land the layer in the
-        // slot the user actually pointed at.
-        const insertAt = srcIdx < clamped ? clamped - 1 : clamped;
-        nextKeys.splice(insertAt, 0, layerId);
-        const nextLayers: Record<string, Layer> = {};
-        for (const k of nextKeys) {
-          const layer = variant.layers[k];
-          if (layer) nextLayers[k] = layer;
-        }
-        return {
-          project: {
-            ...s.project,
-            meta: { ...s.project.meta, updatedAt: new Date().toISOString() },
-            icons: {
-              ...s.project.icons,
-              [icon.id]: replaceVariantLayers(icon, variant.id, nextLayers),
-            },
-          },
-        };
+        return (
+          writeCurrentLayers(s, (prev) => {
+            const keys = Object.keys(prev);
+            const srcIdx = keys.indexOf(layerId);
+            if (srcIdx < 0) return prev;
+            const clamped = Math.max(0, Math.min(keys.length - 1, index));
+            if (srcIdx === clamped) return prev;
+
+            const nextKeys = [...keys];
+            nextKeys.splice(srcIdx, 1);
+            const insertAt = srcIdx < clamped ? clamped - 1 : clamped;
+            nextKeys.splice(insertAt, 0, layerId);
+            const nextLayers: Record<string, Layer> = {};
+            for (const k of nextKeys) {
+              const layer = prev[k];
+              if (layer) nextLayers[k] = layer;
+            }
+            return nextLayers;
+          }) ?? s
+        );
       });
     },
 
@@ -3443,21 +3727,14 @@ function createActions(): EditorActions {
 
     async applyBoolean(mode) {
       const snapshot = editorStoreApi.getState();
-      const iconId = snapshot.currentIconId;
-      const variantId = snapshot.currentVariantId;
+      const layers = readCurrentLayers(snapshot);
       const selectedLayerIds = Array.from(new Set(snapshot.selection.layerIds));
-      if (!snapshot.project || !iconId || !variantId || selectedLayerIds.length < 2)
-        return;
-
-      const icon = snapshot.project.icons[iconId];
-      const variant = icon?.variants[variantId];
-      if (!icon || !variant) return;
+      if (!layers || selectedLayerIds.length < 2) return;
 
       const selectedLayers = selectedLayerIds.map((layerId) => ({
         layerId,
-        layer: variant.layers[layerId],
+        layer: layers[layerId],
       }));
-
       if (selectedLayers.some(({ layer }) => !layer?.path?.d)) return;
 
       let result = selectedLayers[0]!.layer.path!.d;
@@ -3468,38 +3745,31 @@ function createActions(): EditorActions {
       temporalState.pause();
       try {
         editorStoreApi.setState((s) => {
-          if (!s.project) return s;
-          const liveIcon = s.project.icons[iconId];
-          const liveVariant = liveIcon?.variants[variantId];
           const primaryLayerId = selectedLayerIds[0]!;
-          const primaryLayer = liveVariant?.layers[primaryLayerId];
-          if (!liveIcon || !liveVariant || !primaryLayer?.path) return s;
+          const live = readCurrentLayers(s);
+          const primaryLayer = live?.[primaryLayerId];
+          if (!live || !primaryLayer?.path) return s;
 
-          const nextLayers = { ...liveVariant.layers };
-          nextLayers[primaryLayerId] = {
-            ...primaryLayer,
-            path: {
-              ...primaryLayer.path,
-              d: result,
-            },
-          };
-
-          for (const layerId of selectedLayerIds.slice(1)) {
-            delete nextLayers[layerId];
-          }
-
+          const patch = writeCurrentLayers(s, (prev) => {
+            const next = { ...prev };
+            // Uphold the path-invariant: clear any stale `primitive` on the
+            // survivor and stamp `formerPrimitiveKind` for the Inspector
+            // affordance. Then drop the consumed layers.
+            const { primitive: dropped, ...withoutPrim } = primaryLayer;
+            next[primaryLayerId] = {
+              ...withoutPrim,
+              ...(dropped ? { formerPrimitiveKind: dropped.kind } : {}),
+              path: { ...primaryLayer.path, d: result },
+            };
+            for (const layerId of selectedLayerIds.slice(1)) {
+              delete next[layerId];
+            }
+            return next;
+          });
+          if (!patch) return s;
           return {
-            project: {
-              ...s.project,
-              icons: {
-                ...s.project.icons,
-                [iconId]: replaceVariantLayers(liveIcon, variantId, nextLayers),
-              },
-            },
-            selection: {
-              layerIds: [primaryLayerId],
-              pointIds: [],
-            },
+            ...patch,
+            selection: { layerIds: [primaryLayerId], pointIds: [] },
           };
         });
       } finally {
@@ -3510,6 +3780,8 @@ function createActions(): EditorActions {
 
     async applyDerivedVariant(iconId, spec) {
       const snapshot = editorStoreApi.getState();
+      // Icon-scope only: derived variants are a variant-level concept.
+      if (snapshot.editScope.kind !== 'icon') return;
       if (!snapshot.project) return;
       const icon = snapshot.project.icons[iconId];
       if (!icon) return;
@@ -3652,4 +3924,136 @@ function hasClipMaskTargets(layers: Record<string, Layer>, clipLayerId: string):
   return Object.values(layers).some(
     (layer) => layer.id !== clipLayerId && layer.clipPathLayerId === clipLayerId,
   );
+}
+
+/**
+ * Strip Icon-scope-specific metadata from a Layer so pasting it onto a
+ * guide master doesn't orphan references to icon variants, components,
+ * or import provenance.
+ */
+function normaliseLayerForGuideScope(layer: Layer): Layer {
+  const clone = JSON.parse(JSON.stringify(layer)) as Layer;
+  delete clone.importMeta;
+  delete clone.role;
+  delete clone.groupId;
+  delete clone.drawOrder;
+  return clone;
+}
+
+/**
+ * Convert the geometric `GuideItem` kinds on a master (`hline`, `vline`,
+ * `rect`, `ellipse`) into full `Layer` records so the user can edit them on
+ * canvas with the normal toolbar. Called on enter of Guide editing mode.
+ *
+ * - `rect` / `ellipse` → `Layer` with a `primitive` descriptor, so the
+ *   Inspector's polygon/star-style Points/Sides affordance generalises.
+ * - `hline` / `vline` → `Layer` with a plain path that spans the master's
+ *   viewBox. They have no primitive.
+ * - `drawPoint` → left in `items`; it references an icon layer and has no
+ *   geometric footprint.
+ *
+ * Idempotent: subsequent calls find no convertible items (`drawPoint` is
+ * left behind) and return the same project reference.
+ */
+function migrateMasterItemsToLayers(project: Project, masterId: string): Project {
+  const master = project.guideMasters?.[masterId];
+  if (!master) return project;
+
+  const convertibleKinds = new Set<GuideItem['kind']>(['hline', 'vline', 'rect', 'ellipse']);
+  const convertible = (master.items ?? []).filter((item) => convertibleKinds.has(item.kind));
+  if (convertible.length === 0) return project;
+
+  const nextLayers: Record<string, Layer> = { ...(master.layers ?? {}) };
+  let seq = 1;
+  const nextLayerId = () => {
+    let id = `guide-${seq}`;
+    while (nextLayers[id]) {
+      seq += 1;
+      id = `guide-${seq}`;
+    }
+    seq += 1;
+    return id;
+  };
+
+  const [vbX, vbY, vbW, vbH] = master.viewBox;
+  const baseStyle: Layer['style'] = {
+    fill: { mode: 'fixed', value: 'none' },
+    stroke: { mode: 'currentColor' },
+    strokeWidth: 1,
+    lineCap: 'round',
+    lineJoin: 'round',
+  };
+
+  for (const item of convertible) {
+    const id = nextLayerId();
+    switch (item.kind) {
+      case 'rect': {
+        const primitive = {
+          kind: 'rectangle' as const,
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height,
+        };
+        nextLayers[id] = {
+          id,
+          visible: true,
+          path: { d: buildPrimitivePath(primitive) },
+          primitive,
+          style: baseStyle,
+        };
+        break;
+      }
+      case 'ellipse': {
+        const primitive = {
+          kind: 'ellipse' as const,
+          cx: item.cx,
+          cy: item.cy,
+          rx: item.rx,
+          ry: item.ry,
+        };
+        nextLayers[id] = {
+          id,
+          visible: true,
+          path: { d: buildPrimitivePath(primitive) },
+          primitive,
+          style: baseStyle,
+        };
+        break;
+      }
+      case 'hline':
+        nextLayers[id] = {
+          id,
+          visible: true,
+          path: { d: `M${vbX} ${item.y} L${vbX + vbW} ${item.y}` },
+          style: baseStyle,
+        };
+        break;
+      case 'vline':
+        nextLayers[id] = {
+          id,
+          visible: true,
+          path: { d: `M${item.x} ${vbY} L${item.x} ${vbY + vbH}` },
+          style: baseStyle,
+        };
+        break;
+      case 'drawPoint':
+        break; // Not reachable (filtered by `convertibleKinds`).
+    }
+  }
+
+  const nextItems = (master.items ?? []).filter((item) => !convertibleKinds.has(item.kind));
+
+  return {
+    ...project,
+    meta: { ...project.meta, updatedAt: new Date().toISOString() },
+    guideMasters: {
+      ...project.guideMasters,
+      [masterId]: {
+        ...master,
+        items: nextItems,
+        layers: nextLayers,
+      },
+    },
+  };
 }

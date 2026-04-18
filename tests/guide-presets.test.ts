@@ -20,6 +20,7 @@ describe('guide presets', () => {
         { kind: 'hline', y: 12 },
         { kind: 'vline', x: 12 },
       ],
+      layers: {},
     });
   });
 

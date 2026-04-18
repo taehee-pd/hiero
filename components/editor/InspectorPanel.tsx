@@ -159,6 +159,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
     generateVariantMatrix,
     upsertSymbolComponent,
     removeSymbolComponent,
+    setLayerPrimitive,
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentType);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
@@ -1017,6 +1018,66 @@ export const InspectorPanel = memo(function InspectorPanel() {
                     </span>
                   </span>
                 </Button>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
+
+          {/*
+           * Primitive properties are only surfaced for layers that still carry
+           * a `primitive` descriptor. The `patchLayer` invariant clears this
+           * whenever path topology is mutated outside primitive regeneration
+           * (node editing, boolean ops, SVG import), so an absent primitive on
+           * a shape that was originally a polygon/star is information to the
+           * user: the geometry has diverged and can no longer be driven from
+           * a parametric control.
+           */}
+          {layer.primitive && currentIconId && (layer.primitive.kind === 'polygon' || layer.primitive.kind === 'star') ? (
+            <>
+              <Section title="Shape">
+                {layer.primitive.kind === 'polygon' ? (
+                  <NumberField
+                    label="Sides"
+                    value={layer.primitive.sides}
+                    min={3}
+                    step={1}
+                    onChange={(next) => {
+                      if (!layer.primitive || layer.primitive.kind !== 'polygon') return;
+                      const rounded = Math.max(3, Math.round(next));
+                      if (rounded === layer.primitive.sides) return;
+                      setLayerPrimitive(currentIconId, layer.id, {
+                        ...layer.primitive,
+                        sides: rounded,
+                      });
+                    }}
+                  />
+                ) : (
+                  <NumberField
+                    label="Points"
+                    value={layer.primitive.points}
+                    min={2}
+                    step={1}
+                    onChange={(next) => {
+                      if (!layer.primitive || layer.primitive.kind !== 'star') return;
+                      const rounded = Math.max(2, Math.round(next));
+                      if (rounded === layer.primitive.points) return;
+                      setLayerPrimitive(currentIconId, layer.id, {
+                        ...layer.primitive,
+                        points: rounded,
+                      });
+                    }}
+                  />
+                )}
+              </Section>
+              <Separator />
+            </>
+          ) : layer.formerPrimitiveKind === 'polygon' || layer.formerPrimitiveKind === 'star' ? (
+            <>
+              <Section title="Shape">
+                <InlineMessage>
+                  Shape was modified — {layer.formerPrimitiveKind === 'polygon' ? 'sides' : 'points'}{' '}
+                  can no longer be edited parametrically. Draw a new {layer.formerPrimitiveKind} to edit it by count again.
+                </InlineMessage>
               </Section>
               <Separator />
             </>

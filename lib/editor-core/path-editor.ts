@@ -1,6 +1,5 @@
 import { editorStore } from '@/lib/editor-store/store';
 import {
-  selectCurrentIcon,
   selectCurrentVariant,
   selectCurrentType,
 } from '@/lib/editor-store/selectors';
@@ -12,16 +11,10 @@ import {
   pauseHistory,
   resumeHistory,
 } from '@/lib/editor-store/history';
-import {
-  createEllipsePath,
-  createLinePath,
-  createPolygonPath,
-  createRectPath,
-  createStarPath,
-} from './path-shapes';
+import { buildPrimitivePath, translatePrimitive } from './path-shapes';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { EditablePath, PathPoint } from './path-model';
-import type { GuideItem, Layer } from '@/lib/schema/types';
+import type { GuideItem, Layer, PrimitiveShape } from '@/lib/schema/types';
 import type { SelectionState, ShapeType } from '@/lib/editor-store/types';
 import { SnapEngine, type SnapResult } from './snap-engine';
 
@@ -77,6 +70,7 @@ type ShapePlacement = {
   start: { x: number; y: number };
   previousSelection: SelectionState;
 };
+
 type BBoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 type SelectionBounds = {
   minX: number;
@@ -393,10 +387,11 @@ export class PathEditor {
     const selectedLayerId = state.selection.layerIds[0] ?? null;
     if (!selectedLayerId) return null;
 
-    const iconId = state.currentIconId;
-    if (!iconId) return null;
-
-    const selectedPath = getActiveVariantSnapshot(state, iconId)?.layers[selectedLayerId]?.path?.d;
+    // Read through the scope-aware reader so guide-master layers (created
+    // via the first pen click while in guide scope) can be reopened for
+    // continuation. The icon-only `getActiveVariantSnapshot` would return
+    // null in guide scope and force every click into a brand-new path.
+    const selectedPath = this.readCurrentLayersForEditor()?.[selectedLayerId]?.path?.d;
     if (!selectedPath || !isPathDirectlyEditable(selectedPath)) return null;
 
     return selectedLayerId;
@@ -404,18 +399,15 @@ export class PathEditor {
 
   private createNewPenLayerAt(clientX: number, clientY: number): string | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project || !state.currentVariantId) return null;
+    if (!state.project) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
     if (!svgPoint) return null;
     const snappedPoint = this.computeSnappedPoint(svgPoint);
 
-    const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantSnapshot(state, iconId);
-    if (!icon || !currentState) return null;
-
-    const ids = Object.keys(currentState.layers);
+    const currentLayers = this.readCurrentLayersForEditor();
+    if (!currentLayers) return null;
+    const ids = Object.keys(currentLayers);
     let index = 1;
     let nextLayerId = `path-${index}`;
     while (ids.includes(nextLayerId)) {
@@ -423,46 +415,18 @@ export class PathEditor {
       nextLayerId = `path-${index}`;
     }
 
-    editorStore.setState((s) => {
-      if (!s.project || !s.currentVariantId) return s;
-      const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantSnapshot(s, iconId);
-      if (!currentIcon || !currentIconState) return s;
-
-      const currentVariant = currentIcon.variants[s.currentVariantId];
-      return {
-        project: {
-          ...s.project,
-          icons: {
-            ...s.project.icons,
-            [iconId]: {
-              ...currentIcon,
-              variants: {
-                ...currentIcon.variants,
-                [s.currentVariantId]: {
-                  ...currentVariant,
-                  layers: {
-                    ...currentVariant.layers,
-                    [nextLayerId]: {
-                      id: nextLayerId,
-                      role: 'primary',
-                      visible: true,
-                      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
-                      style: {
-                        fill: { mode: 'fixed', value: 'none' },
-                        stroke: { mode: 'currentColor' },
-                        strokeWidth: 2,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      };
+    editorStore.getState().addLayer({
+      id: nextLayerId,
+      role: 'primary',
+      visible: true,
+      path: { d: `M${snappedPoint.x} ${snappedPoint.y}` },
+      style: {
+        fill: { mode: 'fixed', value: 'none' },
+        stroke: { mode: 'currentColor' },
+        strokeWidth: 2,
+        lineCap: 'round',
+        lineJoin: 'round',
+      },
     });
 
     this.clearPendingPenHandle();
@@ -476,10 +440,12 @@ export class PathEditor {
     pointerId: number,
   ): PenPlacement | 'closed' | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) return null;
-
-    const layer = getActiveVariantSnapshot(state, iconId)?.layers[layerId];
+    // Scope-aware lookup so guide-master layers (created on the first pen
+    // click while in guide scope) can be continued. `patchLayer` below also
+    // routes by `editScope`, so the first arg is a placeholder that the
+    // store ignores in guide scope.
+    const iconId = state.currentIconId ?? '';
+    const layer = this.readCurrentLayersForEditor()?.[layerId];
     if (!layer?.path?.d || !isPathDirectlyEditable(layer.path.d)) return null;
 
     const svgPoint = this.clientToSvg(clientX, clientY);
@@ -541,9 +507,12 @@ export class PathEditor {
 
   private startLayerDrag(layerId: string, clientX: number, clientY: number) {
     const state = editorStore.getState();
-    const icon = selectCurrentIcon(state);
+    // `selectCurrentType` is scope-aware (resolves to the master in guide
+    // scope), so we don't need an icon here. The previous `selectCurrentIcon`
+    // gate was load-bearing for icon scope but bailed out in guide scope and
+    // made guide-master layers unmovable.
     const currentState = selectCurrentType(state);
-    if (!icon || !currentState) return;
+    if (!currentState) return;
     const layer = currentState.layers[layerId];
     if (!layer) return;
 
@@ -1113,12 +1082,16 @@ export class PathEditor {
 
   private beginShapePlacement(e: PointerEvent): ShapePlacement | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project) return null;
+    if (!state.project) return null;
+    // Icon scope needs an icon pointer; guide scope operates on the master
+    // directly. `createShapeLayer` internally routes the write via the
+    // store's `writeCurrentLayers` chokepoint.
+    if (state.editScope.kind === 'icon' && !state.currentIconId) return null;
 
     const svgPoint = this.clientToSvg(e.clientX, e.clientY);
     if (!svgPoint) return null;
     const start = this.snapPointToGrid(svgPoint);
+
     const layerId = this.createShapeLayer(start);
     if (!layerId) return null;
 
@@ -1142,11 +1115,12 @@ export class PathEditor {
     if (!preview) return;
 
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) return;
-
-    state.patchLayer(iconId,this.shapePlacement.layerId, {
+    // `patchLayer` routes by `editScope` internally — passing the icon id is a
+    // no-op in guide scope.
+    const iconId = state.currentIconId ?? '';
+    state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
+      primitive: preview.primitive,
     });
   }
 
@@ -1414,9 +1388,20 @@ export class PathEditor {
       return;
     }
 
-    if (!this.isDragging) return;
-    resumeHistory();
-    this.resetDrag();
+    if (this.isDragging) {
+      resumeHistory();
+      this.resetDrag();
+      return;
+    }
+
+    // Escape out of guide editing mode only when no drag is active. The
+    // drag-cancel branches above must run first; otherwise flipping
+    // `editScope` mid-drag leaves stale placements that a later pointerup
+    // would commit in the wrong scope.
+    const idleState = editorStore.getState();
+    if (idleState.editScope.kind === 'guideMaster') {
+      idleState.exitGuideEditingMode();
+    }
   }
 
   private onPointerUp(e: PointerEvent) {
@@ -1560,6 +1545,13 @@ export class PathEditor {
           x: 0,
           y: 0,
         },
+        // Pure translation preserves the parametric description; carry the
+        // primitive through so `patchLayer`'s "drop primitive on path patch"
+        // invariant doesn't strip Inspector controls (sides, points, radius)
+        // after a simple move.
+        ...(layer.primitive
+          ? { primitive: translatePrimitive(layer.primitive, dx, dy) }
+          : null),
       });
     } else {
       // For non-editable paths (circles, complex shapes), persist the move via transform
@@ -2175,14 +2167,14 @@ export class PathEditor {
 
   private createShapeLayer(start: { x: number; y: number }): string | null {
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId || !state.project || !state.currentVariantId) return null;
+    if (!state.project) return null;
 
-    const icon = state.project.icons[iconId];
-    const currentState = getActiveVariantSnapshot(state, iconId);
-    if (!icon || !currentState) return null;
-
-    const ids = Object.keys(currentState.layers);
+    // Compute the next available shape-layer id against the layers the editor
+    // is currently operating on — icon variant or guide master, same code
+    // path.
+    const currentLayers = this.readCurrentLayersForEditor();
+    if (!currentLayers) return null;
+    const ids = Object.keys(currentLayers);
     let index = 1;
     let nextLayerId = `shape-${index}`;
     while (ids.includes(nextLayerId)) {
@@ -2190,7 +2182,7 @@ export class PathEditor {
       nextLayerId = `shape-${index}`;
     }
 
-    const initialPath = buildShapePathFromDrag({
+    const initialShape = buildShapePathFromDrag({
       shapeType: state.shapeSubTool,
       start,
       current: start,
@@ -2198,52 +2190,36 @@ export class PathEditor {
       altKey: false,
       polygonSides: state.shapePolygonSides,
       starPoints: state.shapeStarPoints,
-    }).d;
+    });
 
     pauseHistory();
-    editorStore.setState((s) => {
-      if (!s.project || !s.currentVariantId) return s;
-      const currentIcon = s.project.icons[iconId];
-      const currentIconState = getActiveVariantSnapshot(s, iconId);
-      if (!currentIcon || !currentIconState) return s;
-
-      const currentVariant = currentIcon.variants[s.currentVariantId];
-      return {
-        project: {
-          ...s.project,
-          icons: {
-            ...s.project.icons,
-            [iconId]: {
-              ...currentIcon,
-              variants: {
-                ...currentIcon.variants,
-                [s.currentVariantId]: {
-                  ...currentVariant,
-                  layers: {
-                    ...currentVariant.layers,
-                    [nextLayerId]: {
-                      id: nextLayerId,
-                      role: 'primary',
-                      visible: true,
-                      path: { d: initialPath },
-                      style: {
-                        fill: { mode: 'fixed', value: 'none' },
-                        stroke: { mode: 'currentColor' },
-                        strokeWidth: 2,
-                        lineCap: 'round',
-                        lineJoin: 'round',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      };
+    editorStore.getState().addLayer({
+      id: nextLayerId,
+      role: 'primary',
+      visible: true,
+      path: { d: initialShape.d },
+      primitive: initialShape.primitive,
+      style: {
+        fill: { mode: 'fixed', value: 'none' },
+        stroke: { mode: 'currentColor' },
+        strokeWidth: 2,
+        lineCap: 'round',
+        lineJoin: 'round',
+      },
     });
 
     return nextLayerId;
+  }
+
+  private readCurrentLayersForEditor(): Record<string, Layer> | null {
+    const s = editorStore.getState();
+    if (!s.project) return null;
+    if (s.editScope.kind === 'guideMaster') {
+      return s.project.guideMasters?.[s.editScope.masterId]?.layers ?? null;
+    }
+    if (!s.currentIconId || !s.currentVariantId) return null;
+    const icon = s.project.icons[s.currentIconId];
+    return icon?.variants[s.currentVariantId]?.layers ?? null;
   }
 
   private buildShapePreview(start: { x: number; y: number }, e: PointerEvent) {
@@ -2274,14 +2250,10 @@ export class PathEditor {
     }
 
     const state = editorStore.getState();
-    const iconId = state.currentIconId;
-    if (!iconId) {
-      this.cancelShapePlacement();
-      return;
-    }
-
-    state.patchLayer(iconId,this.shapePlacement.layerId, {
+    const iconId = state.currentIconId ?? '';
+    state.patchLayer(iconId, this.shapePlacement.layerId, {
       path: { d: preview.d },
+      primitive: preview.primitive,
     });
 
     resumeHistory();
@@ -2481,7 +2453,7 @@ export function buildShapePathFromDrag(input: {
   altKey: boolean;
   polygonSides: number;
   starPoints: number;
-}): { d: string; isEmpty: boolean } {
+}): { d: string; isEmpty: boolean; primitive: PrimitiveShape } {
   const { shapeType, start, current, shiftKey, altKey, polygonSides, starPoints } = input;
   const dx = current.x - start.x;
   const dy = current.y - start.y;
@@ -2504,11 +2476,19 @@ export function buildShapePathFromDrag(input: {
           y: start.y + constrained.dy,
         };
 
+    const primitive: PrimitiveShape = {
+      kind: 'line',
+      x1: startPoint.x,
+      y1: startPoint.y,
+      x2: endPoint.x,
+      y2: endPoint.y,
+    };
     return {
-      d: createLinePath(startPoint.x, startPoint.y, endPoint.x, endPoint.y),
+      d: buildPrimitivePath(primitive),
       isEmpty:
         Math.abs(constrained.dx) <= SHAPE_EMPTY_EPSILON &&
         Math.abs(constrained.dy) <= SHAPE_EMPTY_EPSILON,
+      primitive,
     };
   }
 
@@ -2517,28 +2497,63 @@ export function buildShapePathFromDrag(input: {
   const centerY = box.y + box.height / 2;
 
   switch (shapeType) {
-    case 'rectangle':
-      return {
-        d: createRectPath(box.x, box.y, box.width, box.height),
-        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+    case 'rectangle': {
+      const primitive: PrimitiveShape = {
+        kind: 'rectangle',
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
       };
-    case 'ellipse':
       return {
-        d: createEllipsePath(centerX, centerY, box.width / 2, box.height / 2),
+        d: buildPrimitivePath(primitive),
         isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
+    }
+    case 'ellipse': {
+      const primitive: PrimitiveShape = {
+        kind: 'ellipse',
+        cx: centerX,
+        cy: centerY,
+        rx: box.width / 2,
+        ry: box.height / 2,
+      };
+      return {
+        d: buildPrimitivePath(primitive),
+        isEmpty: box.width <= SHAPE_EMPTY_EPSILON || box.height <= SHAPE_EMPTY_EPSILON,
+        primitive,
+      };
+    }
     case 'polygon': {
       const radius = Math.min(box.width, box.height) / 2;
+      const primitive: PrimitiveShape = {
+        kind: 'polygon',
+        cx: centerX,
+        cy: centerY,
+        r: radius,
+        sides: polygonSides,
+      };
       return {
-        d: createPolygonPath(centerX, centerY, radius, polygonSides),
+        d: buildPrimitivePath(primitive),
         isEmpty: radius <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
     }
     case 'star': {
       const outerRadius = Math.min(box.width, box.height) / 2;
+      const primitive: PrimitiveShape = {
+        kind: 'star',
+        cx: centerX,
+        cy: centerY,
+        outerR: outerRadius,
+        innerR: outerRadius / 2,
+        points: starPoints,
+      };
       return {
-        d: createStarPath(centerX, centerY, outerRadius, outerRadius / 2, starPoints),
+        d: buildPrimitivePath(primitive),
         isEmpty: outerRadius <= SHAPE_EMPTY_EPSILON,
+        primitive,
       };
     }
   }

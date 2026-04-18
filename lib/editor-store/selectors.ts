@@ -9,24 +9,54 @@ export type LayerPanelRow = {
   clippedLayerIds: string[];
 };
 
+/**
+ * Read the guide master that `editScope` currently points at, if any. Only
+ * returns non-null while `editScope.kind === 'guideMaster'` AND the master
+ * still exists (it may have just been deleted, in which case the store's
+ * own lifecycle will snap scope back to icon).
+ */
+export function selectEditingGuideMaster(s: EditorStore): GuideMaster | null {
+  if (s.editScope.kind !== 'guideMaster') return null;
+  return s.project?.guideMasters?.[s.editScope.masterId] ?? null;
+}
+
 export function selectCurrentIcon(s: EditorStore): Icon | null {
+  // In guide scope there is no icon context — the canvas edits the master.
+  // Returning null here hides layer-unaware "icon" affordances (variant
+  // matrix, symbol tagging, icon-scoped paste) from subscribers.
+  if (s.editScope.kind === 'guideMaster') return null;
   if (!s.project || !s.currentIconId) return null;
   return s.project.icons[s.currentIconId] ?? null;
 }
 
 export function selectCurrentVariant(s: EditorStore): Variant | null {
-  const icon = selectCurrentIcon(s);
-  if (!icon || !s.currentVariantId) return null;
+  // Guide scope: synthesise a Variant-shaped view over the master so the
+  // LayerPanel / Inspector / runtime renderer consume it transparently.
+  const master = selectEditingGuideMaster(s);
+  if (master) return guideMasterAsVariant(master);
+
+  if (s.editScope.kind !== 'icon') return null;
+  if (!s.project || !s.currentIconId || !s.currentVariantId) return null;
+  const icon = s.project.icons[s.currentIconId];
+  if (!icon) return null;
   return icon.variants[s.currentVariantId] ?? null;
 }
 
 export function selectCurrentType(s: EditorStore): LayerSnapshot | null {
   const variant = selectCurrentVariant(s);
   if (!variant) return null;
+  // In guide scope, types don't apply — the master doesn't have per-type
+  // layer snapshots. `variantToSnapshot(variant, null)` returns the base
+  // layer set directly.
+  if (s.editScope.kind === 'guideMaster') return variantToSnapshot(variant, null);
   return variantToSnapshot(variant, s.currentTypeId);
 }
 
 export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
+  // Prefer the explicitly-edited master when in guide scope.
+  const editing = selectEditingGuideMaster(s);
+  if (editing) return editing;
+
   const variant = selectCurrentVariant(s);
   const guideMasters = s.project?.guideMasters;
   if (!variant || !guideMasters) return null;
@@ -36,6 +66,30 @@ export function selectCurrentGuideMaster(s: EditorStore): GuideMaster | null {
     Object.values(guideMasters).find((guideMaster) => guideMaster.targetSize === variant.size) ??
     null
   );
+}
+
+/**
+ * Stable view of a GuideMaster as a Variant so Inspector / LayerPanel /
+ * runtime renderer can consume it uniformly. The cache is keyed by master
+ * reference — since the project state is rebuilt immutably on every write,
+ * a new master reference naturally invalidates the cached synthetic view,
+ * and panels that memoize by variant identity stop thrashing.
+ */
+const guideVariantCache = new WeakMap<GuideMaster, Variant>();
+function guideMasterAsVariant(master: GuideMaster): Variant {
+  const cached = guideVariantCache.get(master);
+  if (cached) return cached;
+  const variant: Variant = {
+    // Master-scoped synthetic id. Non-persisted; exists so `currentVariantId`
+    // consumers (render keys, memo keys, selection restore) stay unique per
+    // master and can't alias across concurrently-loaded masters.
+    id: `guide-master:${master.id}`,
+    size: master.targetSize,
+    viewBox: master.viewBox,
+    layers: master.layers ?? {},
+  };
+  guideVariantCache.set(master, variant);
+  return variant;
 }
 
 export function selectVariantSnapshotById(

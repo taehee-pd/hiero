@@ -197,6 +197,22 @@ export type Layer = {
   /** Draw animation order (1-based). Same number = simultaneous, different = sequential. Default: 1 */
   drawOrder?: number;
   path?: { d: string; fillRule?: 'nonzero' | 'evenodd' };
+  /**
+   * Optional parametric shape descriptor. `path.d` is canonical; `primitive` is
+   * metadata that lets the Inspector surface editable parameters (e.g. polygon
+   * sides, star points). It MUST be cleared whenever path topology is modified
+   * outside a primitive-regeneration flow — the `patchLayer` store action
+   * enforces this by dropping `primitive` when `path` is patched without an
+   * explicit new primitive.
+   */
+  primitive?: PrimitiveShape;
+  /**
+   * Breadcrumb set when a primitive is cleared because the path was mutated
+   * outside a primitive-regeneration flow. The Inspector uses this to tell
+   * the user *"this was a polygon, but you've since modified it"* rather
+   * than silently hiding the Sides/Points control.
+   */
+  formerPrimitiveKind?: PrimitiveShape['kind'];
   style: {
     fill?: PaintRef;
     stroke?: PaintRef;
@@ -215,6 +231,35 @@ export type Layer = {
   };
   importMeta?: SvgImportLayerMeta;
 };
+
+export type PrimitiveShape =
+  | {
+      kind: 'rectangle';
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      radius?: number;
+    }
+  | { kind: 'ellipse'; cx: number; cy: number; rx: number; ry: number }
+  | {
+      kind: 'polygon';
+      cx: number;
+      cy: number;
+      r: number;
+      sides: number;
+      rotation?: number;
+    }
+  | {
+      kind: 'star';
+      cx: number;
+      cy: number;
+      outerR: number;
+      innerR: number;
+      points: number;
+      rotation?: number;
+    }
+  | { kind: 'line'; x1: number; y1: number; x2: number; y2: number };
 
 export type SvgImportLayerMeta = {
   sourceTag:
@@ -395,7 +440,25 @@ export type GuideMaster = {
   name: string;
   targetSize: number;
   viewBox: [number, number, number, number];
+  /**
+   * Parametric guides — `hline` / `vline` / `rect` / `ellipse` / `drawPoint`.
+   * Authored by the Guide panel's parameter form and feed the snap engine.
+   * On first enter of Guide editing mode, the geometric kinds (everything
+   * except `drawPoint`) are migrated into `layers` so the user can edit them
+   * with the normal toolbar. `drawPoint` stays here because it references a
+   * layer id and has no geometric footprint.
+   */
   items: GuideItem[];
+  /**
+   * Full-fat layer tree for this master. Edited on canvas via Guide editing
+   * mode with the same toolbar used for icon editing (select, pen, shape
+   * with every sub-tool, etc.). Contributes edge/anchor snap targets via
+   * the existing layer-bounds logic when the master is bound to a variant.
+   * Optional for back-compat with stored projects; normalised to `{}` by
+   * `migrateProjectForGuideMasters` and populated on first enter of Guide
+   * editing mode by the items → layers migration.
+   */
+  layers?: Record<string, Layer>;
 };
 
 export type GuideItem =

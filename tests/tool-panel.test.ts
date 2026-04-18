@@ -32,6 +32,7 @@ describe('tool panel shape sub tool state', () => {
           { kind: 'hline', y: 12 },
           { kind: 'vline', x: 12 },
         ],
+        layers: {},
       },
     });
   });

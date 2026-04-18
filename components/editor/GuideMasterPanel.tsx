@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Eye, EyeOff, Plus, Ruler, Trash2, X } from 'lucide-react';
+import { Copy, Eye, EyeOff, MousePointerSquareDashed, Plus, Ruler, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +56,9 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
         masters,
       }));
   }, [guideMasterList]);
+  const editScope = useEditorStore((s) => s.editScope);
+  const editingThisMaster = (masterId: string) =>
+    editScope.kind === 'guideMaster' && editScope.masterId === masterId;
   const {
     addGuideMaster,
     updateGuideMaster,
@@ -65,6 +68,8 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
     removeGuideItem,
     toggleGuidesVisible,
     setGuideStyle,
+    enterGuideEditingMode,
+    exitGuideEditingMode,
   } = useEditorActions();
 
   const [selectedMasterId, setSelectedMasterId] = useState<string | null>(activeMasterId);
@@ -170,6 +175,29 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-2.5">
+          {editScope.kind === 'guideMaster' ? (
+            <div
+              className="flex items-start justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs"
+              role="status"
+              aria-live="polite"
+            >
+              <div>
+                <p className="font-semibold text-primary">Editing guides on canvas</p>
+                <p className="mt-1 text-muted-foreground">
+                  Shapes you draw are added to the selected master. Polygon and star
+                  are hidden — guides support rectangles, ellipses, and axis lines.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 rounded-md px-2 text-xs font-semibold text-primary hover:bg-primary/20"
+                onClick={exitGuideEditingMode}
+              >
+                Exit
+              </Button>
+            </div>
+          ) : null}
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -289,6 +317,30 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className={cn(
+                        'workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground',
+                        editingThisMaster(selectedMaster.id) && 'bg-primary/10 text-primary',
+                      )}
+                      onClick={() => {
+                        if (editingThisMaster(selectedMaster.id)) {
+                          exitGuideEditingMode();
+                        } else {
+                          enterGuideEditingMode(selectedMaster.id);
+                        }
+                      }}
+                      aria-label={
+                        editingThisMaster(selectedMaster.id)
+                          ? 'Exit guide editing on canvas'
+                          : 'Edit guides on canvas'
+                      }
+                      aria-pressed={editingThisMaster(selectedMaster.id)}
+                      title="Edit guides on canvas"
+                    >
+                      <MousePointerSquareDashed className="size-3.5" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon-sm"

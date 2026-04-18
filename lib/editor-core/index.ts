@@ -4,6 +4,7 @@ export { alignLayers, distributeLayers } from './layer-arrange';
 export { parseSvgPath, serializePath } from './parse';
 export { areTopologiesCompatible, computeTopology, lockTopology } from './topology';
 export {
+  buildPrimitivePath,
   createEllipsePath,
   createLinePath,
   createPolygonPath,
@@ -22,4 +23,4 @@ export type { PathPoint, PathSegment, SubPath, EditablePath, NodeType } from './
 export { computeSnap, SnapEngine } from './snap-engine';
 export type { SnapTarget, SnapResult, ComputeSnapOptions } from './snap-engine';
 
-export { PathEditor } from './path-editor';
+export { PathEditor, buildShapePathFromDrag } from './path-editor';

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownToLine,
   ArrowUpToLine,
@@ -21,6 +21,7 @@ import {
   selectCurrentType,
 } from '@/lib/editor-store/selectors';
 import { renderSvg } from '@/lib/editor-renderer-svg/render-svg';
+import type { Icon } from '@/lib/schema/types';
 import {
   applyTransitionPreview,
   clearTransitionPreview,
@@ -93,9 +94,29 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   const lastAutoFitTargetRef = useRef<string | null>(null);
 
   // Subscribe to relevant state for re-render
-  const icon = useEditorStore(selectCurrentIcon);
+  const selectedIcon = useEditorStore(selectCurrentIcon);
   const variant = useEditorStore(selectCurrentVariant);
   const currentState = useEditorStore(selectCurrentType);
+  // In guide scope, `selectCurrentIcon` returns null by design so icon-only
+  // panels gracefully sit out. `renderSvg` still needs an `Icon`-shaped
+  // input though, so we wrap the master's synthetic variant in a one-shot
+  // icon here. `useMemo` keeps the object reference stable until `variant`
+  // changes so downstream effects don't re-run on every render.
+  //
+  // The synthetic id is master-scoped (`guide-master-icon:${masterId}`) so
+  // `${icon.id}::${variant.id}` — used as a lastRenderedKeyRef — never
+  // collides across masters. The id is synthetic and never persisted.
+  const icon = useMemo<Icon | null>(() => {
+    if (selectedIcon) return selectedIcon;
+    if (!variant) return null;
+    // `variant.id` is already `guide-master:${masterId}` (see selectors).
+    const masterSuffix = variant.id.replace(/^guide-master:/, '');
+    return {
+      id: `guide-master-icon:${masterSuffix}`,
+      name: 'Guide master',
+      variants: { [variant.id]: variant },
+    };
+  }, [selectedIcon, variant]);
   const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const viewport = useEditorStore((s) => s.viewport);
   const selection = useEditorStore((s) => s.selection);
@@ -107,6 +128,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   const activeSnapGuides = useEditorStore((s) => s.activeSnapGuides);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
+  const guideEditingActive = useEditorStore((s) => s.editScope.kind === 'guideMaster');
   const selectedIconGuideIndex = useEditorStore((s) => s.selectedIconGuideIndex);
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const transitionPreview = useEditorStore((s) => s.transitionPreview);
@@ -669,6 +691,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     guideSet: activeGuideSet,
     guidesVisible,
     guideStyle,
+    guideEditingActive,
     pointBBox,
     pointMarquee,
     pointBBoxLabel: pointTransformLabel,

@@ -30,7 +30,7 @@ export default function RuntimeDemoPage() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center gap-12 p-8">
-      <h1 className="text-2xl font-bold">Runtime Demo</h1>
+      <h1 className="text-2xl font-semibold">Runtime Demo</h1>
 
       <div className="flex gap-16">
         {/* Hamburger → Close demo */}

@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "desktop",
+    "design-system",
     "node_modules"
   ]
 }

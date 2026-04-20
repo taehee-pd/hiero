@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:760px;height:320px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;font-family:var(--font-sans);}
+  .col{display:flex;flex-direction:column;gap:5px;}
+  .col h3{margin:0 0 2px 0;font-size:var(--text-xs);font-weight:var(--fw-strong);letter-spacing:var(--tracking-sm);color:var(--foreground-tertiary);}
+  .row{display:flex;gap:8px;align-items:center;}
+  .sw{width:20px;height:20px;border-radius:5px;box-shadow:var(--shadow-inset-edge),0 0 0 1px rgba(255,255,255,0.06);flex-shrink:0;}
+  .hex{font-family:var(--font-mono);font-size:10px;color:var(--foreground-secondary);}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="col">
+    <h3>Red — destructive</h3>
+    <div class="row"><div class="sw" style="background:#FFE4E8"></div><span class="hex">100</span></div>
+    <div class="row"><div class="sw" style="background:#FFB1BE"></div><span class="hex">200</span></div>
+    <div class="row"><div class="sw" style="background:#FF7287"></div><span class="hex">300</span></div>
+    <div class="row"><div class="sw" style="background:#F1265A"></div><span class="hex">400 ✦</span></div>
+    <div class="row"><div class="sw" style="background:#CD0035"></div><span class="hex">500</span></div>
+    <div class="row"><div class="sw" style="background:#9B0019"></div><span class="hex">600</span></div>
+    <div class="row"><div class="sw" style="background:#640007"></div><span class="hex">700</span></div>
+    <div class="row"><div class="sw" style="background:#3B0004"></div><span class="hex">800</span></div>
+    <div class="row"><div class="sw" style="background:#1A0002"></div><span class="hex">900</span></div>
+  </div>
+  <div class="col">
+    <h3>Green — success</h3>
+    <div class="row"><div class="sw" style="background:#E6FFDA"></div><span class="hex">100</span></div>
+    <div class="row"><div class="sw" style="background:#B8E39A"></div><span class="hex">200</span></div>
+    <div class="row"><div class="sw" style="background:#80BF5C"></div><span class="hex">300</span></div>
+    <div class="row"><div class="sw" style="background:#4E9E00"></div><span class="hex">400 ✦</span></div>
+    <div class="row"><div class="sw" style="background:#1F7B00"></div><span class="hex">500</span></div>
+    <div class="row"><div class="sw" style="background:#005700"></div><span class="hex">600</span></div>
+    <div class="row"><div class="sw" style="background:#003300"></div><span class="hex">700</span></div>
+    <div class="row"><div class="sw" style="background:#001D00"></div><span class="hex">800</span></div>
+    <div class="row"><div class="sw" style="background:#000A00"></div><span class="hex">900</span></div>
+  </div>
+  <div class="col">
+    <h3>Yellow — warning</h3>
+    <div class="row"><div class="sw" style="background:#FFF7D2"></div><span class="hex">100</span></div>
+    <div class="row"><div class="sw" style="background:#FFE7A4"></div><span class="hex">200</span></div>
+    <div class="row"><div class="sw" style="background:#FFD37A"></div><span class="hex">300</span></div>
+    <div class="row"><div class="sw" style="background:#FFB061"></div><span class="hex">400 ✦</span></div>
+    <div class="row"><div class="sw" style="background:#DA7000"></div><span class="hex">500</span></div>
+    <div class="row"><div class="sw" style="background:#7B2400"></div><span class="hex">600</span></div>
+    <div class="row"><div class="sw" style="background:#3E0F00"></div><span class="hex">700</span></div>
+    <div class="row"><div class="sw" style="background:#220700"></div><span class="hex">800</span></div>
+    <div class="row"><div class="sw" style="background:#0D0200"></div><span class="hex">900</span></div>
+  </div>
+</div>
+</body>
+</html>

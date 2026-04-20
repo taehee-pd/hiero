@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<title>Hiero Studio — UI Kit</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="stylesheet" href="studio.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="Primitives.jsx"></script>
+<script type="text/babel" src="Navbar.jsx"></script>
+<script type="text/babel" src="NavPane.jsx"></script>
+<script type="text/babel" src="ListPane.jsx"></script>
+<script type="text/babel" src="Editor.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+// Sample data modeled on Hiero's SAMPLE_WORKSPACE
+const SAMPLE_PROJECTS = [
+  { id: 'system', name: 'System Icons', iconCount: 24 },
+  { id: 'media', name: 'Media Icons', iconCount: 12 },
+  { id: 'finance', name: 'Finance Icons', iconCount: 8 },
+];
+
+const ICONS_BY_PROJECT = {
+  system: [
+    { id: 'chevron-right', name: 'IcChevronRight', glyph: 'chevron-right', tags: ['nav'] },
+    { id: 'chevron-left', name: 'IcChevronLeft', glyph: 'chevron-left', tags: ['nav'] },
+    { id: 'arrow-up', name: 'IcArrowUp', glyph: 'arrow-up', tags: ['nav'] },
+    { id: 'arrow-down', name: 'IcArrowDown', glyph: 'arrow-down', tags: ['nav'] },
+    { id: 'settings', name: 'IcSettings', glyph: 'settings', tags: ['system'] },
+    { id: 'user', name: 'IcUser', glyph: 'user', tags: ['system'] },
+    { id: 'bell', name: 'IcBell', glyph: 'bell', tags: ['system'] },
+    { id: 'check', name: 'IcCheck', glyph: 'check', tags: ['status'] },
+    { id: 'x', name: 'IcClose', glyph: 'x', tags: ['status'] },
+    { id: 'search', name: 'IcSearch', glyph: 'search', tags: ['system'] },
+    { id: 'plus', name: 'IcPlus', glyph: 'plus', tags: ['action'] },
+    { id: 'minus', name: 'IcMinus', glyph: 'minus', tags: ['action'] },
+    { id: 'trash', name: 'IcTrash', glyph: 'trash-2', tags: ['action'] },
+    { id: 'heart', name: 'IcHeart', glyph: 'heart', tags: ['social'] },
+    { id: 'star', name: 'IcStar', glyph: 'star', tags: ['social'] },
+    { id: 'home', name: 'IcHome', glyph: 'home', tags: ['nav'] },
+    { id: 'sparkles', name: 'IcSparkles', glyph: 'sparkles', tags: ['action'] },
+    { id: 'folder', name: 'IcFolder', glyph: 'folder', tags: ['file'] },
+  ],
+  media: [
+    { id: 'play', name: 'IcPlay', glyph: 'play', tags: ['media'] },
+    { id: 'pause', name: 'IcPause', glyph: 'pause', tags: ['media'] },
+    { id: 'skip-forward', name: 'IcSkipForward', glyph: 'skip-forward', tags: ['media'] },
+    { id: 'skip-back', name: 'IcSkipBack', glyph: 'skip-back', tags: ['media'] },
+    { id: 'volume', name: 'IcVolume', glyph: 'volume-2', tags: ['media'] },
+    { id: 'mic', name: 'IcMic', glyph: 'mic', tags: ['media'] },
+  ],
+  finance: [
+    { id: 'dollar', name: 'IcDollar', glyph: 'dollar-sign', tags: ['money'] },
+    { id: 'trending-up', name: 'IcTrendingUp', glyph: 'trending-up', tags: ['chart'] },
+    { id: 'trending-down', name: 'IcTrendingDown', glyph: 'trending-down', tags: ['chart'] },
+    { id: 'credit-card', name: 'IcCreditCard', glyph: 'credit-card', tags: ['money'] },
+  ],
+};
+
+function App() {
+  const [projects, setProjects] = useState(SAMPLE_PROJECTS);
+  const [activeProjectId, setActiveProjectId] = useState('system');
+  const [currentIconId, setCurrentIconId] = useState('sparkles');
+  const [selectedIconIds, setSelectedIconIds] = useState([]);
+  const [navExpanded, setNavExpanded] = useState(true);
+  const [listExpanded, setListExpanded] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const icons = ICONS_BY_PROJECT[activeProjectId] || [];
+  const currentIcon = icons.find((i) => i.id === currentIconId);
+
+  const handleProjectSelect = (id) => {
+    setActiveProjectId(id);
+    setCurrentIconId(null);
+    setSelectedIconIds([]);
+  };
+  const handleIconOpen = (id) => {
+    setCurrentIconId(id);
+    setSelectedIconIds([]);
+  };
+  const handleProjectRename = (newName) => {
+    setProjects((ps) => ps.map((p) => p.id === activeProjectId ? { ...p, name: newName } : p));
+    setIsDirty(true);
+  };
+  const handleToggleSelect = (id) => {
+    setSelectedIconIds((ids) => ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  };
+
+  useEffect(() => { lucide.createIcons(); });
+
+  return (
+    <div className="app">
+      <Navbar
+        projectName={activeProject?.name ?? 'Hiero'}
+        onProjectRename={handleProjectRename}
+        isDirty={isDirty}
+        savedAgo={isDirty ? null : '12s ago'}
+      />
+      <div className="app-body">
+        <NavPane
+          projects={projects}
+          activeId={activeProjectId}
+          onSelect={handleProjectSelect}
+          expanded={navExpanded}
+          onToggle={() => setNavExpanded((e) => !e)}
+        />
+        {activeProject && (
+          <ListPane
+            project={activeProject}
+            icons={icons}
+            currentIconId={currentIconId}
+            selectedIconIds={selectedIconIds}
+            onOpen={handleIconOpen}
+            onToggleSelect={handleToggleSelect}
+            expanded={listExpanded}
+            onToggle={() => setListExpanded((e) => !e)}
+          />
+        )}
+        <main className="editor-main">
+          {currentIcon ? (
+            <React.Fragment>
+              <EditorToolbar />
+              <div className="editor-workspace">
+                <Canvas icon={currentIcon} />
+                <PropertiesPanel icon={currentIcon} />
+              </div>
+            </React.Fragment>
+          ) : (
+            <EmptyEditor activeProject={activeProject} />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

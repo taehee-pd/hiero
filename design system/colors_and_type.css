@@ -1,0 +1,269 @@
+/* ══════════════════════════════════════════════════
+   Hiero Design System — Colors + Type
+   Adapted from app/globals.css + DESIGN.md
+   Dark-first professional icon authoring workspace.
+   ══════════════════════════════════════════════════ */
+
+/* ── Fonts: Geist + Geist Mono (variable, local) ──
+   Sourced via `npm i geist` — `geist/dist/fonts/geist-sans/Geist-Variable.woff2`
+   and `geist/dist/fonts/geist-mono/GeistMono-Variable.woff2`.
+   Variable axis is weight 100–900; we use 450 for body, 550 for emphasis. */
+@font-face {
+  font-family: 'Geist';
+  src: url('fonts/Geist-Variable.woff2') format('woff2-variations'),
+       url('fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('fonts/GeistMono-Variable.woff2') format('woff2-variations'),
+       url('fonts/GeistMono-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ── Primitive: Greyscale ── */
+  --greyscale-000: #FFFFFF;
+  --greyscale-100: #F3F7FA;
+  --greyscale-200: #CBD1D6;
+  --greyscale-300: #A8B1B8;
+  --greyscale-400: #7E8991;
+  --greyscale-500: #58636A;
+  --greyscale-600: #3C464D;
+  --greyscale-700: #21282D;
+  --greyscale-800: #090D10;
+  --greyscale-900: #0A0A0A;
+
+  /* ── Primitive: Blue (brand accent) ── */
+  --blue-100: #E0F9FF;
+  --blue-200: #A8D3FF;
+  --blue-300: #6DADFF;
+  --blue-400: #3186EE;
+  --blue-500: #005FCE;
+  --blue-600: #003C9F;
+  --blue-700: #001F68;
+  --blue-800: #000632;
+
+  /* ── Primitive: Semantic hues ── */
+  --red-100: #FFE4E8;  --red-200: #FFB1BE;  --red-300: #FF7287;  --red-400: #F1265A;  --red-500: #CD0035;  --red-600: #9B0019;  --red-700: #640007;  --red-800: #3B0004;  --red-900: #1A0002;
+  --green-100: #E6FFDA; --green-200: #B8E39A; --green-300: #80BF5C; --green-400: #4E9E00; --green-500: #1F7B00; --green-600: #005700; --green-700: #003300; --green-800: #001D00; --green-900: #000A00;
+  --yellow-100: #FFF7D2; --yellow-200: #FFE7A4; --yellow-300: #FFD37A; --yellow-400: #FFB061; --yellow-500: #DA7000; --yellow-600: #7B2400; --yellow-700: #3E0F00; --yellow-800: #220700; --yellow-900: #0D0200;
+  --purple-300: #D292FF; --purple-400: #BA5FFF;
+  --teal-300: #55CFBD; --teal-400: #00B4A0;
+
+  /* ── Primitive: Alpha overlays ── */
+  --darker-100: rgba(0,0,0,0.05);
+  --darker-200: rgba(0,0,0,0.10);
+  --darker-300: rgba(0,0,0,0.20);
+  --darker-500: rgba(0,0,0,0.50);
+  --darker-700: rgba(0,0,0,0.85);
+  --lighter-200: rgba(255,255,255,0.10);
+  --lighter-300: rgba(255,255,255,0.20);
+  --lighter-400: rgba(255,255,255,0.40);
+  --lighter-500: rgba(255,255,255,0.70);
+  --lighter-700: rgba(255,255,255,0.85);
+
+  /* ── Typography families ── */
+  --font-sans: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+
+  /* ── Typography weights (restrained — 450 / 550 is identity) ── */
+  --fw-default: 450;
+  --fw-strong: 550;
+
+  /* ── Text scale (from DESIGN.md §3) ── */
+  --text-2xl:  3rem;       /* 48px — display hero */
+  --text-xl:   1.5rem;     /* 24px — section heading */
+  --text-lg:   0.9375rem;  /* 15px — body large */
+  --text-base: 0.8125rem;  /* 13px — body/UI */
+  --text-sm:   0.6875rem;  /* 11px — label/control */
+  --text-xs:   0.5625rem;  /* 9px  — caption/meta */
+
+  /* tracking */
+  --tracking-2xl: -0.03125rem;
+  --tracking-xl:  -0.015625rem;
+  --tracking-lg:  0;
+  --tracking-base: 0;
+  --tracking-sm:  0.03125rem;
+
+  /* line heights */
+  --lh-2xl: 1.17;
+  --lh-xl:  1.33;
+  --lh-lg:  1.5625;
+  --lh-base: 1.375;
+  --lh-sm:   1;
+  --lh-xs:   0.875;
+
+  /* ── Spacing (4px grid) ── */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px;  --space-6: 24px;  --space-8: 32px;
+
+  /* ── Radii ── */
+  --radius-toolbar-action: 0.5rem;   /* 8px */
+  --radius-input: 0.5rem;            /* 8px */
+  --radius-search: 0.625rem;         /* 10px */
+  --radius-panel-nav: 0.875rem;      /* 14px */
+  --radius-pill: 9999px;
+
+  /* ── Layout dimensions ── */
+  --navbar-height: 40px;
+  --navpane-width-expanded: 200px;
+  --navpane-width-collapsed: 56px;
+  --listpane-width: 260px;
+  --inspector-width: 260px;
+  --panel-padding: 12px;
+  --panel-gap: 8px;
+
+  /* ── Motion — snappy 50ms everywhere ── */
+  --duration-fast: 50ms;
+  --duration-normal: 50ms;
+
+  /* ── Shadow system (light — whisper-level, sub-0.1 opacity) ── */
+  --shadow-inset-edge: inset 0 0 0 0.5px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
+  --shadow-outline:    0 0 0 1px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm:         0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-md:         0 2px 4px rgba(0,0,0,0.06), 0 8px 18px rgba(0,0,0,0.12);
+  --shadow-lg:         0 4px 10px rgba(0,0,0,0.10), 0 16px 36px rgba(0,0,0,0.18);
+  --shadow-panel:      0 6px 14px rgba(0,0,0,0.12), 0 24px 48px rgba(0,0,0,0.22);
+}
+
+/* ══════════════════════════════════════════════════
+   Semantic — Light Mode (default)
+   ══════════════════════════════════════════════════ */
+:root {
+  --background:           var(--greyscale-000);
+  --background-secondary: var(--greyscale-100);
+  --background-hover:     var(--darker-200);
+  --background-highlight: var(--blue-100);
+
+  --foreground:           var(--greyscale-800);
+  --foreground-secondary: var(--greyscale-600);
+  --foreground-tertiary:  var(--greyscale-400);
+
+  --border:          var(--darker-100);
+  --border-subtle:   rgba(0,0,0,0.06);
+  --border-secondary: var(--darker-200);
+  --border-selected: var(--blue-500);
+
+  --primary:             var(--blue-400);
+  --primary-foreground:  var(--greyscale-000);
+  --primary-soft:        rgba(49,134,238,0.08);
+
+  --card:    var(--greyscale-000);
+  --muted:   var(--greyscale-100);
+  --muted-foreground: var(--greyscale-400);
+  --accent:  var(--greyscale-100);
+}
+
+/* ══════════════════════════════════════════════════
+   Semantic — Dark Mode
+   ══════════════════════════════════════════════════ */
+.dark {
+  --background:           var(--greyscale-900);
+  --background-secondary: var(--greyscale-700);
+  --background-hover:     var(--lighter-400);
+  --background-highlight: var(--blue-700);
+
+  --foreground:           var(--greyscale-000);
+  --foreground-secondary: var(--greyscale-200);
+  --foreground-tertiary:  var(--greyscale-400);
+
+  --border:          var(--lighter-300);
+  --border-subtle:   rgba(255,255,255,0.06);
+  --border-secondary: var(--lighter-400);
+  --border-selected: var(--blue-300);
+
+  --primary:             var(--blue-300);
+  --primary-foreground:  var(--greyscale-900);
+  --primary-soft:        rgba(109,173,255,0.12);
+
+  --card:    var(--greyscale-900);
+  --muted:   var(--greyscale-700);
+  --muted-foreground: var(--greyscale-400);
+  --accent:  var(--greyscale-700);
+
+  --shadow-inset-edge: inset 0 0 0 0.5px rgba(255,255,255,0.07), inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-outline:    0 0 0 1px rgba(255,255,255,0.10), 0 1px 2px rgba(0,0,0,0.35);
+  --shadow-sm:         0 1px 3px rgba(0,0,0,0.40), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-md:         0 3px 6px rgba(0,0,0,0.35), 0 10px 22px rgba(0,0,0,0.50);
+  --shadow-lg:         0 6px 14px rgba(0,0,0,0.40), 0 20px 44px rgba(0,0,0,0.60);
+  --shadow-panel:      0 10px 22px rgba(0,0,0,0.45), 0 28px 60px rgba(0,0,0,0.65);
+}
+
+/* ══════════════════════════════════════════════════
+   Semantic typography classes
+   ══════════════════════════════════════════════════ */
+.type-display {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: var(--fw-default);
+  line-height: var(--lh-2xl);
+  letter-spacing: var(--tracking-2xl);
+}
+.type-h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--fw-default);
+  line-height: var(--lh-xl);
+  letter-spacing: var(--tracking-xl);
+}
+.type-h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-lg);
+  letter-spacing: var(--tracking-lg);
+}
+.type-body-lg {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: var(--fw-default);
+  line-height: var(--lh-lg);
+  letter-spacing: var(--tracking-lg);
+}
+.type-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--fw-default);
+  line-height: var(--lh-base);
+  letter-spacing: var(--tracking-base);
+}
+.type-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-sm);
+  letter-spacing: var(--tracking-sm);
+}
+.type-caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-strong);
+  line-height: var(--lh-xs);
+  letter-spacing: var(--tracking-sm);
+}
+.type-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════ */
+body {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-default);
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

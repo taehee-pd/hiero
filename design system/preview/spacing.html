@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;height:160px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:flex-end;gap:10px;}
+  .stick{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .stick .bar{width:24px;background:var(--primary-soft);border:1px solid var(--border);border-radius:4px;}
+  .stick .lbl{font-family:var(--font-mono);font-size:10px;color:var(--foreground-tertiary);}
+  .stick .val{font-family:var(--font-mono);font-size:9px;color:var(--foreground-secondary);}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="stick"><div class="bar" style="height:4px"></div><div class="val">4px</div><div class="lbl">space-1</div></div>
+  <div class="stick"><div class="bar" style="height:8px"></div><div class="val">8px</div><div class="lbl">space-2</div></div>
+  <div class="stick"><div class="bar" style="height:12px"></div><div class="val">12px</div><div class="lbl">space-3</div></div>
+  <div class="stick"><div class="bar" style="height:16px"></div><div class="val">16px</div><div class="lbl">space-4</div></div>
+  <div class="stick"><div class="bar" style="height:20px"></div><div class="val">20px</div><div class="lbl">space-5</div></div>
+  <div class="stick"><div class="bar" style="height:24px"></div><div class="val">24px</div><div class="lbl">space-6</div></div>
+  <div class="stick"><div class="bar" style="height:32px"></div><div class="val">32px</div><div class="lbl">space-8</div></div>
+</div>
+</body>
+</html>

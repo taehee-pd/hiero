@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;height:160px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:center;gap:20px;}
+  .mark{height:64px;width:64px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-outline);}
+  .mark img{width:40px;height:40px;filter:invert(1);}
+  .wordmark{flex:1;display:flex;align-items:center;height:64px;padding:0 18px;border-radius:14px;background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow-outline);}
+  .wordmark .wm{height:18px;aspect-ratio:2144/408;background:var(--foreground);mask:url(../assets/hiero_wordmark.svg) no-repeat center / contain;-webkit-mask:url(../assets/hiero_wordmark.svg) no-repeat center / contain;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="mark"><img src="../assets/hiero.svg" alt=""></div>
+  <div class="wordmark"><div class="wm"></div></div>
+</div>
+</body>
+</html>

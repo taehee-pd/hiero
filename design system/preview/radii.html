@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;height:160px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:center;gap:18px;}
+  .demo{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;}
+  .demo .box{background:var(--card);box-shadow:var(--shadow-outline);display:flex;align-items:center;justify-content:center;color:var(--foreground-tertiary);font-family:var(--font-mono);font-size:10px;}
+  .demo .lbl{font-family:var(--font-mono);font-size:10px;color:var(--foreground-tertiary);}
+  .r1{width:80px;height:32px;border-radius:8px;}
+  .r2{width:80px;height:32px;border-radius:10px;}
+  .r3{width:80px;height:32px;border-radius:14px;}
+  .r4{width:80px;height:32px;border-radius:9999px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="demo"><div class="box r1">8px</div><div class="lbl">input · action</div></div>
+  <div class="demo"><div class="box r2">10px</div><div class="lbl">search</div></div>
+  <div class="demo"><div class="box r3">14px</div><div class="lbl">panel nav</div></div>
+  <div class="demo"><div class="box r4">9999px</div><div class="lbl">pill · CTA</div></div>
+</div>
+</body>
+</html>

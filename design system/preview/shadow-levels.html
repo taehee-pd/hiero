@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:720px;height:200px;background:var(--background-secondary);color:var(--foreground);padding:28px 28px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:center;gap:20px;}
+  .box{flex:1;height:72%;border-radius:12px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;}
+  .lbl{font-size:var(--text-sm);font-weight:var(--fw-strong);color:var(--foreground);}
+  .sub{font-family:var(--font-mono);font-size:10px;color:var(--foreground-tertiary);}
+  .l1{}
+  .l2{box-shadow:var(--shadow-inset-edge),var(--shadow-outline);}
+  .l3{box-shadow:var(--shadow-inset-edge),var(--shadow-md);}
+  .l4{box-shadow:var(--shadow-lg);}
+  .l5{box-shadow:var(--shadow-panel);}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="box l1"><span class="lbl">Flat</span><span class="sub">0</span></div>
+  <div class="box l2"><span class="lbl">Outline</span><span class="sub">ring</span></div>
+  <div class="box l3"><span class="lbl">Elevated</span><span class="sub">md</span></div>
+  <div class="box l4"><span class="lbl">Feature</span><span class="sub">lg</span></div>
+  <div class="box l5"><span class="lbl">Panel</span><span class="sub">panel</span></div>
+</div>
+</body>
+</html>

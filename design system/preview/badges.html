@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;height:150px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;font-size:var(--text-xs);font-weight:var(--fw-strong);letter-spacing:var(--tracking-sm);border:1px solid var(--border);}
+  .neutral{background:var(--background-secondary);color:var(--foreground-secondary);}
+  .success{background:rgba(78,158,0,0.15);color:#80BF5C;border-color:rgba(78,158,0,0.3);}
+  .warning{background:rgba(218,112,0,0.15);color:#FFD37A;border-color:rgba(218,112,0,0.35);}
+  .danger{background:rgba(205,0,53,0.15);color:#FF7287;border-color:rgba(205,0,53,0.35);}
+  .info{background:var(--primary-soft);color:var(--primary);border-color:rgba(109,173,255,0.35);}
+  .dot{width:6px;height:6px;border-radius:9999px;background:currentColor;}
+</style>
+</head>
+<body>
+<div class="card">
+  <span class="badge neutral"><span class="dot"></span>Saved</span>
+  <span class="badge warning"><span class="dot"></span>Unsaved</span>
+  <span class="badge success"><span class="dot"></span>Connected</span>
+  <span class="badge danger"><span class="dot"></span>Error</span>
+  <span class="badge info"><span class="dot"></span>v1.2.3</span>
+  <span class="badge neutral">react</span>
+  <span class="badge neutral">swift</span>
+  <span class="badge neutral">flutter</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;min-height:220px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;flex-direction:column;gap:16px;}
+  .row{display:flex;gap:14px;align-items:baseline;}
+  .row .sample{flex:1;color:var(--foreground);}
+  .row .meta{font-family:var(--font-mono);font-size:10px;color:var(--foreground-tertiary);min-width:140px;text-align:right;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="row"><div class="sample type-display">Hiero</div><div class="meta">48 / 450 / -0.03</div></div>
+  <div class="row"><div class="sample type-h1">Section heading</div><div class="meta">24 / 450 / -0.016</div></div>
+  <div class="row"><div class="sample type-body-lg">Body large — introductions, descriptions.</div><div class="meta">15 / 450 / 0</div></div>
+  <div class="row"><div class="sample type-body">Body / UI — standard reading text sits at 13px.</div><div class="meta">13 / 450 / 0</div></div>
+</div>
+</body>
+</html>

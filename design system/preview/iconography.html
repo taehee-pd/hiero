@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;height:150px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:6px;width:64px;}
+  .cell .box{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--card);border:1px solid var(--border);color:var(--foreground-secondary);}
+  .cell .lbl{font-family:var(--font-mono);font-size:9px;color:var(--foreground-tertiary);}
+  svg{width:18px;height:18px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="cell"><div class="box"><i data-lucide="save"></i></div><div class="lbl">save</div></div>
+  <div class="cell"><div class="box"><i data-lucide="undo-2"></i></div><div class="lbl">undo-2</div></div>
+  <div class="cell"><div class="box"><i data-lucide="redo-2"></i></div><div class="lbl">redo-2</div></div>
+  <div class="cell"><div class="box"><i data-lucide="download"></i></div><div class="lbl">download</div></div>
+  <div class="cell"><div class="box"><i data-lucide="folder-open"></i></div><div class="lbl">folder-open</div></div>
+  <div class="cell"><div class="box"><i data-lucide="file-plus-2"></i></div><div class="lbl">file-plus-2</div></div>
+  <div class="cell"><div class="box"><i data-lucide="search"></i></div><div class="lbl">search</div></div>
+  <div class="cell"><div class="box"><i data-lucide="keyboard"></i></div><div class="lbl">keyboard</div></div>
+  <div class="cell"><div class="box"><i data-lucide="package"></i></div><div class="lbl">package</div></div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

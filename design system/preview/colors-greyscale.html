@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;height:100%;}
+  .card{width:820px;height:160px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;display:flex;align-items:stretch;gap:10px;font-family:var(--font-sans);}
+  .swatch{flex:1;border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;padding:10px 12px;box-shadow: var(--shadow-inset-edge), var(--shadow-outline);position:relative;}
+  .swatch .label{font-size:var(--text-xs);font-weight:var(--fw-strong);letter-spacing:var(--tracking-sm);color:rgba(255,255,255,0.92);text-shadow:0 1px 2px rgba(0,0,0,0.35);}
+  .swatch .hex{font-family:var(--font-mono);font-size:10px;color:rgba(255,255,255,0.78);margin-top:2px;}
+  .swatch[data-light] .label,.swatch[data-light] .hex{color:rgba(0,0,0,0.82);text-shadow:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="swatch" style="background:#FFFFFF;border:1px solid rgba(0,0,0,0.1)" data-light><span class="label">Grey 000</span><span class="hex">#FFFFFF</span></div>
+  <div class="swatch" style="background:#F3F7FA" data-light><span class="label">Grey 100</span><span class="hex">#F3F7FA</span></div>
+  <div class="swatch" style="background:#CBD1D6" data-light><span class="label">Grey 200</span><span class="hex">#CBD1D6</span></div>
+  <div class="swatch" style="background:#A8B1B8" data-light><span class="label">Grey 300</span><span class="hex">#A8B1B8</span></div>
+  <div class="swatch" style="background:#7E8991"><span class="label">Grey 400</span><span class="hex">#7E8991</span></div>
+  <div class="swatch" style="background:#58636A"><span class="label">Grey 500</span><span class="hex">#58636A</span></div>
+  <div class="swatch" style="background:#3C464D"><span class="label">Grey 600</span><span class="hex">#3C464D</span></div>
+  <div class="swatch" style="background:#21282D"><span class="label">Grey 700</span><span class="hex">#21282D</span></div>
+  <div class="swatch" style="background:#090D10"><span class="label">Grey 800</span><span class="hex">#090D10</span></div>
+  <div class="swatch" style="background:#0A0A0A"><span class="label">Grey 900</span><span class="hex">#0A0A0A</span></div>
+</div>
+</body>
+</html>

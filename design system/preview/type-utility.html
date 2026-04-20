@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;padding:0;}
+  .card{width:700px;min-height:180px;background:var(--background);color:var(--foreground);padding:20px 24px;box-sizing:border-box;font-family:var(--font-sans);display:flex;flex-direction:column;gap:14px;}
+  .row{display:flex;gap:14px;align-items:baseline;}
+  .row .sample{flex:1;color:var(--foreground);}
+  .row .meta{font-family:var(--font-mono);font-size:10px;color:var(--foreground-tertiary);min-width:140px;text-align:right;}
+
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="row"><div class="sample type-label">Label / Control</div><div class="meta">11 / 550 / +0.0313</div></div>
+  <div class="row"><div class="sample type-caption">Caption / Metadata</div><div class="meta">9 / 550 / +0.0313</div></div>
+  <div class="row"><div class="sample type-mono">createIcon(container, iconData)</div><div class="meta">Geist Mono 13</div></div>
+  <div class="row"><div class="sample" style="font-family:var(--font-mono);font-size:11px;color:var(--foreground-secondary)">⌘S · ⇧⌘Z · ?</div><div class="meta">Kbd hints</div></div>
+</div>
+</body>
+</html>

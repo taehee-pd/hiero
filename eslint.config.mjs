@@ -17,6 +17,7 @@ export default tseslint.config(
       'desktop/.electrobun/',
       'desktop/.generated/',
       'desktop/build/',
+      'design-system/',
       'public/',
       'scripts/',
       'tests/',

@@ -12,7 +12,7 @@ function getArg(name: string): string | undefined {
 async function main(): Promise<void> {
   const projectPath = getArg('--project') ?? 'tests/fixtures/e2e/compiler-project.json';
   const outDir = getArg('--out') ?? 'dist/icons-package';
-  const packageName = getArg('--package-name') ?? '@cuneiform/icons';
+  const packageName = getArg('--package-name') ?? '@hiero/icons';
   const packageVersion = getArg('--package-version') ?? process.env.ICONS_PACKAGE_VERSION;
   const builtAt = getArg('--built-at');
 

@@ -112,7 +112,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
     currentEffect.current = effect;
     setPreviewLabel(effect.kind);
 
-    const maybeRenderer = (window as unknown as { __cuneiformDomRenderer?: unknown }).__cuneiformDomRenderer;
+    const maybeRenderer = (window as unknown as { __hieroDomRenderer?: unknown }).__hieroDomRenderer;
     if (maybeRenderer) {
       const player = new EffectPlayer(effect, maybeRenderer as never);
       player.setSpeed(speed);

@@ -16,9 +16,9 @@ import compiledIconFixture from './fixtures/compiler-contracts/compiled-icon.jso
 describe('detectSchemaVersion', () => {
   test('extracts $schema from a valid object', () => {
     const version = detectSchemaVersion({
-      $schema: 'https://cuneiform.dev/schemas/compiled-icon/0.9.0',
+      $schema: 'https://hiero.dev/schemas/compiled-icon/0.9.0',
     });
-    expect(version).toBe('https://cuneiform.dev/schemas/compiled-icon/0.9.0');
+    expect(version).toBe('https://hiero.dev/schemas/compiled-icon/0.9.0');
   });
 
   test('returns null for a missing $schema field', () => {
@@ -47,7 +47,7 @@ describe('detectSchemaVersion', () => {
 // ---------------------------------------------------------------------------
 
 describe('single-step migration', () => {
-  const V090 = 'https://cuneiform.dev/schemas/compiled-icon/0.9.0';
+  const V090 = 'https://hiero.dev/schemas/compiled-icon/0.9.0';
 
   test('register and resolve a single migration step', () => {
     const registry = createMigrationRegistry();
@@ -92,8 +92,8 @@ describe('single-step migration', () => {
 // ---------------------------------------------------------------------------
 
 describe('multi-step chain migration', () => {
-  const V080 = 'https://cuneiform.dev/schemas/compiled-icon/0.8.0';
-  const V090 = 'https://cuneiform.dev/schemas/compiled-icon/0.9.0';
+  const V080 = 'https://hiero.dev/schemas/compiled-icon/0.8.0';
+  const V090 = 'https://hiero.dev/schemas/compiled-icon/0.9.0';
 
   test('chains two migration steps (0.8.0 -> 0.9.0 -> 1.0.0)', () => {
     const registry = createMigrationRegistry();
@@ -131,7 +131,7 @@ describe('multi-step chain migration', () => {
 
   test('chain returns null when no migration path exists', () => {
     const registry = createMigrationRegistry();
-    const migrate = registry.chain('https://cuneiform.dev/schemas/compiled-icon/0.1.0');
+    const migrate = registry.chain('https://hiero.dev/schemas/compiled-icon/0.1.0');
     expect(migrate).toBeNull();
   });
 });
@@ -145,7 +145,7 @@ describe('unknown schema version error handling', () => {
     const registry = createMigrationRegistry();
     const hook = createMigrationHook(registry);
 
-    const unknownUri = 'https://cuneiform.dev/schemas/compiled-icon/0.5.0';
+    const unknownUri = 'https://hiero.dev/schemas/compiled-icon/0.5.0';
 
     expect(() => hook({}, unknownUri)).toThrow(
       `No migration path from schema "${unknownUri}" to current schema "${COMPILED_ICON_SCHEMA_URI}".`,
@@ -158,7 +158,7 @@ describe('unknown schema version error handling', () => {
 // ---------------------------------------------------------------------------
 
 describe('createMigrationHook integration', () => {
-  const V090 = 'https://cuneiform.dev/schemas/compiled-icon/0.9.0';
+  const V090 = 'https://hiero.dev/schemas/compiled-icon/0.9.0';
 
   test('hook created from registry migrates payload in parseCompiledIconJson', () => {
     const registry = createMigrationRegistry();
@@ -189,7 +189,7 @@ describe('createMigrationHook integration', () => {
     const hook = createMigrationHook(registry);
 
     const payload = structuredClone(compiledIconFixture) as unknown as Record<string, unknown>;
-    payload.$schema = 'https://cuneiform.dev/schemas/compiled-icon/0.1.0';
+    payload.$schema = 'https://hiero.dev/schemas/compiled-icon/0.1.0';
 
     expect(() => parseCompiledIconJson(payload, { migrationHook: hook })).toThrow(
       'No migration path',

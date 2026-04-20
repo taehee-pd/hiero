@@ -1,14 +1,14 @@
-# Cuneiform — Design Document (Single Source of Truth)
+# Hiero — Design Document (Single Source of Truth)
 
 **Last updated:** 2026-04-13
-**Product:** Cuneiform — Icon design studio with SF Symbols-grade animation capabilities
-**gstack design docs:** `~/.gstack/projects/taehee-pd-cuneiform/`
+**Product:** Hiero — Icon design studio with SF Symbols-grade animation capabilities
+**gstack design docs:** `~/.gstack/projects/taehee-pd-hiero/`
 
 ---
 
 ## Product Vision
 
-Cuneiform is a web-based icon design studio that enables designers to create,
+Hiero is a web-based icon design studio that enables designers to create,
 animate, and distribute production-ready icons — with zero developer handoff for
 the distribution step. Designers edit, save, and publish. Developers consume via
 `npm install` or platform-native formats.
@@ -17,7 +17,7 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     Cuneiform Studio                            │
+│                     Hiero Studio                            │
 │  (Next.js 16 + React 19 + Custom Store + Tailwind + Radix)  │
 ├──────────────┬───────────────┬───────────────────────────────┤
 │  Schema      │  Editor Core  │  Runtime Core                 │
@@ -27,14 +27,14 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 │                      Export Pipeline                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │ Runtime JSON  │  │ Lottie 5.x   │  │ Platform Adapters │  │
-│  │ (.cuneiform.json)│  │ (.json)      │  │ (React, Swift,    │  │
+│  │ (.hiero.json)│  │ (.json)      │  │ (React, Swift,    │  │
 │  │              │  │              │  │  Flutter, WC)     │  │
 │  └──────────────┘  └──────────────┘  └───────────────────┘  │
 ├──────────────────────────────────────────────────────────────┤
 │                     Distribution                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
 │  │ Live Sync    │  │ Git PR       │  │ NPM Registry      │  │
-│  │ (Lane 1)     │  │ Connector    │  │ + @cuneiform/cli     │  │
+│  │ (Lane 1)     │  │ Connector    │  │ + @hiero/cli     │  │
 │  └──────────────┘  └──────────────┘  └───────────────────┘  │
 ├──────────────────────────────────────────────────────────────┤
 │                     Persistence & Platform                   │
@@ -60,13 +60,13 @@ readiness), tracked in `NEXT_PHASES.md`.
 | O — Cubic Weight | Fritsch-Carlson monotone spline, 9-point controls |
 | R1–R5 | Desktop removal, IndexedDB persistence, state CRUD UI, dialog cleanup, a11y pass |
 | R6 | `?` cheat sheet, `⌘K` command palette verified, Canvas/Layer/Transition empty-state CTAs (breadcrumb deferred) |
-| Distribution | Repo-native live-sync, release flow, `@cuneiform/cli`, PublishPanel, ReleasePanel |
+| Distribution | Repo-native live-sync, release flow, `@hiero/cli`, PublishPanel, ReleasePanel |
 | Studio Layout | Sanity Studio-style single-screen workspace |
 | Figma Import | Figma plugin + API route + import dialog |
 | Remove all-caps | App-wide removal of uppercase styling (PR #127) |
 | Design audit §7 | Tooltips, inline rename, resizable Layers+Variants, shape glyphs, drag reorder, context menus, segmented controls, ARIA min/max on spinners, grouped animation presets (PR #128) |
 | Animate Panel Revamp | SF Symbols 7 hierarchy: Animation → Playback Mode → Timing → Preview → Advanced; `autoMorph()` as the only public contract (PR #128) |
-| `@cuneiform/cli` deploy prep | Provenance publish config, `.github/workflows/cli-release.yml`, CLI README (PR #128) |
+| `@hiero/cli` deploy prep | Provenance publish config, `.github/workflows/cli-release.yml`, CLI README (PR #128) |
 
 ## Security Posture
 
@@ -89,7 +89,7 @@ readiness), tracked in `NEXT_PHASES.md`.
 | `STYLEGUIDE.md` | Code conventions, naming, formatting |
 | `IMPORT_ADAPTER_SDK.md` | Import adapter lifecycle and test contract |
 | `SYNC_TROUBLESHOOTING.md` | Sync pipeline error codes and resolution |
-| `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@cuneiform/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
+| `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@hiero/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
 | `PLAN.md` | Archived production-readiness plan (all gaps shipped/removed); kept for decision history |
 | `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
 | `specs/design-system-storybook.plan.md` | Active plan: three-layer component architecture (`ui`/`ds`/feature), Storybook gating, kibo-ui removal, toast fix, Phase 1–8 rollout |

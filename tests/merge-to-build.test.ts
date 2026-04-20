@@ -42,7 +42,7 @@ function makeProject(): Project {
 
 const COMPILE_OPTIONS = {
   package: {
-    name: '@cuneiform/icons',
+    name: '@hiero/icons',
     version: '1.0.0',
     builtAt: '2026-03-17T00:00:00.000Z',
   },
@@ -153,7 +153,7 @@ describe('projectFromSourceFiles roundtrip', () => {
     });
 
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
     });
 
@@ -203,7 +203,7 @@ describe('full pipeline roundtrip', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });
@@ -232,7 +232,7 @@ describe('full pipeline roundtrip', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });
@@ -252,7 +252,7 @@ describe('full pipeline roundtrip', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });
@@ -276,12 +276,12 @@ describe('full pipeline roundtrip', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored1 = projectFromSourceFiles(payload1.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });
     const result1 = compileProject(restored1, {
-      package: { name: '@cuneiform/icons', version: '1.0.0', builtAt: '2026-03-17T00:00:00.000Z' },
+      package: { name: '@hiero/icons', version: '1.0.0', builtAt: '2026-03-17T00:00:00.000Z' },
     });
     const previousCompiled = Object.fromEntries(
       result1.compiledIcons.map((c) => [c.id, c]),
@@ -294,12 +294,12 @@ describe('full pipeline roundtrip', () => {
       generatedAt: '2026-03-17T01:00:00.000Z',
     });
     const restored2 = projectFromSourceFiles(payload2.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project2.tokenSet?.colors,
       updatedAt: '2026-03-17T01:00:00.000Z',
     });
     const result2 = compileProject(restored2, {
-      package: { name: '@cuneiform/icons', version: '1.1.0', builtAt: '2026-03-17T01:00:00.000Z' },
+      package: { name: '@hiero/icons', version: '1.1.0', builtAt: '2026-03-17T01:00:00.000Z' },
       previousCompiledIcons: previousCompiled,
     });
 
@@ -338,19 +338,19 @@ describe('schema and version compatibility', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });
     const result = compileProject(restored, COMPILE_OPTIONS);
 
     for (const compiled of result.compiledIcons) {
-      expect(compiled.$schema).toBe('https://cuneiform.dev/schemas/compiled-icon/1.0.0');
+      expect(compiled.$schema).toBe('https://hiero.dev/schemas/compiled-icon/1.0.0');
     }
 
     const manifestFile = result.files.find((f) => f.path === 'icons.manifest.json')!;
     const manifest = JSON.parse(manifestFile.contents) as PackageManifest;
-    expect(manifest.$schema).toBe('https://cuneiform.dev/schemas/manifest/1.0.0');
+    expect(manifest.$schema).toBe('https://hiero.dev/schemas/manifest/1.0.0');
   });
 
   test('project version is preserved', () => {
@@ -481,7 +481,7 @@ describe('multi-icon roundtrip', () => {
       generatedAt: '2026-03-17T00:00:00.000Z',
     });
     const restored = projectFromSourceFiles(payload.files, {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       tokenColors: project.tokenSet?.colors,
       updatedAt: project.meta.updatedAt,
     });

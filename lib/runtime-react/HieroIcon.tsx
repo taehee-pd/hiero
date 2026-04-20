@@ -20,15 +20,15 @@ import type { AnimationEvent } from '../runtime-core/animation-events';
 // ---------------------------------------------------------------------------
 
 /**
- * Imperative handle exposed via `ref` on `CuneiformIcon`.
+ * Imperative handle exposed via `ref` on `HieroIcon`.
  *
  * Enables parent components to control the icon programmatically:
  * ```tsx
- * const iconRef = useRef<CuneiformIconHandle>(null);
+ * const iconRef = useRef<HieroIconHandle>(null);
  * iconRef.current?.transitionTo('active'); // 'active' is a variant ID
  * ```
  */
-export type CuneiformIconHandle = {
+export type HieroIconHandle = {
   /** Trigger a transition to the given variant ID. */
   transitionTo: (variantId: string) => void;
   /** Trigger a named effect. */
@@ -47,7 +47,7 @@ export type CuneiformIconHandle = {
 // Props
 // ---------------------------------------------------------------------------
 
-export type CuneiformIconProps = {
+export type HieroIconProps = {
   icon: Icon;
   variant?: string | number;
   state?: string;
@@ -95,8 +95,8 @@ export type CuneiformIconProps = {
 // Component
 // ---------------------------------------------------------------------------
 
-export const CuneiformIcon = forwardRef<CuneiformIconHandle, CuneiformIconProps>(
-  function CuneiformIcon(
+export const HieroIcon = forwardRef<HieroIconHandle, HieroIconProps>(
+  function HieroIcon(
     {
       icon,
       variant,

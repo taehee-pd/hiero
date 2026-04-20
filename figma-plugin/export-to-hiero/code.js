@@ -85,7 +85,7 @@ async function exportSelection() {
     type: 'export-ready',
     payload: {
       version: '1',
-      source: 'cuneiform-figma-plugin',
+      source: 'hiero-figma-plugin',
       exportedAt: new Date().toISOString(),
       fileName: figma.root.name || 'Figma File',
       icons,

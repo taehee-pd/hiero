@@ -383,7 +383,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             <AlertDialogTitle>Quick ZIP export</AlertDialogTitle>
             <AlertDialogDescription>
               Export {iconCount} icon{iconCount === 1 ? '' : 's'} as an SVG package (.zip).
-              For React, Lottie, or full distribution options, open the Cuneiform menu
+              For React, Lottie, or full distribution options, open the Hiero menu
               &rarr; Export in the top bar.
             </AlertDialogDescription>
           </AlertDialogHeader>

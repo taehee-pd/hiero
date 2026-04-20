@@ -1,26 +1,26 @@
 {
-  "name": "@cuneiform/cli",
+  "name": "@hiero/cli",
   "version": "0.2.0",
-  "description": "Cuneiform CLI — repo-native icon authoring for host repositories",
+  "description": "Hiero CLI — repo-native icon authoring for host repositories",
   "author": "taehee-pd <j.taehee@icloud.com>",
   "license": "MIT",
-  "homepage": "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/cuneiform-cli#readme",
+  "homepage": "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/hiero-cli#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/taehee-pd/icon-authoring-tool.git",
-    "directory": "packages/cuneiform-cli"
+    "directory": "packages/hiero-cli"
   },
   "bugs": {
     "url": "https://github.com/taehee-pd/icon-authoring-tool/issues"
   },
   "bin": {
-    "cuneiform": "./dist/bin.js"
+    "hiero": "./dist/bin.js"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "cuneiform",
+    "hiero",
     "icons",
     "icon-authoring",
     "cli",

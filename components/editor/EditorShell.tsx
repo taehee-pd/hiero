@@ -915,7 +915,7 @@ function LayerRowsList({
                 onDragStart={(e) => {
                   dragSourceIdRef.current = row.layer.id;
                   try {
-                    e.dataTransfer.setData('text/cuneiform-layer-id', row.layer.id);
+                    e.dataTransfer.setData('text/hiero-layer-id', row.layer.id);
                   } catch {
                     // ignore
                   }
@@ -1961,13 +1961,13 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       const id = createBlankIcon();
       if (id && activeIconSetId) openIconTab(activeIconSetId, id);
     };
-    window.addEventListener('cuneiform:open-command', openCommand as EventListener);
-    window.addEventListener('cuneiform:import-svg', openImport as EventListener);
-    window.addEventListener('cuneiform:new-icon', newIcon as EventListener);
+    window.addEventListener('hiero:open-command', openCommand as EventListener);
+    window.addEventListener('hiero:import-svg', openImport as EventListener);
+    window.addEventListener('hiero:new-icon', newIcon as EventListener);
     return () => {
-      window.removeEventListener('cuneiform:open-command', openCommand as EventListener);
-      window.removeEventListener('cuneiform:import-svg', openImport as EventListener);
-      window.removeEventListener('cuneiform:new-icon', newIcon as EventListener);
+      window.removeEventListener('hiero:open-command', openCommand as EventListener);
+      window.removeEventListener('hiero:import-svg', openImport as EventListener);
+      window.removeEventListener('hiero:new-icon', newIcon as EventListener);
     };
   }, [activeIconSetId, createBlankIcon, openIconTab]);
 

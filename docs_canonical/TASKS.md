@@ -1,7 +1,7 @@
 # Tasks
 
 **Last updated:** 2026-04-13
-**Canonical product name:** Cuneiform
+**Canonical product name:** Hiero
 **Forward-looking roadmap:** See `docs_canonical/NEXT_PHASES.md` for the
 remaining phases (only R7 is still open).
 
@@ -26,7 +26,7 @@ codebase, specs, and commit history.
 |---|-------|-----------|---------|-----|
 | 1 | Runtime Export (R1) | 2026-03-18 | Draw annotation, variable draw, magic replace, diagnostics | — |
 | 2 | Runtime Execution (R2-R3) | 2026-03-18 | Draw executor, replace strategy, effect scheduler, DOM renderer | — |
-| 3 | Runtime React (R4) | 2026-03-18 | CuneiformIcon, useSyncExternalStore, demo page | — |
+| 3 | Runtime React (R4) | 2026-03-18 | HieroIcon, useSyncExternalStore, demo page | — |
 | 4 | CI/CD & Ops | 2026-03-18 | Web CI (4 workflows), coverage, Prettier, ESLint strict | — |
 | 5 | Platform & Adapters (R5-R6) | 2026-03-19 | Platform profiles, React adapter, Storybook, manifests | — |
 | 6 | Sync & Distribution (R7) | 2026-03-19 | SyncTarget schema, GitHub PR connector, local directory sync | — |
@@ -52,7 +52,7 @@ codebase, specs, and commit history.
 | R3 | State Management UI | 2026-04-02 | Create/rename/duplicate/delete states from editor, CRUD actions | — |
 | R4 | Replace `prompt()` Dialogs | 2026-04-02 | Radix AlertDialog/DropdownMenu for all destructive actions | — |
 | R5 | Accessibility Pass | 2026-04-02 | Focus rings, ARIA roles/labels, live regions, keyboard nav | — |
-| — | Repo-Native Distribution | 2026-04-02 | Lane 1 live-sync, Lane 2 release, @cuneiform/cli, PublishPanel, ReleasePanel | — |
+| — | Repo-Native Distribution | 2026-04-02 | Lane 1 live-sync, Lane 2 release, @hiero/cli, PublishPanel, ReleasePanel | — |
 | — | Figma Plugin Import | 2026-04-02 | Figma plugin export + API route + import dialog | — |
 | — | Studio Layout Revamp | 2026-04-03 | Sanity Studio-style single screen: NavPane, ListPane, embedded editor | — |
 | — | Stagger Ordering Fix | 2026-04-02 | Transition resolver stagger ordering ranks corrected | — |
@@ -61,7 +61,7 @@ codebase, specs, and commit history.
 | — | Remove all-caps styling | 2026-04-13 | App-wide removal of `text-transform: uppercase` + `uppercase` Tailwind utilities; sentence-case labels everywhere | #127 |
 | — | Design audit §7.1–§7.5 | 2026-04-13 | Far-Left Strip tooltips, icon grid double-click rename, Layers+Variants resizable merge, shape glyphs, drag reorder, right-click context menus, canvas contextual menu, Inspect panel segmented controls + ARIA min/max, Animate panel grouped presets + hover previews | #128 |
 | — | Animate Panel Revamp (plan §2) | 2026-04-13 | Strip strategy dropdown + compatibility badges; restructure to Animation → Playback Mode → Timing → Preview → Advanced; `'simultaneous'` stagger mode; dev-only debug overlay; `autoMorph()` is the only public contract | #128 |
-| — | `@cuneiform/cli` deploy prep (plan §3) | 2026-04-13 | Finalize `packages/cuneiform-cli/package.json` metadata, provenance publish config, new `.github/workflows/cli-release.yml`, CLI README with usage + versioning + limitations | #128 |
+| — | `@hiero/cli` deploy prep (plan §3) | 2026-04-13 | Finalize `packages/hiero-cli/package.json` metadata, provenance publish config, new `.github/workflows/cli-release.yml`, CLI README with usage + versioning + limitations | #128 |
 | R6 | Navigation & Discoverability (partial) | 2026-04-13 | `?` opens the shortcuts cheat sheet via global custom event; Canvas / Layer panel / Transition panel empty-state CTAs; `⌘K` command palette verified | #128 |
 
 ---

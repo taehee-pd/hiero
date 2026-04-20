@@ -61,13 +61,13 @@ Repository CI workflows are present under `.github/workflows/`:
 - `icons-pr-validate.yml`: validates sync/export source files and runs targeted test suites on pull requests.
 - `icons-post-merge-build.yml`: validates and compiles merged source files on `main`.
 - `icons-package-release.yml`: builds/validates icon package artifacts on `main` changes and supports manual npm publish dispatch.
-- `cli-release.yml`: `@cuneiform/cli` build + OIDC-provenance npm publish. Triggered by pushing a `cli-v*` tag or by manual `workflow_dispatch`. See `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §3.2 for the full workflow rationale.
+- `cli-release.yml`: `@hiero/cli` build + OIDC-provenance npm publish. Triggered by pushing a `cli-v*` tag or by manual `workflow_dispatch`. See `docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §3.2 for the full workflow rationale.
 
 Practical implication:
 
 - compile/export and package verification is automated for icon-pipeline changes
 - web application CI has a dedicated workflow
-- `@cuneiform/cli` has a dedicated release workflow with npm provenance
+- `@hiero/cli` has a dedicated release workflow with npm provenance
 - the Phase A runtime/export surface has a scoped LCOV threshold gate via `scripts/check-coverage.ts`
 - local build and test verification still matters for areas outside the current CI slice or formatter scope
 

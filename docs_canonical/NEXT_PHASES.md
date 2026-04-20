@@ -1,8 +1,8 @@
-# Cuneiform — Next Phases Plan
+# Hiero — Next Phases Plan
 
 **Created:** 2026-04-02
 **Updated:** 2026-04-13
-**Context:** Platform pivot — Cuneiform targets server-side embedding (Storybook, Sanity, custom toolchains) rather than standalone desktop distribution.
+**Context:** Platform pivot — Hiero targets server-side embedding (Storybook, Sanity, custom toolchains) rather than standalone desktop distribution.
 
 ---
 
@@ -12,7 +12,7 @@ The following phases from the original plan have been implemented:
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| **R1** — Desktop/Electrobun Removal | **SHIPPED** | Desktop shell removed; Cuneiform is now a pure Next.js web application. `desktop/` retains build artifacts only. |
+| **R1** — Desktop/Electrobun Removal | **SHIPPED** | Desktop shell removed; Hiero is now a pure Next.js web application. `desktop/` retains build artifacts only. |
 | **R2** — Web Persistence (IndexedDB) | **SHIPPED** | `lib/persistence/` uses IndexedDB as sole storage path. `AutoSaveProvider` mounted in layout. Workspace restoration works in both StudioLayout and ExplorerShell. |
 | **R3** — State Management UI | **SHIPPED** | `EditorShell.tsx` wires add/remove/rename/duplicate state actions. `tests/state-crud.test.ts` verifies CRUD operations. |
 | **R4** — Replace `prompt()` Dialogs | **SHIPPED** | No remaining `prompt()`/`confirm()` calls in app code. Explorer uses `Dialog`/`AlertDialog`. |
@@ -22,8 +22,8 @@ The following phases from the original plan have been implemented:
 
 | Feature | Summary |
 |---------|---------|
-| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@cuneiform/cli` (`packages/cuneiform-cli/`), PublishPanel, ReleasePanel |
-| Figma Plugin Import | `figma-plugin/export-to-cuneiform/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
+| Repo-Native Distribution | Lane 1 live-sync (`lib/live-sync/`), Lane 2 release, `@hiero/cli` (`packages/hiero-cli/`), PublishPanel, ReleasePanel |
+| Figma Plugin Import | `figma-plugin/export-to-hiero/`, `app/api/import/figma/route.ts`, import dialog in editor UI |
 | Studio Layout Revamp | Sanity Studio-style single screen: `NavPane`, `ListPane`, embedded editor in `StudioLayout.tsx` |
 | Stagger Ordering Fix | Transition resolver stagger ordering ranks corrected |
 | Post-Review Bug Fixes | 13 bugs fixed from Codex adversarial review (rename key conflicts, duplicate command palette, layout issues) |
@@ -31,7 +31,7 @@ The following phases from the original plan have been implemented:
 | Remove all-caps styling | Stripped `text-transform: uppercase` + `uppercase` Tailwind utility app-wide. Sentence-case labels everywhere. PR #127. |
 | Design audit §7.1–§7.5 | Every row of the full-workspace design audit (`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md` §7): tooltips, inline rename, resizable Layers+Variants, shape glyphs, drag reorder, right-click menus, canvas contextual menu, segmented controls, ARIA min/max on spinners, grouped animation presets. PR #128. |
 | Animate Panel Revamp (plan §2) | Stripped strategy dropdown and compatibility tones; restructured into `Animation → Playback Mode → Timing → Preview → Advanced`; added `'simultaneous'` stagger mode, dev-only debug overlay, "Engine chose" pill. `autoMorph()` is the only public contract. PR #128. |
-| `@cuneiform/cli` deploy prep (plan §3) | Filled `packages/cuneiform-cli/package.json` metadata, added provenance `publishConfig`, new `.github/workflows/cli-release.yml` with OIDC publish, CLI README with usage + versioning + limitations. PR #128. |
+| `@hiero/cli` deploy prep (plan §3) | Filled `packages/hiero-cli/package.json` metadata, added provenance `publishConfig`, new `.github/workflows/cli-release.yml` with OIDC publish, CLI README with usage + versioning + limitations. PR #128. |
 
 ---
 
@@ -45,14 +45,14 @@ dropped after a design review.
 | Sub-task | Status | Notes |
 |----------|--------|-------|
 | UX-2.2 — Workspace > Project > Icon breadcrumb | Dropped | Keep the current `project name + icon name` label in the Toolbar. The breadcrumb was built and reverted on request. |
-| UX-2.5 — Shortcut hints + `?` cheat sheet | Shipped | Toolbar + Navbar buttons already showed shortcut hints in tooltips. `?` (and `Shift+/`) now dispatches `cuneiform:open-shortcuts` via `handleEditorKeyDown`; both dialogs listen for the event. |
+| UX-2.5 — Shortcut hints + `?` cheat sheet | Shipped | Toolbar + Navbar buttons already showed shortcut hints in tooltips. `?` (and `Shift+/`) now dispatches `hiero:open-shortcuts` via `handleEditorKeyDown`; both dialogs listen for the event. |
 | UX-2.6 — `⌘K` command palette | Verified | Already wired via `EditorShell` — lists project-wide actions + every icon in the project. |
-| UX-3.2 — Editor empty state | Shipped | Canvas's "No icon selected" card now has **New icon / Import existing SVG / Search icons (⌘K)** CTAs that dispatch `cuneiform:new-icon`, `cuneiform:import-svg`, and `cuneiform:open-command`. |
+| UX-3.2 — Editor empty state | Shipped | Canvas's "No icon selected" card now has **New icon / Import existing SVG / Search icons (⌘K)** CTAs that dispatch `hiero:new-icon`, `hiero:import-svg`, and `hiero:open-command`. |
 | UX-3.3 — Transition panel empty state | Shipped | `TransitionPanel` renders an inline hint below the disabled Preview button pointing at `⌘K` when no target is picked. |
 | UX-3.4 — Layer panel empty state | Shipped | The wire-layer empty note now shows "No layers yet", helper copy, and `<kbd>P</kbd>` / `<kbd>U</kbd>` hints plus "drag an SVG file onto the canvas". |
 
 Regression test: `tests/r6-navigation.test.tsx` asserts that `?` outside an
-input dispatches `cuneiform:open-shortcuts`, that `Shift+/` has the same
+input dispatches `hiero:open-shortcuts`, that `Shift+/` has the same
 effect, and that the binding is suppressed while typing in an input.
 
 ---
@@ -64,7 +64,7 @@ effect, and that the binding is suppressed while typing in an input.
 
 #### Remaining work
 
-1. **Storybook addon compatibility** — verify `CuneiformIcon` React component works in Storybook without editor dependencies; ensure tree-shaking separates runtime from editor
+1. **Storybook addon compatibility** — verify `HieroIcon` React component works in Storybook without editor dependencies; ensure tree-shaking separates runtime from editor
 2. **Headless export API** — expose icon compilation as a programmatic API (`lib/export/`) that can run in Node.js without browser APIs
 3. **CSP compatibility** — audit for `eval()`, inline styles via `style=` attribute, and other CSP-violating patterns; replace with Tailwind/CSS classes
 4. **iframe embedding** — verify editor works in iframe with appropriate `postMessage` communication for host integration
@@ -91,6 +91,6 @@ Active CI workflows:
 - `icons-pr-validate.yml` — source export validation on PRs
 - `icons-post-merge-build.yml` — post-merge compile
 - `icons-package-release.yml` — package build + optional publish
-- `cli-release.yml` — `@cuneiform/cli` build + optional npm publish with OIDC provenance (triggers on `cli-v*` tag push or manual dispatch)
+- `cli-release.yml` — `@hiero/cli` build + optional npm publish with OIDC provenance (triggers on `cli-v*` tag push or manual dispatch)
 
 Gate: `bun install --frozen-lockfile && bun run lint && bun test && pnpm build`

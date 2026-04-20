@@ -9,13 +9,13 @@ Date: 2026-03-29
 
 ## Goal
 
-Make Cuneiform adoptable as a repo-native icon authoring system: a team installs it into an existing codebase, runs a repo-local authoring workflow, and commits canonical icon source plus code-facing outputs back into that same repository.
+Make Hiero adoptable as a repo-native icon authoring system: a team installs it into an existing codebase, runs a repo-local authoring workflow, and commits canonical icon source plus code-facing outputs back into that same repository.
 
-The key shift is from "Cuneiform as a standalone destination app that publishes outward" to "Cuneiform as a local control plane for icon authoring inside the host repo."
+The key shift is from "Hiero as a standalone destination app that publishes outward" to "Hiero as a local control plane for icon authoring inside the host repo."
 
 The product model also changes:
 
-- Cuneiform should not model one icon as many authored states
+- Hiero should not model one icon as many authored states
 - each icon keeps only meaningful variants, such as size and fill vs outline style
 - animation becomes a runtime concern centered on icon-to-icon transitions
 
@@ -28,7 +28,7 @@ The current architecture already has the hard parts for this move:
 - platform adapters in `lib/export/adapters/`
 - connectors for local directory sync, git PR sync, and npm publish
 
-What it does not yet have is an installable product boundary for downstream teams. Today Cuneiform is primarily "the app." For repo-native adoption, it needs to become:
+What it does not yet have is an installable product boundary for downstream teams. Today Hiero is primarily "the app." For repo-native adoption, it needs to become:
 
 - a repo-installed CLI and config model
 - a repo-local storage and codegen contract
@@ -69,7 +69,7 @@ Cons:
 
 ### 3. Recommended: repo-local control plane with installable integrations
 
-Users install Cuneiform packages into their repo, commit a repo config, and run a local Cuneiform workflow against that repo. The full editor can launch as a repo-aware dev surface first, with optional embedded host integrations later.
+Users install Hiero packages into their repo, commit a repo config, and run a local Hiero workflow against that repo. The full editor can launch as a repo-aware dev surface first, with optional embedded host integrations later.
 
 Pros:
 
@@ -85,14 +85,14 @@ Cons:
 
 ## Recommended Product Model
 
-Cuneiform should become a three-layer installable platform:
+Hiero should become a three-layer installable platform:
 
-1. `@cuneiform/cli`
+1. `@hiero/cli`
    Bootstraps config, launches the repo-local editor, validates source, runs codegen, runs a live watcher, and performs release sync when needed.
-2. `@cuneiform/core` family
+2. `@hiero/core` family
    Reuses the existing schema, sync-source, export adapters, validation, and runtime logic as publishable library boundaries.
 3. Host codebase integration
-   A generic React/Next codebase integration surface that lets Cuneiform operate directly against the current repo.
+   A generic React/Next codebase integration surface that lets Hiero operate directly against the current repo.
 
 The editor remains a first-party surface, but its default mode becomes "opened for this repo" instead of "opened as an isolated app."
 
@@ -100,7 +100,7 @@ The editor remains a first-party surface, but its default mode becomes "opened f
 
 The current `Local / GitHub / npm` model should no longer be the primary authoring path.
 
-Instead, Cuneiform should use two separate lanes:
+Instead, Hiero should use two separate lanes:
 
 ### 1. Live integration lane
 
@@ -108,8 +108,8 @@ This is the default during authoring.
 
 Flow:
 
-1. user edits an icon in Cuneiform
-2. Cuneiform saves canonical source into `cuneiform/`
+1. user edits an icon in Hiero
+2. Hiero saves canonical source into `hiero/`
 3. a local watcher incrementally recompiles only the changed icons
 4. the host app integration invalidates its module graph
 5. the host app or optional reference environment reflects the change immediately
@@ -173,9 +173,9 @@ This keeps live feedback separate from packaging and transport.
 
 Keep the existing source-export model and make it the installable default:
 
-- `cuneiform/icons/<icon-name>/icon.json`
-- `cuneiform/icons/<icon-name>/preview.svg`
-- `cuneiform/manifest.json`
+- `hiero/icons/<icon-name>/icon.json`
+- `hiero/icons/<icon-name>/preview.svg`
+- `hiero/manifest.json`
 
 This layer should be the shared durable artifact in the host repo. It is already aligned with `lib/sync-source/` and should remain the only input to code generation and CI validation.
 
@@ -184,15 +184,15 @@ This layer should be the shared durable artifact in the host repo. It is already
 Add a committed root config file:
 
 ```ts
-// cuneiform.config.ts
+// hiero.config.ts
 export default {
-  sourceDir: 'cuneiform',
+  sourceDir: 'hiero',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.cuneiform/cache/app',
+      cacheDir: '.hiero/cache/app',
     },
   ],
   releaseTargets: [
@@ -213,13 +213,13 @@ The important point is that live host wiring and release delivery are configured
 
 Use a repo-local but gitignored working directory for autosave, recovery, and view state:
 
-- `.cuneiform/local/workspace.json`
-- `.cuneiform/local/recovery/*.json`
-- `.cuneiform/local/session.json`
+- `.hiero/local/workspace.json`
+- `.hiero/local/recovery/*.json`
+- `.hiero/local/session.json`
 
 This stores the richer authoring `Workspace` document, unsaved drafts, open tabs, pane state, and crash recovery snapshots. It improves UX without competing with the committed source export.
 
-On web-only launches where direct file access is unavailable, IndexedDB remains a mirror cache keyed by repo identity, but the user should still save back to `cuneiform/` through the CLI or host bridge.
+On web-only launches where direct file access is unavailable, IndexedDB remains a mirror cache keyed by repo identity, but the user should still save back to `hiero/` through the CLI or host bridge.
 
 #### 4. Generated delivery outputs: reproducible build artifacts
 
@@ -229,14 +229,14 @@ Write deterministic outputs into configured host directories, for example:
 - `src/icons/generated/components/*`
 - `src/icons/generated/index.ts`
 - `src/icons/generated/stories/*.stories.tsx`
-- `sanity/lib/cuneiform/*`
+- `sanity/lib/hiero/*`
 
 These may be committed or ignored per team policy, but they must always be derivable from the canonical source layer.
 
-For live integration, Cuneiform should also own a local build cache:
+For live integration, Hiero should also own a local build cache:
 
-- `.cuneiform/cache/runtime/*`
-- `.cuneiform/cache/generated/*`
+- `.hiero/cache/runtime/*`
+- `.hiero/cache/generated/*`
 
 This cache is disposable and should be used for incremental rebuilds and hot module invalidation, not as team-shared state.
 
@@ -257,7 +257,7 @@ For an installable tool, a database-first model adds the wrong coupling:
 - introduces schema migration and local daemon requirements
 - weakens offline and PR review ergonomics
 
-Cuneiform should be local-first and Git-first. IndexedDB and desktop autosave are helpful caches, not authoritative storage.
+Hiero should be local-first and Git-first. IndexedDB and desktop autosave are helpful caches, not authoritative storage.
 
 ## Authoring Model Shift
 
@@ -281,7 +281,7 @@ v1 should explicitly include runtime work for:
 - icon-to-icon morphing
 - fallback replace or crossfade behavior when morphing is geometrically invalid
 
-The plan should include research into the major icon transition patterns Cuneiform wants to support, followed by selection or design of the right algorithms for each category.
+The plan should include research into the major icon transition patterns Hiero wants to support, followed by selection or design of the right algorithms for each category.
 
 This should not be treated as polish. It is part of the product identity.
 
@@ -295,7 +295,7 @@ Storybook and Sanity are references for methodology and future exploration, not 
 
 The install flow should provide:
 
-- a repo-installed Cuneiform CLI/editor
+- a repo-installed Hiero CLI/editor
 - direct publish into the current React codebase
 - deterministic code-facing outputs from canonical source
 - room for later reference apps or deployment examples without making them product features
@@ -310,8 +310,8 @@ During development, the host app should not wait for manual sync.
 
 Recommended behavior:
 
-- Cuneiform writes canonical source on save
-- `cuneiform watch` incrementally compiles a runtime-friendly cache
+- Hiero writes canonical source on save
+- `hiero watch` incrementally compiles a runtime-friendly cache
 - the host integration plugin exposes a stable import such as a registry module
 - file changes invalidate the host bundler and trigger HMR
 
@@ -319,7 +319,7 @@ This gives Sanity-like immediate reflection while keeping canonical source file-
 
 ### Secondary: vendored runtime helpers
 
-Cuneiform writes a small runtime layer into the host repo, for example:
+Hiero writes a small runtime layer into the host repo, for example:
 
 - `src/icons/generated/runtime/*`
 
@@ -335,7 +335,7 @@ Once adoption is stable, teams can switch to:
 
 - `runtimeMode: 'package'`
 
-That mode imports helpers from a published `@cuneiform/runtime-react` package to reduce duplication.
+That mode imports helpers from a published `@hiero/runtime-react` package to reduce duplication.
 
 ## Implementation Boundary Changes
 
@@ -347,9 +347,9 @@ The current app should be split conceptually into:
 
 Recommended package boundaries:
 
-- `packages/cuneiform-cli`
-- `packages/cuneiform-core`
-- `packages/cuneiform-runtime-react`
+- `packages/hiero-cli`
+- `packages/hiero-core`
+- `packages/hiero-runtime-react`
 
 The existing `lib/` modules are already close to these boundaries. The work is primarily extraction, packaging, and contract hardening rather than invention.
 
@@ -357,14 +357,14 @@ The existing `lib/` modules are already close to these boundaries. The work is p
 
 Recommended day-to-day flow:
 
-1. install Cuneiform into the host repo
-2. run `cuneiform init`
-3. commit `cuneiform.config.ts`
-4. run `cuneiform dev` and `cuneiform watch` to open the repo-aware editor and live host bridge
+1. install Hiero into the host repo
+2. run `hiero init`
+3. commit `hiero.config.ts`
+4. run `hiero dev` and `hiero watch` to open the repo-aware editor and live host bridge
 5. author icons
-6. save to canonical source in `cuneiform/`
+6. save to canonical source in `hiero/`
 7. see the host app or chosen reference environment update through the repo-native loop
-8. run `cuneiform codegen` only when a snapshot or release artifact is needed
+8. run `hiero codegen` only when a snapshot or release artifact is needed
 9. use release sync for PRs, package publish, or external repo updates
 
 This is the closest match to how repo-native installable tools feel in practice.
@@ -375,15 +375,15 @@ The existing standalone app should not disappear. It should become:
 
 - the internal development shell
 - the desktop shell
-- the basis for `cuneiform dev`
+- the basis for `hiero dev`
 
-That lets Cuneiform keep shipping as a product while changing its adoption model.
+That lets Hiero keep shipping as a product while changing its adoption model.
 
 ## Success Criteria
 
 This design is successful when a team can:
 
-- add Cuneiform to an existing repo in under 15 minutes
+- add Hiero to an existing repo in under 15 minutes
 - store shared icon source in Git without external infrastructure
 - generate deterministic code-facing outputs directly into the host repo
 - review icon changes and consuming code changes in one PR
@@ -393,4 +393,4 @@ This design is successful when a team can:
 
 - The installable model is more important than multi-user real-time collaboration in the next phase.
 - Storybook and Sanity are methodology references, not required product targets.
-- File-based canonical source remains the strongest long-term fit for the current Cuneiform architecture.
+- File-based canonical source remains the strongest long-term fit for the current Hiero architecture.

@@ -1,4 +1,4 @@
-// Cuneiform Schema Types — canonical data model for icon projects.
+// Hiero Schema Types — canonical data model for icon projects.
 // All geometry is stored as SVG path `d` strings.
 
 // ---------------------------------------------------------------------------

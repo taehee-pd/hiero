@@ -1,6 +1,6 @@
 {
-  "name": "Export to Cuneiform",
-  "id": "cuneiform-export-to-cuneiform",
+  "name": "Export to Hiero",
+  "id": "hiero-export-to-hiero",
   "api": "1.0.0",
   "editorType": ["figma"],
   "main": "code.js",

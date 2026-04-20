@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildPluginImportEntries,
-  parseCuneiformPluginPayload,
-} from '@/lib/import/cuneiform-plugin-payload';
+  parseHieroPluginPayload,
+} from '@/lib/import/hiero-plugin-payload';
 
 const validPayload = JSON.stringify({
   version: '1',
-  source: 'cuneiform-figma-plugin',
+  source: 'hiero-figma-plugin',
   exportedAt: '2026-03-28T12:00:00.000Z',
   fileName: 'Icons',
   icons: [
@@ -19,25 +19,25 @@ const validPayload = JSON.stringify({
   ],
 });
 
-describe('parseCuneiformPluginPayload', () => {
+describe('parseHieroPluginPayload', () => {
   test('parses a valid plugin payload', () => {
-    const payload = parseCuneiformPluginPayload(validPayload);
+    const payload = parseHieroPluginPayload(validPayload);
     expect(payload.fileName).toBe('Icons');
     expect(payload.icons[0]?.name).toBe('Arrow Right');
   });
 
   test('rejects invalid JSON', () => {
-    expect(() => parseCuneiformPluginPayload('{')).toThrow(
+    expect(() => parseHieroPluginPayload('{')).toThrow(
       'Plugin payload must be valid JSON.',
     );
   });
 
   test('rejects payload with missing icons', () => {
     expect(() =>
-      parseCuneiformPluginPayload(
+      parseHieroPluginPayload(
         JSON.stringify({
           version: '1',
-          source: 'cuneiform-figma-plugin',
+          source: 'hiero-figma-plugin',
           exportedAt: '2026-03-28T12:00:00.000Z',
           fileName: 'Icons',
           icons: [],
@@ -49,7 +49,7 @@ describe('parseCuneiformPluginPayload', () => {
 
 describe('buildPluginImportEntries', () => {
   test('maps payload icons to import entries with provenance', () => {
-    const payload = parseCuneiformPluginPayload(validPayload);
+    const payload = parseHieroPluginPayload(validPayload);
     const entries = buildPluginImportEntries(payload);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.name).toBe('Arrow Right');

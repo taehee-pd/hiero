@@ -1039,7 +1039,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('cuneiform:new-icon'));
+                window.dispatchEvent(new CustomEvent('hiero:new-icon'));
               }}
             >
               New icon
@@ -1048,7 +1048,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('cuneiform:import-svg'));
+                window.dispatchEvent(new CustomEvent('hiero:import-svg'));
               }}
             >
               Import existing SVG
@@ -1057,7 +1057,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
               type="button"
               className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('cuneiform:open-command'));
+                window.dispatchEvent(new CustomEvent('hiero:open-command'));
               }}
             >
               Search icons

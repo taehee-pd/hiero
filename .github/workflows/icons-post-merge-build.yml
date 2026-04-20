@@ -69,7 +69,7 @@ jobs:
           bun scripts/compile-from-source.ts \
             --source . \
             --out ci-artifacts/package-output \
-            --package-name "@cuneiform/icons" \
+            --package-name "@hiero/icons" \
             --package-version "$VERSION" \
             --built-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --generate-react

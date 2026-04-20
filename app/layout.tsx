@@ -22,7 +22,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Cuneiform',
+  title: 'Hiero',
   description: 'Icon design studio for stateful, animated SVG icons',
   icons: {
     icon: [
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
       {
-        url: '/cuneiform.svg?v=2',
+        url: '/hiero.svg?v=2',
         type: 'image/svg+xml',
       },
     ],

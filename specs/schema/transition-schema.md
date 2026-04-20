@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines the reviewed transition model for Cuneiform.
+This spec defines the reviewed transition model for Hiero.
 
 The old schema mixed:
 

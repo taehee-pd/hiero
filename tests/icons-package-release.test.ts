@@ -21,7 +21,7 @@ describe('icons production package pipeline', () => {
       const result = await buildIconsPackage({
         projectPath: FIXTURE_PROJECT,
         outDir,
-        packageName: '@cuneiform/icons',
+        packageName: '@hiero/icons',
         packageVersion: '1.2.3',
         builtAt: '2026-03-10T00:00:00.000Z',
         fixtureProjectPathForValidation: FIXTURE_PROJECT,
@@ -54,13 +54,13 @@ describe('icons production package pipeline', () => {
       await buildIconsPackage({
         projectPath: FIXTURE_PROJECT,
         outDir,
-        packageName: '@cuneiform/icons',
+        packageName: '@hiero/icons',
         packageVersion: '2.0.0',
       });
 
       await expect(
         validateBuiltIconsPackage(outDir, {
-          packageName: '@cuneiform/icons',
+          packageName: '@hiero/icons',
           packageVersion: '2.0.0',
         }),
       ).resolves.toBeUndefined();
@@ -76,7 +76,7 @@ describe('icons production package pipeline', () => {
       await buildIconsPackage({
         projectPath: FIXTURE_PROJECT,
         outDir,
-        packageName: '@cuneiform/icons',
+        packageName: '@hiero/icons',
         packageVersion: '3.0.0',
       });
 
@@ -100,7 +100,7 @@ describe('icons production package pipeline', () => {
         buildIconsPackage({
           projectPath: FIXTURE_PROJECT,
           outDir,
-          packageName: '@cuneiform/icons',
+          packageName: '@hiero/icons',
           packageVersion: 'not-semver',
         }),
       ).rejects.toThrow('Invalid package version');
@@ -116,7 +116,7 @@ describe('icons production package pipeline', () => {
       await buildIconsPackage({
         projectPath: FIXTURE_PROJECT,
         outDir,
-        packageName: '@cuneiform/icons',
+        packageName: '@hiero/icons',
         packageVersion: '4.0.0',
       });
 
@@ -140,7 +140,7 @@ describe('icons production package pipeline', () => {
       await buildIconsPackage({
         projectPath: FIXTURE_PROJECT,
         outDir,
-        packageName: '@cuneiform/icons',
+        packageName: '@hiero/icons',
         packageVersion: '5.0.0',
       });
 

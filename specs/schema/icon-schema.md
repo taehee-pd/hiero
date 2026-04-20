@@ -5,7 +5,7 @@
 
 ## Overview
 
-This spec defines Cuneiform's icon schema.
+This spec defines Hiero's icon schema.
 
 The core model is:
 

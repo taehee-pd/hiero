@@ -60,7 +60,7 @@ export function handleEditorKeyDown(e: KeyboardEvent): void {
       dispatchEvent?: (event: Event) => boolean;
     };
     if (typeof target.dispatchEvent === 'function') {
-      target.dispatchEvent(new CustomEvent('cuneiform:open-shortcuts'));
+      target.dispatchEvent(new CustomEvent('hiero:open-shortcuts'));
     }
     return;
   }

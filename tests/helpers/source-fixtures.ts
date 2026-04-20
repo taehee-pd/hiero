@@ -109,14 +109,14 @@ export function buildFromMergedSource(
 ): BuildResult {
   // Reconstruct project from source files
   const project = projectFromSourceFiles(mergedFiles, {
-    name: '@cuneiform/icons',
+    name: '@hiero/icons',
     tokenColors: options?.tokenColors,
   });
 
   // Run compile pipeline
   const result = compileProject(project, {
     package: {
-      name: '@cuneiform/icons',
+      name: '@hiero/icons',
       version: '1.0.0',
       builtAt: '2026-03-15T00:00:00.000Z',
     },

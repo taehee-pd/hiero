@@ -5,7 +5,7 @@
 
 ## Overview
 
-The Animation tab is the workspace surface for previewing Cuneiform's runtime
+The Animation tab is the workspace surface for previewing Hiero's runtime
 animation model. It mirrors the SF Symbols 7 information architecture
 (WWDC 2025 session 337) so designers think in terms of *what plays* and *how
 it plays*, not in terms of which morphing algorithm to choose.
@@ -91,7 +91,7 @@ full contrast.
 
 ## Dev-only debug overlay (§2.4)
 
-When the build env defines `NEXT_PUBLIC_CUNEIFORM_DEBUG=1`, a small monospaced
+When the build env defines `NEXT_PUBLIC_HIERO_DEBUG=1`, a small monospaced
 pill renders inside the panel showing:
 
 ```

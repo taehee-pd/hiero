@@ -5,7 +5,7 @@
 
 ## Overview
 
-The runtime JSON format is the export boundary between Cuneiform authoring data and runtime icon behavior in product code.
+The runtime JSON format is the export boundary between Hiero authoring data and runtime icon behavior in product code.
 
 The runtime export describes:
 

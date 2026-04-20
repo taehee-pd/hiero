@@ -11,7 +11,7 @@
  * └────────────────────┘
  *          │
  *          └── IndexedDBAdapter (web)
- *                └── idb: cuneiform_projects table
+ *                └── idb: hiero_projects table
  * ```
  */
 

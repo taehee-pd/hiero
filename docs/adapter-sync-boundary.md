@@ -1,12 +1,12 @@
 # Adapter / Sync Boundary
 
-This document defines the architectural boundary between **adapters** (pure transforms) and **sync connectors** (I/O orchestrators) in the Cuneiform export pipeline.
+This document defines the architectural boundary between **adapters** (pure transforms) and **sync connectors** (I/O orchestrators) in the Hiero export pipeline.
 
 ## Definitions
 
 ### Adapter
 
-A pure, deterministic transform function that converts Cuneiform schema data into platform-specific output (React components, Swift structs, Flutter widgets, etc.).
+A pure, deterministic transform function that converts Hiero schema data into platform-specific output (React components, Swift structs, Flutter widgets, etc.).
 
 **Properties:**
 
@@ -67,7 +67,7 @@ lib/
 2. **Adapter** receives these plus the original `Icon` schema object. It generates file contents and collects platform diagnostics.
 3. **Manifest cleanup** compares the current file list against the previous manifest to identify stale files that should be removed.
 4. **Sync connector** receives the adapter result and:
-   - Reads the previous `.cuneiform-manifest.json` from the target.
+   - Reads the previous `.hiero-manifest.json` from the target.
    - Computes stale files via `computeStaleFiles()`.
    - Writes new files, removes stale files.
    - Writes the updated manifest via `buildManifest()` + `serializeManifest()`.
@@ -78,11 +78,11 @@ lib/
 Generated React components import the runtime from a configurable package path:
 
 ```typescript
-import { CuneiformIcon } from '@cuneiform/runtime-react';
-import type { Icon } from '@cuneiform/runtime-react';
+import { HieroIcon } from '@hiero/runtime-react';
+import type { Icon } from '@hiero/runtime-react';
 ```
 
-The default package is `@cuneiform/runtime-react`. This can be overridden via adapter options for monorepo setups or custom distributions.
+The default package is `@hiero/runtime-react`. This can be overridden via adapter options for monorepo setups or custom distributions.
 
 The adapter does **not** import from `@/lib/runtime-react` (the internal workspace path). Generated code is intended for external consumption and uses the published package name.
 

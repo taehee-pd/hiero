@@ -23,10 +23,10 @@ import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __cuneiform_happy_dom_registered__: boolean | undefined;
+  var __hiero_happy_dom_registered__: boolean | undefined;
 }
 
-if (!globalThis.__cuneiform_happy_dom_registered__) {
+if (!globalThis.__hiero_happy_dom_registered__) {
   GlobalRegistrator.register();
-  globalThis.__cuneiform_happy_dom_registered__ = true;
+  globalThis.__hiero_happy_dom_registered__ = true;
 }

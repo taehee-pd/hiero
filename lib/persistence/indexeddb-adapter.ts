@@ -10,7 +10,7 @@
 import type { Workspace } from '@/lib/schema/types';
 import type { PersistenceAdapter, ProjectMeta, SavedProject } from './adapter';
 
-const DB_NAME = 'cuneiform_projects';
+const DB_NAME = 'hiero_projects';
 const DB_VERSION = 1;
 const STORE_NAME = 'projects';
 

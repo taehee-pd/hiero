@@ -1,22 +1,22 @@
-import type { CuneiformConfig } from './types';
+import type { HieroConfig } from './types';
 import { validateConfig } from './validate-config';
 
 export type LoadConfigResult =
-  | { ok: true; config: CuneiformConfig }
+  | { ok: true; config: HieroConfig }
   | { ok: false; error: string };
 
 /**
- * Load and validate a cuneiform.config.ts module export.
+ * Load and validate a hiero.config.ts module export.
  *
- * In practice, callers will dynamically import cuneiform.config.ts and pass the
+ * In practice, callers will dynamically import hiero.config.ts and pass the
  * default export here. This function validates and normalises the result so
- * consumers always receive a typed, valid CuneiformConfig.
+ * consumers always receive a typed, valid HieroConfig.
  *
- * @param raw - The default export from cuneiform.config.ts (untyped).
+ * @param raw - The default export from hiero.config.ts (untyped).
  * @param configPath - Optional path hint used in error messages.
  */
 export function loadConfig(raw: unknown, configPath?: string): LoadConfigResult {
-  const label = configPath ?? 'cuneiform.config.ts';
+  const label = configPath ?? 'hiero.config.ts';
 
   if (raw === null || raw === undefined) {
     return { ok: false, error: `${label}: default export is missing or undefined.` };
@@ -29,7 +29,7 @@ export function loadConfig(raw: unknown, configPath?: string): LoadConfigResult 
   }
 
   // Cast is safe because validateConfig passed.
-  const config = raw as CuneiformConfig;
+  const config = raw as HieroConfig;
 
   return { ok: true, config: normalizeConfig(config) };
 }
@@ -38,7 +38,7 @@ export function loadConfig(raw: unknown, configPath?: string): LoadConfigResult 
  * Apply normalisation defaults so downstream code never has to deal with
  * undefined optional fields.
  */
-function normalizeConfig(config: CuneiformConfig): CuneiformConfig {
+function normalizeConfig(config: HieroConfig): HieroConfig {
   return {
     ...config,
     sourceDir: config.sourceDir.replace(/\/$/, ''), // strip trailing slash

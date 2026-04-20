@@ -10,7 +10,7 @@ const pluginIconSchema = z.object({
 
 const pluginPayloadSchema = z.object({
   version: z.literal('1'),
-  source: z.literal('cuneiform-figma-plugin'),
+  source: z.literal('hiero-figma-plugin'),
   exportedAt: z.string().min(1),
   fileName: z.string().min(1),
   icons: z.array(pluginIconSchema).min(1),
@@ -25,10 +25,10 @@ const pluginPayloadSchema = z.object({
     .optional(),
 });
 
-export type CuneiformPluginIconPayload = z.infer<typeof pluginIconSchema>;
-export type CuneiformPluginPayload = z.infer<typeof pluginPayloadSchema>;
+export type HieroPluginIconPayload = z.infer<typeof pluginIconSchema>;
+export type HieroPluginPayload = z.infer<typeof pluginPayloadSchema>;
 
-export function parseCuneiformPluginPayload(input: string): CuneiformPluginPayload {
+export function parseHieroPluginPayload(input: string): HieroPluginPayload {
   let parsed: unknown;
   try {
     parsed = JSON.parse(input);
@@ -44,7 +44,7 @@ export function parseCuneiformPluginPayload(input: string): CuneiformPluginPaylo
   return result.data;
 }
 
-export function buildPluginImportEntries(payload: CuneiformPluginPayload) {
+export function buildPluginImportEntries(payload: HieroPluginPayload) {
   return payload.icons.map((icon) => ({
     svg: icon.svgContent,
     name: icon.name,

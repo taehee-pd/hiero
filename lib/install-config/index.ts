@@ -1,5 +1,5 @@
 export type {
-  CuneiformConfig,
+  HieroConfig,
   HostTarget,
   ReactAppHostTarget,
   ReleaseTarget,

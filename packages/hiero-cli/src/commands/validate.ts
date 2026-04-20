@@ -1,8 +1,8 @@
 /**
- * `cuneiform validate` — validate config and source files.
+ * `hiero validate` — validate config and source files.
  *
  * Checks:
- *   1. cuneiform.config.ts is present, parseable, and passes schema validation
+ *   1. hiero.config.ts is present, parseable, and passes schema validation
  *   2. sourceDir exists
  *   3. Source files pass schema validation
  *   4. Source payload can be exported deterministically
@@ -20,14 +20,14 @@ export async function runValidate(
   const configPath =
     typeof flags['config'] === 'string'
       ? path.resolve(cwd, flags['config'])
-      : path.join(cwd, 'cuneiform.config.ts');
+      : path.join(cwd, 'hiero.config.ts');
 
   let exitCode = 0;
 
   // 1. Config presence
   if (!existsSync(configPath)) {
-    console.error(`[cuneiform] Config not found: ${path.relative(cwd, configPath)}`);
-    console.error(`         Run \`cuneiform init\` to scaffold cuneiform.config.ts`);
+    console.error(`[hiero] Config not found: ${path.relative(cwd, configPath)}`);
+    console.error(`         Run \`hiero init\` to scaffold hiero.config.ts`);
     process.exit(1);
   }
 
@@ -37,19 +37,19 @@ export async function runValidate(
     rawModule = (await import(configPath)) as { default?: unknown };
   } catch (err) {
     console.error(
-      `[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
+      `[hiero] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
 
   const loadResult = loadConfig(rawModule.default, configPath);
   if (!loadResult.ok) {
-    console.error(`[cuneiform] Config invalid:\n${loadResult.error}`);
+    console.error(`[hiero] Config invalid:\n${loadResult.error}`);
     process.exit(1);
   }
 
   const config = loadResult.config;
-  console.log(`[cuneiform] Config`);
+  console.log(`[hiero] Config`);
   console.log(`   sourceDir:       ${config.sourceDir}`);
   console.log(`   hostTargets:     ${config.hostTargets.length}`);
   console.log(`   releaseTargets:  ${(config.releaseTargets ?? []).length}`);
@@ -58,8 +58,8 @@ export async function runValidate(
   // 3. Source directory
   const sourceDir = path.resolve(cwd, config.sourceDir);
   if (!existsSync(sourceDir)) {
-    console.error(`\n[cuneiform] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`cuneiform init\` to create it`);
+    console.error(`\n[hiero] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`hiero init\` to create it`);
     process.exit(1);
   }
 
@@ -69,7 +69,7 @@ export async function runValidate(
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
     console.error(
-      `\n[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`,
+      `\n[hiero] Source read failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
@@ -80,26 +80,26 @@ export async function runValidate(
   if (iconCount > 0) {
     try {
       const payload = exportSourcePayload(project);
-      console.log(`\n[cuneiform] Source`);
+      console.log(`\n[hiero] Source`);
       console.log(`   icons:   ${iconCount}`);
       console.log(`   files:   ${payload.files.length}`);
       console.log(`   status:  OK`);
     } catch (err) {
       console.error(
-        `\n[cuneiform] Source export failed: ${err instanceof Error ? err.message : String(err)}`,
+        `\n[hiero] Source export failed: ${err instanceof Error ? err.message : String(err)}`,
       );
       exitCode = 1;
     }
   } else {
-    console.log(`\n[cuneiform] Source`);
-    console.log(`   icons:   0  (no icons — run \`cuneiform init\` to populate from the editor)`);
+    console.log(`\n[hiero] Source`);
+    console.log(`   icons:   0  (no icons — run \`hiero init\` to populate from the editor)`);
     console.log(`   status:  OK`);
   }
 
   if (exitCode === 0) {
-    console.log(`\n[cuneiform] Validation passed`);
+    console.log(`\n[hiero] Validation passed`);
   } else {
-    console.error(`\n[cuneiform] Validation failed`);
+    console.error(`\n[hiero] Validation failed`);
     process.exit(exitCode);
   }
 }

@@ -1,8 +1,8 @@
 # Swift Integration Guide
 
-Integrate Cuneiform icons into iOS/macOS apps with SwiftUI or UIKit.
+Integrate Hiero icons into iOS/macOS apps with SwiftUI or UIKit.
 
-This guide assumes you are consuming a generated Swift package produced from the Cuneiform export pipeline.
+This guide assumes you are consuming a generated Swift package produced from the Hiero export pipeline.
 
 ## Install (Swift Package Manager)
 
@@ -10,18 +10,18 @@ Add the package to your `Package.swift` or Xcode project:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/cuneiform-icons-swift", from: "1.0.0")
+    .package(url: "https://github.com/your-org/hiero-icons-swift", from: "1.0.0")
 ]
 ```
 
 ## SwiftUI Usage
 
 ```swift
-import CuneiformIcons
+import HieroIcons
 
 struct ContentView: View {
     var body: some View {
-        CuneiformIcon("home", size: 24)
+        HieroIcon("home", size: 24)
     }
 }
 ```
@@ -35,7 +35,7 @@ struct InteractiveIcon: View {
     @State private var iconState = "default"
 
     var body: some View {
-        CuneiformIcon("home", state: iconState, animate: true)
+        HieroIcon("home", state: iconState, animate: true)
             .onTapGesture {
                 iconState = iconState == "default" ? "active" : "default"
             }
@@ -47,10 +47,10 @@ struct InteractiveIcon: View {
 
 ```swift
 // By size
-CuneiformIcon("home", variant: 32)
+HieroIcon("home", variant: 32)
 
 // By name
-CuneiformIcon("home", variant: "filled")
+HieroIcon("home", variant: "filled")
 ```
 
 ## Effects
@@ -60,7 +60,7 @@ struct BouncingIcon: View {
     @State private var effect: String? = nil
 
     var body: some View {
-        CuneiformIcon("bell", effect: effect)
+        HieroIcon("bell", effect: effect)
             .onTapGesture { effect = "bounce" }
     }
 }
@@ -69,10 +69,10 @@ struct BouncingIcon: View {
 ## Accessibility
 
 ```swift
-CuneiformIcon("home")
+HieroIcon("home")
     .accessibilityLabel("Home")
 
-CuneiformIcon("decorative-divider")
+HieroIcon("decorative-divider")
     .accessibilityHidden(true)
 ```
 
@@ -81,15 +81,15 @@ CuneiformIcon("decorative-divider")
 Respects `UIAccessibility.isReduceMotionEnabled` by default.
 
 ```swift
-CuneiformIcon("home", reduceMotion: false) // Force animations
+HieroIcon("home", reduceMotion: false) // Force animations
 ```
 
 ## UIKit Adapter
 
 ```swift
-import CuneiformIcons
+import HieroIcons
 
-let iconView = CuneiformIconView(name: "home", size: 24)
+let iconView = HieroIconView(name: "home", size: 24)
 iconView.setState("active", animated: true)
 iconView.triggerEffect("bounce")
 view.addSubview(iconView)

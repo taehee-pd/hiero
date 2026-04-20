@@ -197,7 +197,7 @@ export function buildPackageJson(
   const pkg: Record<string, unknown> = {
     name,
     version,
-    description: `Cuneiform icon package — ${name}`,
+    description: `Hiero icon package — ${name}`,
     main: 'icons.manifest.json',
     files: ['icons/', 'icons.manifest.json', 'react/'],
     license: 'UNLICENSED',

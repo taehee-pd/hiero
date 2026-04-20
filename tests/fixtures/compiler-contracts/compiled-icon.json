@@ -1,5 +1,5 @@
 {
-  "$schema": "https://cuneiform.dev/schemas/compiled-icon/1.0.0",
+  "$schema": "https://hiero.dev/schemas/compiled-icon/1.0.0",
   "id": "icon-chevron",
   "name": "Chevron Right",
   "componentName": "IcChevronRight",

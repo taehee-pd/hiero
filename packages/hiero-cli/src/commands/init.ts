@@ -1,11 +1,11 @@
 /**
- * `cuneiform init` — scaffold cuneiform.config.ts and source directory.
+ * `hiero init` — scaffold hiero.config.ts and source directory.
  *
  * Creates:
- *   cuneiform.config.ts           Config file at repo root
- *   cuneiform/                    Source directory (default: sourceDir = 'cuneiform')
- *   cuneiform/icons/              Icon source directory
- *   cuneiform/manifest.json       Empty manifest
+ *   hiero.config.ts           Config file at repo root
+ *   hiero/                    Source directory (default: sourceDir = 'hiero')
+ *   hiero/icons/              Icon source directory
+ *   hiero/manifest.json       Empty manifest
  *
  * Existing files are never overwritten.
  */
@@ -18,16 +18,16 @@ import path from 'node:path';
 // Templates
 // ---------------------------------------------------------------------------
 
-const CONFIG_TEMPLATE = `import type { CuneiformConfig } from '@cuneiform/cli';
+const CONFIG_TEMPLATE = `import type { HieroConfig } from '@hiero/cli';
 
 export default {
-  sourceDir: 'cuneiform',
+  sourceDir: 'hiero',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.cuneiform/cache/app',
+      cacheDir: '.hiero/cache/app',
     },
   ],
   releaseTargets: [
@@ -37,7 +37,7 @@ export default {
       outputDir: 'src/icons/generated',
     },
   ],
-} satisfies CuneiformConfig;
+} satisfies HieroConfig;
 `;
 
 function emptyManifest(): string {
@@ -63,8 +63,8 @@ export async function runInit(
   cwd: string,
   _flags: Record<string, string | boolean>,
 ): Promise<void> {
-  const configPath = path.join(cwd, 'cuneiform.config.ts');
-  const sourceDirPath = path.join(cwd, 'cuneiform');
+  const configPath = path.join(cwd, 'hiero.config.ts');
+  const sourceDirPath = path.join(cwd, 'hiero');
   const iconsDirPath = path.join(sourceDirPath, 'icons');
   const manifestPath = path.join(sourceDirPath, 'manifest.json');
 
@@ -72,46 +72,46 @@ export async function runInit(
 
   if (!existsSync(configPath)) {
     await writeFile(configPath, CONFIG_TEMPLATE, 'utf8');
-    log('created', 'cuneiform.config.ts');
+    log('created', 'hiero.config.ts');
     anyCreated = true;
   } else {
-    log('exists ', 'cuneiform.config.ts');
+    log('exists ', 'hiero.config.ts');
   }
 
   if (!existsSync(sourceDirPath)) {
     await mkdir(sourceDirPath, { recursive: true });
-    log('created', 'cuneiform/');
+    log('created', 'hiero/');
     anyCreated = true;
   }
 
   if (!existsSync(iconsDirPath)) {
     await mkdir(iconsDirPath, { recursive: true });
-    log('created', 'cuneiform/icons/');
+    log('created', 'hiero/icons/');
     anyCreated = true;
   }
 
   if (!existsSync(manifestPath)) {
     await writeFile(manifestPath, emptyManifest(), 'utf8');
-    log('created', 'cuneiform/manifest.json');
+    log('created', 'hiero/manifest.json');
     anyCreated = true;
   }
 
   if (anyCreated) {
     console.log(`
-[cuneiform] Initialized successfully.
+[hiero] Initialized successfully.
 
 Next steps:
-  1.  Run \`cuneiform dev\` to start the live integration server
-  2.  Open the Cuneiform editor and connect to this repository
+  1.  Run \`hiero dev\` to start the live integration server
+  2.  Open the Hiero editor and connect to this repository
        (set the dev server URL to http://localhost:4400)
-  3.  Publish icons from the editor — they will appear in cuneiform/icons/
-  4.  Run \`cuneiform build\` to produce a snapshot build for CI
-  5.  Commit cuneiform/ to version-control as your canonical icon source
+  3.  Publish icons from the editor — they will appear in hiero/icons/
+  4.  Run \`hiero build\` to produce a snapshot build for CI
+  5.  Commit hiero/ to version-control as your canonical icon source
 
-See docs at https://cuneiform.dev/docs/getting-started
+See docs at https://hiero.dev/docs/getting-started
 `);
   } else {
-    console.log('[cuneiform] Already initialized — nothing to create.');
+    console.log('[hiero] Already initialized — nothing to create.');
   }
 }
 

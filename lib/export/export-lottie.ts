@@ -1,7 +1,7 @@
 /**
  * Lottie 5.x JSON exporter.
  *
- * Converts a compiled Cuneiform icon to the Lottie JSON format for
+ * Converts a compiled Hiero icon to the Lottie JSON format for
  * cross-platform animated icon delivery (Android, iOS, React Native, web).
  *
  * Entry point: `exportLottie(icon, variantId, options?)`

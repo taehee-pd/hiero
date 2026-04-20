@@ -61,7 +61,7 @@ export function emitSyncEvent(
   // Also dispatch a DOM CustomEvent for external listeners
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(
-      new CustomEvent('cuneiform:sync', {
+      new CustomEvent('hiero:sync', {
         detail: { name, ...payload },
       }),
     );

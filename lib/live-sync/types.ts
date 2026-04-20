@@ -59,7 +59,7 @@ export type WriteHostOutputResult = {
 export type DevServerConfig = {
   /** Absolute path to the consumer repo root. */
   repoRoot: string;
-  cuneiform: import('@/lib/install-config/types').CuneiformConfig;
+  hiero: import('@/lib/install-config/types').HieroConfig;
   port: number;
   /**
    * Shared secret for local API authentication.
@@ -106,7 +106,7 @@ export type DevServerStatus = {
     runtimeMode: string;
     cacheDir?: string;
   }>;
-  /** Release targets from cuneiform.config.ts — used by ReleasePanel to render target cards. */
+  /** Release targets from hiero.config.ts — used by ReleasePanel to render target cards. */
   releaseTargets: Array<{
     kind: 'local-directory' | 'git-pr' | 'npm-registry';
     outputMode: 'snapshot';
@@ -143,7 +143,7 @@ export type DevServerIconEntry = {
  * Transport mode for pushing canonical source files from the editor to the
  * consumer repo.
  *
- * - 'api-push': POST to cuneiform dev server HTTP API (default; works from any
+ * - 'api-push': POST to hiero dev server HTTP API (default; works from any
  *   editor context including web).
  * - 'direct-write': Write files directly to consumer repo via platform bridge
  *   (desktop editor, same machine, no dev server needed — future work).

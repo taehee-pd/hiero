@@ -11,7 +11,7 @@
 }
 
 /* Override the app-wide scroll lock from globals.css (html/body are set to
-   height: 100%; overflow: hidden for the single-screen Cuneiform workspace).
+   height: 100%; overflow: hidden for the single-screen Hiero workspace).
    Storybook needs scrolling inside its preview iframe, so we unlock it here. */
 html,
 body,

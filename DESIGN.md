@@ -1,10 +1,10 @@
-# DESIGN.md — Cuneiform Studio
+# DESIGN.md — Hiero Studio
 
 This file is a design-system prompt document for coding/design agents.
 Use it as the first source when generating or refactoring UI in this repo.
 
 Inspired by ElevenLabs' multi-layered shadow philosophy and typographic restraint,
-adapted for Cuneiform's dark-first professional icon authoring workspace.
+adapted for Hiero's dark-first professional icon authoring workspace.
 
 ---
 
@@ -59,7 +59,7 @@ Design intent:
 ## 3) Typography Rules
 
 - **Primary UI font:** system sans stack (matching current app behavior).
-- **Display font:** Geist Sans at weight 450 (default) — the Cuneiform equivalent of
+- **Display font:** Geist Sans at weight 450 (default) — the Hiero equivalent of
   ElevenLabs' light-weight display approach. Lightness creates intrigue through restraint.
 - **Code / technical values:** Geist Mono where value precision matters.
 - **Hierarchy strategy:** compact utility-app scale, clear contrast between section titles, labels, and value text.
@@ -76,7 +76,7 @@ Design intent:
 | Caption / metadata | `0.5625rem` (9px) | 550 | 0.875 | `+0.03125rem` | Tiny labels, tags |
 
 ### Principles
-- **Restrained weight as identity**: Like ElevenLabs' Waldenburg 300, Cuneiform uses weight
+- **Restrained weight as identity**: Like ElevenLabs' Waldenburg 300, Hiero uses weight
   450 (not bold) for display text. The understated weight signals precision and professionalism.
 - **Positive letter-spacing on small text**: Labels and captions use +0.03125rem tracking
   for airy readability at small sizes, contrasting with the tighter display tracking.
@@ -343,7 +343,7 @@ When generating UI in this repository, follow this checklist:
 
 ### Quick prompt snippet
 
-> Build this as a dark, professional authoring tool UI for Cuneiform Studio using existing
+> Build this as a dark, professional authoring tool UI for Hiero Studio using existing
 > component primitives, whisper-level multi-layer shadows, clear focus states, and restrained
 > blue accents. Use weight 450 for body text and 550 for labels. Apply pill radius for badges
 > and primary buttons. Prioritize editability, accessibility, and layout stability over

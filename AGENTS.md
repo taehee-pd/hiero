@@ -25,7 +25,7 @@ canonical documentation takes precedence.
   product vision, architecture, all phases, security posture, and key decisions.
   Read this before starting any feature work.
 - **Task backlog:** `docs_canonical/TASKS.md` — engineering phases with checklists.
-- **Per-branch design docs:** `~/.gstack/projects/taehee-pd-cuneiform/`
+- **Per-branch design docs:** `~/.gstack/projects/taehee-pd-hiero/`
   (created by gstack `/office-hours` skill).
 
 ## Project-Local Skills

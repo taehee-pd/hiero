@@ -1,6 +1,6 @@
-# Cuneiform User Guide
+# Hiero User Guide
 
-This guide explains how to use Cuneiform in plain language, from opening the library to drawing, organizing, guiding, and exporting icons.
+This guide explains how to use Hiero in plain language, from opening the library to drawing, organizing, guiding, and exporting icons.
 
 ## Start Here
 
@@ -11,9 +11,9 @@ This guide explains how to use Cuneiform in plain language, from opening the lib
 - [Size Versions and Guides](./size-versions-and-guides.md)
 - [Saving, Importing, Exporting, and Shortcuts](./files-export-and-shortcuts.md)
 
-## What Cuneiform Is For
+## What Hiero Is For
 
-Cuneiform is a browser-based icon editor for:
+Hiero is a browser-based icon editor for:
 
 - building icons from paths and shapes
 - creating multiple size-specific versions of the same icon

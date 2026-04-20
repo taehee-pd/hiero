@@ -1,4 +1,4 @@
-// Cuneiform Design System — barrel export.
+// Hiero Design System — barrel export.
 //
 // This is the ONE import surface for shared, cross-feature UI components
 // that pass the §3 admission criteria in specs/design-system-storybook.plan.md:

@@ -1,6 +1,6 @@
 {
-  "name": "Cuneiform",
-  "short_name": "Cuneiform",
+  "name": "Hiero",
+  "short_name": "Hiero",
   "description": "Icon design studio for stateful, animated SVG icons",
   "start_url": "/",
   "display": "standalone",
@@ -18,7 +18,7 @@
       "type": "image/png"
     },
     {
-      "src": "/cuneiform.svg",
+      "src": "/hiero.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }

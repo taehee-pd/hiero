@@ -1,6 +1,6 @@
 # React Integration Guide
 
-Install your published Cuneiform icon package and render animated, stateful icons in any React app.
+Install your published Hiero icon package and render animated, stateful icons in any React app.
 
 This guide assumes your compiled package exposes:
 
@@ -17,11 +17,11 @@ npm install @your-scope/icons
 ## Basic Usage
 
 ```tsx
-import { CuneiformIcon } from '@your-scope/icons/react';
+import { HieroIcon } from '@your-scope/icons/react';
 import homeIcon from '@your-scope/icons/icons/home.compiled.json';
 
 function App() {
-  return <CuneiformIcon icon={homeIcon} size={24} />;
+  return <HieroIcon icon={homeIcon} size={24} />;
 }
 ```
 
@@ -32,8 +32,8 @@ If your package generator emits named wrappers instead of raw JSON imports, the 
 Pass `label` for a visible icon with an accessible name. Omit `label` for decorative icons (`aria-hidden` is set automatically).
 
 ```tsx
-<CuneiformIcon icon={homeIcon} label="Home" />
-<CuneiformIcon icon={homeIcon} /> {/* decorative, aria-hidden */}
+<HieroIcon icon={homeIcon} label="Home" />
+<HieroIcon icon={homeIcon} /> {/* decorative, aria-hidden */}
 ```
 
 ## Variants & States
@@ -42,11 +42,11 @@ Icons can have multiple variants (sizes/weights) and states (default, active, ho
 
 ```tsx
 {/* Select a variant by name or size */}
-<CuneiformIcon icon={homeIcon} variant="24px" />
-<CuneiformIcon icon={homeIcon} variant={32} />
+<HieroIcon icon={homeIcon} variant="24px" />
+<HieroIcon icon={homeIcon} variant={32} />
 
 {/* Set the active state */}
-<CuneiformIcon icon={homeIcon} state="active" />
+<HieroIcon icon={homeIcon} state="active" />
 ```
 
 ## State Transitions (Animation)
@@ -56,7 +56,7 @@ Enable `animate` to transition between states with the icon's authored animation
 ```tsx
 const [isActive, setIsActive] = useState(false);
 
-<CuneiformIcon
+<HieroIcon
   icon={homeIcon}
   state={isActive ? 'active' : 'default'}
   animate
@@ -69,7 +69,7 @@ const [isActive, setIsActive] = useState(false);
 Use `hoverState` and `tapState` for automatic hover/press interactions:
 
 ```tsx
-<CuneiformIcon
+<HieroIcon
   icon={homeIcon}
   hoverState="hover"
   tapState="active"
@@ -82,7 +82,7 @@ Use `hoverState` and `tapState` for automatic hover/press interactions:
 Trigger named effects (bounce, shake, pulse, etc.) independently from state:
 
 ```tsx
-<CuneiformIcon
+<HieroIcon
   icon={homeIcon}
   effect="bounce"
   onEffectComplete={(id) => console.log(`effect ${id} done`)}
@@ -95,14 +95,14 @@ Use a ref for programmatic control:
 
 ```tsx
 import { useRef } from 'react';
-import type { CuneiformIconHandle } from '@your-scope/icons/react';
+import type { HieroIconHandle } from '@your-scope/icons/react';
 
 function App() {
-  const ref = useRef<CuneiformIconHandle>(null);
+  const ref = useRef<HieroIconHandle>(null);
 
   return (
     <>
-      <CuneiformIcon icon={homeIcon} ref={ref} animate />
+      <HieroIcon icon={homeIcon} ref={ref} animate />
       <button onClick={() => ref.current?.transitionTo('active')}>
         Activate
       </button>
@@ -114,7 +114,7 @@ function App() {
 }
 ```
 
-### CuneiformIconHandle Methods
+### HieroIconHandle Methods
 
 | Method | Description |
 |--------|-------------|
@@ -130,7 +130,7 @@ function App() {
 For icons with variable rendering (like Wi-Fi signal bars):
 
 ```tsx
-<CuneiformIcon icon={wifiIcon} variableValue={0.75} />
+<HieroIcon icon={wifiIcon} variableValue={0.75} />
 ```
 
 ## Reduced Motion
@@ -138,14 +138,14 @@ For icons with variable rendering (like Wi-Fi signal bars):
 Respects `prefers-reduced-motion` by default. Override per-icon:
 
 ```tsx
-<CuneiformIcon icon={homeIcon} reduceMotion={false} animate />
-<CuneiformIcon icon={homeIcon} reduceMotion="system" /> {/* default */}
+<HieroIcon icon={homeIcon} reduceMotion={false} animate />
+<HieroIcon icon={homeIcon} reduceMotion="system" /> {/* default */}
 ```
 
 ## Animation Callbacks
 
 ```tsx
-<CuneiformIcon
+<HieroIcon
   icon={homeIcon}
   animate
   onTransitionStart={(from, to) => {}}
@@ -159,7 +159,7 @@ Respects `prefers-reduced-motion` by default. Override per-icon:
 ## Styling
 
 ```tsx
-<CuneiformIcon
+<HieroIcon
   icon={homeIcon}
   size={32}
   color="currentColor"
@@ -183,8 +183,8 @@ All types are exported:
 
 ```tsx
 import type {
-  CuneiformIconProps,
-  CuneiformIconHandle,
+  HieroIconProps,
+  HieroIconHandle,
 } from '@your-scope/icons/react';
 ```
 

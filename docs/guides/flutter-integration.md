@@ -1,15 +1,15 @@
 # Flutter Integration Guide
 
-Use Cuneiform icons in Flutter apps with full animation and state support.
+Use Hiero icons in Flutter apps with full animation and state support.
 
-This guide assumes you are consuming generated Flutter output from the Cuneiform export pipeline.
+This guide assumes you are consuming generated Flutter output from the Hiero export pipeline.
 
 ## Install
 
 ```yaml
 # pubspec.yaml
 dependencies:
-  cuneiform_icons: ^1.0.0
+  hiero_icons: ^1.0.0
 ```
 
 ```bash
@@ -19,12 +19,12 @@ flutter pub get
 ## Basic Usage
 
 ```dart
-import 'package:cuneiform_icons/cuneiform_icons.dart';
+import 'package:hiero_icons/hiero_icons.dart';
 
 class MyWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CuneiformIcon(
+    return HieroIcon(
       name: 'home',
       size: 24,
     );
@@ -51,7 +51,7 @@ class _InteractiveIconState extends State<InteractiveIcon> {
       onTap: () => setState(() {
         _state = _state == 'default' ? 'active' : 'default';
       }),
-      child: CuneiformIcon(
+      child: HieroIcon(
         name: 'home',
         state: _state,
         animate: true,
@@ -64,14 +64,14 @@ class _InteractiveIconState extends State<InteractiveIcon> {
 ## Variants
 
 ```dart
-CuneiformIcon(name: 'home', variant: '32px')
-CuneiformIcon(name: 'home', variant: 'filled')
+HieroIcon(name: 'home', variant: '32px')
+HieroIcon(name: 'home', variant: 'filled')
 ```
 
 ## Effects
 
 ```dart
-CuneiformIcon(
+HieroIcon(
   name: 'bell',
   effect: 'bounce',
   onEffectComplete: (effectId) => print('$effectId done'),
@@ -81,7 +81,7 @@ CuneiformIcon(
 ## Variable Value
 
 ```dart
-CuneiformIcon(
+HieroIcon(
   name: 'wifi',
   variableValue: 0.75, // 0.0 to 1.0
 )
@@ -92,7 +92,7 @@ CuneiformIcon(
 ```dart
 Semantics(
   label: 'Home',
-  child: CuneiformIcon(name: 'home'),
+  child: HieroIcon(name: 'home'),
 )
 ```
 
@@ -101,15 +101,15 @@ Semantics(
 Respects `MediaQuery.of(context).disableAnimations` by default.
 
 ```dart
-CuneiformIcon(name: 'home', reduceMotion: false) // Force animations
+HieroIcon(name: 'home', reduceMotion: false) // Force animations
 ```
 
 ## Controller API
 
 ```dart
-final controller = CuneiformIconController();
+final controller = HieroIconController();
 
-CuneiformIcon(
+HieroIcon(
   name: 'home',
   controller: controller,
 )

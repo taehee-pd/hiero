@@ -96,7 +96,7 @@ Testing should be paired with build checks where relevant:
 - use `npx tsc --noEmit` for type verification
 - use `bun run lint` for ESLint enforcement (0 errors + 0 warnings gate)
 - use `corepack pnpm build` for Next.js build validation
-- when touching `packages/cuneiform-cli/`, also run `cd packages/cuneiform-cli && bun run build && node dist/bin.js --help` to smoke-test the built binary, and `npm pack --dry-run` to verify the tarball contents
+- when touching `packages/hiero-cli/`, also run `cd packages/hiero-cli && bun run build && node dist/bin.js --help` to smoke-test the built binary, and `npm pack --dry-run` to verify the tarball contents
 
 ## Export Adapter Test Expectations
 
@@ -127,7 +127,7 @@ Additional observed coverage areas now include:
 - Animate panel revamp regression (no strategy dropdown, no compatibility
   badges, no `role="alert"`, Advanced disclosure collapsed by default,
   SF Symbols 7 hierarchy labels): `tests/transition-panel.test.tsx`
-- Phase R6 navigation (`?` → `cuneiform:open-shortcuts` custom event,
+- Phase R6 navigation (`?` → `hiero:open-shortcuts` custom event,
   Shift+/ fallback, input-suppression): `tests/r6-navigation.test.tsx`
 
 ## Cross-Icon Morphing Test Expectations

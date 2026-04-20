@@ -231,7 +231,7 @@ function nearestCandidate<T extends { size: number }>(candidates: T[], wanted: n
 
 function warnDev(message: string): void {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn(`[cuneiform-runtime] ${message}`);
+    console.warn(`[hiero-runtime] ${message}`);
   }
 }
 

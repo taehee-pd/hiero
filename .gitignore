@@ -12,6 +12,7 @@ out/
 desktop/.generated/
 desktop/build/
 desktop/artifacts/
+tsconfig.tsbuildinfo
 
 # Claude Code worktrees (temporary)
 .claude/worktrees/

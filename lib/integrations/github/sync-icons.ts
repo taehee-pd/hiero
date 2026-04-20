@@ -47,7 +47,7 @@ export async function syncIconsToGitHub(options: SyncOptions): Promise<SyncResul
     options.token,
   );
 
-  const branch = `cuneiform/update-icons-${formatTimestamp(new Date())}`;
+  const branch = `hiero/update-icons-${formatTimestamp(new Date())}`;
   await client.createBranch(
     options.owner,
     options.repo,
@@ -217,7 +217,7 @@ async function listFilesUnderPath(
 
 function guessPackageName(packagePath: string): string {
   const segment = packagePath.split('/').filter(Boolean).pop();
-  return segment ? `@cuneiform/${segment}` : '@cuneiform/icons';
+  return segment ? `@hiero/${segment}` : '@hiero/icons';
 }
 
 function formatTimestamp(date: Date): string {

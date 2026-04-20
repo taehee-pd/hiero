@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Project Overview
 
-**Product:** Cuneiform — an Cuneiform with SF Symbols-grade animation capabilities
+**Product:** Hiero — an Hiero with SF Symbols-grade animation capabilities
 **Stack:** Next.js 16 + React 19 + TypeScript + Custom Store (`useSyncExternalStore`) + Tailwind CSS + Radix UI
 **Package Manager:** pnpm (with Bun test runner)
 **Dev Server:** `pnpm dev` (runs on port 3000)
@@ -50,7 +50,7 @@ regenerate `bun.lock`. Commit both lockfiles together.
 - **SSOT (Single Source of Truth):** `docs_canonical/DESIGN.md` — master design document
   covering product vision, architecture, all phases, and security posture
 - **Task backlog:** `docs_canonical/TASKS.md` — engineering phases with task checklists
-- **Per-branch design docs:** `~/.gstack/projects/taehee-pd-cuneiform/` — created
+- **Per-branch design docs:** `~/.gstack/projects/taehee-pd-hiero/` — created
   by `/office-hours` during gstack review pipeline
 - **Spec-kit specs:** `specs/` — structured markdown specs for all major systems
 
@@ -63,7 +63,7 @@ lib/
 │                       # morph, topology, transition resolver, draw executor,
 │                       # hybrid compositor, open-path guard, cubic weight interpolation
 ├── runtime-dom/        # DOM renderer, IconDriver
-├── runtime-react/      # CuneiformIcon React component, hooks
+├── runtime-react/      # HieroIcon React component, hooks
 ├── runtime-sdk/        # Compiled icon rendering primitives
 ├── editor-core/        # Path editor, snap engine, keyboard, topology, boolean ops
 ├── editor-store/       # Custom store (state, actions, undo/redo via useSyncExternalStore)
@@ -87,12 +87,12 @@ components/
 ├── export/           # PublishPanel, ReleasePanel, export formats
 ├── persistence/      # AutoSaveProvider
 ├── runtime/          # Runtime preview
-├── ds/               # Cuneiform Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
+├── ds/               # Hiero Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
 ├── ui/               # shadcn/ui primitives (Radix-based)
 └── kibo-ui/          # (deleted — migrated to ds/ in Phase 2)
 
-packages/cuneiform-cli/   # @cuneiform/cli command-line tool
-figma-plugin/         # Figma plugin for exporting to Cuneiform
+packages/hiero-cli/   # @hiero/cli command-line tool
+figma-plugin/         # Figma plugin for exporting to Hiero
 specs/                # Spec-kit documentation (21 specs)
 docs_canonical/       # Canonical reference docs (TASKS, ARCHITECTURE, DESIGN, etc.)
 tests/                # Bun test files (1400+ tests)

@@ -1,19 +1,19 @@
 import { describe, test, expect } from 'bun:test';
 import { validateConfig, loadConfig } from '@/lib/install-config';
-import type { CuneiformConfig } from '@/lib/install-config';
+import type { HieroConfig } from '@/lib/install-config';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const VALID_CONFIG: CuneiformConfig = {
-  sourceDir: 'cuneiform',
+const VALID_CONFIG: HieroConfig = {
+  sourceDir: 'hiero',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.cuneiform/cache/app',
+      cacheDir: '.hiero/cache/app',
     },
   ],
   releaseTargets: [
@@ -280,7 +280,7 @@ describe('loadConfig', () => {
     const result = loadConfig(VALID_CONFIG);
     expect(result.ok).toBeTrue();
     if (result.ok) {
-      expect(result.config.sourceDir).toBe('cuneiform');
+      expect(result.config.sourceDir).toBe('hiero');
       expect(result.config.hostTargets).toHaveLength(1);
     }
   });
@@ -294,10 +294,10 @@ describe('loadConfig', () => {
   });
 
   test('strips trailing slash from sourceDir', () => {
-    const result = loadConfig({ ...VALID_CONFIG, sourceDir: 'cuneiform/' });
+    const result = loadConfig({ ...VALID_CONFIG, sourceDir: 'hiero/' });
     expect(result.ok).toBeTrue();
     if (result.ok) {
-      expect(result.config.sourceDir).toBe('cuneiform');
+      expect(result.config.sourceDir).toBe('hiero');
     }
   });
 
@@ -305,14 +305,14 @@ describe('loadConfig', () => {
     const input = {
       ...VALID_CONFIG,
       hostTargets: [
-        { kind: 'react-app' as const, mode: 'live' as const, runtimeMode: 'cache-dir' as const, cacheDir: '.cuneiform/cache/' },
+        { kind: 'react-app' as const, mode: 'live' as const, runtimeMode: 'cache-dir' as const, cacheDir: '.hiero/cache/' },
       ],
     };
     const result = loadConfig(input);
     expect(result.ok).toBeTrue();
     if (result.ok) {
       const target = result.config.hostTargets[0] as { cacheDir?: string };
-      expect(target.cacheDir).toBe('.cuneiform/cache');
+      expect(target.cacheDir).toBe('.hiero/cache');
     }
   });
 
@@ -333,10 +333,10 @@ describe('loadConfig', () => {
   });
 
   test('includes configPath in error messages when provided', () => {
-    const result = loadConfig(null, 'packages/my-app/cuneiform.config.ts');
+    const result = loadConfig(null, 'packages/my-app/hiero.config.ts');
     expect(result.ok).toBeFalse();
     if (!result.ok) {
-      expect(result.error).toContain('packages/my-app/cuneiform.config.ts');
+      expect(result.error).toContain('packages/my-app/hiero.config.ts');
     }
   });
 });

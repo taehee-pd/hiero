@@ -11,17 +11,17 @@ Date: 2026-03-28
 
 Ship the next readiness slice by:
 
-- adding a repo-local Figma plugin that exports selected nodes to a Cuneiform-friendly payload
-- importing that payload through the existing Cuneiform SVG normalization pipeline
+- adding a repo-local Figma plugin that exports selected nodes to a Hiero-friendly payload
+- importing that payload through the existing Hiero SVG normalization pipeline
 - improving consumer documentation
 - tightening accessibility in the import flow and related touched UI
 - hardening the desktop release path after the plugin/docs/a11y batch
 
 ## Approved Direction
 
-- Build a narrow `Export to Cuneiform` Figma plugin, not a full file browser.
+- Build a narrow `Export to Hiero` Figma plugin, not a full file browser.
 - Use selection-based export only.
-- Import plugin payloads as JSON in Cuneiform and reuse the existing sanitize → normalize → convert pipeline.
+- Import plugin payloads as JSON in Hiero and reuse the existing sanitize → normalize → convert pipeline.
 - Scope accessibility fixes to the UI touched by this work.
 - Treat desktop distribution as release-path hardening, not a full hosted signing deployment.
 
@@ -40,9 +40,9 @@ Ship the next readiness slice by:
   - `icons[]` with `name`, `nodeId`, `svgContent`, and provenance
 - Unsupported nodes are reported back to the user instead of crashing the export.
 
-### Cuneiform Import
+### Hiero Import
 
-- Extend `ImportIconDialog` with a new source mode for `Cuneiform Plugin`.
+- Extend `ImportIconDialog` with a new source mode for `Hiero Plugin`.
 - Accept pasted JSON or uploaded `.json`.
 - Parse and validate the payload.
 - Import entries one by one through the existing SVG import path so all sanitization and normalization stays shared.

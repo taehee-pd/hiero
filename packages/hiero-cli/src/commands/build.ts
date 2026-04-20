@@ -1,5 +1,5 @@
 /**
- * `cuneiform build` — deterministic snapshot build (Lane 2).
+ * `hiero build` — deterministic snapshot build (Lane 2).
  *
  * Reads canonical source from sourceDir, compiles all icons, and writes the
  * output to all configured local-directory releaseTargets.
@@ -7,11 +7,11 @@
  * This is the CI-safe build command: same input → same output, always.
  *
  * Options:
- *   --config <path>   Path to cuneiform.config.ts
+ *   --config <path>   Path to hiero.config.ts
  *   --out <path>      Output directory override (bypasses releaseTargets)
  *
  * For git-pr and npm-registry targets, this command prints instructions.
- * Those workflows remain in the Lane 2 sync-service (cuneiform sync-pr / cuneiform publish).
+ * Those workflows remain in the Lane 2 sync-service (hiero sync-pr / hiero publish).
  */
 
 import path from 'node:path';
@@ -29,29 +29,29 @@ export async function runBuild(
   const configPath =
     typeof flags['config'] === 'string'
       ? path.resolve(cwd, flags['config'])
-      : path.join(cwd, 'cuneiform.config.ts');
+      : path.join(cwd, 'hiero.config.ts');
 
   const outOverride =
     typeof flags['out'] === 'string' ? flags['out'] : undefined;
 
   // Config
   if (!existsSync(configPath)) {
-    console.error(`[cuneiform] Config not found: ${path.relative(cwd, configPath)}`);
+    console.error(`[hiero] Config not found: ${path.relative(cwd, configPath)}`);
     process.exit(1);
   }
 
-  let config: import('@/lib/install-config/types').CuneiformConfig;
+  let config: import('@/lib/install-config/types').HieroConfig;
   try {
     const rawModule = (await import(configPath)) as { default?: unknown };
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[cuneiform] Config invalid:\n${result.error}`);
+      console.error(`[hiero] Config invalid:\n${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
     console.error(
-      `[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
+      `[hiero] Failed to load config: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
@@ -60,8 +60,8 @@ export async function runBuild(
 
   if (releaseTargets.length === 0 && !outOverride) {
     console.error(
-      `[cuneiform] No releaseTargets configured and --out not provided.\n` +
-        `         Add a local-directory target to cuneiform.config.ts or pass --out <dir>.`,
+      `[hiero] No releaseTargets configured and --out not provided.\n` +
+        `         Add a local-directory target to hiero.config.ts or pass --out <dir>.`,
     );
     process.exit(1);
   }
@@ -69,43 +69,43 @@ export async function runBuild(
   // Source
   const sourceDir = path.resolve(cwd, config.sourceDir);
   if (!existsSync(sourceDir)) {
-    console.error(`[cuneiform] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`cuneiform init\` to create it`);
+    console.error(`[hiero] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`hiero init\` to create it`);
     process.exit(1);
   }
 
-  console.log(`[cuneiform] Loading source from ${config.sourceDir}...`);
+  console.log(`[hiero] Loading source from ${config.sourceDir}...`);
 
   let project;
   try {
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
     console.error(
-      `[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`,
+      `[hiero] Source read failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
 
   const iconCount = Object.keys(project.icons).length;
   if (iconCount === 0) {
-    console.warn(`[cuneiform] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
+    console.warn(`[hiero] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
   }
 
-  console.log(`[cuneiform] Compiling ${iconCount} icon(s)...`);
+  console.log(`[hiero] Compiling ${iconCount} icon(s)...`);
 
   const builtAt = new Date().toISOString();
   let compiled;
   try {
     compiled = compileProject(project, {
       package: {
-        name: 'cuneiform-build',
+        name: 'hiero-build',
         version: '0.0.0',
         builtAt,
       },
     });
   } catch (err) {
     console.error(
-      `[cuneiform] Compile failed: ${err instanceof Error ? err.message : String(err)}`,
+      `[hiero] Compile failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     process.exit(1);
   }
@@ -120,7 +120,7 @@ export async function runBuild(
   // Write outputs
   for (const target of localDirTargets) {
     const outDir = path.resolve(cwd, target.outputDir);
-    console.log(`[cuneiform] Writing to ${target.outputDir}...`);
+    console.log(`[hiero] Writing to ${target.outputDir}...`);
 
     for (const file of compiled.files) {
       const targetPath = path.join(outDir, file.path);
@@ -135,18 +135,18 @@ export async function runBuild(
   for (const target of releaseTargets) {
     if (target.kind === 'git-pr') {
       console.log(
-        `\n[cuneiform] git-pr target: ${target.owner}/${target.repo}\n` +
-          `         To open a pull request, use the Create PR action in the Cuneiform editor.`,
+        `\n[hiero] git-pr target: ${target.owner}/${target.repo}\n` +
+          `         To open a pull request, use the Create PR action in the Hiero editor.`,
       );
     }
     if (target.kind === 'npm-registry') {
       console.log(
-        `\n[cuneiform] npm-registry target: ${target.packageName}\n` +
-          `         To publish to npm, use the Release action in the Cuneiform editor.`,
+        `\n[hiero] npm-registry target: ${target.packageName}\n` +
+          `         To publish to npm, use the Release action in the Hiero editor.`,
       );
     }
   }
 
   const elapsedMs = Date.now() - new Date(builtAt).getTime();
-  console.log(`\n[cuneiform] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
+  console.log(`\n[hiero] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
 }

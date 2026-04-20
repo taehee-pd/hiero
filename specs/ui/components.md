@@ -426,7 +426,7 @@ Per-property editor within a binding.
 | Field | Component | Notes |
 |-------|-----------|-------|
 | Sub-tab toggle | SegmentedControl | Paste JSON · Upload JSON |
-| JSON source (paste) | Textarea (monospace) | Placeholder: `{"version":"1","source":"cuneiform-figma-plugin",...}` |
+| JSON source (paste) | Textarea (monospace) | Placeholder: `{"version":"1","source":"hiero-figma-plugin",...}` |
 | Help text | ReadOnlyLabel | "Export from the Figma plugin, then paste the JSON payload here" |
 | File input (upload) | FileInput | accept: `.json,application/json` |
 | Import button | Button | "Import Plugin Payload" or "Upload & Import" |
@@ -498,7 +498,7 @@ Shared by Lucide, Heroicons, Phosphor, Material Symbols.
 |--------|-------------|
 | SVG | Single icon SVG |
 | SVG Package | All icons as ZIP |
-| Runtime JSON | `.cuneiform.json` with animation data |
+| Runtime JSON | `.hiero.json` with animation data |
 | React Library | npm-ready TypeScript package |
 | Lottie JSON | Lottie 5.x with downgrade warnings |
 

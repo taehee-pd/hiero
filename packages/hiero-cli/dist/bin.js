@@ -4,15 +4,29 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: () => mod[key],
+        get: __accessProp.bind(mod, key),
         enumerable: true
       });
+  if (canCache)
+    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
@@ -20,28 +34,28 @@ var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, 
 // package.json
 var require_package = __commonJS((exports, module) => {
   module.exports = {
-    name: "@cuneiform/cli",
+    name: "@hiero/cli",
     version: "0.2.0",
-    description: "Cuneiform CLI — repo-native icon authoring for host repositories",
+    description: "Hiero CLI — repo-native icon authoring for host repositories",
     author: "taehee-pd <j.taehee@icloud.com>",
     license: "MIT",
-    homepage: "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/cuneiform-cli#readme",
+    homepage: "https://github.com/taehee-pd/icon-authoring-tool/tree/main/packages/hiero-cli#readme",
     repository: {
       type: "git",
       url: "https://github.com/taehee-pd/icon-authoring-tool.git",
-      directory: "packages/cuneiform-cli"
+      directory: "packages/hiero-cli"
     },
     bugs: {
       url: "https://github.com/taehee-pd/icon-authoring-tool/issues"
     },
     bin: {
-      cuneiform: "./dist/bin.js"
+      hiero: "./dist/bin.js"
     },
     engines: {
       node: ">=18"
     },
     keywords: [
-      "cuneiform",
+      "hiero",
       "icons",
       "icon-authoring",
       "cli",
@@ -69,16 +83,16 @@ var require_package = __commonJS((exports, module) => {
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-var CONFIG_TEMPLATE = `import type { CuneiformConfig } from '@cuneiform/cli';
+var CONFIG_TEMPLATE = `import type { HieroConfig } from '@hiero/cli';
 
 export default {
-  sourceDir: 'cuneiform',
+  sourceDir: 'hiero',
   hostTargets: [
     {
       kind: 'react-app',
       mode: 'live',
       runtimeMode: 'cache-dir',
-      cacheDir: '.cuneiform/cache/app',
+      cacheDir: '.hiero/cache/app',
     },
   ],
   releaseTargets: [
@@ -88,7 +102,7 @@ export default {
       outputDir: 'src/icons/generated',
     },
   ],
-} satisfies CuneiformConfig;
+} satisfies HieroConfig;
 `;
 function emptyManifest() {
   return JSON.stringify({
@@ -100,49 +114,49 @@ function emptyManifest() {
 `;
 }
 async function runInit(cwd, _flags) {
-  const configPath = path.join(cwd, "cuneiform.config.ts");
-  const sourceDirPath = path.join(cwd, "cuneiform");
+  const configPath = path.join(cwd, "hiero.config.ts");
+  const sourceDirPath = path.join(cwd, "hiero");
   const iconsDirPath = path.join(sourceDirPath, "icons");
   const manifestPath = path.join(sourceDirPath, "manifest.json");
   let anyCreated = false;
   if (!existsSync(configPath)) {
     await writeFile(configPath, CONFIG_TEMPLATE, "utf8");
-    log("created", "cuneiform.config.ts");
+    log("created", "hiero.config.ts");
     anyCreated = true;
   } else {
-    log("exists ", "cuneiform.config.ts");
+    log("exists ", "hiero.config.ts");
   }
   if (!existsSync(sourceDirPath)) {
     await mkdir(sourceDirPath, { recursive: true });
-    log("created", "cuneiform/");
+    log("created", "hiero/");
     anyCreated = true;
   }
   if (!existsSync(iconsDirPath)) {
     await mkdir(iconsDirPath, { recursive: true });
-    log("created", "cuneiform/icons/");
+    log("created", "hiero/icons/");
     anyCreated = true;
   }
   if (!existsSync(manifestPath)) {
     await writeFile(manifestPath, emptyManifest(), "utf8");
-    log("created", "cuneiform/manifest.json");
+    log("created", "hiero/manifest.json");
     anyCreated = true;
   }
   if (anyCreated) {
     console.log(`
-[cuneiform] Initialized successfully.
+[hiero] Initialized successfully.
 
 Next steps:
-  1.  Run \`cuneiform dev\` to start the live integration server
-  2.  Open the Cuneiform editor and connect to this repository
+  1.  Run \`hiero dev\` to start the live integration server
+  2.  Open the Hiero editor and connect to this repository
        (set the dev server URL to http://localhost:4400)
-  3.  Publish icons from the editor — they will appear in cuneiform/icons/
-  4.  Run \`cuneiform build\` to produce a snapshot build for CI
-  5.  Commit cuneiform/ to version-control as your canonical icon source
+  3.  Publish icons from the editor — they will appear in hiero/icons/
+  4.  Run \`hiero build\` to produce a snapshot build for CI
+  5.  Commit hiero/ to version-control as your canonical icon source
 
-See docs at https://cuneiform.dev/docs/getting-started
+See docs at https://hiero.dev/docs/getting-started
 `);
   } else {
-    console.log("[cuneiform] Already initialized — nothing to create.");
+    console.log("[hiero] Already initialized — nothing to create.");
   }
 }
 function log(action, file) {
@@ -336,7 +350,7 @@ function isObject(value) {
 }
 // ../../lib/install-config/load-config.ts
 function loadConfig(raw, configPath) {
-  const label = configPath ?? "cuneiform.config.ts";
+  const label = configPath ?? "hiero.config.ts";
   if (raw === null || raw === undefined) {
     return { ok: false, error: `${label}: default export is missing or undefined.` };
   }
@@ -1064,9 +1078,9 @@ async function projectFromSourceDir(sourceDir, options) {
   return projectFromSourceFiles(files, options);
 }
 // ../../lib/compiler-contracts/types.ts
-var COMPILED_ICON_SCHEMA_URI = "https://cuneiform.dev/schemas/compiled-icon/1.0.0";
-var PACKAGE_MANIFEST_SCHEMA_URI = "https://cuneiform.dev/schemas/manifest/1.0.0";
-var ICON_CHANGE_RECORD_SCHEMA_URI = "https://cuneiform.dev/schemas/change-record/1.0.0";
+var COMPILED_ICON_SCHEMA_URI = "https://hiero.dev/schemas/compiled-icon/1.0.0";
+var PACKAGE_MANIFEST_SCHEMA_URI = "https://hiero.dev/schemas/manifest/1.0.0";
+var ICON_CHANGE_RECORD_SCHEMA_URI = "https://hiero.dev/schemas/change-record/1.0.0";
 // ../../lib/compiler-contracts/validators.ts
 function isObject3(val) {
   return typeof val === "object" && val !== null && !Array.isArray(val);
@@ -1966,7 +1980,7 @@ function resolveCollections(options) {
   return options.collections ?? {};
 }
 function getCompiledIconSchemaVersion(schemaUri) {
-  const match = schemaUri.match(/^https:\/\/(?:cuneiform|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
+  const match = schemaUri.match(/^https:\/\/(?:hiero|icophone)\.dev\/schemas\/compiled-icon\/([^/]+)$/);
   if (!match) {
     throw new Error(`Unexpected compiled icon schema URI: ${schemaUri}`);
   }
@@ -2027,7 +2041,7 @@ export const iconMeta: IconComponentMeta = ${serializeCode({
       id: entry.id,
       name: entry.name,
       componentName: entry.componentName,
-      schema: "https://cuneiform.dev/schemas/compiled-icon/1.0.0",
+      schema: "https://hiero.dev/schemas/compiled-icon/1.0.0",
       version: entry.version,
       availableSizes: entry.supportedSizes,
       availableModes: entry.supportedModes
@@ -2057,7 +2071,7 @@ const iconData = {
   id: ${JSON.stringify(iconId)},
   name: ${JSON.stringify(componentName)},
   componentName: ${JSON.stringify(componentName)},
-  $schema: 'https://cuneiform.dev/schemas/compiled-icon/1.0.0',
+  $schema: 'https://hiero.dev/schemas/compiled-icon/1.0.0',
   meta: {
     category: '',
     tags: [],
@@ -2293,7 +2307,7 @@ function generatePackageReadme(packageName, version, icons) {
   const sampleIcon = icons[0]?.id ?? "icon-name";
   return `# ${packageName}
 
-> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Cuneiform](https://cuneiform.dev).
+> ${iconCount} animated, stateful SVG icon${iconCount !== 1 ? "s" : ""} built with [Hiero](https://hiero.dev).
 
 ## Install
 
@@ -2304,24 +2318,24 @@ npm install ${packageName}
 ## Quick Start (React)
 
 \`\`\`tsx
-import { CuneiformIcon } from '${packageName}/react';
+import { HieroIcon } from '${packageName}/react';
 import icon from '${packageName}/icons/${sampleIcon}.compiled.json';
 
 function App() {
-  return <CuneiformIcon icon={icon} size={24} animate />;
+  return <HieroIcon icon={icon} size={24} animate />;
 }
 \`\`\`
 
 ## State Transitions
 
 \`\`\`tsx
-<CuneiformIcon icon={icon} state="active" animate />
+<HieroIcon icon={icon} state="active" animate />
 \`\`\`
 
 ## Effects
 
 \`\`\`tsx
-<CuneiformIcon icon={icon} effect="bounce" />
+<HieroIcon icon={icon} effect="bounce" />
 \`\`\`
 
 ## Icons (${iconCount})
@@ -2330,7 +2344,7 @@ ${iconList}
 
 ---
 
-*v${version} — generated by Cuneiform*
+*v${version} — generated by Hiero*
 `;
 }
 function serializeCanonicalJson(value) {
@@ -2567,7 +2581,7 @@ async function runBuild(repoRoot, config, previousSourceFiles, opts) {
   try {
     compiled = compileProject(project, {
       package: {
-        name: "cuneiform-live",
+        name: "hiero-live",
         version: "0.0.0",
         builtAt
       }
@@ -2663,7 +2677,7 @@ function watchSourceDir(sourceDir, onChanged, debounceMs = DEFAULT_DEBOUNCE_MS) 
 
 // ../../lib/live-sync/dev-server.ts
 async function startDevServer(serverConfig) {
-  const { repoRoot, cuneiform: config, port } = serverConfig;
+  const { repoRoot, hiero: config, port } = serverConfig;
   const state = {
     iconCount: 0,
     lastBuildAt: null,
@@ -2671,25 +2685,25 @@ async function startDevServer(serverConfig) {
     watching: false,
     previousSourceFiles: null
   };
-  console.log(`[cuneiform] Starting dev server on port ${port}...`);
-  console.log(`[cuneiform] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
-  console.log(`[cuneiform] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
+  console.log(`[hiero] Starting dev server on port ${port}...`);
+  console.log(`[hiero] Source directory: ${path7.resolve(repoRoot, config.sourceDir)}`);
+  console.log(`[hiero] Host targets: ${config.hostTargets.map((t) => `${t.kind}(${t.runtimeMode})`).join(", ")}`);
   const initialBuild = await fullRebuild(repoRoot, config);
   applyBuildResult(state, initialBuild);
   if (initialBuild.kind === "success") {
-    console.log(`[cuneiform] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
+    console.log(`[hiero] Initial build: ${initialBuild.totalIcons} icon(s) in ${initialBuild.durationMs}ms`);
   } else if (initialBuild.kind === "error") {
-    console.warn(`[cuneiform] Initial build failed: ${initialBuild.error}`);
-    console.warn(`[cuneiform] Continuing — server will retry on file change.`);
+    console.warn(`[hiero] Initial build failed: ${initialBuild.error}`);
+    console.warn(`[hiero] Continuing — server will retry on file change.`);
   }
   const sourceDir = path7.resolve(repoRoot, config.sourceDir);
   const watcher = watchSourceDir(sourceDir, async () => {
     const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
     applyBuildResult(state, result);
     if (result.kind === "success") {
-      console.log(`[cuneiform] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+      console.log(`[hiero] Rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
     } else if (result.kind === "error") {
-      console.warn(`[cuneiform] Rebuild failed: ${result.error}`);
+      console.warn(`[hiero] Rebuild failed: ${result.error}`);
     }
   });
   state.watching = watcher.active;
@@ -2700,7 +2714,7 @@ async function startDevServer(serverConfig) {
     server.on("error", reject);
     server.listen(port, "127.0.0.1", resolve);
   });
-  console.log(`[cuneiform] Listening on http://localhost:${port}`);
+  console.log(`[hiero] Listening on http://localhost:${port}`);
   return {
     port,
     async close() {
@@ -2712,7 +2726,7 @@ async function startDevServer(serverConfig) {
 }
 async function handleRequest(req, res, serverConfig, state) {
   const { method, url } = req;
-  const { repoRoot, cuneiform: config, apiSecret } = serverConfig;
+  const { repoRoot, hiero: config, apiSecret } = serverConfig;
   const requestOrigin = req.headers["origin"];
   if (requestOrigin) {
     res.setHeader("Access-Control-Allow-Origin", requestOrigin);
@@ -2745,12 +2759,12 @@ async function handleRequest(req, res, serverConfig, state) {
       sendJson(res, 404, { error: "Not found" });
     }
   } catch (err) {
-    console.error(`[cuneiform] Unhandled request error:`, err);
+    console.error(`[hiero] Unhandled request error:`, err);
     sendJson(res, 500, { error: "Internal server error" });
   }
 }
 async function handleGetStatus(res, serverConfig, state) {
-  const { repoRoot, cuneiform: config, port } = serverConfig;
+  const { repoRoot, hiero: config, port } = serverConfig;
   const status = {
     ok: true,
     repoRoot,
@@ -2820,7 +2834,7 @@ async function handlePostIcons(req, res, repoRoot, config, state) {
   const result = await incrementalRebuild(repoRoot, config, state.previousSourceFiles);
   applyBuildResult(state, result);
   if (result.kind === "success") {
-    console.log(`[cuneiform] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
+    console.log(`[hiero] API ingest: ${parsed.files.length} file(s) received, rebuilt ${result.changedIcons} icon(s) in ${result.durationMs}ms`);
   }
   sendJson(res, 200, {
     ok: true,
@@ -2917,13 +2931,13 @@ function extractIconList(sourceFiles) {
 
 // src/commands/dev.ts
 async function runDev(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "cuneiform.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path8.resolve(cwd, flags["config"]) : path8.join(cwd, "hiero.config.ts");
   const rawPort = flags["port"];
   const port = typeof rawPort === "string" && /^\d+$/.test(rawPort) ? parseInt(rawPort, 10) : 4400;
   const apiSecret = typeof flags["secret"] === "string" ? flags["secret"] : undefined;
   if (!existsSync2(configPath)) {
-    console.error(`[cuneiform] Config not found: ${path8.relative(cwd, configPath)}`);
-    console.error(`         Run \`cuneiform init\` to scaffold cuneiform.config.ts`);
+    console.error(`[hiero] Config not found: ${path8.relative(cwd, configPath)}`);
+    console.error(`         Run \`hiero init\` to scaffold hiero.config.ts`);
     process.exit(1);
   }
   let config;
@@ -2931,24 +2945,24 @@ async function runDev(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[cuneiform] Config invalid:
+      console.error(`[hiero] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[hiero] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const server = await startDevServer({
     repoRoot: cwd,
-    cuneiform: config,
+    hiero: config,
     port,
     apiSecret
   });
   const shutdown = async () => {
     console.log(`
-[cuneiform] Shutting down...`);
+[hiero] Shutting down...`);
     await server.close();
     process.exit(0);
   };
@@ -2962,10 +2976,10 @@ import path9 from "node:path";
 import { existsSync as existsSync3 } from "node:fs";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "node:fs/promises";
 async function runBuild2(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "cuneiform.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path9.resolve(cwd, flags["config"]) : path9.join(cwd, "hiero.config.ts");
   const outOverride = typeof flags["out"] === "string" ? flags["out"] : undefined;
   if (!existsSync3(configPath)) {
-    console.error(`[cuneiform] Config not found: ${path9.relative(cwd, configPath)}`);
+    console.error(`[hiero] Config not found: ${path9.relative(cwd, configPath)}`);
     process.exit(1);
   }
   let config;
@@ -2973,58 +2987,58 @@ async function runBuild2(cwd, flags) {
     const rawModule = await import(configPath);
     const result = loadConfig(rawModule.default, configPath);
     if (!result.ok) {
-      console.error(`[cuneiform] Config invalid:
+      console.error(`[hiero] Config invalid:
 ${result.error}`);
       process.exit(1);
     }
     config = result.config;
   } catch (err) {
-    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[hiero] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const releaseTargets = config.releaseTargets ?? [];
   if (releaseTargets.length === 0 && !outOverride) {
-    console.error(`[cuneiform] No releaseTargets configured and --out not provided.
-         Add a local-directory target to cuneiform.config.ts or pass --out <dir>.`);
+    console.error(`[hiero] No releaseTargets configured and --out not provided.
+         Add a local-directory target to hiero.config.ts or pass --out <dir>.`);
     process.exit(1);
   }
   const sourceDir = path9.resolve(cwd, config.sourceDir);
   if (!existsSync3(sourceDir)) {
-    console.error(`[cuneiform] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`cuneiform init\` to create it`);
+    console.error(`[hiero] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`hiero init\` to create it`);
     process.exit(1);
   }
-  console.log(`[cuneiform] Loading source from ${config.sourceDir}...`);
+  console.log(`[hiero] Loading source from ${config.sourceDir}...`);
   let project;
   try {
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
-    console.error(`[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[hiero] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
   if (iconCount === 0) {
-    console.warn(`[cuneiform] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
+    console.warn(`[hiero] Warning: no icons found in ${config.sourceDir}. Build will produce an empty output.`);
   }
-  console.log(`[cuneiform] Compiling ${iconCount} icon(s)...`);
+  console.log(`[hiero] Compiling ${iconCount} icon(s)...`);
   const builtAt = new Date().toISOString();
   let compiled;
   try {
     compiled = compileProject(project, {
       package: {
-        name: "cuneiform-build",
+        name: "hiero-build",
         version: "0.0.0",
         builtAt
       }
     });
   } catch (err) {
-    console.error(`[cuneiform] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[hiero] Compile failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const localDirTargets = outOverride ? [{ kind: "local-directory", outputMode: "snapshot", outputDir: outOverride }] : releaseTargets.filter((t) => t.kind === "local-directory");
   for (const target of localDirTargets) {
     const outDir = path9.resolve(cwd, target.outputDir);
-    console.log(`[cuneiform] Writing to ${target.outputDir}...`);
+    console.log(`[hiero] Writing to ${target.outputDir}...`);
     for (const file of compiled.files) {
       const targetPath = path9.join(outDir, file.path);
       await mkdir4(path9.dirname(targetPath), { recursive: true });
@@ -3035,46 +3049,46 @@ ${result.error}`);
   for (const target of releaseTargets) {
     if (target.kind === "git-pr") {
       console.log(`
-[cuneiform] git-pr target: ${target.owner}/${target.repo}
-         To open a pull request, use the Create PR action in the Cuneiform editor.`);
+[hiero] git-pr target: ${target.owner}/${target.repo}
+         To open a pull request, use the Create PR action in the Hiero editor.`);
     }
     if (target.kind === "npm-registry") {
       console.log(`
-[cuneiform] npm-registry target: ${target.packageName}
-         To publish to npm, use the Release action in the Cuneiform editor.`);
+[hiero] npm-registry target: ${target.packageName}
+         To publish to npm, use the Release action in the Hiero editor.`);
     }
   }
   const elapsedMs = Date.now() - new Date(builtAt).getTime();
   console.log(`
-[cuneiform] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
+[hiero] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
 }
 
 // src/commands/validate.ts
 import path10 from "node:path";
 import { existsSync as existsSync4 } from "node:fs";
 async function runValidate(cwd, flags) {
-  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "cuneiform.config.ts");
+  const configPath = typeof flags["config"] === "string" ? path10.resolve(cwd, flags["config"]) : path10.join(cwd, "hiero.config.ts");
   let exitCode = 0;
   if (!existsSync4(configPath)) {
-    console.error(`[cuneiform] Config not found: ${path10.relative(cwd, configPath)}`);
-    console.error(`         Run \`cuneiform init\` to scaffold cuneiform.config.ts`);
+    console.error(`[hiero] Config not found: ${path10.relative(cwd, configPath)}`);
+    console.error(`         Run \`hiero init\` to scaffold hiero.config.ts`);
     process.exit(1);
   }
   let rawModule;
   try {
     rawModule = await import(configPath);
   } catch (err) {
-    console.error(`[cuneiform] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[hiero] Failed to load config: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const loadResult = loadConfig(rawModule.default, configPath);
   if (!loadResult.ok) {
-    console.error(`[cuneiform] Config invalid:
+    console.error(`[hiero] Config invalid:
 ${loadResult.error}`);
     process.exit(1);
   }
   const config = loadResult.config;
-  console.log(`[cuneiform] Config`);
+  console.log(`[hiero] Config`);
   console.log(`   sourceDir:       ${config.sourceDir}`);
   console.log(`   hostTargets:     ${config.hostTargets.length}`);
   console.log(`   releaseTargets:  ${(config.releaseTargets ?? []).length}`);
@@ -3082,8 +3096,8 @@ ${loadResult.error}`);
   const sourceDir = path10.resolve(cwd, config.sourceDir);
   if (!existsSync4(sourceDir)) {
     console.error(`
-[cuneiform] Source directory not found: ${config.sourceDir}`);
-    console.error(`         Run \`cuneiform init\` to create it`);
+[hiero] Source directory not found: ${config.sourceDir}`);
+    console.error(`         Run \`hiero init\` to create it`);
     process.exit(1);
   }
   let project;
@@ -3091,7 +3105,7 @@ ${loadResult.error}`);
     project = await projectFromSourceDir(sourceDir);
   } catch (err) {
     console.error(`
-[cuneiform] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
+[hiero] Source read failed: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
   }
   const iconCount = Object.keys(project.icons).length;
@@ -3099,27 +3113,27 @@ ${loadResult.error}`);
     try {
       const payload = exportSourcePayload(project);
       console.log(`
-[cuneiform] Source`);
+[hiero] Source`);
       console.log(`   icons:   ${iconCount}`);
       console.log(`   files:   ${payload.files.length}`);
       console.log(`   status:  OK`);
     } catch (err) {
       console.error(`
-[cuneiform] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
+[hiero] Source export failed: ${err instanceof Error ? err.message : String(err)}`);
       exitCode = 1;
     }
   } else {
     console.log(`
-[cuneiform] Source`);
-    console.log(`   icons:   0  (no icons — run \`cuneiform init\` to populate from the editor)`);
+[hiero] Source`);
+    console.log(`   icons:   0  (no icons — run \`hiero init\` to populate from the editor)`);
     console.log(`   status:  OK`);
   }
   if (exitCode === 0) {
     console.log(`
-[cuneiform] Validation passed`);
+[hiero] Validation passed`);
   } else {
     console.error(`
-[cuneiform] Validation failed`);
+[hiero] Validation failed`);
     process.exit(exitCode);
   }
 }
@@ -3182,7 +3196,7 @@ async function main() {
       break;
     default:
       if (command) {
-        console.error(`[cuneiform] Unknown command: "${command}"
+        console.error(`[hiero] Unknown command: "${command}"
 `);
         printUsage();
         process.exit(1);
@@ -3193,20 +3207,20 @@ async function main() {
 }
 function printUsage() {
   console.log(`
-cuneiform — repo-native icon authoring by Cuneiform
+hiero — repo-native icon authoring by Hiero
 
 Usage:
-  cuneiform <command> [options]
+  hiero <command> [options]
 
 Commands:
-  init              Scaffold cuneiform.config.ts and source directory
+  init              Scaffold hiero.config.ts and source directory
   dev               Start live integration dev server (Lane 1)
   build             Deterministic snapshot build (Lane 2)
   validate          Validate config and source files
 
 Options:
   --port <n>        Dev server port (default: 4400)
-  --config <path>   Path to cuneiform.config.ts (default: ./cuneiform.config.ts)
+  --config <path>   Path to hiero.config.ts (default: ./hiero.config.ts)
   --out <path>      Output directory override for build
   --secret <token>  Shared secret for dev server API auth
   --version         Print version
@@ -3214,6 +3228,6 @@ Options:
 `);
 }
 main().catch((err) => {
-  console.error(`[cuneiform] ${err instanceof Error ? err.message : String(err)}`);
+  console.error(`[hiero] ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 });

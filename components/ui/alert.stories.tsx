@@ -17,7 +17,7 @@ export const Informational: Story = {
       <Info />
       <AlertTitle>morph target detected</AlertTitle>
       <AlertDescription>
-        The incoming variant has two more segments than the current one. Cuneiform will
+        The incoming variant has two more segments than the current one. Hiero will
         interpolate the extras from the nearest vertices.
       </AlertDescription>
     </Alert>

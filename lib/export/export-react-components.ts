@@ -62,7 +62,7 @@ export const iconMeta: IconComponentMeta = ${serializeCode({
       id: entry.id,
       name: entry.name,
       componentName: entry.componentName,
-      schema: 'https://cuneiform.dev/schemas/compiled-icon/1.0.0',
+      schema: 'https://hiero.dev/schemas/compiled-icon/1.0.0',
       version: entry.version,
       availableSizes: entry.supportedSizes,
       availableModes: entry.supportedModes,
@@ -97,7 +97,7 @@ const iconData = {
   id: ${JSON.stringify(iconId)},
   name: ${JSON.stringify(componentName)},
   componentName: ${JSON.stringify(componentName)},
-  $schema: 'https://cuneiform.dev/schemas/compiled-icon/1.0.0',
+  $schema: 'https://hiero.dev/schemas/compiled-icon/1.0.0',
   meta: {
     category: '',
     tags: [],

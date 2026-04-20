@@ -1,5 +1,5 @@
-// Install Config Types — defines the cuneiform.config.ts contract for repo-native icon authoring.
-// This config lives at the host repository root and tells Cuneiform:
+// Install Config Types — defines the hiero.config.ts contract for repo-native icon authoring.
+// This config lives at the host repository root and tells Hiero:
 //   - where canonical icon source lives
 //   - which host surfaces should update live during development
 //   - which release outputs should be produced for CI, review, or publishing
@@ -10,8 +10,8 @@
 // Top-level config
 // ---------------------------------------------------------------------------
 
-export type CuneiformConfig = {
-  /** Relative path to committed canonical icon source (e.g. 'cuneiform'). */
+export type HieroConfig = {
+  /** Relative path to committed canonical icon source (e.g. 'hiero'). */
   sourceDir: string;
   /** Dev-time integrations that react to icon changes. */
   hostTargets: HostTarget[];

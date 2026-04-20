@@ -10,7 +10,7 @@ export function generateIconLibrary(
   const typescript = options?.typescript !== false;
   const ext = typescript ? 'tsx' : 'jsx';
   const outputDir = trimSlashes(options?.outputDir ?? 'src');
-  const packageName = (options?.packageName ?? toKebab(project.meta.name)) || 'cuneiform-icons';
+  const packageName = (options?.packageName ?? toKebab(project.meta.name)) || 'hiero-icons';
 
   const files: FileMap = {};
   const exportRows: string[] = [];

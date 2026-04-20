@@ -327,7 +327,7 @@ function AddTargetForm({
   const [repo, setRepo] = useState('');
   const [baseBranch, setBaseBranch] = useState('main');
   const [packagePath, setPackagePath] = useState('');
-  const [runtimePackage, setRuntimePackage] = useState('@cuneiform/runtime-react');
+  const [runtimePackage, setRuntimePackage] = useState('@hiero/runtime-react');
   const [outputDir, setOutputDir] = useState('src');
   // npm-registry fields
   const [registryUrl, setRegistryUrl] = useState('https://registry.npmjs.org');
@@ -340,7 +340,7 @@ function AddTargetForm({
   const [swiftUIMode, setSwiftUIMode] = useState<'swiftui' | 'uikit'>('swiftui');
   const [flutterSdkMin, setFlutterSdkMin] = useState('3.0.0');
   const [dartPackageName, setDartPackageName] = useState('');
-  const [customElementPrefix, setCustomElementPrefix] = useState('cuneiform');
+  const [customElementPrefix, setCustomElementPrefix] = useState('hiero');
   const [shadowDom, setShadowDom] = useState(true);
 
   const isValid =
@@ -374,7 +374,7 @@ function AddTargetForm({
       target.adapterConfig!.dartPackageName = dartPackageName || undefined;
     }
     if (platform === 'web-component') {
-      target.adapterConfig!.customElementPrefix = customElementPrefix || 'cuneiform';
+      target.adapterConfig!.customElementPrefix = customElementPrefix || 'hiero';
       target.adapterConfig!.shadowDom = shadowDom;
     }
 
@@ -615,7 +615,7 @@ function AddTargetForm({
             <div className="grid gap-1.5">
               <Label className="text-xs">Element Prefix</Label>
               <Input
-                placeholder="cuneiform"
+                placeholder="hiero"
                 value={customElementPrefix}
                 onChange={(e) => setCustomElementPrefix(e.target.value)}
               />

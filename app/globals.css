@@ -759,7 +759,7 @@
     padding: 0.125rem 0.5rem;
     font-size: var(--text-caption);
     line-height: 1;
-    font-weight: 500;
+    font-weight: var(--type-weight-strong);
     color: var(--muted-foreground);
     white-space: nowrap;
   }
@@ -1434,7 +1434,7 @@
 
   .wire-layer-row[data-active='true'] .wire-layer-name {
     color: var(--foreground);
-    font-weight: 600;
+    font-weight: var(--type-weight-strong);
   }
 
   .wire-layer-row:focus-visible,
@@ -1733,7 +1733,7 @@
     padding: 0 2px;
     font-size: var(--text-body);
     line-height: 18px;
-    font-weight: 600;
+    font-weight: var(--type-weight-strong);
     color: var(--foreground);
   }
 

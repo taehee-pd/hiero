@@ -429,7 +429,7 @@ export const Rulers = memo(function Rulers({
                 y={10}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
+                fontFamily="'Spline Sans Mono Variable', 'Spline Sans Mono', ui-monospace, SFMono-Regular, monospace"
               >
                 {formatTickValue(tick.value)}
               </text>
@@ -458,7 +458,7 @@ export const Rulers = memo(function Rulers({
                 y={tick.screen - 3}
                 fill="rgba(148,163,184,0.92)"
                 fontSize="9"
-                fontFamily="Geist Mono, ui-monospace, SFMono-Regular, monospace"
+                fontFamily="'Spline Sans Mono Variable', 'Spline Sans Mono', ui-monospace, SFMono-Regular, monospace"
                 transform={`rotate(-90 10 ${tick.screen - 3})`}
               >
                 {formatTickValue(tick.value)}

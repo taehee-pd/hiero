@@ -264,9 +264,14 @@
   --primary-soft: rgba(49, 134, 238, 0.08);
 
   /* ── Typography ─��� */
-  --type-family-default: var(--font-geist-sans);
-  --type-family-display: var(--font-geist-sans);
-  --type-family-mono: var(--font-geist-mono);
+  /* Spline Sans is loaded by @fontsource-variable/spline-sans in app/layout.tsx
+     as 'Spline Sans Variable' (weight axis 300–700). The CSS variables below
+     are referenced app-wide as the canonical display / body / mono families. */
+  --font-spline-sans: 'Spline Sans Variable', 'Spline Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-spline-mono: 'Spline Sans Mono Variable', 'Spline Sans Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --type-family-default: var(--font-spline-sans);
+  --type-family-display: var(--font-spline-sans);
+  --type-family-mono: var(--font-spline-mono);
   --type-weight-default: 450;
   --type-weight-medium: 450;
   --type-weight-strong: 550;
@@ -868,7 +873,7 @@
     --editor-muted: #746c60;
     --editor-accent: #068ea0;
     --editor-accent-soft: rgba(6, 142, 160, 0.16);
-    --editor-ui-font: 'Work Sans', var(--font-system);
+    --editor-ui-font: var(--font-spline-sans);
     --editor-display-font: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
     background:
       radial-gradient(circle at top left, rgba(255, 255, 255, 0.76), transparent 30%),
@@ -1270,7 +1275,7 @@
   .wireframe-editor {
     background: #ffffff;
     color: rgba(0, 0, 0, 0.9);
-    font-family: var(--font-geist-sans);
+    font-family: var(--font-spline-sans);
     font-size: 12px;
   }
 
@@ -1347,7 +1352,7 @@
   }
 
   .wire-title {
-    font-family: var(--font-geist-sans);
+    font-family: var(--font-spline-sans);
     font-size: 12px;
     line-height: 18px;
     font-weight: 550;
@@ -1718,7 +1723,7 @@
     gap: 6px;
     border-right: 1px solid var(--border-subtle);
     padding: 0 12px;
-    font-family: var(--font-geist-sans);
+    font-family: var(--font-spline-sans);
     font-size: 11px;
     line-height: 16px;
     font-weight: 550;

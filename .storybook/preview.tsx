@@ -3,14 +3,8 @@ import { ThemeProvider } from 'next-themes';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/toaster';
 import { resetToastStateForTest } from '@/components/ui/use-toast';
-// NOTE (Phase 1 spike workaround): geist/font/{sans,mono} call next/font/local
-// at module eval. @storybook/nextjs-vite does not fully shim next/font yet, so
-// importing them here crashes the Vite build ("default is not exported by
-// next/font/local"). Drop them in Storybook and fall back to system fonts via
-// the --font-system token. The app itself is unaffected.
-import '@fontsource/work-sans/400.css';
-import '@fontsource/work-sans/500.css';
-import '@fontsource/work-sans/600.css';
+import '@fontsource-variable/spline-sans';
+import '@fontsource-variable/spline-sans-mono';
 import '../app/globals.css';
 import './preview.css';
 import React from 'react';

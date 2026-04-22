@@ -396,9 +396,9 @@ not supported.
      story gets `/DESIGN.md` tokens automatically.
   4. Radix `<Toaster />` from `components/ui/toaster.tsx` mounted at
      decorator root (per §9 #1 decision — shadcn Radix path, not Sonner).
-  5. Geist Sans + Geist Mono font loaders (matches app layout), since
-     `/DESIGN.md` §3 specifies Geist Sans 450 as display and Geist Mono
-     for code.
+  5. Spline Sans + Spline Sans Mono font loaders (matches app layout),
+     since `/DESIGN.md` specifies Spline Sans 450 as display and Spline
+     Sans Mono for code.
 - `parameters.nextjs.appDirectory = true` global.
 - `parameters.backgrounds` loaded from DESIGN.md §2 background colors
   (white / #0A0A0A), not arbitrary Storybook defaults.

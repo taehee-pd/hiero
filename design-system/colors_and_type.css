@@ -4,26 +4,11 @@
    Dark-first professional icon authoring workspace.
    ══════════════════════════════════════════════════ */
 
-/* ── Fonts: Geist + Geist Mono (variable, local) ──
-   Sourced via `npm i geist` — `geist/dist/fonts/geist-sans/Geist-Variable.woff2`
-   and `geist/dist/fonts/geist-mono/GeistMono-Variable.woff2`.
-   Variable axis is weight 100–900; we use 450 for body, 550 for emphasis. */
-@font-face {
-  font-family: 'Geist';
-  src: url('fonts/Geist-Variable.woff2') format('woff2-variations'),
-       url('fonts/Geist-Variable.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Geist Mono';
-  src: url('fonts/GeistMono-Variable.woff2') format('woff2-variations'),
-       url('fonts/GeistMono-Variable.woff2') format('woff2');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
+/* ── Fonts: Spline Sans + Spline Sans Mono (Google Fonts, variable) ──
+   Loaded from Google Fonts. Variable axis is weight 300–700; we use 450
+   for body and 550 for emphasis. Consumers that need fully offline use
+   should swap this @import for locally hosted variable WOFF2 files. */
+@import url('https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300..700&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap');
 
 :root {
   /* ── Primitive: Greyscale ── */
@@ -68,9 +53,9 @@
   --lighter-700: rgba(255,255,255,0.85);
 
   /* ── Typography families ── */
-  --font-sans: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  --font-display: 'Geist', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Spline Sans', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: 'Spline Sans', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 
   /* ── Typography weights (restrained — 450 / 550 is identity) ── */

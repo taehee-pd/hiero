@@ -305,7 +305,7 @@ export type SvgUnsupportedFeature = {
 export type PaintRef =
   | { mode: 'currentColor' }
   | { mode: 'fixed'; value: string }
-  | { mode: 'token'; token: string }
+  | { mode: 'token'; token: string; fallback?: string }
   | { mode: 'linearGradient'; stops: GradientStop[]; angle: number }
   | {
       mode: 'radialGradient';

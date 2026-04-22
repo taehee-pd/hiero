@@ -13,9 +13,6 @@ importers:
       '@fontsource-variable/spline-sans-mono':
         specifier: ^5.2.8
         version: 5.2.8
-      '@fontsource/work-sans':
-        specifier: ^5.2.8
-        version: 5.2.8
       '@heroicons/react':
         specifier: ^2.2.0
         version: 2.2.0(react@19.2.4)
@@ -758,12 +755,6 @@ packages:
     resolution:
       {
         integrity: sha512-Cn4tVu+wTZpJoD9zHN1fio0bPXq/79qE9yvQmiUz09rBZTJntKYNpA5bawDeRtS07dTxueeAVJqVwKGb0TNheQ==,
-      }
-
-  '@fontsource/work-sans@5.2.8':
-    resolution:
-      {
-        integrity: sha512-6LaHjVVgts+rnrcqvEkP2+iUB/jw1oDSYsGO0+TltAhnWki9Hnf/UGpgMQh2jcm0GEH8VqCPnq4PpmHLFzxXtQ==,
       }
 
   '@happy-dom/global-registrator@20.9.0':
@@ -5575,8 +5566,6 @@ snapshots:
   '@fontsource-variable/spline-sans-mono@5.2.8': {}
 
   '@fontsource-variable/spline-sans@5.2.8': {}
-
-  '@fontsource/work-sans@5.2.8': {}
 
   '@happy-dom/global-registrator@20.9.0':
     dependencies:

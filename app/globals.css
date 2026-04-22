@@ -873,7 +873,7 @@
     --editor-muted: #746c60;
     --editor-accent: #068ea0;
     --editor-accent-soft: rgba(6, 142, 160, 0.16);
-    --editor-ui-font: 'Work Sans', var(--font-system);
+    --editor-ui-font: var(--font-spline-sans);
     --editor-display-font: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
     background:
       radial-gradient(circle at top left, rgba(255, 255, 255, 0.76), transparent 30%),

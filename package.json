@@ -37,7 +37,6 @@
   "dependencies": {
     "@fontsource-variable/spline-sans": "^5.2.8",
     "@fontsource-variable/spline-sans-mono": "^5.2.8",
-    "@fontsource/work-sans": "^5.2.8",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.9.1",
     "@material-symbols/svg-400": "^0.42.3",

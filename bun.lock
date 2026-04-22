@@ -7,7 +7,6 @@
       "dependencies": {
         "@fontsource-variable/spline-sans": "^5.2.8",
         "@fontsource-variable/spline-sans-mono": "^5.2.8",
-        "@fontsource/work-sans": "^5.2.8",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^3.9.1",
         "@material-symbols/svg-400": "^0.42.3",
@@ -221,8 +220,6 @@
     "@fontsource-variable/spline-sans": ["@fontsource-variable/spline-sans@5.2.8", "", {}, "sha512-Cn4tVu+wTZpJoD9zHN1fio0bPXq/79qE9yvQmiUz09rBZTJntKYNpA5bawDeRtS07dTxueeAVJqVwKGb0TNheQ=="],
 
     "@fontsource-variable/spline-sans-mono": ["@fontsource-variable/spline-sans-mono@5.2.8", "", {}, "sha512-Z1yYiEtP+8Gll5BJaR9dICK/ZTxoTWH+ZBH6rOTMWajPSOxwl7IZplkwX2J1QhMxqulhhdMrkRx6SkkLM+jLQw=="],
-
-    "@fontsource/work-sans": ["@fontsource/work-sans@5.2.8", "", {}, "sha512-6LaHjVVgts+rnrcqvEkP2+iUB/jw1oDSYsGO0+TltAhnWki9Hnf/UGpgMQh2jcm0GEH8VqCPnq4PpmHLFzxXtQ=="],
 
     "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.9.0", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.9.0" } }, "sha512-lBW6/m5BIFl3pMuWPNN0lIOYw9LMCmPfix53ExS3FBi4E+NELEljQ3xH6aAV9IYiQRfn9YIIgzzMrD0vIcD7tw=="],
 

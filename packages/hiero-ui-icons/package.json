@@ -8,9 +8,6 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "sideEffects": false,
-  "peerDependencies": {
-    "react": "^19.0.0"
-  },
   "scripts": {
     "build": "bun ../../scripts/build-ui-icons.ts",
     "import": "bun ../../scripts/import-ui-icons.ts"

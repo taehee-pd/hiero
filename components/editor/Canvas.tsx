@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Icon as UiIcon } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { editorStore } from '@/lib/editor-store/store';

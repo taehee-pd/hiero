@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, HelpCircle, Icon as UiIcon, Import, Maximize2, Minus, Package, Plus, Redo2, Save, Undo2 } from '@hiero/ui-icons';
+import { Download, HelpCircle, Icon as UiIcon, Maximize2, Minus, Package, Plus, Redo2, Save, Undo2 } from '@hiero/ui-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 

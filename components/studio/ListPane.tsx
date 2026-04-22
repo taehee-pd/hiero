@@ -1,6 +1,6 @@
 'use client';
 
-import { Icon as UiIcon, Search } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useMemo, useState, useRef } from 'react';
 
 import { IconButton } from '@/components/ds/icon-button';

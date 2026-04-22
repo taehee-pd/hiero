@@ -1,6 +1,6 @@
 'use client';
 
-import { Icon as UiIcon, Import } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 

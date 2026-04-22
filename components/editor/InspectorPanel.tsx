@@ -1,6 +1,6 @@
 'use client';
 
-import { AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignStartHorizontal, AlignStartVertical, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, BetweenHorizontalStart, BetweenVerticalStart, Check, Icon as UiIcon, Lock, Minus, Shapes, SplitSquareHorizontal, Squircle } from '@hiero/ui-icons';
+import { AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignStartHorizontal, AlignStartVertical, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, BetweenHorizontalStart, BetweenVerticalStart, Icon as UiIcon, Minus, Shapes, SplitSquareHorizontal, Squircle } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';

@@ -17,7 +17,7 @@
  * Corresponds to screen 9C in specs/ui/screens.md.
  */
 
-import { Icon as UiIcon, Settings } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';

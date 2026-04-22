@@ -1,6 +1,6 @@
 'use client';
 
-import { Icon as UiIcon, Package } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useState } from 'react';
 
 import { Button } from '@/components/ui/button';

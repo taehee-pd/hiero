@@ -1,6 +1,6 @@
 'use client';
 
-import { Icon as UiIcon, Save, Search } from '@hiero/ui-icons';
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useTheme } from 'next-themes';

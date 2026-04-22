@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Icon design studio for stateful, animated SVG icons",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -23,6 +26,9 @@
     "test:import": "bun test tests/adapter-sdk.test.ts tests/lucide-adapter.test.ts tests/normalized-ir.test.ts tests/raw-svg-adapter.test.ts tests/svg-normalizer.test.ts tests/svg-sanitizer.test.ts tests/svg-import.test.ts tests/svg-import-flow.test.ts tests/import-svg.test.ts",
     "type-check": "tsc --noEmit",
     "compile:icons": "bun scripts/compile-icons.ts",
+    "icons:import": "bun scripts/import-ui-icons.ts",
+    "icons:build": "bun scripts/build-ui-icons.ts",
+    "icons:verify": "bun scripts/build-ui-icons.ts && git diff --quiet -- packages/hiero-ui-icons/ || (echo 'packages/hiero-ui-icons is stale; run pnpm icons:build and commit the result' && exit 1)",
     "compile:from-source": "bun scripts/compile-from-source.ts",
     "build:icons:package": "bun scripts/build-icons-package.ts",
     "validate:icons:package": "bun scripts/validate-icons-package.ts",
@@ -35,6 +41,7 @@
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {
+    "@hiero/ui-icons": "workspace:*",
     "@fontsource-variable/spline-sans": "^5.2.8",
     "@fontsource-variable/spline-sans-mono": "^5.2.8",
     "@heroicons/react": "^2.2.0",

@@ -1,0 +1,15 @@
+{
+  "name": "@hiero/ui-icons",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Hiero's own UI icon set — authored in Hiero, rendered by the Hiero runtime. Consumed by the app.",
+  "author": "taehee-pd <j.taehee@icloud.com>",
+  "license": "MIT",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "sideEffects": false,
+  "scripts": {
+    "build": "bun ../../scripts/build-ui-icons.ts",
+    "import": "bun ../../scripts/import-ui-icons.ts"
+  }
+}

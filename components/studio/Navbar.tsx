@@ -1,25 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ChevronDown,
-  Download,
-  FilePlus2,
-  FolderOpen,
-  Import,
-  Keyboard,
-  Monitor,
-  Moon,
-  Pencil,
-  Redo2,
-  Save,
-  Search,
-  Sun,
-  FileJson,
-  Package,
-  Square,
-  Undo2,
-} from 'lucide-react';
+
 import { useTheme } from 'next-themes';
 import {
   AlertDialog,
@@ -266,48 +249,48 @@ export function Navbar() {
                     WebkitMaskRepeat: 'no-repeat',
                   }}
                 />
-                <ChevronDown className="size-3 text-muted-foreground" />
+                <UiIcon name="chevron-down" size={12} className="size-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={6} className="w-56">
               {/* File */}
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger><FilePlus2 className="size-4" />File</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger><UiIcon name="file-plus-2" size={16} className="size-4" />File</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={handleNewProject}><FilePlus2 className="size-4" />New Project</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void handleOpenProject()}><FolderOpen className="size-4" />Open Project</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleNewProject}><UiIcon name="file-plus-2" size={16} className="size-4" />New Project</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleOpenProject()}><UiIcon name="folder-open" size={16} className="size-4" />Open Project</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void handleSave()}><Save className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="save" size={16} className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><Import className="size-4" />Import Icons</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><UiIcon name="import" size={16} className="size-4" />Import Icons</DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
               {/* Edit */}
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Undo2 className="size-4" />Edit</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger><UiIcon name="undo-2" size={16} className="size-4" />Edit</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem onSelect={undo}><Undo2 className="size-4" />Undo<DropdownMenuShortcut>⌘Z</DropdownMenuShortcut></DropdownMenuItem>
-                  <DropdownMenuItem onSelect={redo}><Redo2 className="size-4" />Redo<DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={undo}><UiIcon name="undo-2" size={16} className="size-4" />Undo<DropdownMenuShortcut>⌘Z</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={redo}><UiIcon name="redo-2" size={16} className="size-4" />Redo<DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut></DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
               {/* Export */}
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Download className="size-4" />Export</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger><UiIcon name="download" size={16} className="size-4" />Export</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem onSelect={handleExportSvgPackage} disabled={exporting}>
-                    <Download className="size-4" />Quick ZIP (SVG package)
+                    <UiIcon name="download" size={16} className="size-4" />Quick ZIP (SVG package)
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={handleExportReactLibrary} disabled={exporting}>
-                    <Download className="size-4" />React library (.zip)
+                    <UiIcon name="download" size={16} className="size-4" />React library (.zip)
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
-                    <FileJson className="size-4" />Lottie JSON…
+                    <UiIcon name="file-json" size={16} className="size-4" />Lottie JSON…
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}>
-                    <Package className="size-4" />Full distribution options…
+                    <UiIcon name="package" size={16} className="size-4" />Full distribution options…
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -316,23 +299,23 @@ export function Navbar() {
 
               {/* View / Preferences */}
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Monitor className="size-4" />View</DropdownMenuSubTrigger>
+                <DropdownMenuSubTrigger><UiIcon name="monitor" size={16} className="size-4" />View</DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {mounted && (
                     <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
-                      {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                      {resolvedTheme === 'dark' ? <UiIcon name="sun" size={16} className="size-4" /> : <UiIcon name="moon" size={16} className="size-4" />}
                       {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onSelect={() => setCommandOpen(true)}><Search className="size-4" />Search Icons<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setCommandOpen(true)}><UiIcon name="search" size={16} className="size-4" />Search Icons<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
               <DropdownMenuSeparator />
 
               {/* Help */}
-              <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}><Keyboard className="size-4" />Keyboard Shortcuts<DropdownMenuShortcut>?</DropdownMenuShortcut></DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setCommandOpen(true)}><Search className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}><UiIcon name="keyboard" size={16} className="size-4" />Keyboard Shortcuts<DropdownMenuShortcut>?</DropdownMenuShortcut></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setCommandOpen(true)}><UiIcon name="search" size={16} className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -357,7 +340,7 @@ export function Navbar() {
               onClick={startEditingName}
             >
               <span className="truncate text-sm font-semibold tracking-tight text-foreground">{projectName}</span>
-              <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+              <UiIcon name="pencil" size={12} className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           )}
 
@@ -371,14 +354,14 @@ export function Navbar() {
         {/* Right: quick actions */}
         <div className="flex items-center gap-0.5">
           {/* Save */}
-          <IconButton icon={<Save />} aria-label="Save" onClick={() => void handleSave()} kbd={['Cmd', 'S']} />
+          <IconButton icon={<UiIcon name="save" />} aria-label="Save" onClick={() => void handleSave()} kbd={['Cmd', 'S']} />
 
           {/* Undo/Redo */}
-          <IconButton icon={<Undo2 />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />
-          <IconButton icon={<Redo2 />} aria-label="Redo" onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
+          <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />
+          <IconButton icon={<UiIcon name="redo-2" />} aria-label="Redo" onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
 
           {/* Search */}
-          <IconButton icon={<Search />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
+          <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
         </div>
       </header>
 
@@ -455,7 +438,7 @@ export function Navbar() {
                   if (iconSetId) editorStore.getState().openIconTab(iconSetId, icon.id);
                 }}
               >
-                <Square className="size-4" />
+                <UiIcon name="square" size={16} className="size-4" />
                 <span>{icon.name}</span>
               </CommandItem>
             ))}

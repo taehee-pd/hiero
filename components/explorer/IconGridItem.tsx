@@ -1,8 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useRef } from 'react';
 
-import { CheckSquare, Copy, Grid3X3, Heart, Pencil, Square as SquareIcon, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -158,7 +158,7 @@ export function IconGridItem({
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
               ) : (
-                <Grid3X3 className="size-4 text-muted-foreground/40" />
+                <UiIcon name="grid-3x3" size={16} className="size-4 text-muted-foreground/40" />
               )}
             </div>
             <div className="w-full text-center">
@@ -227,32 +227,32 @@ export function IconGridItem({
           so a Select / Deselect item here is the accessible fallback.
         */}
         <ContextMenuItem onSelect={onShiftClick}>
-          {selected ? <CheckSquare className="size-4" /> : <SquareIcon className="size-4" />}
+          {selected ? <UiIcon name="check-square" size={16} className="size-4" /> : <UiIcon name="square" size={16} className="size-4" />}
           {selected ? 'Deselect' : 'Select'}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onSelect={onToggleFavorite}>
-          <Heart className="size-4" />
+          <UiIcon name="heart" size={16} className="size-4" />
           {favorite ? 'Unfavorite' : 'Favorite'}
         </ContextMenuItem>
         {onRename ? (
           <ContextMenuItem
             onSelect={() => startRename(iconName)}
           >
-            <Pencil className="size-4" />
+            <UiIcon name="pencil" size={16} className="size-4" />
             Rename
           </ContextMenuItem>
         ) : null}
         {onDuplicate ? (
           <ContextMenuItem onSelect={onDuplicate}>
-            <Copy className="size-4" />
+            <UiIcon name="copy" size={16} className="size-4" />
             Duplicate
           </ContextMenuItem>
         ) : null}
         <ContextMenuSeparator />
         {onDelete ? (
           <ContextMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
-            <Trash2 className="size-4" />
+            <UiIcon name="trash-2" size={16} className="size-4" />
             Delete
           </ContextMenuItem>
         ) : null}

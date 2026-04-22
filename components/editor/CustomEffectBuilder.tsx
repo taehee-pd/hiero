@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,7 +73,7 @@ export function CustomEffectBuilder({
           className="text-muted-foreground hover:text-foreground"
           onClick={onRemove}
         >
-          <Trash2 className="size-4" />
+          <UiIcon name="trash-2" size={16} className="size-4" />
         </Button>
       </div>
 
@@ -216,7 +217,7 @@ function CustomTracksEditor({
           className="h-6 gap-1 rounded-lg text-[length:var(--text-caption)]"
           onClick={addTrack}
         >
-          <Plus className="size-3" /> Add Track
+          <UiIcon name="plus" size={12} className="size-3" /> Add Track
         </Button>
       </div>
 
@@ -251,7 +252,7 @@ function CustomTracksEditor({
                 className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                 onClick={() => removeTrack(index)}
               >
-                <Trash2 className="size-3" />
+                <UiIcon name="trash-2" size={12} className="size-3" />
               </button>
             </div>
           </div>

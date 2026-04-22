@@ -1,28 +1,9 @@
 'use client';
 
+import { Icon as UiIcon, MousePointer2, PenTool, Square } from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Blend,
-  ChevronDown,
-  Copy,
-  Eye,
-  EyeOff,
-  FolderOpen,
-  HelpCircle,
-  Loader2,
-  Lock,
-  Magnet,
-  Menu,
-  MousePointer2,
-  Pencil,
-  PenTool,
-  Plus,
-  Ruler,
-  Square,
-  Trash2,
-  X,
-} from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   CommandDialog,
@@ -230,7 +211,6 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
   );
 }
 
-
 /* ToolRail removed — search/import actions moved to sidebar head */
 
 // Type management section — lets users define named visual types per variant
@@ -431,7 +411,7 @@ export function TypesSection({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex items-center text-muted-foreground/80">
-                            <Lock className="size-3" />
+                            <UiIcon name="lock" size={12} className="size-3" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="right">Default type — cannot be deleted, but the label can be renamed.</TooltipContent>
@@ -448,7 +428,7 @@ export function TypesSection({
                         aria-label={`Duplicate ${typeId}`}
                         onClick={() => onDuplicateType(typeId, `${typeId}-copy`)}
                       >
-                        <Copy className="size-3" />
+                        <UiIcon name="copy" size={12} className="size-3" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -457,7 +437,7 @@ export function TypesSection({
                         aria-label={`Delete ${typeId}`}
                         onClick={() => setDeleteTarget(typeId)}
                       >
-                        <X className="size-3" />
+                        <UiIcon name="x" size={12} className="size-3" />
                       </Button>
                     </div>
                   )}
@@ -475,14 +455,14 @@ export function TypesSection({
                     }, 0);
                   }}
                 >
-                  <Pencil className="size-4" />
+                  <UiIcon name="pencil" size={16} className="size-4" />
                   Rename
                   <ContextMenuShortcut>F2</ContextMenuShortcut>
                 </ContextMenuItem>
                 <ContextMenuItem
                   onSelect={() => onDuplicateType(typeId, `${typeId}-copy`)}
                 >
-                  <Copy className="size-4" />
+                  <UiIcon name="copy" size={16} className="size-4" />
                   Duplicate
                 </ContextMenuItem>
                 {isDefault ? null : (
@@ -492,7 +472,7 @@ export function TypesSection({
                       onSelect={() => setDeleteTarget(typeId)}
                       className="text-destructive focus:text-destructive"
                     >
-                      <Trash2 className="size-4" />
+                      <UiIcon name="trash-2" size={16} className="size-4" />
                       Delete
                     </ContextMenuItem>
                   </>
@@ -592,7 +572,7 @@ function InlineEditableTitle({
       onClick={startEditing}
     >
       <span className="truncate">{value}</span>
-      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
+      <UiIcon name="pencil" size={12} className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
     </button>
   );
 }
@@ -746,7 +726,7 @@ function LeftSidebar({
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem onSelect={() => onSelectVariant(variant.id)}>
-                          <Pencil className="size-4" />
+                          <UiIcon name="pencil" size={16} className="size-4" />
                           Resize
                         </ContextMenuItem>
                         <ContextMenuItem
@@ -763,7 +743,7 @@ function LeftSidebar({
                             });
                           }}
                         >
-                          <Copy className="size-4" />
+                          <UiIcon name="copy" size={16} className="size-4" />
                           Duplicate
                         </ContextMenuItem>
                         <ContextMenuSeparator />
@@ -774,7 +754,7 @@ function LeftSidebar({
                             editorStore.getState().removeVariant?.(currentIcon.id, variant.id);
                           }}
                         >
-                          <Trash2 className="size-4" />
+                          <UiIcon name="trash-2" size={16} className="size-4" />
                           Delete
                         </ContextMenuItem>
                       </ContextMenuContent>
@@ -1037,9 +1017,9 @@ function LayerRowsList({
                   aria-label={row.layer.visible === false ? 'Show layer' : 'Hide layer'}
                 >
                   {row.layer.visible === false ? (
-                    <EyeOff className="size-3.5" />
+                    <UiIcon name="eye-off" size={14} className="size-3.5" />
                   ) : (
-                    <Eye className="size-3.5" />
+                    <UiIcon name="eye" size={14} className="size-3.5" />
                   )}
                 </button>
               </div>
@@ -1050,7 +1030,7 @@ function LayerRowsList({
                   beginRename(row.layer.id);
                 }}
               >
-                <Pencil className="size-4" />
+                <UiIcon name="pencil" size={16} className="size-4" />
                 Rename
                 <ContextMenuShortcut>F2</ContextMenuShortcut>
               </ContextMenuItem>
@@ -1060,7 +1040,7 @@ function LayerRowsList({
                   editorStore.getState().duplicateSelectedLayers?.();
                 }}
               >
-                <Copy className="size-4" />
+                <UiIcon name="copy" size={16} className="size-4" />
                 Duplicate
                 <ContextMenuShortcut>⌘D</ContextMenuShortcut>
               </ContextMenuItem>
@@ -1091,7 +1071,7 @@ function LayerRowsList({
                   editorStore.getState().removeSelectedLayers?.();
                 }}
               >
-                <Trash2 className="size-4" />
+                <UiIcon name="trash-2" size={16} className="size-4" />
                 Delete
                 <ContextMenuShortcut>⌫</ContextMenuShortcut>
               </ContextMenuItem>
@@ -1183,7 +1163,7 @@ function CanvasDock({
         <PopoverTrigger asChild>
           <Button variant="ghost" className="wire-zoom-trigger" aria-label="Canvas zoom controls">
             <span>{formatZoomPercent(zoom)}</span>
-            <ChevronDown className="size-3.5" />
+            <UiIcon name="chevron-down" size={14} className="size-3.5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -1276,7 +1256,7 @@ function CanvasDock({
               className="wire-dock-icon"
               onClick={onToggleSnap}
             >
-              <Magnet className="size-4" />
+              <UiIcon name="magnet" size={16} className="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Snap {snapEnabled ? 'On' : 'Off'}</TooltipContent>
@@ -1292,7 +1272,7 @@ function CanvasDock({
               className="wire-dock-icon"
               onClick={onToggleGuides}
             >
-              <Ruler className="size-4" />
+              <UiIcon name="ruler" size={16} className="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Guides {guidesVisible ? 'On' : 'Off'}</TooltipContent>
@@ -1410,7 +1390,7 @@ function RightSidebar({
                             className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label="What is Role?"
                           >
-                            <HelpCircle className="size-3" />
+                            <UiIcon name="help-circle" size={12} className="size-3" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="max-w-[220px]">{ROLE_TOOLTIP}</TooltipContent>
@@ -1700,7 +1680,7 @@ function RightSidebar({
                             className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             aria-label="What is Rendering mode?"
                           >
-                            <HelpCircle className="size-3" />
+                            <UiIcon name="help-circle" size={12} className="size-3" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="max-w-[240px]">{RENDERING_MODE_TOOLTIP}</TooltipContent>
@@ -1772,7 +1752,7 @@ function RightSidebar({
                     className="h-6 rounded-md px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     onClick={onDeleteVariant}
                   >
-                    <Trash2 className="size-3" />
+                    <UiIcon name="trash-2" size={12} className="size-3" />
                     Delete this size
                   </Button>
                 </div>
@@ -2189,7 +2169,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           onClick={() => setLeftSidebarOpen((v) => !v)}
           aria-label={leftSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          {leftSidebarOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+          {leftSidebarOpen ? <UiIcon name="x" size={16} className="size-4" /> : <UiIcon name="menu" size={16} className="size-4" />}
         </Button>
 
         {/* Left sidebar overlay for md breakpoint */}
@@ -2285,7 +2265,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                     className="wire-mini-button"
                     onClick={handleCreateBlankIcon}
                   >
-                    <Plus className="size-3.5" />
+                    <UiIcon name="plus" size={14} className="size-3.5" />
                     New icon
                   </Button>
                   <Button
@@ -2294,7 +2274,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                     className="wire-mini-button"
                     onClick={() => setImportDialogOpen(true)}
                   >
-                    <FolderOpen className="size-3.5" />
+                    <UiIcon name="folder-open" size={14} className="size-3.5" />
                     Import
                   </Button>
                 </div>
@@ -2354,7 +2334,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleCreateBlankIcon();
               }}
             >
-              <Plus className="size-4" />
+              <UiIcon name="plus" size={16} className="size-4" />
               <span>New icon</span>
             </CommandItem>
             <CommandItem
@@ -2363,7 +2343,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 setImportDialogOpen(true);
               }}
             >
-              <FolderOpen className="size-4" />
+              <UiIcon name="folder-open" size={16} className="size-4" />
               <span>Import SVG</span>
             </CommandItem>
             <CommandItem
@@ -2372,7 +2352,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleSave();
               }}
             >
-              <Copy className="size-4" />
+              <UiIcon name="copy" size={16} className="size-4" />
               <span>Save workspace</span>
               <CommandShortcut>Cmd S</CommandShortcut>
             </CommandItem>
@@ -2382,7 +2362,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleExportCurrentSvg();
               }}
             >
-              <Square className="size-4" />
+              <UiIcon name="square" size={16} className="size-4" />
               <span>Export current SVG</span>
             </CommandItem>
             <CommandItem
@@ -2391,7 +2371,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleExportSvgPackage();
               }}
             >
-              <Square className="size-4" />
+              <UiIcon name="square" size={16} className="size-4" />
               <span>Export SVG package</span>
             </CommandItem>
             <CommandItem
@@ -2400,7 +2380,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleExportRuntimeJson();
               }}
             >
-              <Blend className="size-4" />
+              <UiIcon name="blend" size={16} className="size-4" />
               <span>Export runtime JSON</span>
             </CommandItem>
             <CommandItem
@@ -2409,7 +2389,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 handleExportReactLibrary();
               }}
             >
-              <Blend className="size-4" />
+              <UiIcon name="blend" size={16} className="size-4" />
               <span>Export React library</span>
             </CommandItem>
           </CommandGroup>
@@ -2425,7 +2405,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                   handleSelectIcon(icon.id);
                 }}
               >
-                <Square className="size-4" />
+                <UiIcon name="square" size={16} className="size-4" />
                 <span>{icon.name}</span>
               </CommandItem>
             ))}
@@ -2484,7 +2464,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           role="status"
           aria-live="polite"
         >
-          <Loader2 className="size-4 animate-spin" />
+          <UiIcon name="loader-2" size={16} className="size-4 animate-spin" />
           Exporting...
         </div>
       )}

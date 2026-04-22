@@ -7,8 +7,9 @@
  * Shows: format selector, downgrade warnings, preview canvas, download button.
  */
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useMemo, useState } from 'react';
-import { Download, AlertTriangle, Info, FileJson } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Tag } from '@/components/ds/tag';
 import { Label } from '@/components/ui/label';
@@ -90,7 +91,7 @@ export function LottieExportPanel() {
     <div className="grid gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <FileJson className="size-4 text-muted-foreground" />
+          <UiIcon name="file-json" size={16} className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">Lottie Export</p>
         </div>
         <Tag variant="muted">Lottie 5.x</Tag>
@@ -148,7 +149,7 @@ export function LottieExportPanel() {
         onClick={handleExport}
         disabled={isExporting || !variantId}
       >
-        <Download className="size-4" />
+        <UiIcon name="download" size={16} className="size-4" />
         {isExporting ? 'Exporting...' : 'Download Lottie JSON'}
       </Button>
     </div>
@@ -162,9 +163,9 @@ export function LottieExportPanel() {
 function DowngradeBadge({ diagnostic }: { diagnostic: LottieDowngradeDiagnostic }) {
   const icon =
     diagnostic.severity === 'warning' ? (
-      <AlertTriangle className="size-3 text-amber-500" />
+      <UiIcon name="alert-triangle" size={12} className="size-3 text-amber-500" />
     ) : (
-      <Info className="size-3 text-blue-500" />
+      <UiIcon name="info" size={12} className="size-3 text-blue-500" />
     );
 
   return (

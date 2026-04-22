@@ -12,8 +12,9 @@
  * Corresponds to screens 9A/9B in specs/ui/screens.md.
  */
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Upload, RefreshCw, Server, Circle, Settings } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,7 +135,7 @@ export function PublishPanel() {
           onClick={() => setShowSettings((v) => !v)}
           title="Configure dev server"
         >
-          <Settings className="size-3.5" />
+          <UiIcon name="settings" size={14} className="size-3.5" />
         </Button>
       </div>
 
@@ -174,7 +175,7 @@ export function PublishPanel() {
       {/* Connection status card */}
       <div className="rounded-lg border border-border/70 bg-background/70 p-3">
         <div className="flex items-center gap-2">
-          <Server className="size-3.5 text-muted-foreground shrink-0" />
+          <UiIcon name="server" size={14} className="size-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs text-muted-foreground font-mono truncate">
             {config.devServerUrl || 'http://localhost:4400'}
           </span>
@@ -187,7 +188,7 @@ export function PublishPanel() {
               onClick={() => void checkConnection()}
               title="Check connection"
             >
-              <RefreshCw className="size-3" />
+              <UiIcon name="refresh-cw" size={12} className="size-3" />
             </Button>
           </div>
         </div>
@@ -217,7 +218,7 @@ export function PublishPanel() {
           disabled={isPublishing || iconCount === 0 || connectionStatus !== 'connected'}
           onClick={() => void handlePublish()}
         >
-          <Upload className="size-3.5" />
+          <UiIcon name="upload" size={14} className="size-3.5" />
           {isPublishing ? 'Publishing...' : 'Publish All'}
         </Button>
       </div>
@@ -236,7 +237,7 @@ export function PublishPanel() {
 
       {/* Transport hint */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-        <Circle className="size-2 fill-current" />
+        <UiIcon name="circle" size={8} className="size-2 fill-current" />
         <span>Transport: API push via localhost</span>
       </div>
     </div>

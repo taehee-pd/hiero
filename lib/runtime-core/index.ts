@@ -20,3 +20,4 @@ export * from './weight-interpolation';
 export * from './intrinsic-interpolation';
 export * from './open-path-guard';
 export * from './auto-morph';
+export * from './svg-serialize';

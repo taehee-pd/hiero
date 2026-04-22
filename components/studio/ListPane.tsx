@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useMemo, useState, useRef } from 'react';
-import { ArrowDownToLine, ChevronLeft, ChevronRight, FolderInput, Plus, Search, X } from 'lucide-react';
+
 import { IconButton } from '@/components/ds/icon-button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -185,9 +186,9 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
           {listExpanded ? (
-            <IconButton icon={<ChevronLeft />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
+            <IconButton icon={<UiIcon name="chevron-left" />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
           ) : (
-            <IconButton icon={<ChevronRight />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
+            <IconButton icon={<UiIcon name="chevron-right" />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
           )}
         </div>
         {listExpanded ? (
@@ -226,19 +227,19 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           {listExpanded ? (
             <>
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
-              <IconButton icon={<Plus />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
-              <IconButton icon={<FolderInput />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
+              <IconButton icon={<UiIcon name="plus" />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
+              <IconButton icon={<UiIcon name="folder-input" />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
               <IconButton
-                icon={<ArrowDownToLine />}
+                icon={<UiIcon name="arrow-down-to-line" />}
                 aria-label="Quick ZIP export"
                 onClick={handleOpenExportDialog}
                 tooltip="Quick ZIP (SVG package)"
                 className="text-primary hover:bg-primary/10 hover:text-primary"
               />
-              <IconButton icon={<ChevronLeft />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
+              <IconButton icon={<UiIcon name="chevron-left" />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
             </>
           ) : (
-            <IconButton icon={<ChevronRight />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
+            <IconButton icon={<UiIcon name="chevron-right" />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
           )}
         </div>
 
@@ -246,7 +247,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           <>
             {/* Search */}
             <div className="relative px-2 py-1.5">
-              <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <UiIcon name="search" size={14} className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -265,7 +266,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                   className="absolute right-4 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   aria-label="Clear search"
                 >
-                  <X className="size-3" />
+                  <UiIcon name="x" size={12} className="size-3" />
                 </button>
               ) : null}
             </div>
@@ -390,7 +391,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmExportAll}>
-              <ArrowDownToLine className="size-4" />
+              <UiIcon name="arrow-down-to-line" size={16} className="size-4" />
               Download ZIP
             </AlertDialogAction>
           </AlertDialogFooter>

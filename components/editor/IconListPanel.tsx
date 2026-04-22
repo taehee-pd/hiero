@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useMemo, useState } from 'react';
-import { Search, Shapes } from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -60,7 +61,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
         </div>
 
         <div className="relative mt-3">
-          <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <UiIcon name="search" size={14} className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -93,7 +94,7 @@ export const IconListPanel = memo(function IconListPanel({ onSelectIcon }: IconL
                   : 'text-foreground',
               )}
             >
-              <Shapes className="mt-0.5 size-3.5 shrink-0 opacity-60" />
+              <UiIcon name="shapes" size={14} className="mt-0.5 size-3.5 shrink-0 opacity-60" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[length:var(--text-body)] font-medium">{icon.name}</span>
                 <span className="block truncate text-[length:var(--text-label)] text-muted-foreground">{icon.id}</span>

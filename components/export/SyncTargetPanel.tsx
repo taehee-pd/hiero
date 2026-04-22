@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useState } from 'react';
-import { Plus, Trash2, FolderOpen, GitBranch, Package, Upload } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -91,7 +92,7 @@ export function SyncTargetPanelContent({
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline" className="gap-1">
-              <Plus className="size-3.5" />
+              <UiIcon name="plus" size={14} className="size-3.5" />
               Add Target
             </Button>
           </DialogTrigger>
@@ -199,11 +200,11 @@ function SyncTargetCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {target.deliveryMode === 'local-directory' ? (
-              <FolderOpen className="size-4 text-muted-foreground" />
+              <UiIcon name="folder-open" size={16} className="size-4 text-muted-foreground" />
             ) : target.deliveryMode === 'npm-registry' ? (
-              <Package className="size-4 text-muted-foreground" />
+              <UiIcon name="package" size={16} className="size-4 text-muted-foreground" />
             ) : (
-              <GitBranch className="size-4 text-muted-foreground" />
+              <UiIcon name="git-branch" size={16} className="size-4 text-muted-foreground" />
             )}
             <p className="text-sm font-medium text-foreground">{target.name}</p>
           </div>
@@ -251,7 +252,7 @@ function SyncTargetCard({
           className="text-muted-foreground hover:text-foreground"
           onClick={() => onRemove(target.id)}
         >
-          <Trash2 className="size-4" />
+          <UiIcon name="trash-2" size={16} className="size-4" />
         </Button>
       </div>
 
@@ -286,7 +287,7 @@ function SyncTargetCard({
               disabled={!canPublish}
               onClick={() => void handlePublish(false)}
             >
-              <Upload className="size-3" />
+              <UiIcon name="upload" size={12} className="size-3" />
               {isPublishing ? 'Publishing...' : 'Publish Now'}
             </Button>
             <Button

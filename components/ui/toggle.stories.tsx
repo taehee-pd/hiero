@@ -1,5 +1,6 @@
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { Bold, Italic, Underline } from 'lucide-react';
+
 import { Toggle } from './toggle';
 
 const meta = {
@@ -16,20 +17,20 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: { 'aria-label': 'toggle bold', children: <Bold /> },
+  args: { 'aria-label': 'toggle bold', children: <UiIcon name="bold" /> },
 };
 
 export const AllVariants: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: 8 }}>
       <Toggle aria-label="bold">
-        <Bold />
+        <UiIcon name="bold" />
       </Toggle>
       <Toggle aria-label="italic" variant="outline">
-        <Italic />
+        <UiIcon name="italic" />
       </Toggle>
       <Toggle aria-label="underline" defaultPressed>
-        <Underline />
+        <UiIcon name="underline" />
       </Toggle>
     </div>
   ),

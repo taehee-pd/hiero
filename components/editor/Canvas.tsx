@@ -1,18 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowDownToLine,
-  ArrowUpToLine,
-  ClipboardPaste,
-  Copy,
-  Loader2,
-  Maximize2,
-  MousePointerSquareDashed,
-  Trash2,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react';
+
 import { editorStore } from '@/lib/editor-store/store';
 import {
   selectCurrentIcon,
@@ -1018,7 +1008,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           aria-label="Loading icon"
         >
           <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 shadow-[var(--shadow-outline)]">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <UiIcon name="loader-2" size={20} className="size-5 animate-spin text-muted-foreground" />
             <span className="text-[length:var(--text-label)] text-muted-foreground">Loading icon…</span>
           </div>
         </div>
@@ -1090,17 +1080,17 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         {hasSelection ? (
           <>
             <ContextMenuItem onSelect={handleCopy}>
-              <Copy className="size-4" />
+              <UiIcon name="copy" size={16} className="size-4" />
               Copy
               <ContextMenuShortcut>⌘C</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onSelect={handlePaste} disabled={!hasClipboard}>
-              <ClipboardPaste className="size-4" />
+              <UiIcon name="clipboard-paste" size={16} className="size-4" />
               Paste
               <ContextMenuShortcut>⌘V</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onSelect={handleDuplicate}>
-              <Copy className="size-4" />
+              <UiIcon name="copy" size={16} className="size-4" />
               Duplicate
               <ContextMenuShortcut>⌘D</ContextMenuShortcut>
             </ContextMenuItem>
@@ -1108,18 +1098,18 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
               onSelect={handleDeleteSelected}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="size-4" />
+              <UiIcon name="trash-2" size={16} className="size-4" />
               Delete
               <ContextMenuShortcut>⌫</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onSelect={handleSendToFront}>
-              <ArrowUpToLine className="size-4" />
+              <UiIcon name="arrow-up-to-line" size={16} className="size-4" />
               Send to Front
               <ContextMenuShortcut>⌘⌥↑</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onSelect={handleSendToBack}>
-              <ArrowDownToLine className="size-4" />
+              <UiIcon name="arrow-down-to-line" size={16} className="size-4" />
               Send to Back
               <ContextMenuShortcut>⌘⌥↓</ContextMenuShortcut>
             </ContextMenuItem>
@@ -1128,12 +1118,12 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         ) : (
           <>
             <ContextMenuItem onSelect={handleSelectAll}>
-              <MousePointerSquareDashed className="size-4" />
+              <UiIcon name="mouse-pointer-square-dashed" size={16} className="size-4" />
               Select All
               <ContextMenuShortcut>⌘A</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onSelect={handlePaste} disabled={!hasClipboard}>
-              <ClipboardPaste className="size-4" />
+              <UiIcon name="clipboard-paste" size={16} className="size-4" />
               Paste
               <ContextMenuShortcut>⌘V</ContextMenuShortcut>
             </ContextMenuItem>
@@ -1141,17 +1131,17 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
           </>
         )}
         <ContextMenuItem onSelect={handleZoomIn}>
-          <ZoomIn className="size-4" />
+          <UiIcon name="zoom-in" size={16} className="size-4" />
           Zoom In
           <ContextMenuShortcut>⌘+</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onSelect={handleZoomOut}>
-          <ZoomOut className="size-4" />
+          <UiIcon name="zoom-out" size={16} className="size-4" />
           Zoom Out
           <ContextMenuShortcut>⌘-</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onSelect={handleFitCanvas}>
-          <Maximize2 className="size-4" />
+          <UiIcon name="maximize-2" size={16} className="size-4" />
           Fit to View
           <ContextMenuShortcut>⌘0</ContextMenuShortcut>
         </ContextMenuItem>

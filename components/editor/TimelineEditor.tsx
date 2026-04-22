@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
@@ -8,7 +9,7 @@ import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import type { TransitionPreview } from '@/lib/editor-store/store';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import { ChevronDown, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EasingPicker, type EasingValue } from './EasingPicker';
@@ -555,13 +556,13 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
     <div className="rounded-lg border border-border/70 bg-background/60 p-3">
       <div className="mb-2 flex items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground" role="toolbar" aria-label="Timeline playback controls">
         <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(0)} aria-label="Skip to start">
-          <SkipBack className="size-3.5" />
+          <UiIcon name="skip-back" size={14} className="size-3.5" />
         </Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 w-7 border border-primary/40 bg-primary/10 p-0 text-primary hover:bg-primary/20" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Play'} aria-pressed={playing}>
-          {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+          {playing ? <UiIcon name="pause" size={14} className="size-3.5" /> : <UiIcon name="play" size={14} className="size-3.5" />}
         </Button>
         <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => scrubTo(1)} aria-label="Skip to end">
-          <SkipForward className="size-3.5" />
+          <UiIcon name="skip-forward" size={14} className="size-3.5" />
         </Button>
         <span className="ml-1.5 tabular-nums" aria-label={`Playhead at ${Math.round(playhead * 100)} percent`}>{Math.round(playhead * 100)}%</span>
       </div>
@@ -684,7 +685,7 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
                 className="h-6 rounded-lg text-[length:var(--text-label)]"
                 onClick={() => setAddTrackOpen(isOpen ? null : bindingIndex)}
               >
-                <ChevronDown className="mr-1 size-3" />
+                <UiIcon name="chevron-down" size={12} className="mr-1 size-3" />
                 Add Track ({layerId})
               </Button>
               {isOpen && (

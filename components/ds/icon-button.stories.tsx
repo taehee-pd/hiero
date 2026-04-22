@@ -1,5 +1,6 @@
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { Save, Undo2, Redo2, Search, Plus, ChevronLeft } from 'lucide-react';
+
 import { IconButton } from './icon-button';
 
 const meta: Meta<typeof IconButton> = {
@@ -18,14 +19,14 @@ type Story = StoryObj<typeof IconButton>;
 
 export const Default: Story = {
   args: {
-    icon: <Save />,
+    icon: <UiIcon name="save" />,
     'aria-label': 'Save',
   },
 };
 
 export const WithKeyboardHint: Story = {
   args: {
-    icon: <Save />,
+    icon: <UiIcon name="save" />,
     'aria-label': 'Save',
     kbd: ['Cmd', 'S'],
   },
@@ -33,7 +34,7 @@ export const WithKeyboardHint: Story = {
 
 export const SmallSize: Story = {
   args: {
-    icon: <Plus />,
+    icon: <UiIcon name="plus" />,
     'aria-label': 'Add item',
     size: 'sm',
   },
@@ -41,7 +42,7 @@ export const SmallSize: Story = {
 
 export const LargeSize: Story = {
   args: {
-    icon: <Search />,
+    icon: <UiIcon name="search" />,
     'aria-label': 'Search',
     size: 'lg',
   },
@@ -49,7 +50,7 @@ export const LargeSize: Story = {
 
 export const PanelRadius: Story = {
   args: {
-    icon: <ChevronLeft />,
+    icon: <UiIcon name="chevron-left" />,
     'aria-label': 'Collapse',
     radius: 'panel',
   },
@@ -57,7 +58,7 @@ export const PanelRadius: Story = {
 
 export const Loading: Story = {
   args: {
-    icon: <Save />,
+    icon: <UiIcon name="save" />,
     'aria-label': 'Save',
     loading: true,
   },
@@ -65,7 +66,7 @@ export const Loading: Story = {
 
 export const Disabled: Story = {
   args: {
-    icon: <Undo2 />,
+    icon: <UiIcon name="undo-2" />,
     'aria-label': 'Undo',
     disabled: true,
   },
@@ -73,7 +74,7 @@ export const Disabled: Story = {
 
 export const SecondaryVariant: Story = {
   args: {
-    icon: <Save />,
+    icon: <UiIcon name="save" />,
     'aria-label': 'Save',
     variant: 'secondary',
   },
@@ -81,7 +82,7 @@ export const SecondaryVariant: Story = {
 
 export const PrimarySoftVariant: Story = {
   args: {
-    icon: <Save />,
+    icon: <UiIcon name="save" />,
     'aria-label': 'Save',
     variant: 'primary-soft',
   },
@@ -90,9 +91,9 @@ export const PrimarySoftVariant: Story = {
 export const AllSizes: Story = {
   render: () => (
     <div className="flex items-center gap-3">
-      <IconButton icon={<Save />} aria-label="Save (small)" size="sm" tooltip="Small (24px)" />
-      <IconButton icon={<Save />} aria-label="Save (medium)" size="md" tooltip="Medium (28px)" />
-      <IconButton icon={<Save />} aria-label="Save (large)" size="lg" tooltip="Large (32px)" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Save (small)" size="sm" tooltip="Small (24px)" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Save (medium)" size="md" tooltip="Medium (28px)" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Save (large)" size="lg" tooltip="Large (32px)" />
     </div>
   ),
 };
@@ -100,9 +101,9 @@ export const AllSizes: Story = {
 export const AllVariants: Story = {
   render: () => (
     <div className="flex items-center gap-3">
-      <IconButton icon={<Save />} aria-label="Ghost" variant="ghost" tooltip="Ghost" />
-      <IconButton icon={<Save />} aria-label="Secondary" variant="secondary" tooltip="Secondary" />
-      <IconButton icon={<Save />} aria-label="Primary soft" variant="primary-soft" tooltip="Primary soft" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Ghost" variant="ghost" tooltip="Ghost" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Secondary" variant="secondary" tooltip="Secondary" />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Primary soft" variant="primary-soft" tooltip="Primary soft" />
     </div>
   ),
 };
@@ -110,10 +111,10 @@ export const AllVariants: Story = {
 export const ToolbarGroup: Story = {
   render: () => (
     <div className="flex items-center gap-0.5 rounded-lg border border-border/70 bg-background px-1 py-1">
-      <IconButton icon={<Save />} aria-label="Save" kbd={['Cmd', 'S']} />
-      <IconButton icon={<Undo2 />} aria-label="Undo" kbd={['Cmd', 'Z']} />
-      <IconButton icon={<Redo2 />} aria-label="Redo" kbd={['Shift', 'Cmd', 'Z']} />
-      <IconButton icon={<Search />} aria-label="Search" kbd={['Cmd', 'K']} />
+      <IconButton icon={<UiIcon name="save" />} aria-label="Save" kbd={['Cmd', 'S']} />
+      <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" kbd={['Cmd', 'Z']} />
+      <IconButton icon={<UiIcon name="redo-2" />} aria-label="Redo" kbd={['Shift', 'Cmd', 'Z']} />
+      <IconButton icon={<UiIcon name="search" />} aria-label="Search" kbd={['Cmd', 'K']} />
     </div>
   ),
 };

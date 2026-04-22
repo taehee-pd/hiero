@@ -17,17 +17,9 @@
  * Corresponds to screen 9C in specs/ui/screens.md.
  */
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FolderOpen,
-  GitBranch,
-  Package,
-  Play,
-  Settings,
-  RefreshCw,
-  CheckCircle2,
-  Server,
-} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -99,7 +91,7 @@ export function ReleasePanel() {
             onClick={() => void checkConnection()}
             title="Refresh connection"
           >
-            <RefreshCw className="size-3" />
+            <UiIcon name="refresh-cw" size={12} className="size-3" />
           </Button>
           <Button
             size="icon-sm"
@@ -108,7 +100,7 @@ export function ReleasePanel() {
             onClick={() => setShowSettings((v) => !v)}
             title="Configure dev server URL"
           >
-            <Settings className="size-3.5" />
+            <UiIcon name="settings" size={14} className="size-3.5" />
           </Button>
         </div>
       </div>
@@ -130,7 +122,7 @@ export function ReleasePanel() {
 
       {/* Connection indicator */}
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-        <Server className="size-3 shrink-0" />
+        <UiIcon name="server" size={12} className="size-3 shrink-0" />
         <span className="font-mono truncate">{devServerUrl}</span>
         <ConnectionDot status={connectionStatus} />
       </div>
@@ -235,7 +227,7 @@ function LocalDirectoryCard({
   return (
     <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
-        <FolderOpen className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+        <UiIcon name="folder-open" size={16} className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">Local directory</p>
@@ -246,7 +238,7 @@ function LocalDirectoryCard({
           </p>
           {lastPushedAt && (
             <p className="text-[10px] text-emerald-600 mt-0.5 flex items-center gap-1">
-              <CheckCircle2 className="size-2.5" />
+              <UiIcon name="check-circle-2" size={10} className="size-2.5" />
               Source pushed — run <code className="font-mono">hiero build</code> to write snapshot
             </p>
           )}
@@ -258,7 +250,7 @@ function LocalDirectoryCard({
           disabled={isPushing || !project}
           onClick={() => void handlePush()}
         >
-          <Play className="size-3" />
+          <UiIcon name="play" size={12} className="size-3" />
           {isPushing ? 'Pushing…' : 'Push Source'}
         </Button>
       </div>
@@ -276,7 +268,7 @@ function GitPrCard({
   return (
     <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
-        <GitBranch className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+        <UiIcon name="git-branch" size={16} className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">Git PR</p>
@@ -333,7 +325,7 @@ function NpmRegistryCard({
   return (
     <div className="rounded-lg border border-border/70 bg-background/70 p-3">
       <div className="flex items-start gap-2.5">
-        <Package className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+        <UiIcon name="package" size={16} className="size-4 text-muted-foreground shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-foreground">npm registry</p>
@@ -353,7 +345,7 @@ function NpmRegistryCard({
           disabled={isPushing || !project}
           onClick={() => void handlePush()}
         >
-          <Play className="size-3" />
+          <UiIcon name="play" size={12} className="size-3" />
           {isPushing ? 'Pushing…' : 'Push Source'}
         </Button>
       </div>

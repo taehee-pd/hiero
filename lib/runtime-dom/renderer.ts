@@ -442,7 +442,10 @@ export function resolvePaintToString(paint: PaintRef | undefined): string {
   if (!paint) return 'none';
   if (paint.mode === 'currentColor') return 'currentColor';
   if (paint.mode === 'fixed') return paint.value;
-  if (paint.mode === 'token') return 'currentColor';
+  if (paint.mode === 'token') {
+    const fallback = paint.fallback ?? 'currentColor';
+    return `var(--${paint.token}, ${fallback})`;
+  }
   return 'none';
 }
 

@@ -1,9 +1,8 @@
 'use client'
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import * as React from 'react'
 import { Command as CommandPrimitive } from 'cmdk'
-import { SearchIcon } from 'lucide-react'
-
 import { cn } from '@/lib/utils'
 import {
   Dialog,
@@ -69,7 +68,7 @@ function CommandInput({
       data-slot="command-input-wrapper"
       className="flex h-9 items-center gap-2 border-b px-3"
     >
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+      <UiIcon name="search" size={16} className="size-4 shrink-0 opacity-50" />
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(

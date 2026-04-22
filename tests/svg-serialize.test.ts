@@ -90,6 +90,36 @@ describe('serializeIconToSvgString', () => {
     expect(svg).toContain('aria-label="a &gt; b &amp; c &quot;d&quot;"');
   });
 
+  test('escapes quotes and brackets in paint values (XSS guard)', () => {
+    // Simulates a malicious or malformed icon JSON where a paint
+    // value contains characters that would break attribute quoting
+    // and inject new attributes if emitted raw.
+    const icon = makeTestIcon();
+    icon.variants['v-16']!.layers.h!.style.fill = {
+      mode: 'fixed',
+      value: 'red" onload="alert(1)',
+    };
+    const svg = serializeIconToSvgString(icon);
+    expect(svg).not.toContain('onload="alert(1)"');
+    expect(svg).toContain('fill="red&quot; onload=&quot;alert(1)"');
+  });
+
+  test('escapes path data to prevent attribute injection', () => {
+    const icon = makeTestIcon();
+    icon.variants['v-16']!.layers.h!.path!.d = 'M0 0" onclick="evil()';
+    const svg = serializeIconToSvgString(icon);
+    expect(svg).not.toContain('onclick="evil()"');
+    expect(svg).toContain('M0 0&quot; onclick=&quot;evil()');
+  });
+
+  test('escapes className to block class-based attribute injection', () => {
+    const svg = serializeIconToSvgString(makeTestIcon(), {
+      className: 'foo" onload="x',
+    });
+    expect(svg).not.toContain('onload="x"');
+    expect(svg).toContain('class="foo&quot; onload=&quot;x"');
+  });
+
   test('deterministic output across repeated calls', () => {
     const a = serializeIconToSvgString(makeTestIcon(), { label: 'Plus' });
     const b = serializeIconToSvgString(makeTestIcon(), { label: 'Plus' });

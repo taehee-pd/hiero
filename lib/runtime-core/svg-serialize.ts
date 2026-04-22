@@ -9,6 +9,13 @@
  * Only handles the static first-paint case. Gradients, transitions,
  * effects, and draw animation are not supported here — callers that
  * need those features must use the client path.
+ *
+ * Security note: output is concatenated into markup and consumed via
+ * `dangerouslySetInnerHTML` in `HieroIconServer`. Every attribute
+ * value — including values sourced from the icon schema, which may
+ * have come from imported or externally supplied JSON — MUST pass
+ * through `attr()` so quotes, angle brackets, and ampersands are
+ * escaped. Do not emit a raw template string like `fill="${x}"`.
  */
 
 import type { Icon, Layer, Variant, PaintRef } from '../schema';
@@ -28,6 +35,11 @@ function escapeXml(s: string): string {
   return s.replace(/[&<>"']/g, (ch) => map[ch]!);
 }
 
+/** Emit a single SVG attribute. Always escape the value. */
+function attr(name: string, value: string | number): string {
+  return `${name}="${escapeXml(String(value))}"`;
+}
+
 function resolvePaintForString(paint: PaintRef | undefined): string {
   if (!paint) return 'none';
   if (paint.mode === 'currentColor') return 'currentColor';
@@ -44,35 +56,39 @@ function serializeLayer(layer: Layer): string {
   if (layer.visible === false) return '';
   if (layer.isClipMask) return '';
 
-  const parts: string[] = [`d="${escapeXml(layer.path.d)}"`];
-  if (layer.path.fillRule) parts.push(`fill-rule="${layer.path.fillRule}"`);
+  const parts: string[] = [attr('d', layer.path.d)];
+  if (layer.path.fillRule) parts.push(attr('fill-rule', layer.path.fillRule));
 
   const style = layer.style ?? {};
-  parts.push(`fill="${resolvePaintForString(style.fill)}"`);
-  parts.push(`stroke="${resolvePaintForString(style.stroke)}"`);
+  parts.push(attr('fill', resolvePaintForString(style.fill)));
+  parts.push(attr('stroke', resolvePaintForString(style.stroke)));
   if (style.strokeWidth !== undefined) {
-    parts.push(`stroke-width="${style.strokeWidth}"`);
+    parts.push(attr('stroke-width', style.strokeWidth));
   }
   if (style.fillOpacity !== undefined) {
-    parts.push(`fill-opacity="${style.fillOpacity}"`);
+    parts.push(attr('fill-opacity', style.fillOpacity));
   }
   if (style.strokeOpacity !== undefined) {
-    parts.push(`stroke-opacity="${style.strokeOpacity}"`);
+    parts.push(attr('stroke-opacity', style.strokeOpacity));
   }
-  if (style.lineCap) parts.push(`stroke-linecap="${style.lineCap}"`);
-  if (style.lineJoin) parts.push(`stroke-linejoin="${style.lineJoin}"`);
+  if (style.lineCap) parts.push(attr('stroke-linecap', style.lineCap));
+  if (style.lineJoin) parts.push(attr('stroke-linejoin', style.lineJoin));
 
   const transform = layer.transform;
   if (transform) {
     const ops: string[] = [];
     if (transform.x !== undefined || transform.y !== undefined) {
-      ops.push(`translate(${transform.x ?? 0} ${transform.y ?? 0})`);
+      ops.push(`translate(${Number(transform.x ?? 0)} ${Number(transform.y ?? 0)})`);
     }
-    if (transform.rotate !== undefined) ops.push(`rotate(${transform.rotate})`);
+    if (transform.rotate !== undefined) {
+      ops.push(`rotate(${Number(transform.rotate)})`);
+    }
     if (transform.scaleX !== undefined || transform.scaleY !== undefined) {
-      ops.push(`scale(${transform.scaleX ?? 1} ${transform.scaleY ?? 1})`);
+      ops.push(
+        `scale(${Number(transform.scaleX ?? 1)} ${Number(transform.scaleY ?? 1)})`,
+      );
     }
-    if (ops.length > 0) parts.push(`transform="${ops.join(' ')}"`);
+    if (ops.length > 0) parts.push(attr('transform', ops.join(' ')));
   }
 
   return `<path ${parts.join(' ')} />`;
@@ -122,16 +138,16 @@ export function serializeIconToSvgString(
   const body = layers.map(serializeLayer).filter(Boolean).join('');
 
   const a11y = options.label
-    ? `role="img" aria-label="${escapeXml(options.label)}"`
-    : `aria-hidden="true"`;
-  const classAttr = options.className
-    ? ` class="${escapeXml(options.className)}"`
-    : '';
+    ? `${attr('role', 'img')} ${attr('aria-label', options.label)}`
+    : attr('aria-hidden', 'true');
+  const classAttr = options.className ? ` ${attr('class', options.className)}` : '';
+
+  const viewBox = `${Number(minX)} ${Number(minY)} ${Number(w)} ${Number(h)}`;
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,
-    ` width="${renderSize}" height="${renderSize}"`,
-    ` viewBox="${minX} ${minY} ${w} ${h}"`,
+    ` ${attr('width', renderSize)} ${attr('height', renderSize)}`,
+    ` ${attr('viewBox', viewBox)}`,
     ` fill="none" focusable="false"`,
     ` ${a11y}${classAttr}>`,
     body,

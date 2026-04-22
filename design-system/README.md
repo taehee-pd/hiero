@@ -27,7 +27,7 @@ A snapshot of the live DS components and studio shell lives in `_src/` for refer
 | `README.md` | This file — context, content and visual foundations, iconography |
 | `SKILL.md` | Agent Skill manifest |
 | `colors_and_type.css` | All tokens + semantic type classes. Import this first. |
-| `fonts/` | Geist + Geist Mono variable WOFF2 (from `npm i geist`) — declared via `@font-face` in `colors_and_type.css` |
+| `fonts/` | Optional local variable WOFF2 fallbacks. By default `colors_and_type.css` `@import`s Spline Sans + Spline Sans Mono from Google Fonts; drop locally hosted WOFF2s here only for fully offline use. |
 | `assets/` | Hiero mark, wordmark, placeholders |
 | `preview/` | Design-system card specimens registered in the review pane |
 | `ui_kits/studio/` | High-fidelity React recreation of the Hiero Studio workspace |
@@ -72,8 +72,8 @@ The signature quality is **surfaces that barely exist** — depth through whispe
 - **Alpha-over-tint:** borders and hovers use `rgba(0,0,0,α)` / `rgba(255,255,255,α)` overlays rather than tinted solids — keeps panel hierarchy honest in both modes.
 
 ### Typography
-- **Geist Sans** at weight **450** for body and display. `550` for labels and emphasis. **Never 700.** The understated weight *is* the identity — lightness reads as precision.
-- **Geist Mono** for values that need precision (hex colors, numeric inputs, keyboard shortcuts, code blocks).
+- **Spline Sans** at weight **450** for body and display. `550` for labels and emphasis. **Never 700.** The understated weight *is* the identity — lightness reads as precision.
+- **Spline Sans Mono** for values that need precision (hex colors, numeric inputs, keyboard shortcuts, code blocks).
 - **Compact tool-app scale:** body is 13px, labels 11px, captions 9px. Display is 48px but used sparingly.
 - **Negative tracking on display sizes** (`-0.1875rem` at 48px) paired with **positive tracking on small text** (`+0.03125rem` at 9–11px). Tight up top, airy at the bottom.
 
@@ -182,6 +182,6 @@ If you're an agent using this skill:
 
 ## Caveats
 
-- **Fonts:** Geist and Geist Mono ship as local variable WOFF2 files in `fonts/` (from the `geist` npm package). The real repo loads them via `next/font`; this skill uses `@font-face` for portability.
+- **Fonts:** Spline Sans and Spline Sans Mono are loaded from Google Fonts via an `@import` inside `colors_and_type.css`. The real repo loads the same families via `next/font/google`. Drop local variable WOFF2 fallbacks into `fonts/` only if you need fully offline use.
 - **Editor surface chrome:** the codebase has a secondary `.editor-lab` theme (warm cream/teal, "Iowan Old Style" display font) used for a specific editor experiment. It's **not** the canonical brand and is excluded here to avoid confusion.
 - **Components:** only the five `components/ds/*` pieces are the official design system. `components/ui/*` is shadcn/Radix and `components/studio/*` is product shell — both composed from DS primitives. This DS reflects the official set only.

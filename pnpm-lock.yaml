@@ -7,6 +7,12 @@ settings:
 importers:
   .:
     dependencies:
+      '@fontsource-variable/spline-sans':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource-variable/spline-sans-mono':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@fontsource/work-sans':
         specifier: ^5.2.8
         version: 5.2.8
@@ -127,9 +133,6 @@ importers:
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@19.2.4)
-      geist:
-        specifier: ^1.7.0
-        version: 1.7.0(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       input-otp:
         specifier: 1.4.2
         version: 1.4.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -743,6 +746,18 @@ packages:
     resolution:
       {
         integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==,
+      }
+
+  '@fontsource-variable/spline-sans-mono@5.2.8':
+    resolution:
+      {
+        integrity: sha512-Z1yYiEtP+8Gll5BJaR9dICK/ZTxoTWH+ZBH6rOTMWajPSOxwl7IZplkwX2J1QhMxqulhhdMrkRx6SkkLM+jLQw==,
+      }
+
+  '@fontsource-variable/spline-sans@5.2.8':
+    resolution:
+      {
+        integrity: sha512-Cn4tVu+wTZpJoD9zHN1fio0bPXq/79qE9yvQmiUz09rBZTJntKYNpA5bawDeRtS07dTxueeAVJqVwKGb0TNheQ==,
       }
 
   '@fontsource/work-sans@5.2.8':
@@ -3853,14 +3868,6 @@ packages:
         integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==,
       }
 
-  geist@1.7.0:
-    resolution:
-      {
-        integrity: sha512-ZaoiZwkSf0DwwB1ncdLKp+ggAldqxl5L1+SXaNIBGkPAqcu+xjVJLxlf3/S8vLt9UHx1xu5fz3lbzKCj5iOVdQ==,
-      }
-    peerDependencies:
-      next: '>=13.2.0'
-
   gensync@1.0.0-beta.2:
     resolution:
       {
@@ -5564,6 +5571,10 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@fontsource-variable/spline-sans-mono@5.2.8': {}
+
+  '@fontsource-variable/spline-sans@5.2.8': {}
 
   '@fontsource/work-sans@5.2.8': {}
 
@@ -7562,10 +7573,6 @@ snapshots:
     optional: true
 
   function-bind@1.1.2: {}
-
-  geist@1.7.0(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)):
-    dependencies:
-      next: 16.1.6(@babel/core@7.29.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
   gensync@1.0.0-beta.2: {}
 

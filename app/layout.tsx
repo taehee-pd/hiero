@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+import '@fontsource-variable/spline-sans';
+import '@fontsource-variable/spline-sans-mono';
 import '@fontsource/work-sans/400.css';
 import '@fontsource/work-sans/500.css';
 import '@fontsource/work-sans/600.css';
@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="bg-background">
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} overflow-hidden antialiased`}
+        className="overflow-hidden antialiased"
         style={{ fontFamily: 'var(--font-system)' }}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

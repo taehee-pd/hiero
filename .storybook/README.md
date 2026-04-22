@@ -35,27 +35,16 @@ Storybook, proceed to Phase 2**.
 Plan §5 called out Storybook 9. Storybook 10 shipped with stronger
 React 19 / Next 16 support so the spike pinned 10.
 
-## Workaround #1 — `geist/font/*` wrapper breaks the Vite preview build
+## Workaround #1 — historical: `next/font` loader in the Vite preview
 
-**Problem.** `app/layout.tsx` uses `geist/font/sans` and `geist/font/mono`.
-The `geist` package is a thin wrapper that calls `next/font/local` at
-module-eval time against its own bundled .woff files. `@storybook/nextjs-vite`
-ships a shim for the direct `next/font/local` and `next/font/google` APIs,
-but importing `geist/font/sans` still crashes with
-`"default" is not exported by "next/font/local"`. The issue is the wrapper's
-module shape, not the Storybook framework's next/font support in general —
-a direct `import localFont from 'next/font/local'` in a Storybook story
-does work.
-
-**Fix (< 20 lines).** Don't import Geist in preview. Shadow
-`--font-geist-sans` / `--font-geist-mono` with system-font stacks in a
-small `.storybook/preview.css`. The app is unaffected — only Storybook
-uses the fallback.
-
-Visual fidelity in Storybook drifts from production by a hair (system UI
-font instead of Geist). Acceptable for a component catalog. If this gap
-becomes load-bearing later, swap to an `@font-face` `<link>` pointing at
-Geist via `fontsource` or `next/font/google`. Out of scope for Phase 1.
+Earlier phases used `next/font/local` (via the `geist` wrapper) and later
+`next/font/google`. Both paths crashed `@storybook/nextjs-vite` because
+its shim for `next/font` is incomplete. The current app loads fonts via
+`@fontsource-variable/spline-sans(-mono)` — plain CSS `@font-face`
+packages — which Vite handles natively, so the preview imports the same
+CSS as the app and Storybook now sees real Spline Sans with no shim
+required. Kept here for history in case a future phase reintroduces
+`next/font`.
 
 ## Workaround #2 — `setProjectAnnotations` warning is a lie
 

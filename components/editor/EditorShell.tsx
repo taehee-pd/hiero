@@ -1204,7 +1204,7 @@ function CanvasDock({
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
                 onBlur={() => commitZoomInput({ closeMenu: false })}
-                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-geist-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-spline-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
               />
@@ -1213,7 +1213,7 @@ function CanvasDock({
             <div className="flex flex-col py-1.5">
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom * 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom in</span>
@@ -1221,7 +1221,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom / 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom out</span>
@@ -1229,7 +1229,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction('fit')}
               >
                 <span className="min-w-0 flex-1">Zoom to fit</span>
@@ -1239,14 +1239,14 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(0.5)}
               >
                 <span className="min-w-0 flex-1">Zoom to 50%</span>
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(1)}
               >
                 <span className="min-w-0 flex-1">Zoom to 100%</span>
@@ -1254,7 +1254,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-geist-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(2)}
               >
                 <span className="min-w-0 flex-1">Zoom to 200%</span>

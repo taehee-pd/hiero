@@ -26,43 +26,43 @@ colors:
   danger: "#FF6B6B"
 typography:
   display-hero:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 48px
     fontWeight: 450
     lineHeight: 1.17
     letterSpacing: -0.1875rem
   headline-lg:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 24px
     fontWeight: 450
     lineHeight: 1.33
     letterSpacing: -0.10625rem
   body-lg:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 15px
     fontWeight: 450
     lineHeight: 1.5625
     letterSpacing: -0.03125rem
   body-md:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 13px
     fontWeight: 450
     lineHeight: 1.375
     letterSpacing: -0.015625rem
   label-md:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 11px
     fontWeight: 550
     lineHeight: 1.0
     letterSpacing: 0.03125rem
   caption:
-    fontFamily: Geist Sans
+    fontFamily: Spline Sans
     fontSize: 9px
     fontWeight: 550
     lineHeight: 0.875
     letterSpacing: 0.03125rem
   code:
-    fontFamily: Geist Mono
+    fontFamily: Spline Sans Mono
     fontSize: 13px
     fontWeight: 450
     lineHeight: 1.5
@@ -298,17 +298,21 @@ not tokenized — dark is the single source of truth):
 
 ## Typography
 
-The typography strategy pairs the system sans stack with **Geist Sans**
-for display text and **Geist Mono** for code and precise numeric values.
+The typography strategy pairs the system sans stack with **Spline Sans**
+(Google Fonts, variable weight axis 300–700) for display text and
+**Spline Sans Mono** for code and precise numeric values. Both families
+are bundled via the `@fontsource-variable/spline-sans` and
+`@fontsource-variable/spline-sans-mono` npm packages (self-hosted
+variable WOFF2 files that ship the same Google Fonts assets).
 
-- **Display & headlines:** Geist Sans at weight **450** — the Hiero
+- **Display & headlines:** Spline Sans at weight **450** — the Hiero
   equivalent of ElevenLabs' light-weight display approach. Lightness
   creates intrigue through restraint.
 - **Body & UI:** System sans stack at weight 450 for standard reading
   and control text.
 - **Labels & captions:** Weight **550** with positive letter-spacing for
   airy readability at small sizes.
-- **Code & technical values:** Geist Mono, used wherever value
+- **Code & technical values:** Spline Sans Mono, used wherever value
   precision matters.
 
 ### Principles
@@ -319,7 +323,7 @@ for display text and **Geist Mono** for code and precise numeric values.
 - **Positive letter-spacing on small text:** Labels and captions use
   `+0.03125rem` tracking for airy readability at small sizes,
   contrasting with the tighter display tracking.
-- **Monospace as ambient:** Geist Mono at relaxed line-height for code
+- **Monospace as ambient:** Spline Sans Mono at relaxed line-height for code
   values feels unhurried.
 
 Do:

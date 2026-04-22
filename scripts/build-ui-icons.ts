@@ -55,7 +55,7 @@ function writeRegistry(iconSet: IconSet, manifest: Manifest): string {
   lines.push(' */');
   lines.push('');
   for (const name of entries) {
-    const comp = kebabToPascal(iconSet.icons[name]!.name || name);
+    const comp = kebabToPascal(name);
     lines.push(`import { ${comp} } from '../generated/src/${comp}';`);
   }
   lines.push('');
@@ -67,7 +67,7 @@ function writeRegistry(iconSet: IconSet, manifest: Manifest): string {
   lines.push('');
   lines.push('export const iconRegistry = {');
   for (const name of entries) {
-    const comp = kebabToPascal(iconSet.icons[name]!.name || name);
+    const comp = kebabToPascal(name);
     lines.push(`  ${JSON.stringify(name)}: ${comp},`);
   }
   lines.push('} as const;');
@@ -99,9 +99,16 @@ async function main(): Promise<void> {
     packageName: '@hiero/ui-icons',
   });
 
+  // Skip the standalone-package scaffolding generateIconLibrary emits —
+  // our package has its own root-level package.json and inherits the
+  // monorepo tsconfig (which defines the @/ path alias the generated
+  // components rely on).
+  const SKIP = new Set(['package.json', 'tsconfig.json']);
+
   for (const [relativePath, contents] of Object.entries(files).sort(
     ([a], [b]) => a.localeCompare(b),
   )) {
+    if (SKIP.has(relativePath)) continue;
     const targetPath = path.join(OUT_DIR, relativePath);
     await mkdir(path.dirname(targetPath), { recursive: true });
     await writeFile(targetPath, contents, 'utf8');

@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useReducer, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Link2, Loader2, Search } from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   buildPluginImportEntries,
@@ -445,7 +446,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                     onClick={() => void connectFigma()}
                     className="gap-1.5"
                   >
-                    {figmaConnecting ? <Loader2 className="size-4 animate-spin" /> : <Link2 className="size-4" />}
+                    {figmaConnecting ? <UiIcon name="loader-2" size={16} className="size-4 animate-spin" /> : <UiIcon name="link-2" size={16} className="size-4" />}
                     {figmaConnecting ? 'Connecting...' : 'Connect'}
                   </Button>
                 </>
@@ -474,7 +475,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                   </div>
 
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <UiIcon name="search" size={16} className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={figmaSearch}
                       onChange={(e) => {
@@ -489,7 +490,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                   <ScrollArea className="h-64 rounded-lg border border-border/70">
                     {figmaSearching ? (
                       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 size-4 animate-spin" /> Searching...
+                        <UiIcon name="loader-2" size={16} className="mr-2 size-4 animate-spin" /> Searching...
                       </div>
                     ) : figmaComponents.length === 0 ? (
                       <div className="py-8 text-center text-sm text-muted-foreground">
@@ -524,7 +525,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                               </span>
                             )}
                             {figmaImporting === c.nodeId && (
-                              <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                              <UiIcon name="loader-2" size={12} className="size-3 animate-spin text-muted-foreground" />
                             )}
                           </Button>
                         ))}
@@ -655,14 +656,14 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
 
           {busy ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status" aria-live="polite">
-              <Loader2 className="size-4 animate-spin" />
+              <UiIcon name="loader-2" size={16} className="size-4 animate-spin" />
               {state.status}
             </div>
           ) : null}
 
           {state.status === 'failed' ? (
             <div className="rounded border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive" role="alert" aria-live="assertive">
-              <div className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />Import failed</div>
+              <div className="flex items-center gap-2 font-medium"><UiIcon name="alert-triangle" size={16} className="size-4" />Import failed</div>
               <p>{state.errorMessage}</p>
               {DEBUG_IMPORT ? <pre className="mt-2 whitespace-pre-wrap text-xs">{JSON.stringify(state, null, 2)}</pre> : null}
             </div>
@@ -690,7 +691,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                     {state.unsupportedSummary.map((u) => <li key={u.kind}>{u.kind} ({u.count})</li>)}
                   </ul>
                 </div>
-                {prepared ? <div className="text-emerald-600"><CheckCircle2 className="mr-1 inline size-4" />Imported as {prepared.iconName} ({prepared.iconId})</div> : null}
+                {prepared ? <div className="text-emerald-600"><UiIcon name="check-circle-2" size={16} className="mr-1 inline size-4" />Imported as {prepared.iconName} ({prepared.iconId})</div> : null}
               </div>
             </div>
           ) : null}

@@ -1,22 +1,9 @@
 'use client';
 
+import { Download, HelpCircle, Icon as UiIcon, Import, Maximize2, Minus, Package, Plus, Redo2, Save, Undo2 } from '@hiero/ui-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Undo2,
-  Redo2,
-  FolderOpen,
-  Save,
-  Download,
-  FileJson,
-  FilePlus2,
-  HelpCircle,
-  Maximize2,
-  Import,
-  Minus,
-  Plus,
-  Package,
-} from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -360,26 +347,26 @@ export function Toolbar() {
                       aria-label="File menu"
                       className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
-                      <FilePlus2 className="size-3.5" />
+                      <UiIcon name="file-plus-2" size={14} className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={handleNewProject}>
-                    <FilePlus2 className="size-4" />
+                    <UiIcon name="file-plus-2" size={16} className="size-4" />
                     New Project
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={handleCreateBlankIcon} disabled={!activeIconSetId}>
-                    <Plus className="size-4" />
+                    <UiIcon name="plus" size={16} className="size-4" />
                     New Icon
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => void handleOpenProject()}>
-                    <FolderOpen className="size-4" />
+                    <UiIcon name="folder-open" size={16} className="size-4" />
                     Open Project
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
-                    <Import className="size-4" />
+                    <UiIcon name="import" size={16} className="size-4" />
                     Import Icon
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -428,30 +415,30 @@ export function Toolbar() {
                       aria-label="More exports"
                       className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/40"
                     >
-                      <Download className="size-3.5" />
+                      <UiIcon name="download" size={14} className="size-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => void handleExportSvg()}>
-                    <Download className="size-4" />
+                    <UiIcon name="download" size={16} className="size-4" />
                     Export SVG
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={handleExportSvgPackage}>
-                    <Download className="size-4" />
+                    <UiIcon name="download" size={16} className="size-4" />
                     Export SVG Package
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={handleExportRuntimeJson}>
-                    <Download className="size-4" />
+                    <UiIcon name="download" size={16} className="size-4" />
                     Export Runtime JSON
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={handleExportReactLibrary}>
-                    <Download className="size-4" />
+                    <UiIcon name="download" size={16} className="size-4" />
                     Export React Library
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
-                    <FileJson className="size-4" />
+                    <UiIcon name="file-json" size={16} className="size-4" />
                     Export Lottie JSON
                   </DropdownMenuItem>
                 </DropdownMenuContent>

@@ -1,18 +1,19 @@
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react';
+
 import { ToggleGroup, ToggleGroupItem } from './toggle-group';
 
 function ToggleGroupFixture() {
   return (
     <ToggleGroup type="single" defaultValue="left" aria-label="text alignment">
       <ToggleGroupItem value="left" aria-label="align left">
-        <AlignLeft />
+        <UiIcon name="align-left" />
       </ToggleGroupItem>
       <ToggleGroupItem value="center" aria-label="align center">
-        <AlignCenter />
+        <UiIcon name="align-center" />
       </ToggleGroupItem>
       <ToggleGroupItem value="right" aria-label="align right">
-        <AlignRight />
+        <UiIcon name="align-right" />
       </ToggleGroupItem>
     </ToggleGroup>
   );

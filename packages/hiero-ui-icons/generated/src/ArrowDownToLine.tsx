@@ -234,10 +234,10 @@ const iconData = {
     "externalImport": {
       "adapterId": "lucide",
       "sourceLibrary": "lucide",
-      "sourceVersion": "1.8.0",
+      "sourceVersion": "0.577.0",
       "sourceIconId": "arrow-down-to-line",
       "sourceLicense": "ISC",
-      "importedAt": "2026-04-22T04:21:06.160Z"
+      "importedAt": "2026-04-22T06:43:57.915Z"
     }
   }
 } as const;

@@ -1,16 +1,15 @@
-import { Loader2Icon } from 'lucide-react'
+import { Icon as UiIcon } from '@hiero/ui-icons';
+import { cn } from '@/lib/utils';
 
-import { cn } from '@/lib/utils'
-
-function Spinner({ className, ...props }: React.ComponentProps<'svg'>) {
+function Spinner({ className }: { className?: string }) {
   return (
-    <Loader2Icon
+    <UiIcon
+      name="loader-2"
       role="status"
       aria-label="Loading"
       className={cn('size-4 animate-spin', className)}
-      {...props}
     />
-  )
+  );
 }
 
-export { Spinner }
+export { Spinner };

@@ -1,13 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Bookmark,
-  Pause,
-  Play,
-  Repeat,
-  Repeat1,
-} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -272,7 +267,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 onClick={togglePlay}
                 aria-label="Play animation"
               >
-                <Play className="size-3.5" />
+                <UiIcon name="play" size={14} className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Play</TooltipContent>
@@ -286,7 +281,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 onClick={handlePause}
                 aria-label="Pause animation"
               >
-                <Pause className="size-3.5" />
+                <UiIcon name="pause" size={14} className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Pause</TooltipContent>
@@ -301,7 +296,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 aria-pressed={loop}
                 aria-label="Toggle loop"
               >
-                {loop ? <Repeat className="size-3.5" /> : <Repeat1 className="size-3.5" />}
+                {loop ? <UiIcon name="repeat" size={14} className="size-3.5" /> : <UiIcon name="repeat-1" size={14} className="size-3.5" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">{loop ? 'Loop on' : 'Loop off'}</TooltipContent>
@@ -316,7 +311,7 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                 disabled={!currentEffect.current}
                 aria-label="Save current effect"
               >
-                <Bookmark className="size-3.5" />
+                <UiIcon name="bookmark" size={14} className="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">Save effect</TooltipContent>

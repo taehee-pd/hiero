@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, ChevronDown, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,7 +103,6 @@ export function resolveEffectiveStagger(options: {
     : PLAYBACK_MODE_DEFAULT_STAGGER_MS[playbackMode];
   return { mode, perLayerMs };
 }
-
 
 /**
  * Advanced stagger modes — surfaced only inside the Advanced disclosure.
@@ -545,7 +545,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
           aria-hidden="true"
           className="mx-auto flex size-6 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground"
         >
-          <ArrowRight className="size-3.5 rotate-90" />
+          <UiIcon name="arrow-right" size={14} className="size-3.5 rotate-90" />
         </div>
         <CrossIconEndpointPicker
           label="Target"
@@ -732,7 +732,7 @@ function AdvancedDisclosure({
       }}
     >
       <summary className="flex cursor-pointer items-center gap-1 select-none text-muted-foreground hover:text-foreground">
-        {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+        {open ? <UiIcon name="chevron-down" size={12} className="size-3" /> : <UiIcon name="chevron-right" size={12} className="size-3" />}
         <span>Advanced</span>
       </summary>
       <div className="mt-2 grid gap-2 px-1">
@@ -824,7 +824,7 @@ function PreviewPlaybackControls({
           className="rounded-lg"
           onClick={onTogglePlayback}
         >
-          {preview.playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+          {preview.playing ? <UiIcon name="pause" size={16} className="size-4" /> : <UiIcon name="play" size={16} className="size-4" />}
         </Button>
         <Button
           type="button"
@@ -833,7 +833,7 @@ function PreviewPlaybackControls({
           className="rounded-lg"
           onClick={onRestart}
         >
-          <RotateCcw className="size-4" />
+          <UiIcon name="rotate-ccw" size={16} className="size-4" />
         </Button>
         <div className="min-w-0 flex-1">
           <Slider

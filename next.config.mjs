@@ -7,6 +7,9 @@ const nextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Workspace packages ship source TSX and rely on the app's TypeScript
+  // pipeline for transpilation.
+  transpilePackages: ['@hiero/ui-icons'],
   typescript: {
     ignoreBuildErrors: false,
   },

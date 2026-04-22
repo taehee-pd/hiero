@@ -1,9 +1,10 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X } from 'lucide-react';
+
 import type { Variant, SymbolWeight } from '@/lib/schema/types';
 import {
   cubicMonotoneInterpolate,
@@ -379,7 +380,7 @@ export function WeightCurveEditor({
             className="shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Close editor"
           >
-            <X className="size-3.5" />
+            <UiIcon name="x" size={14} className="size-3.5" />
           </button>
         </div>
       )}

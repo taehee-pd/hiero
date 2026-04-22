@@ -122,10 +122,10 @@ const iconData = {
     "externalImport": {
       "adapterId": "lucide",
       "sourceLibrary": "lucide",
-      "sourceVersion": "1.8.0",
+      "sourceVersion": "0.577.0",
       "sourceIconId": "chevron-down",
       "sourceLicense": "ISC",
-      "importedAt": "2026-04-22T04:21:06.153Z"
+      "importedAt": "2026-04-22T06:43:57.910Z"
     }
   }
 } as const;

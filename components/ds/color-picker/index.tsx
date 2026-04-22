@@ -1,7 +1,8 @@
 "use client";
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import Color from "color";
-import { PipetteIcon } from "lucide-react";
+
 import { Slider } from "radix-ui";
 import {
   type ComponentProps,
@@ -332,7 +333,7 @@ export const ColorPickerEyeDropper = ({
       variant="outline"
       {...props}
     >
-      <PipetteIcon size={16} />
+      <UiIcon name="pipette" size={16} />
     </Button>
   );
 };

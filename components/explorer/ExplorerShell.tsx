@@ -1,22 +1,9 @@
 'use client';
 
+import { Icon as UiIcon, Import } from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowUpRight,
-  ChevronRight,
-  Clock,
-  Ellipsis,
-  FolderOpen,
-  Grid3X3,
-  Import,
-  LayoutGrid,
-  Package,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-} from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -467,7 +454,7 @@ export function ExplorerShell() {
           </button>
           {view.level === 'project' && (
             <>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" />
+              <UiIcon name="chevron-right" size={16} className="size-4 shrink-0 text-muted-foreground/60" />
               <span className="truncate font-medium text-foreground">{projectName}</span>
             </>
           )}
@@ -478,7 +465,7 @@ export function ExplorerShell() {
         <div className="flex-1" />
 
         <div className="relative w-56">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <UiIcon name="search" size={16} className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -495,7 +482,7 @@ export function ExplorerShell() {
               className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={openImportIntoNewProject}
             >
-              <Import className="size-3.5" />
+              <UiIcon name="import" size={14} className="size-3.5" />
               Import SVGs
             </Button>
             <Button
@@ -504,7 +491,7 @@ export function ExplorerShell() {
               className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={createIconSet}
             >
-              <Plus className="size-3.5" />
+              <UiIcon name="plus" size={14} className="size-3.5" />
               New project
             </Button>
           </div>
@@ -517,7 +504,7 @@ export function ExplorerShell() {
               className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={handleCreateBlankIcon}
             >
-              <Plus className="size-3.5" />
+              <UiIcon name="plus" size={14} className="size-3.5" />
               New Icon
             </Button>
             <Button
@@ -526,7 +513,7 @@ export function ExplorerShell() {
               className="h-7 gap-1.5 rounded-lg px-2.5 text-xs focus-visible:ring-[3px] focus-visible:ring-ring/50"
               onClick={openImportIntoCurrentProject}
             >
-              <Import className="size-3.5" />
+              <UiIcon name="import" size={14} className="size-3.5" />
               Import
             </Button>
             <Button
@@ -772,7 +759,7 @@ function WorkspaceView({
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <LayoutGrid className="size-4 text-muted-foreground" />
+            <UiIcon name="layout-grid" size={16} className="size-4 text-muted-foreground" />
             <h2 className="text-[length:var(--text-heading)] font-semibold text-foreground">Projects</h2>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-muted-foreground">
               {iconSets.length}
@@ -782,18 +769,18 @@ function WorkspaceView({
 
         {iconSets.length === 0 ? (
           <div className="workspace-empty-state flex flex-col items-center justify-center rounded-lg px-6 py-20 text-center">
-            <FolderOpen className="mb-3 size-8 text-muted-foreground/50" />
+            <UiIcon name="folder-open" size={32} className="mb-3 size-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No projects yet</p>
             <p className="mt-1 max-w-sm text-xs text-muted-foreground/70">
               Start a fresh project or import SVGs and we&apos;ll create one for you.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Button size="sm" className="rounded-lg" onClick={onImport}>
-                <Import className="size-3.5" />
+                <UiIcon name="import" size={14} className="size-3.5" />
                 Import SVGs
               </Button>
               <Button size="sm" variant="outline" className="rounded-lg" onClick={onCreateProject}>
-                <Plus className="size-3.5" />
+                <UiIcon name="plus" size={14} className="size-3.5" />
                 Create a new project
               </Button>
             </div>
@@ -836,7 +823,7 @@ function WorkspaceView({
         {recentProjects && recentProjects.length > 0 && (
           <div className="mt-10">
             <div className="mb-4 flex items-center gap-2.5">
-              <Clock className="size-4 text-muted-foreground" />
+              <UiIcon name="clock" size={16} className="size-4 text-muted-foreground" />
               <h3 className="text-[length:var(--text-body)] font-medium text-foreground">Saved Projects</h3>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[length:var(--text-caption)] font-medium text-muted-foreground">
                 {recentProjects.length}
@@ -853,7 +840,7 @@ function WorkspaceView({
                     className="flex flex-1 items-center gap-3 text-left"
                     onClick={() => onLoadRecent?.(rp.id)}
                   >
-                    <FolderOpen className="size-4 text-muted-foreground" />
+                    <UiIcon name="folder-open" size={16} className="size-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium text-foreground">{rp.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -868,7 +855,7 @@ function WorkspaceView({
                     onClick={() => onDeleteRecent?.(rp.id)}
                     aria-label={`Delete saved project ${rp.name}`}
                   >
-                    <Trash2 className="size-3.5" />
+                    <UiIcon name="trash-2" size={14} className="size-3.5" />
                   </Button>
                 </div>
               ))}
@@ -925,7 +912,7 @@ function PendingPublishBadge() {
             key={pending.targetId}
             className="flex items-center gap-2 rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
           >
-            <Package className="size-3.5" />
+            <UiIcon name="package" size={14} className="size-3.5" />
             <span className="font-medium">
               {targetName}: {pending.semver} in {remainingByTarget[pending.targetId] ?? '5:00'}
             </span>
@@ -984,7 +971,7 @@ function ProjectCard({
               onClick={(event) => event.stopPropagation()}
               aria-label={`Project actions for ${iconSet.name}`}
             >
-              <Ellipsis className="size-3.5" />
+              <UiIcon name="ellipsis" size={14} className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -994,7 +981,7 @@ function ProjectCard({
                 onOpen();
               }}
             >
-              <ArrowUpRight className="size-4" />
+              <UiIcon name="arrow-up-right" size={16} className="size-4" />
               Open project
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -1003,7 +990,7 @@ function ProjectCard({
                 onRename();
               }}
             >
-              <Pencil className="size-4" />
+              <UiIcon name="pencil" size={16} className="size-4" />
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -1013,7 +1000,7 @@ function ProjectCard({
                 onDelete();
               }}
             >
-              <Trash2 className="size-4" />
+              <UiIcon name="trash-2" size={16} className="size-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -1046,7 +1033,7 @@ function ProjectCard({
                         dangerouslySetInnerHTML={{ __html: svg }}
                       />
                     ) : (
-                      <Grid3X3 className="size-5 text-muted-foreground/40" />
+                      <UiIcon name="grid-3x3" size={20} className="size-5 text-muted-foreground/40" />
                     )}
                   </div>
                 );
@@ -1054,7 +1041,7 @@ function ProjectCard({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <FolderOpen className="size-6 text-muted-foreground/30" />
+              <UiIcon name="folder-open" size={24} className="size-6 text-muted-foreground/30" />
               <span className="text-[length:var(--text-caption)] text-muted-foreground/50">Empty</span>
             </div>
           )}
@@ -1075,7 +1062,7 @@ function ProjectCard({
           </span>
           <span className="mt-1 inline-flex items-center gap-1 text-[length:var(--text-label)] font-medium text-muted-foreground transition group-hover:text-foreground">
             Open
-            <ArrowUpRight className="size-3.5" />
+            <UiIcon name="arrow-up-right" size={14} className="size-3.5" />
           </span>
         </div>
       </button>
@@ -1198,7 +1185,7 @@ function ProjectDetailView({
                 onClick={onCreateCollection}
                 className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
               >
-                <Plus className="size-3" />
+                <UiIcon name="plus" size={12} className="size-3" />
               </button>
             </div>
             <div className="grid gap-0.5">
@@ -1221,19 +1208,19 @@ function ProjectDetailView({
                           onClick={(event) => event.stopPropagation()}
                           aria-label={`Collection actions for ${collection.name}`}
                         >
-                          <Ellipsis className="size-3.5" />
+                          <UiIcon name="ellipsis" size={14} className="size-3.5" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => onRenameCollection(collection.id)}>
-                          <Pencil className="size-4" />
+                          <UiIcon name="pencil" size={16} className="size-4" />
                           Rename
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
                           onSelect={() => onDeleteCollection(collection.id)}
                         >
-                          <Trash2 className="size-4" />
+                          <UiIcon name="trash-2" size={16} className="size-4" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -1311,7 +1298,7 @@ function ProjectDetailView({
           >
             {visibleIcons.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
-                <Grid3X3 className="mb-2 size-6 text-muted-foreground/30" />
+                <UiIcon name="grid-3x3" size={24} className="mb-2 size-6 text-muted-foreground/30" />
                 <p className="text-sm font-medium text-foreground">
                   {query ? 'No matching icons' : 'No icons in this project'}
                 </p>
@@ -1322,7 +1309,7 @@ function ProjectDetailView({
                     </p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
                       <Button size="sm" className="rounded-lg" onClick={onImportSvg}>
-                        <Import className="size-3.5" />
+                        <UiIcon name="import" size={14} className="size-3.5" />
                         Import SVGs
                       </Button>
                       <Button
@@ -1331,7 +1318,7 @@ function ProjectDetailView({
                         className="rounded-lg"
                         onClick={onCreateBlankIcon}
                       >
-                        <Plus className="size-3.5" />
+                        <UiIcon name="plus" size={14} className="size-3.5" />
                         New icon
                       </Button>
                     </div>

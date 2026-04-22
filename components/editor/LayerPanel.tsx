@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Link2, Pencil, Trash2 } from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ContextMenu,
@@ -365,7 +366,7 @@ export const LayerPanel = memo(function LayerPanel() {
                 <div className={cn('min-w-0 flex-1', !isVisible && 'opacity-50')}>
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (
-                      <Link2 className="size-3 shrink-0 text-muted-foreground" />
+                      <UiIcon name="link-2" size={12} className="size-3 shrink-0 text-muted-foreground" />
                     ) : null}
                     {/*
                       UX-F4: Inline rename. Label and input share the
@@ -451,13 +452,13 @@ export const LayerPanel = memo(function LayerPanel() {
                   }}
                   aria-label={isVisible ? 'Hide layer' : 'Show layer'}
                 >
-                  {isVisible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                  {isVisible ? <UiIcon name="eye" size={14} className="size-3.5" /> : <UiIcon name="eye-off" size={14} className="size-3.5" />}
                 </Button>
               </div>
                 </ContextMenuTrigger>
                 <ContextMenuContent>
                   <ContextMenuItem onSelect={() => startRenameLayer(layer.id)}>
-                    <Pencil className="size-4" />
+                    <UiIcon name="pencil" size={16} className="size-4" />
                     Rename
                   </ContextMenuItem>
                   <ContextMenuItem onSelect={() => {
@@ -465,7 +466,7 @@ export const LayerPanel = memo(function LayerPanel() {
                       setLayerVisibility(currentIconId, layer.id, !isVisible);
                     }
                   }}>
-                    {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    {isVisible ? <UiIcon name="eye-off" size={16} className="size-4" /> : <UiIcon name="eye" size={16} className="size-4" />}
                     {isVisible ? 'Hide' : 'Show'}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
@@ -473,7 +474,7 @@ export const LayerPanel = memo(function LayerPanel() {
                     onSelect={() => removeSelectedLayers()}
                     className="text-destructive focus:text-destructive"
                   >
-                    <Trash2 className="size-4" />
+                    <UiIcon name="trash-2" size={16} className="size-4" />
                     Delete
                   </ContextMenuItem>
                 </ContextMenuContent>

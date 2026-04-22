@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, FolderOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +110,7 @@ export function NavPane() {
                 aria-expanded={navExpanded}
                 aria-controls="nav-pane-content"
               >
-                {navExpanded ? <ChevronLeft className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                {navExpanded ? <UiIcon name="chevron-left" size={14} className="size-3.5" /> : <UiIcon name="chevron-right" size={14} className="size-3.5" />}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">{navExpanded ? 'Close projects' : 'Open projects'}</TooltipContent>
@@ -156,7 +157,7 @@ export function NavPane() {
                     */}
                     {navExpanded && renamingId === iconSet.id ? (
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <FolderOpen className="size-3.5 shrink-0" />
+                        <UiIcon name="folder-open" size={14} className="size-3.5 shrink-0" />
                         <input
                           autoFocus
                           type="text"
@@ -182,7 +183,7 @@ export function NavPane() {
                           if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); setDeleteTarget(iconSet); }
                         }}
                       >
-                        <FolderOpen className="size-3.5 shrink-0" />
+                        <UiIcon name="folder-open" size={14} className="size-3.5 shrink-0" />
                         {navExpanded ? (
                           <>
                             <span className="min-w-0 truncate">{iconSet.name}</span>
@@ -200,15 +201,15 @@ export function NavPane() {
                             className="h-5 -ml-2 w-0 overflow-hidden opacity-0 transition-all duration-150 group-hover/item:ml-0 group-hover/item:w-5 group-hover/item:overflow-visible group-hover/item:opacity-100 data-[state=open]:ml-0 data-[state=open]:w-5 data-[state=open]:overflow-visible data-[state=open]:opacity-100 focus-visible:ml-0 focus-visible:w-5 focus-visible:overflow-visible focus-visible:opacity-100"
                             aria-label={`Actions for ${iconSet.name}`}
                           >
-                            <MoreHorizontal className="size-3" />
+                            <UiIcon name="more-horizontal" size={12} className="size-3" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" side="right">
                           <DropdownMenuItem onSelect={() => handleStartRename(iconSet)}>
-                            <Pencil className="size-4" /> Rename
+                            <UiIcon name="pencil" size={16} className="size-4" /> Rename
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => setDeleteTarget(iconSet)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="size-4" /> Delete
+                            <UiIcon name="trash-2" size={16} className="size-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -245,7 +246,7 @@ export function NavPane() {
                     onClick={() => setInlineNew(true)}
                     className="h-auto w-full justify-start gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs text-foreground/70 transition-all duration-[160ms] hover:border-border hover:text-foreground hover:shadow-[var(--shadow-outline)]"
                   >
-                    <Plus className="size-3.5 shrink-0" />
+                    <UiIcon name="plus" size={14} className="size-3.5 shrink-0" />
                     {navExpanded && <span>New Project</span>}
                   </Button>
                 </TooltipTrigger>

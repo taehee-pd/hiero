@@ -1,7 +1,8 @@
 'use client';
 
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Eye, EyeOff, MousePointerSquareDashed, Plus, Ruler, Trash2, X } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -169,7 +170,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
           onClick={onClose}
           aria-label="Close guide panel"
         >
-          <X className="size-4" />
+          <UiIcon name="x" size={16} className="size-4" />
         </Button>
       </div>
 
@@ -206,7 +207,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                   Start from a preset, then tune items live on canvas.
                 </p>
               </div>
-              <Ruler className="size-4 text-muted-foreground" />
+              <UiIcon name="ruler" size={16} className="size-4 text-muted-foreground" />
             </div>
             <div className="mt-3 grid gap-3">
               <div className="grid gap-1.5">
@@ -238,7 +239,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                 </div>
               ) : null}
               <Button className="justify-center" onClick={handleCreateMaster}>
-                <Plus className="size-4" />
+                <UiIcon name="plus" size={16} className="size-4" />
                 <span>Create guide master</span>
               </Button>
             </div>
@@ -339,7 +340,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       aria-pressed={editingThisMaster(selectedMaster.id)}
                       title="Edit guides on canvas"
                     >
-                      <MousePointerSquareDashed className="size-3.5" />
+                      <UiIcon name="mouse-pointer-square-dashed" size={14} className="size-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -351,7 +352,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       onClick={toggleGuidesVisible}
                       aria-label={guidesVisible ? 'Hide guides' : 'Show guides'}
                     >
-                      {guidesVisible ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                      {guidesVisible ? <UiIcon name="eye" size={14} className="size-3.5" /> : <UiIcon name="eye-off" size={14} className="size-3.5" />}
                     </Button>
                     <Button
                       variant="ghost"
@@ -360,7 +361,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       onClick={() => handleDuplicateMaster(selectedMaster)}
                       aria-label="Duplicate guide master"
                     >
-                      <Copy className="size-3.5" />
+                      <UiIcon name="copy" size={14} className="size-3.5" />
                     </Button>
                     {pendingDeleteId === selectedMaster.id ? (
                       <div className="flex items-center gap-1">
@@ -392,7 +393,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                         onClick={() => handleDeleteMaster(selectedMaster)}
                         aria-label="Delete guide master"
                       >
-                        <Trash2 className="size-3.5" />
+                        <UiIcon name="trash-2" size={14} className="size-3.5" />
                       </Button>
                     )}
                   </div>
@@ -467,7 +468,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       </SelectContent>
                     </Select>
                     <Button onClick={handleAddGuideItem}>
-                      <Plus className="size-4" />
+                      <UiIcon name="plus" size={16} className="size-4" />
                       <span>Add</span>
                     </Button>
                   </div>
@@ -525,7 +526,7 @@ function GuideItemCard({
           onClick={onRemove}
           aria-label="Remove guide item"
         >
-          <Trash2 className="size-3.5" />
+          <UiIcon name="trash-2" size={14} className="size-3.5" />
         </Button>
       </div>
       <div className="mt-3">

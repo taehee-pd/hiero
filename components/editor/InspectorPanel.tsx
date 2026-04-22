@@ -1,34 +1,8 @@
 'use client';
 
+import { AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd, AlignHorizontalJustifyStart, AlignStartHorizontal, AlignStartVertical, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, BetweenHorizontalStart, BetweenVerticalStart, Check, Icon as UiIcon, Lock, Minus, Shapes, SplitSquareHorizontal, Squircle } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  LoaderCircle,
-  AlignCenterHorizontal,
-  AlignCenterVertical,
-  AlignHorizontalJustifyCenter,
-  AlignHorizontalJustifyEnd,
-  AlignHorizontalJustifyStart,
-  AlignEndHorizontal,
-  AlignEndVertical,
-  AlignStartHorizontal,
-  AlignStartVertical,
-  AlignVerticalJustifyCenter,
-  AlignVerticalJustifyEnd,
-  AlignVerticalJustifyStart,
-  BetweenHorizontalStart,
-  BetweenVerticalStart,
-  Lock,
-  Minus,
-  Shapes,
-  SplitSquareHorizontal,
-  Squircle,
-  VenetianMask,
-  ScissorsLineDashed,
-  Plus,
-  Check,
-  X,
-  ClipboardPaste,
-} from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -357,8 +331,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
     setTopology(currentIconId, currentVariantId, undefined);
   }, [currentIconId, currentVariantId, setTopology]);
 
-
-
   const toggleMatrixSize = useCallback((size: number) => {
     setMatrixSizes((prev) => (prev.includes(size) ? prev.filter((value) => value !== size) : [...prev, size].sort((a, b) => a - b)));
   }, []);
@@ -470,7 +442,6 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   })}
                 </div>
 
-
                 {currentVariant ? (
                   <div className="grid gap-2">
                     <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">Weight</Label>
@@ -571,7 +542,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       disabled={!currentIcon || !Number.isFinite(selectedVariantSize) || variantSizeTaken}
                       className="rounded-lg"
                     >
-                      <Plus className="size-4" />
+                      <UiIcon name="plus" size={16} className="size-4" />
                       Add Variant
                     </Button>
                   </div>
@@ -688,7 +659,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                               }
                             }}
                           >
-                            {isDeriving ? <LoaderCircle className="size-3 animate-spin" /> : null}
+                            {isDeriving ? <UiIcon name="loader-circle" size={12} className="size-3 animate-spin" /> : null}
                             {modifier}
                           </Button>
                         ))}
@@ -712,7 +683,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                           }
                         }}
                       >
-                        {isDeriving ? <LoaderCircle className="size-3 animate-spin mr-1" /> : null}
+                        {isDeriving ? <UiIcon name="loader-circle" size={12} className="size-3 animate-spin mr-1" /> : null}
                         Derive All
                       </Button>
                     </>
@@ -774,7 +745,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
               <Section title="Topology">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {isTopologyLocked ? <Lock className="size-3.5 text-primary" /> : null}
+                    {isTopologyLocked ? <UiIcon name="lock" size={14} className="size-3.5 text-primary" /> : null}
                     <p className="text-sm font-medium text-foreground">
                       {currentTopology.layerPairs.length} tracked layer
                       {currentTopology.layerPairs.length === 1 ? '' : 's'}
@@ -891,7 +862,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
-                    <VenetianMask className="size-4" />
+                    <UiIcon name="venetian-mask" size={16} className="size-4" />
                     <span className="flex flex-col items-start leading-none">
                       <span className="text-sm font-semibold">
                         Make clipping mask
@@ -931,7 +902,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       >
                         <span className="flex w-full items-center gap-2.5">
                           {isPending ? (
-                            <LoaderCircle className="size-4 animate-spin" />
+                            <UiIcon name="loader-circle" size={16} className="size-4 animate-spin" />
                           ) : (
                             <Icon className="size-4" />
                           )}
@@ -1005,7 +976,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   className="h-10 rounded-lg border-border bg-background px-3 text-left transition hover:bg-accent/40"
                 >
                   <span className="flex w-full items-center gap-2.5">
-                    <ScissorsLineDashed className="size-4" />
+                    <UiIcon name="scissors-line-dashed" size={16} className="size-4" />
                     <span className="flex flex-col items-start leading-none">
                       <span className="text-sm font-semibold">
                         Release clipping mask
@@ -1264,7 +1235,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       disabled={!canDistributePoints}
                       onClick={() => distributeSelectedPoints(action.axis)}
                     >
-                      <Minus className={`size-4 ${action.rotate}`} />
+                      <UiIcon name="minus" className={`size-4 ${action.rotate}`} />
                     </IconActionButton>
                   ))}
                 </div>
@@ -1809,7 +1780,6 @@ function scaleVariantViewBox(
   ];
 }
 
-
 // ── Weight Control Points Editor ──────────────────────────────────────
 
 const WEIGHT_CONTROL_SLOTS = [
@@ -1918,7 +1888,7 @@ function WeightControlPointsEditor({
             >
               <div className="flex items-center gap-2">
                 {hasValue ? (
-                  <Check className="size-3.5 text-green-500" />
+                  <UiIcon name="check" size={14} className="size-3.5 text-green-500" />
                 ) : (
                   <span className="size-3.5 rounded-full border border-border/70" />
                 )}
@@ -1937,7 +1907,7 @@ function WeightControlPointsEditor({
                     title={`Clear ${WEIGHT_SLOT_LABELS[slot]}`}
                     className="size-7"
                   >
-                    <X className="size-3.5" />
+                    <UiIcon name="x" size={14} className="size-3.5" />
                   </Button>
                 ) : null}
                 <Button
@@ -1947,7 +1917,7 @@ function WeightControlPointsEditor({
                   onClick={() => handlePasteFromClipboard(slot)}
                   className="h-7 rounded-lg px-2 text-xs"
                 >
-                  <ClipboardPaste className="mr-1 size-3" />
+                  <UiIcon name="clipboard-paste" size={12} className="mr-1 size-3" />
                   {hasValue ? 'Replace' : 'Paste'}
                 </Button>
               </div>
@@ -1993,12 +1963,12 @@ function WeightControlPointsEditor({
         >
           {validationResult.valid ? (
             <>
-              <Check className="size-3.5" />
+              <UiIcon name="check" size={14} className="size-3.5" />
               Compatible
             </>
           ) : (
             <>
-              <X className="size-3.5" />
+              <UiIcon name="x" size={14} className="size-3.5" />
               Incompatible: {validationResult.reason}
             </>
           )}

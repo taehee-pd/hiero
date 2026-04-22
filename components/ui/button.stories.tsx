@@ -1,6 +1,7 @@
+import { Icon as UiIcon } from '@hiero/ui-icons';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { Plus, Trash2 } from 'lucide-react';
+
 import { Button } from './button';
 
 // Phase 3 primitive story for Button.
@@ -77,7 +78,7 @@ export const AllSizes: Story = {
         large
       </Button>
       <Button {...args} size="icon" aria-label="add">
-        <Plus />
+        <UiIcon name="plus" />
       </Button>
     </div>
   ),
@@ -87,7 +88,7 @@ export const WithIcon: Story = {
   args: {
     children: (
       <>
-        <Plus /> add layer
+        <UiIcon name="plus" /> add layer
       </>
     ),
   },
@@ -101,7 +102,7 @@ export const Destructive: Story = {
   args: {
     children: (
       <>
-        <Trash2 /> delete
+        <UiIcon name="trash-2" /> delete
       </>
     ),
     variant: 'destructive',

@@ -626,10 +626,10 @@ const iconData = {
     "externalImport": {
       "adapterId": "lucide",
       "sourceLibrary": "lucide",
-      "sourceVersion": "1.8.0",
+      "sourceVersion": "0.577.0",
       "sourceIconId": "mouse-pointer-square-dashed",
       "sourceLicense": "ISC",
-      "importedAt": "2026-04-22T04:21:06.207Z"
+      "importedAt": "2026-04-22T06:43:57.968Z"
     }
   }
 } as const;

@@ -147,6 +147,15 @@ All required to pass before removing `lucide-react` in Phase 9:
 - `pnpm test`, `pnpm build`, `pnpm lint`, `pnpm format:check` green.
 - Manual dogfood pass across editor, studio, explorer, export panels.
 
+## Phase outcomes (post-execution)
+
+**Phase 9 revised: `lucide-react` stays as a data-source dependency.**
+Zero UI code imports from `lucide-react` after the Phase 8 codemod —
+that's the dogfood win. The package remains a runtime dependency of
+`lib/import/adapters/lucide-source.ts`, which reads Lucide's bundled
+icon data to populate the editor's "Import from Lucide" flow. That is
+a separate concern from UI icon rendering and is not a dogfood gap.
+
 ## Non-decisions (deferred)
 
 - External package publishing cadence / semver discipline — internal-only

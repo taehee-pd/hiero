@@ -1,19 +1,8 @@
 'use client';
 
+import { Circle, Icon as UiIcon, Minus, MousePointer2, Move, Pen, Pentagon, Ruler, Square, Star } from '@hiero/ui-icons';
 import { memo, useState } from 'react';
-import {
-  ChevronDown,
-  Circle,
-  Magnet,
-  Minus,
-  MousePointer2,
-  Move,
-  Pen,
-  Pentagon,
-  Ruler,
-  Square,
-  Star,
-} from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -260,7 +249,7 @@ export const ToolPanel = memo(function ToolPanel({
                               : 'h-10 w-8 rounded-l-sm rounded-r-md',
                           )}
                         >
-                          <ChevronDown className="size-3.5" />
+                          <UiIcon name="chevron-down" size={14} className="size-3.5" />
                         </Button>
                       </PopoverTrigger>
                     </TooltipTrigger>
@@ -311,7 +300,7 @@ export const ToolPanel = memo(function ToolPanel({
                               : 'h-10 w-8 rounded-l-sm rounded-r-md',
                           )}
                         >
-                          <ChevronDown className="size-3.5" />
+                          <UiIcon name="chevron-down" size={14} className="size-3.5" />
                         </Button>
                       </PopoverTrigger>
                     </TooltipTrigger>
@@ -376,9 +365,9 @@ export const ToolPanel = memo(function ToolPanel({
                 )}
               >
                 {snapEnabled ? (
-                  <Magnet className="size-4" fill="currentColor" />
+                  <UiIcon name="magnet" size={16} className="size-4" />
                 ) : (
-                  <Magnet className="size-4" />
+                  <UiIcon name="magnet" size={16} className="size-4" />
                 )}
               </span>
               {!isDock ? (

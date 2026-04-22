@@ -18,16 +18,14 @@ import {
 } from '../schema/types';
 
 function escapeXml(s: string): string {
-  return s.replace(/[&<>"']/g, (ch) => {
-    switch (ch) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      case "'": return '&apos;';
-      default: return ch;
-    }
-  });
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+  };
+  return s.replace(/[&<>"']/g, (ch) => map[ch]!);
 }
 
 function resolvePaintForString(paint: PaintRef | undefined): string {

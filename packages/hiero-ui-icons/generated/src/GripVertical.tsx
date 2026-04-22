@@ -402,10 +402,10 @@ const iconData = {
     "externalImport": {
       "adapterId": "lucide",
       "sourceLibrary": "lucide",
-      "sourceVersion": "1.8.0",
+      "sourceVersion": "0.577.0",
       "sourceIconId": "grip-vertical",
       "sourceLicense": "ISC",
-      "importedAt": "2026-04-22T04:21:06.190Z"
+      "importedAt": "2026-04-22T06:43:57.950Z"
     }
   }
 } as const;

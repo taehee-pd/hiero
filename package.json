@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Icon design studio for stateful, animated SVG icons",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -38,6 +41,7 @@
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {
+    "@hiero/ui-icons": "workspace:*",
     "@fontsource-variable/spline-sans": "^5.2.8",
     "@fontsource-variable/spline-sans-mono": "^5.2.8",
     "@heroicons/react": "^2.2.0",

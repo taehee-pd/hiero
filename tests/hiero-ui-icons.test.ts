@@ -9,12 +9,9 @@
 
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'fs/promises';
-import { mkdtempSync } from 'fs';
-import { tmpdir } from 'os';
 import path from 'path';
-import { $ } from 'bun';
 
-import { compileProject } from '../lib/export/compile-pipeline';
+import { generateIconLibrary } from '../lib/export/export-react/generate-library';
 import type { IconSet } from '../lib/schema/types';
 
 const REPO_ROOT = path.resolve(import.meta.dir, '..');
@@ -57,24 +54,32 @@ describe('hiero-ui-icons source', () => {
 });
 
 describe('hiero-ui-icons codegen', () => {
-  test('compileProject is deterministic across runs', async () => {
+  test('generateIconLibrary (production path) is deterministic', async () => {
     const set = await loadIconSet();
-    const builtAt = '2026-01-01T00:00:00.000Z';
+    const opts = { outputDir: 'src', packageName: '@hiero/ui-icons' };
 
-    const a = compileProject(set, {
-      package: { name: '@hiero/ui-icons', version: '0.0.1', builtAt },
-      generateReact: true,
-    });
-    const b = compileProject(set, {
-      package: { name: '@hiero/ui-icons', version: '0.0.1', builtAt },
-      generateReact: true,
-    });
+    const a = generateIconLibrary(set, opts);
+    const b = generateIconLibrary(set, opts);
 
-    expect(a.files.length).toBe(b.files.length);
-    for (let i = 0; i < a.files.length; i += 1) {
-      expect(a.files[i].path).toBe(b.files[i].path);
-      expect(a.files[i].contents).toBe(b.files[i].contents);
+    const aKeys = Object.keys(a).sort();
+    const bKeys = Object.keys(b).sort();
+    expect(aKeys).toEqual(bKeys);
+    for (const key of aKeys) {
+      expect(a[key]).toBe(b[key]!);
     }
+  });
+
+  test('generateIconLibrary emits one component per imported icon', async () => {
+    const set = await loadIconSet();
+    const files = generateIconLibrary(set, {
+      outputDir: 'src',
+      packageName: '@hiero/ui-icons',
+    });
+
+    const componentFiles = Object.keys(files).filter(
+      (f) => f.startsWith('src/') && f.endsWith('.tsx'),
+    );
+    expect(componentFiles.length).toBe(Object.keys(set.icons).length);
   });
 });
 

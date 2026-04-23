@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorField } from '@/components/ds/color-field';
+import { Tag, type TagVariant } from '@/components/ds/tag';
 import { WeightCurveEditor } from './WeightCurveEditor';
 import {
   alignLayers,
@@ -84,6 +85,19 @@ const POINT_DISTRIBUTE_ACTIONS = [
   { label: 'Distribute points horizontally', axis: 'x', rotate: '' },
   { label: 'Distribute points vertically', axis: 'y', rotate: 'rotate-90' },
 ] as const;
+
+// Glanceable color coding for the debug/preview affordance. These are
+// category signals (which algorithm ran), not success/failure semantics —
+// we reuse the Tag variants purely for their color distinctness.
+const ANIMATION_STRATEGY_TAG_VARIANT: Record<
+  'morph' | 'trim' | 'crossfade' | 'preserved',
+  TagVariant
+> = {
+  morph: 'success',
+  trim: 'warning',
+  crossfade: 'danger',
+  preserved: 'default',
+};
 
 const SYMBOL_WEIGHT_OPTIONS: SymbolWeight[] = ['ultralight', 'thin', 'light', 'regular', 'medium', 'semibold', 'bold', 'heavy', 'black'];
 const WEIGHT_ABBREVIATIONS: Record<SymbolWeight, string> = {
@@ -821,17 +835,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
             <ReadOnlyField label="ID" value={layer.id} />
             {animationStrategyBadge ? (
               <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-medium tracking-tight text-white',
-                    animationStrategyBadge === 'morph' && 'bg-green-600',
-                    animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
-                    animationStrategyBadge === 'crossfade' && 'bg-red-500',
-                    animationStrategyBadge === 'preserved' && 'bg-blue-500',
-                  )}
-                >
+                <Tag variant={ANIMATION_STRATEGY_TAG_VARIANT[animationStrategyBadge]}>
                   {animationStrategyBadge}
-                </span>
+                </Tag>
               </div>
             ) : null}
             {variableValueInfo ? (

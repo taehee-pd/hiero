@@ -236,17 +236,18 @@ export function Navbar() {
                 aria-label="Main menu"
               >
                 <span
-                  className="inline-block h-3 shrink-0 bg-foreground"
+                  className="inline-block size-5 shrink-0 bg-foreground"
                   role="img"
                   aria-label="Hiero logo"
                   style={{
-                    aspectRatio: '2144 / 408',
-                    maskImage: 'url(/hiero_wordmark.svg)',
+                    maskImage: 'url(/hiero.svg?v=4)',
                     maskSize: 'contain',
                     maskRepeat: 'no-repeat',
-                    WebkitMaskImage: 'url(/hiero_wordmark.svg)',
+                    maskPosition: 'center',
+                    WebkitMaskImage: 'url(/hiero.svg?v=4)',
                     WebkitMaskSize: 'contain',
                     WebkitMaskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
                   }}
                 />
                 <UiIcon name="chevron-down" size={12} className="size-3 text-muted-foreground" />

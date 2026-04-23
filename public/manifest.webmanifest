@@ -18,7 +18,7 @@
       "type": "image/png"
     },
     {
-      "src": "/hiero.svg",
+      "src": "/hiero.svg?v=4",
       "sizes": "any",
       "type": "image/svg+xml"
     }

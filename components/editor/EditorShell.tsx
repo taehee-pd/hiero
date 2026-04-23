@@ -72,8 +72,7 @@ import {
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorField } from '@/components/ds/color-field';
-import { TransitionPanel } from './TransitionPanel';
-import { AnimationStudioPanel } from './AnimationStudioPanel';
+import { AnimatePanel, type AnimationKind } from './AnimatePanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { ListPane } from '@/components/studio/ListPane';
@@ -1316,6 +1315,10 @@ function RightSidebar({
   const fillMode = selectedLayer?.style.fill?.mode ?? 'none';
   const strokeMode = selectedLayer?.style.stroke?.mode ?? 'none';
 
+  // Kept at the sidebar level so the user's Transition/Effects choice
+  // survives the `key={rightTab}` remount when flipping tabs.
+  const [animationKind, setAnimationKind] = useState<AnimationKind>('transition');
+
   // D-4: Debounce color input changes (~100ms)
   const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -1760,8 +1763,11 @@ function RightSidebar({
             )
           ) : (
             <>
-              <AnimationStudioPanel showTimelineEditor={false} />
-              <TransitionPanel />
+              <AnimatePanel
+                kind={animationKind}
+                onKindChange={setAnimationKind}
+                showTimelineEditor={false}
+              />
             </>
           )}
         </div>

@@ -375,10 +375,15 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                       </button>
                     </p>
                   </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => handleEditEasing(effect)}>Edit</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(effect.id)}>Delete</Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(effect.id)}
+                    className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <UiIcon name="trash-2" className="size-3" />
+                    Delete
+                  </Button>
                 </div>
                 {/* UX-F1: Inline easing editor replaces window.prompt() */}
                 {editingEffectId === effect.id && (

@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Label } from '@/components/ui/label';
 
 import { AnimationStudioPanel } from './AnimationStudioPanel';
 import { TransitionPanel } from './TransitionPanel';
 
-type AnimationKind = 'transition' | 'effects';
+export type AnimationKind = 'transition' | 'effects';
 
 const ANIMATION_KIND_OPTIONS: Array<{ value: AnimationKind; label: string }> = [
   { value: 'transition', label: 'Transition' },
@@ -22,14 +20,20 @@ const ANIMATION_KIND_OPTIONS: Array<{ value: AnimationKind; label: string }> = [
  * a single "Animation" section at the top selects the kind of animation
  * (Transition vs Effects), then the selected sub-panel renders Playback
  * Mode / Timing / Preview / Advanced.
+ *
+ * Controlled on purpose — the parent owns `kind` so the selection survives
+ * the Right Sidebar's `key={rightTab}` remount when users flip between
+ * Inspect and Animation.
  */
 export function AnimatePanel({
+  kind,
+  onKindChange,
   showTimelineEditor = false,
 }: {
+  kind: AnimationKind;
+  onKindChange: (kind: AnimationKind) => void;
   showTimelineEditor?: boolean;
 }) {
-  const [kind, setKind] = useState<AnimationKind>('transition');
-
   return (
     <div className="grid gap-3">
       <div className="grid gap-1.5">
@@ -42,7 +46,7 @@ export function AnimatePanel({
           variant="outline"
           value={kind}
           onValueChange={(value) => {
-            if (value) setKind(value as AnimationKind);
+            if (value) onKindChange(value as AnimationKind);
           }}
           className="h-8 w-full justify-stretch rounded-md border border-border/70"
         >

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
       {
-        url: '/hiero.svg?v=2',
+        url: '/hiero.svg?v=4',
         type: 'image/svg+xml',
       },
     ],

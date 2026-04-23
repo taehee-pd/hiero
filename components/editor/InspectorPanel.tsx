@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorField } from '@/components/ds/color-field';
+import { Tag } from '@/components/ds/tag';
 import { WeightCurveEditor } from './WeightCurveEditor';
 import {
   alignLayers,
@@ -821,17 +822,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             <ReadOnlyField label="ID" value={layer.id} />
             {animationStrategyBadge ? (
               <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-label)] font-medium tracking-tight text-white',
-                    animationStrategyBadge === 'morph' && 'bg-green-600',
-                    animationStrategyBadge === 'trim' && 'bg-yellow-500 text-yellow-950',
-                    animationStrategyBadge === 'crossfade' && 'bg-red-500',
-                    animationStrategyBadge === 'preserved' && 'bg-blue-500',
-                  )}
-                >
-                  {animationStrategyBadge}
-                </span>
+                <Tag variant="outline">{animationStrategyBadge}</Tag>
               </div>
             ) : null}
             {variableValueInfo ? (

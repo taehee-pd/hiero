@@ -72,8 +72,7 @@ import {
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
 import { ColorField } from '@/components/ds/color-field';
-import { TransitionPanel } from './TransitionPanel';
-import { AnimationStudioPanel } from './AnimationStudioPanel';
+import { AnimatePanel } from './AnimatePanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
 import { ListPane } from '@/components/studio/ListPane';
@@ -1760,8 +1759,7 @@ function RightSidebar({
             )
           ) : (
             <>
-              <AnimationStudioPanel showTimelineEditor={false} />
-              <TransitionPanel />
+              <AnimatePanel showTimelineEditor={false} />
             </>
           )}
         </div>

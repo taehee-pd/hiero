@@ -15,6 +15,7 @@ import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
 import { cn } from '@/lib/utils';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorField } from '@/components/ds/color-field';
+import { IconButton } from '@/components/ds/icon-button';
 
 type Speed = 0.25 | 0.5 | 1 | 2;
 const SPEEDS: Speed[] = [0.25, 0.5, 1, 2];
@@ -375,9 +376,23 @@ export const AnimationStudioPanel = memo(function AnimationStudioPanel({
                       </button>
                     </p>
                   </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => handleEditEasing(effect)}>Edit</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(effect.id)}>Delete</Button>
+                  <div className="flex items-center gap-1">
+                    <IconButton
+                      size="sm"
+                      aria-label="Edit easing"
+                      tooltip="Edit easing"
+                      icon={<UiIcon name="pencil" className="size-3" />}
+                      onClick={() => handleEditEasing(effect)}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(effect.id)}
+                      className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <UiIcon name="trash-2" className="size-3" />
+                      Delete
+                    </Button>
                   </div>
                 </div>
                 {/* UX-F1: Inline easing editor replaces window.prompt() */}

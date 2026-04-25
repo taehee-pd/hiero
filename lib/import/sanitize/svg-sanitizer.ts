@@ -139,9 +139,7 @@ function getAttributeNames(element: Element): string[] {
     .filter((name): name is string => typeof name === 'string');
   if (objectValueNames.length > 0) return objectValueNames;
 
-  return Object.keys(record)
-    .filter((key) => !/^\d+$/.test(key))
-    .map((key) => key.replace(/^.*:/, ''));
+  return Object.keys(record).filter((key) => !/^\d+$/.test(key));
 }
 
 function removeAttributeCompat(element: Element, attrName: string, normalizedName: string): void {
@@ -197,8 +195,10 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
       continue;
     }
 
-    // Not on the allowlist
-    if (!ALLOWED_ATTRIBUTES.has(normalizedLower)) {
+    // Not on the allowlist. Check the full prefixed name first so namespaced
+    // entries (e.g. `xmlns:xlink`, `xlink:href`) survive — falling back to the
+    // normalized form covers parsers that drop the prefix.
+    if (!ALLOWED_ATTRIBUTES.has(attrLower) && !ALLOWED_ATTRIBUTES.has(normalizedLower)) {
       warnings.push({
         code: 'unsupported_feature_dropped',
         severity: 'warning',

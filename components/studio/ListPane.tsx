@@ -254,28 +254,28 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             {/* Search */}
             <div className="space-y-1 border-b border-border/40 px-2 py-1.5">
               <div className="relative">
-              <UiIcon name="search" size={14} className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search icons…"
-                aria-label="Search icons"
-                className={cn(
-                  'h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs',
-                  query ? 'pr-7' : 'pr-2',
-                )}
-                style={{ boxShadow: 'var(--shadow-outline)' }}
-              />
-              {query ? (
-                <button
-                  type="button"
-                  onClick={() => setQuery('')}
-                  className="absolute right-4 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                  aria-label="Clear search"
-                >
-                  <UiIcon name="x" size={12} className="size-3" />
-                </button>
-              ) : null}
+                <UiIcon name="search" size={14} className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search icons…"
+                  aria-label="Search icons"
+                  className={cn(
+                    'h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs',
+                    query ? 'pr-7' : 'pr-2',
+                  )}
+                  style={{ boxShadow: 'var(--shadow-outline)' }}
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    className="absolute right-4 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Clear search"
+                  >
+                    <UiIcon name="x" size={12} className="size-3" />
+                  </button>
+                ) : null}
               </div>
               <p className="px-1 text-[10px] text-muted-foreground">
                 Tip: drag SVG files here to import in bulk.

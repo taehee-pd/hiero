@@ -11,7 +11,8 @@ import {
 } from '../lib/editor-store/selectors';
 import type { PrimitiveShape } from '../lib/schema/types';
 
-const windowRef = ((globalThis as { window?: Record<string, unknown> }).window ??= {});
+const windowHost = globalThis as unknown as { window?: Record<string, unknown> };
+const windowRef = (windowHost.window ??= {});
 const originalWindowAddEventListener = windowRef.addEventListener;
 const originalWindowRemoveEventListener = windowRef.removeEventListener;
 const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
@@ -20,8 +21,8 @@ const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
 beforeAll(() => {
   windowRef.addEventListener = () => {};
   windowRef.removeEventListener = () => {};
-  windowRef.setTimeout = globalThis.setTimeout as unknown as Record<string, unknown>[string];
-  windowRef.clearTimeout = globalThis.clearTimeout as unknown as Record<string, unknown>[string];
+  windowRef.setTimeout = globalThis.setTimeout as unknown;
+  windowRef.clearTimeout = globalThis.clearTimeout as unknown;
   globalThis.requestAnimationFrame = () => 1;
   globalThis.cancelAnimationFrame = () => {};
 });

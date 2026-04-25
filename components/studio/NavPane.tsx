@@ -63,6 +63,10 @@ export function NavPane() {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [workspace?.iconSets],
   );
+  const totalIconCount = useMemo(
+    () => iconSets.reduce((sum, iconSet) => sum + iconSet.iconCount, 0),
+    [iconSets],
+  );
 
   const handleSelectProject = useCallback(
     (iconSetId: string) => {
@@ -89,7 +93,7 @@ export function NavPane() {
     <>
       <aside
         className={cn(
-          'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
+          'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200',
           navExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
@@ -134,6 +138,19 @@ export function NavPane() {
         {/* Project list */}
         {navExpanded && <ScrollArea id="nav-pane-content" className="flex-1">
           <div className="flex flex-col gap-0.5 p-1.5">
+            <div className="mb-1.5 flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-2 py-1">
+              <span className="studio-kicker">{iconSets.length} project{iconSets.length === 1 ? '' : 's'}</span>
+              <span className="ml-auto rounded bg-muted px-1.5 text-[10px] font-medium leading-4 text-muted-foreground tabular-nums">
+                {totalIconCount} icon{totalIconCount === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            {iconSets.length === 0 && (
+              <div className="mx-1 mb-1 rounded-md border border-dashed border-border/70 bg-background/70 px-2 py-2 text-[11px] leading-4 text-muted-foreground">
+                No projects yet. Create one to start your icon library.
+              </div>
+            )}
+
             {iconSets.map((iconSet) => (
               <Tooltip key={iconSet.id} delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
@@ -222,39 +239,41 @@ export function NavPane() {
               </Tooltip>
             ))}
 
-            {/* New project inline */}
+          </div>
+        </ScrollArea>}
+
+        {navExpanded && (
+          <div className="border-t border-border/40 p-1.5">
             {inlineNew ? (
-              <div className="px-1">
-                <Input
-                  autoFocus
-                  className="h-7 text-xs"
-                  placeholder="Project name"
-                  value={inlineNewValue}
-                  onChange={(e) => setInlineNewValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); handleCreateProject(); }
-                    if (e.key === 'Escape') setInlineNew(false);
-                  }}
-                  onBlur={handleCreateProject}
-                />
-              </div>
+              <Input
+                autoFocus
+                className="h-7 text-xs"
+                placeholder="Project name"
+                value={inlineNewValue}
+                onChange={(e) => setInlineNewValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleCreateProject(); }
+                  if (e.key === 'Escape') setInlineNew(false);
+                }}
+                onBlur={handleCreateProject}
+              />
             ) : (
               <Tooltip delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     onClick={() => setInlineNew(true)}
-                    className="h-auto w-full justify-start gap-2 rounded-lg border border-transparent px-2 py-1.5 text-xs text-foreground/70 transition-all duration-[160ms] hover:border-border hover:text-foreground hover:shadow-[var(--shadow-outline)]"
+                    className="h-auto w-full justify-start gap-2 rounded-lg border border-border/60 bg-background/60 px-2 py-1.5 text-xs text-foreground/80 transition-all duration-[160ms] hover:border-border hover:bg-background hover:text-foreground hover:shadow-[var(--shadow-outline)]"
                   >
                     <UiIcon name="plus" size={14} className="size-3.5 shrink-0" />
-                    {navExpanded && <span>New Project</span>}
+                    <span>New Project</span>
                   </Button>
                 </TooltipTrigger>
                 {!navExpanded && <TooltipContent side="right">New Project</TooltipContent>}
               </Tooltip>
             )}
           </div>
-        </ScrollArea>}
+        )}
       </aside>
 
       {/* Delete project dialog */}

@@ -226,7 +226,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className="flex h-10 shrink-0 items-center gap-1.5 border-b border-border/70 bg-background px-2" style={{ fontFamily: 'var(--font-system)', boxShadow: 'var(--shadow-outline)' }}>
+      <header className="studio-topbar flex h-10 shrink-0 items-center gap-1.5 px-2" style={{ fontFamily: 'var(--font-system)' }}>
         {/* Left: main menu + project name + save status */}
         <div className="flex min-w-0 items-center gap-1.5">
           <DropdownMenu>

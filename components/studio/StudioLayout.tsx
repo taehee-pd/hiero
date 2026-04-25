@@ -92,14 +92,14 @@ export function StudioLayout() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
       <Navbar />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--primary)_7%,transparent)_0%,transparent_55%)]">
         <NavPane />
         {activeIconSetId && (
           <div className={currentIconId ? 'hidden lg:flex' : 'flex'}>
             <ListPane />
           </div>
         )}
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-background/80">
           {currentIconId ? (
             <EditorShell initialIconId={currentIconId} embedded />
           ) : (

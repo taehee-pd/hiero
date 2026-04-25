@@ -172,12 +172,13 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const handleGridLostPointerCapture = marquee.onLostPointerCapture;
 
   const iconCount = icons.length;
+  const selectedCount = selectedIconIds.length;
 
   if (!activeIconSetId) {
     return (
       <aside
         className={cn(
-          'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200',
+          'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200',
           listExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
@@ -210,7 +211,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
     <>
       <aside
         className={cn(
-          'flex shrink-0 flex-col border-r border-border/70 bg-background transition-[width] duration-200 overflow-hidden',
+          'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200 overflow-hidden',
           listExpanded ? 'w-[230px]' : 'w-10',
         )}
         style={{ boxShadow: 'var(--shadow-inset-edge)' }}
@@ -227,6 +228,11 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           {listExpanded ? (
             <>
               <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
+              {selectedCount > 0 && (
+                <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[10px] font-medium leading-4 text-primary tabular-nums">
+                  {selectedCount} selected
+                </span>
+              )}
               <IconButton icon={<UiIcon name="plus" />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
               <IconButton icon={<UiIcon name="folder-input" />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
               <IconButton
@@ -246,7 +252,8 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         {listExpanded ? (
           <>
             {/* Search */}
-            <div className="relative px-2 py-1.5">
+            <div className="space-y-1 border-b border-border/40 px-2 py-1.5">
+              <div className="relative">
               <UiIcon name="search" size={14} className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
@@ -269,6 +276,10 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                   <UiIcon name="x" size={12} className="size-3" />
                 </button>
               ) : null}
+              </div>
+              <p className="px-1 text-[10px] text-muted-foreground">
+                Tip: drag SVG files here to import in bulk.
+              </p>
             </div>
 
             {/* Icon grid with marquee support */}
@@ -302,7 +313,24 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                       >
                         Clear search
                       </button>
-                    ) : null}
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleCreateBlankIcon}
+                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition hover:border-border hover:shadow-[var(--shadow-outline)]"
+                        >
+                          New icon
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setImportDialogOpen(true)}
+                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition hover:border-border hover:shadow-[var(--shadow-outline)]"
+                        >
+                          Import SVG
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   filtered.map((icon) => {

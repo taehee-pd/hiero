@@ -113,13 +113,42 @@ function walkAndSanitize(element: Element, warnings: ExternalIconWarning[]): voi
  * and node-html-parser (plain object).
  */
 function getAttributeNames(element: Element): string[] {
-  const attrs = element.attributes;
-  // node-html-parser: attributes is a plain Record<string, string>
-  if (attrs && typeof attrs === 'object' && !(Symbol.iterator in attrs)) {
-    return Object.keys(attrs as unknown as Record<string, string>);
+  const attrs = element.attributes as unknown;
+  if (!attrs || typeof attrs !== 'object') return [];
+
+  const namedNodeMap = attrs as { length?: number; item?: (index: number) => { name?: string } | null };
+  if (typeof namedNodeMap.length === 'number' && typeof namedNodeMap.item === 'function') {
+    const names: string[] = [];
+    for (let i = 0; i < namedNodeMap.length; i += 1) {
+      const name = namedNodeMap.item(i)?.name;
+      if (typeof name === 'string') names.push(name);
+    }
+    if (names.length > 0) return names;
   }
-  // Real DOM: attributes is a NamedNodeMap (iterable)
-  return Array.from(attrs).map((a) => a.name);
+
+  const iterable = attrs as Iterable<{ name?: string }>;
+  if (Symbol.iterator in iterable) {
+    return Array.from(iterable)
+      .map((a) => a?.name)
+      .filter((name): name is string => typeof name === 'string');
+  }
+
+  const record = attrs as Record<string, unknown>;
+  const objectValueNames = Object.values(record)
+    .map((value) => (value && typeof value === 'object' ? (value as { name?: unknown }).name : undefined))
+    .filter((name): name is string => typeof name === 'string');
+  if (objectValueNames.length > 0) return objectValueNames;
+
+  return Object.keys(record)
+    .filter((key) => !/^\d+$/.test(key))
+    .map((key) => key.replace(/^.*:/, ''));
+}
+
+function removeAttributeCompat(element: Element, attrName: string, normalizedName: string): void {
+  element.removeAttribute(attrName);
+  if (normalizedName !== attrName) {
+    element.removeAttribute(normalizedName);
+  }
 }
 
 function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): void {
@@ -129,28 +158,29 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
 
   for (const attrName of attrNames) {
     const attrLower = attrName.toLowerCase();
+    const normalizedLower = attrLower.replace(/^.*:/, '');
 
     // Event handlers (onclick, onload, onerror, etc.)
-    if (isEventHandler(attrLower)) {
+    if (isEventHandler(normalizedLower)) {
       warnings.push({
         code: 'unsupported_feature_dropped',
         severity: 'warning',
         message: `Stripped event handler "${attrName}" from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });
-      element.removeAttribute(attrName);
+      removeAttributeCompat(element, attrName, normalizedLower);
       continue;
     }
 
     // Style attribute — strip entirely, do not execute embedded CSS
-    if (isStyleAttribute(attrLower)) {
+    if (isStyleAttribute(normalizedLower)) {
       warnings.push({
         code: 'style_dependency_removed',
         severity: 'warning',
         message: `Stripped inline style from <${tagName}>`,
         context: `${tagName}[style]`,
       });
-      element.removeAttribute(attrName);
+      removeAttributeCompat(element, attrName, normalizedLower);
       continue;
     }
 
@@ -163,19 +193,19 @@ function sanitizeAttributes(element: Element, warnings: ExternalIconWarning[]): 
         message: `Stripped attribute "${attrName}" with dangerous URI scheme from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });
-      element.removeAttribute(attrName);
+      removeAttributeCompat(element, attrName, normalizedLower);
       continue;
     }
 
     // Not on the allowlist
-    if (!ALLOWED_ATTRIBUTES.has(attrLower)) {
+    if (!ALLOWED_ATTRIBUTES.has(normalizedLower)) {
       warnings.push({
         code: 'unsupported_feature_dropped',
         severity: 'warning',
         message: `Stripped unknown attribute "${attrName}" from <${tagName}>`,
         context: `${tagName}[${attrName}]`,
       });
-      element.removeAttribute(attrName);
+      removeAttributeCompat(element, attrName, normalizedLower);
       continue;
     }
   }

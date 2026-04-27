@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { StatusBadge } from '@/components/ds/status-badge';
+import { BuildBadge } from '@/components/studio/BuildBadge';
 import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
@@ -363,6 +364,8 @@ export function Navbar() {
 
           {/* Search */}
           <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
+
+          <BuildBadge />
         </div>
       </header>
 

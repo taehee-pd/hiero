@@ -31,6 +31,8 @@
     "icons:import": "bun scripts/import-ui-icons.ts",
     "icons:build": "bun scripts/build-ui-icons.ts",
     "icons:verify": "bun scripts/build-ui-icons.ts && git diff --quiet -- packages/hiero-ui-icons/ || (echo 'packages/hiero-ui-icons is stale; run pnpm icons:build and commit the result' && exit 1)",
+    "icons:find-used": "bun scripts/find-used-icons.ts",
+    "icons:check-used": "bun scripts/check-used-icons.ts",
     "compile:from-source": "bun scripts/compile-from-source.ts",
     "build:icons:package": "bun scripts/build-icons-package.ts",
     "validate:icons:package": "bun scripts/validate-icons-package.ts",

@@ -243,6 +243,58 @@ export function Navbar() {
     }
   }, [showToolbarError]);
 
+  // Filtered "used in app" subset. See lib/integrations/hiero-ui-icons-source.ts
+  // for the full motivation; the short version is that the canonical
+  // icons.json ships a superset (alignment variants, draft glyphs, etc.)
+  // and a maintainer auditing what actually appears in product surfaces
+  // wants the 80-ish-icon view, not the full catalog. Saving merges
+  // back into icons.json non-destructively.
+  const handleImportUsedHieroUiIcons = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.openUsedHieroUiIconsInEditor();
+      if (result.missing.length > 0) {
+        showToolbarError(
+          `Imported ${Object.keys(result.project.icons).length} used icons; ${result.missing.length} were missing from icons.json (run pnpm icons:check-used).`,
+        );
+      }
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to import used icons: ${err.message}`
+          : 'Failed to import used icons.',
+      );
+    }
+  }, [showToolbarError]);
+
+  const handleSaveUsedHieroUiIcons = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.serializeMergedHieroUiIconSet();
+      if (!result.ok) {
+        showToolbarError(
+          result.reason === 'no-workspace'
+            ? 'No icon set is loaded — import the used icons first.'
+            : 'Import the used icons via "Import Used Icons" before saving the merged set.',
+        );
+        return;
+      }
+      const saved = await saveProject(
+        result.data,
+        mod.HIERO_UI_ICONS_SOURCE_FILENAME,
+      );
+      if (saved) editorStore.getState().markSaved(result.updatedAt);
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to save used icons: ${err.message}`
+          : 'Failed to save used icons.',
+      );
+    }
+  }, [showToolbarError]);
+
   const handleExportSvgPackage = useCallback(() => {
     const { project } = editorStore.getState();
     if (!project) return;
@@ -328,6 +380,20 @@ export function Navbar() {
                       >
                         <UiIcon name="save" size={16} className="size-4" />
                         Save Hiero UI Icon Set
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleImportUsedHieroUiIcons()}
+                        data-testid="navbar-import-used-hiero-ui-icons"
+                      >
+                        <UiIcon name="import" size={16} className="size-4" />
+                        Import Used Icons
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleSaveUsedHieroUiIcons()}
+                        data-testid="navbar-save-used-hiero-ui-icons"
+                      >
+                        <UiIcon name="save" size={16} className="size-4" />
+                        Save Used Icons (Merge)
                       </DropdownMenuItem>
                     </>
                   )}

@@ -66,6 +66,18 @@ describe('sanitizeSvg — safe content', () => {
     expect(result.svg).toContain('translate(2, 3)');
   });
 
+  test('preserves namespaced xlink attributes (xmlns:xlink, xlink:href)', () => {
+    const input =
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">` +
+      `<defs><path id="p1" d="M0 0 L10 10"/></defs>` +
+      `<use xlink:href="#p1"/>` +
+      `</svg>`;
+    const result = sanitizeSvg(input);
+    expect(result.warnings).toEqual([]);
+    expect(result.svg).toContain('xmlns:xlink');
+    expect(result.svg).toContain('xlink:href');
+  });
+
   test('preserves clip-path and mask references', () => {
     const input = wrap(
       `<defs><clipPath id="c1"><rect x="0" y="0" width="10" height="10"/></clipPath></defs>` +

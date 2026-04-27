@@ -11,15 +11,18 @@ import {
 } from '../lib/editor-store/selectors';
 import type { PrimitiveShape } from '../lib/schema/types';
 
-const originalWindow = (globalThis as { window?: unknown }).window;
+const windowHost = globalThis as unknown as { window?: Record<string, unknown> };
+const windowRef = (windowHost.window ??= {});
+const originalWindowAddEventListener = windowRef.addEventListener;
+const originalWindowRemoveEventListener = windowRef.removeEventListener;
 const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
 const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
 
 beforeAll(() => {
-  (globalThis as { window: unknown }).window = {
-    addEventListener() {},
-    removeEventListener() {},
-  };
+  windowRef.addEventListener = () => {};
+  windowRef.removeEventListener = () => {};
+  windowRef.setTimeout = globalThis.setTimeout as unknown;
+  windowRef.clearTimeout = globalThis.clearTimeout as unknown;
   globalThis.requestAnimationFrame = () => 1;
   globalThis.cancelAnimationFrame = () => {};
 });
@@ -30,11 +33,8 @@ afterEach(() => {
 });
 
 afterAll(() => {
-  if (originalWindow === undefined) {
-    delete (globalThis as { window?: unknown }).window;
-  } else {
-    (globalThis as { window: unknown }).window = originalWindow;
-  }
+  windowRef.addEventListener = originalWindowAddEventListener;
+  windowRef.removeEventListener = originalWindowRemoveEventListener;
   globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
 });

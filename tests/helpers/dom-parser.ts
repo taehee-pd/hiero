@@ -27,26 +27,27 @@ HTMLElement.prototype.getAttribute = function getAttribute(
   return value === undefined ? null : value;
 };
 
-if (typeof globalThis.DOMParser === 'undefined') {
-  class TestDOMParser {
-    parseFromString(svgString: string): {
-      documentElement: Element;
-      querySelector: (selector: string) => Element | null;
-    } {
-      const root = parse(svgString, {
-        lowerCaseTagName: true,
-        comment: true,
-      });
-      const documentElement = root.querySelector('svg') as Element | null;
-      return {
-        documentElement: documentElement as Element,
-        querySelector: (selector: string) =>
-          root.querySelector(selector) as Element | null,
-      };
-    }
+class TestDOMParser {
+  parseFromString(svgString: string): {
+    documentElement: Element;
+    querySelector: (selector: string) => Element | null;
+  } {
+    const root = parse(svgString, {
+      lowerCaseTagName: true,
+      comment: true,
+    });
+    const documentElement = root.querySelector('svg') as Element | null;
+    return {
+      documentElement: documentElement as Element,
+      querySelector: (selector: string) =>
+        root.querySelector(selector) as Element | null,
+    };
   }
-
-  globalThis.DOMParser = TestDOMParser as unknown as typeof DOMParser;
 }
+
+// Always force the sanitizer/import tests to use this deterministic parser.
+// happy-dom can register a different DOMParser implementation in earlier test
+// files within the same Bun process.
+globalThis.DOMParser = TestDOMParser as unknown as typeof DOMParser;
 
 export {};

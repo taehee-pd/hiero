@@ -1,9 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import type { Decorator, Meta, StoryObj } from '@storybook/nextjs-vite';
 import type { ReactElement } from 'react';
 
+import { editorStore } from '@/lib/editor-store/store';
 import { definePage } from '@/lib/routes/define-page';
 import { type RoutePath } from '@/lib/routes/page-registry';
 import { resolveShell } from '@/lib/routes/resolve-shell';
+import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 
 /**
  * Page-level stories — one per registered editor route.
@@ -28,7 +30,33 @@ import { resolveShell } from '@/lib/routes/resolve-shell';
  * Standalone routes (/runtime-demo, /demo/runtime) are skipped — they're
  * one-off demo pages, isolated from the editor surface bug class. A future
  * phase can add them once we have a use case.
+ *
+ * ## Determinism
+ *
+ * StudioLayout boots the workspace via a useEffect that asynchronously
+ * checks IndexedDB then falls back to SAMPLE_WORKSPACE. In Chromatic's
+ * iframe the IndexedDB call resolves to "empty" but the chain is still
+ * async, which the audit flagged as a flake source — different runs would
+ * capture different loading states, producing perpetual diffs that no
+ * amount of "Accept" clicking could resolve.
+ *
+ * The `loadWorkspaceDecorator` below sidesteps the async race by writing
+ * SAMPLE_WORKSPACE into the editor store SYNCHRONOUSLY, before the story's
+ * component mounts. StudioLayout's bootstrap effect then sees a populated
+ * workspace and early-returns — no async work, no race, snapshots are
+ * byte-identical across runs.
  */
+
+const loadWorkspaceDecorator: Decorator = (Story) => {
+  // Idempotent: subsequent stories reuse the workspace the first one set.
+  // Resetting between stories isn't needed — the snapshot only cares about
+  // the initial render, and StudioLayout's effect early-returns if state
+  // is already populated.
+  if (!editorStore.getState().workspace) {
+    editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
+  }
+  return <Story />;
+};
 
 function resolveToShellTree(route: RoutePath): ReactElement {
   // resolveShell() throws on cycles AND on standalone landings — both are
@@ -42,19 +70,24 @@ function resolveToShellTree(route: RoutePath): ReactElement {
 
 const meta: Meta = {
   title: 'Pages/Routes',
+  decorators: [loadWorkspaceDecorator],
   parameters: {
     // Full-bleed: StudioLayout uses `fixed inset-0`, so the .sb-root
     // wrapper from preview.tsx would otherwise clip the layout.
     layout: 'fullscreen',
     chromatic: {
-      // The shell's bootstrap effect waits on an IndexedDB read (empty in
-      // Storybook iframes) before falling back to SAMPLE_WORKSPACE. Give
-      // that microtask + the dynamic-import of EditorShell time to settle
-      // before Chromatic captures.
-      delay: 600,
+      // The decorator above pre-loads SAMPLE_WORKSPACE synchronously, so
+      // there's no async bootstrap to wait on. A short delay still helps
+      // catch the case where an `EditorShell` dynamic-import resolves on
+      // a future render — but with no icon selected (the workspace boots
+      // to the empty-state placeholder), EditorShell isn't even rendered.
+      // 200ms is enough for paint + layout to settle.
+      delay: 200,
       // Only one viewport per route — these stories aren't responsive
       // tests, they're identity checks. Cap the snapshot budget.
       viewports: [1280],
+      // Suppress motion-related diffs from the empty-state's transitions.
+      pauseAnimationAtEnd: true,
     },
   },
 };

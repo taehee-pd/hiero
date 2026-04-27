@@ -220,16 +220,20 @@ export function Navbar() {
     if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
     try {
       const mod = await import('@/lib/integrations/hiero-ui-icons-source');
-      const payload = mod.serializeHieroUiIconSet();
-      if (!payload) {
-        showToolbarError('No icon set is loaded — open it first.');
+      const result = mod.serializeHieroUiIconSet();
+      if (!result.ok) {
+        showToolbarError(
+          result.reason === 'no-workspace'
+            ? 'No icon set is loaded — open it first.'
+            : 'Open the canonical icon set via "Open Hiero UI Icon Set" before saving as one.',
+        );
         return;
       }
-      const result = await saveProject(
-        payload.data,
+      const saved = await saveProject(
+        result.data,
         mod.HIERO_UI_ICONS_SOURCE_FILENAME,
       );
-      if (result) editorStore.getState().markSaved(payload.updatedAt);
+      if (saved) editorStore.getState().markSaved(result.updatedAt);
     } catch (err) {
       showToolbarError(
         err instanceof Error

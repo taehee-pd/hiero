@@ -68,11 +68,11 @@ describe('openHieroUiIconSetInEditor', () => {
 });
 
 describe('serializeHieroUiIconSet', () => {
-  test('returns Project shape, not Workspace shape', () => {
+  test('returns Project shape (not Workspace) when the canonical set is open', () => {
     openHieroUiIconSetInEditor();
     const result = serializeHieroUiIconSet();
-    expect(result).toBeTruthy();
-    if (!result) return;
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
 
     const parsed = JSON.parse(result.data) as Record<string, unknown>;
     // Project shape: top-level `icons`, no `iconSets` or `activeIconSetId`.
@@ -81,21 +81,58 @@ describe('serializeHieroUiIconSet', () => {
     expect(parsed.activeIconSetId).toBeUndefined();
   });
 
-  test('returns null when no workspace is loaded', () => {
-    // Reset to a blank workspace by loading an empty workspace.
+  test('refuses with no-workspace when no workspace is loaded', () => {
     editorStore.setState({ workspace: null, project: null, activeIconSetId: null });
     const result = serializeHieroUiIconSet();
-    expect(result).toBeNull();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('no-workspace');
+    }
   });
 
-  test('stamps meta.updatedAt with an ISO timestamp', () => {
+  test('refuses with not-canonical-source when a different project is open', () => {
+    // Load the canonical set, then mark a different on-disk path so the
+    // currentProjectPath check fails. This simulates a maintainer who
+    // opened some random JSON via "Open Project" then clicked
+    // "Save Hiero UI Icon Set" — without the guard, that would silently
+    // overwrite icons.json with whatever was loaded.
     openHieroUiIconSetInEditor();
+    setCurrentProjectPath('something-else.hiero.json');
     const result = serializeHieroUiIconSet();
-    if (!result) throw new Error('expected payload');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('not-canonical-source');
+    }
+  });
+
+  test('preserves meta.updatedAt verbatim on a no-op save (byte stability)', () => {
+    openHieroUiIconSetInEditor();
+    // The editor isn't dirty after a fresh load — `markSaved` was called
+    // by loadProject's resetHistory branch. Save now should produce the
+    // ORIGINAL timestamp from the bundled icons.json, not "now".
+    const before = serializeHieroUiIconSet();
+    if (!before.ok) throw new Error('expected ok before');
+    const original = before.updatedAt;
+
+    // Force-clear isDirty in case loadProject didn't auto-mark clean.
+    editorStore.setState({ isDirty: false });
+
+    const result = serializeHieroUiIconSet();
+    if (!result.ok) throw new Error('expected ok');
 
     const parsed = JSON.parse(result.data) as { meta?: { updatedAt?: string } };
-    expect(parsed.meta?.updatedAt).toBeDefined();
-    // ISO 8601 with milliseconds — what Date.toISOString() produces.
+    expect(parsed.meta?.updatedAt).toBe(original);
+    expect(result.updatedAt).toBe(original);
+  });
+
+  test('stamps a fresh ISO timestamp when the editor is dirty', () => {
+    openHieroUiIconSetInEditor();
+    editorStore.setState({ isDirty: true });
+
+    const result = serializeHieroUiIconSet();
+    if (!result.ok) throw new Error('expected ok');
+
+    const parsed = JSON.parse(result.data) as { meta?: { updatedAt?: string } };
     expect(parsed.meta?.updatedAt).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
     );

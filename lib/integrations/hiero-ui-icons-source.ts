@@ -74,6 +74,10 @@ export function openHieroUiIconSetInEditor(): void {
   setCurrentProjectPath(HIERO_UI_ICONS_SOURCE_FILENAME);
 }
 
+export type SerializeHieroUiIconSetResult =
+  | { ok: true; data: string; updatedAt: string }
+  | { ok: false; reason: 'no-workspace' | 'not-canonical-source' };
+
 /**
  * Serialize the active icon set out of the editor as a Project — the
  * shape `packages/hiero-ui-icons/source/icons.json` expects. The
@@ -81,25 +85,50 @@ export function openHieroUiIconSetInEditor(): void {
  * icons.json would silently corrupt the file and break
  * `pnpm icons:verify` on every CI run thereafter.
  *
- * Returns null if no workspace or no active icon set is loaded.
+ * Two guards:
+ *
+ *   1. **Canonical-source-only.** Refuses to serialize unless the user
+ *      opened the canonical icon set first via
+ *      `openHieroUiIconSetInEditor()`. Without this guard, a maintainer
+ *      could load any random project and click "Save Hiero UI Icon Set"
+ *      to overwrite icons.json with unrelated data — silently corrupting
+ *      the source file. The guard delegates to `isViewingHieroUiIconSet()`,
+ *      which reads the platform-bridge's currentProjectPath marker set by
+ *      the open flow.
+ *
+ *   2. **Byte-stable on no-op saves.** `meta.updatedAt` only gets a fresh
+ *      timestamp when the editor reports `isDirty === true`. Loading
+ *      icons.json and immediately saving without edits returns the
+ *      original timestamp, so the file is byte-identical and
+ *      `pnpm icons:verify` stays green. Without this, every save —
+ *      including accidental clicks — would dirty the file.
  */
-export function serializeHieroUiIconSet(): {
-  data: string;
-  updatedAt: string;
-} | null {
-  const { workspace } = editorStore.getState();
-  if (!workspace) return null;
+export function serializeHieroUiIconSet(): SerializeHieroUiIconSetResult {
+  const state = editorStore.getState();
+  const { workspace } = state;
+  if (!workspace) return { ok: false, reason: 'no-workspace' };
   const setId = workspace.activeIconSetId;
-  if (!setId) return null;
+  if (!setId) return { ok: false, reason: 'no-workspace' };
   const iconSet = workspace.iconSets[setId];
-  if (!iconSet) return null;
+  if (!iconSet) return { ok: false, reason: 'no-workspace' };
 
-  const updatedAt = new Date().toISOString();
+  if (!isViewingHieroUiIconSet()) {
+    return { ok: false, reason: 'not-canonical-source' };
+  }
+
+  // Only stamp a fresh updatedAt when the editor has actual changes.
+  // No-op saves (open icons.json → click Save without editing) keep the
+  // original timestamp so the file stays byte-identical to disk.
+  const updatedAt = state.isDirty
+    ? new Date().toISOString()
+    : iconSet.meta.updatedAt;
+
   const project: Project = {
     ...iconSet,
     meta: { ...iconSet.meta, updatedAt },
   };
   return {
+    ok: true,
     data: JSON.stringify(project, null, 2),
     updatedAt,
   };

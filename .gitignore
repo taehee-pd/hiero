@@ -14,6 +14,13 @@ desktop/build/
 desktop/artifacts/
 tsconfig.tsbuildinfo
 
+# Storybook build output
+storybook-static/
+
+# Playwright e2e artifacts
+playwright-report/
+test-results/
+
 # Claude Code worktrees (temporary)
 .claude/worktrees/
 .gstack/

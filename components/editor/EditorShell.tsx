@@ -1865,7 +1865,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     setSearchIconId(parseEditorSearchParam(search.get('icon') ?? undefined));
-    setSearchIconSetId(parseEditorSearchParam(search.get('set') ?? undefined));
+    setSearchIconSetId(
+      parseEditorSearchParam(
+        search.get('project') ?? search.get('set') ?? undefined,
+      ),
+    );
   }, []);
 
   useEffect(() => {

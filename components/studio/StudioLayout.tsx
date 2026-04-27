@@ -90,7 +90,10 @@ export function StudioLayout() {
   }, [activeIconSetId, currentIconId]);
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
+    <div
+      data-testid="studio-layout-root"
+      className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground"
+    >
       <Navbar />
       <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--primary)_7%,transparent)_0%,transparent_55%)]">
         <NavPane />

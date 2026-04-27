@@ -6,9 +6,11 @@ import { HieroIcon, useIconState } from '@/lib/runtime-react';
 import { HAMBURGER_CLOSE_ICON } from '@/lib/schema/sample-icons/hamburger-close';
 import { SAMPLE_PROJECT } from '@/lib/schema/sample-project';
 import { exportRuntimeIconVariant } from '@/lib/export/export-runtime-json';
+import { definePage } from '@/lib/routes/define-page';
 
 const homeIcon = SAMPLE_PROJECT.icons['icon-home']!;
-export default function RuntimeDemoPage() {
+
+function RuntimeDemoContent() {
   const [hamburgerVariant, setHamburgerVariant] = useState<'24-open' | '24-closed'>('24-open');
   const home = useIconState('default');
   const [animate, setAnimate] = useState(true);
@@ -98,4 +100,11 @@ export default function RuntimeDemoPage() {
       </section>
     </main>
   );
+}
+
+export default function RuntimeDemoPage() {
+  return definePage({
+    route: '/demo/runtime',
+    children: <RuntimeDemoContent />,
+  });
 }

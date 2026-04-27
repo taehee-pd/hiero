@@ -1,5 +1,7 @@
-import { EditorShellClient } from '@/components/editor/EditorShellClient';
+'use client';
+
+import { definePage } from '@/lib/routes/define-page';
 
 export default function EditorIndexPage() {
-  return <EditorShellClient />;
+  return definePage({ route: '/editor' });
 }

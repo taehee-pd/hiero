@@ -1477,6 +1477,7 @@
     flex-shrink: 0;
     width: 18px;
     height: 18px;
+    padding: 1px;
     align-items: center;
     justify-content: center;
     border-radius: 4px;

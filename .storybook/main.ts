@@ -10,6 +10,10 @@ const config: StorybookConfig = {
   stories: [
     '../components/**/*.stories.@(tsx|mdx)',
     '../components/**/*.mdx',
+    // Page-level stories (one per registered route in lib/routes/page-registry).
+    // Captured by Chromatic so visual drift at the route level is gated by
+    // the same PR check that already gates leaf component drift.
+    '../app/_storybook/**/*.stories.@(tsx|mdx)',
   ],
   addons: [
     '@storybook/addon-docs',

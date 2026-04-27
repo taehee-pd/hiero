@@ -1,7 +1,7 @@
 'use client';
 
-import { StudioLayout } from '@/components/studio/StudioLayout';
+import { definePage } from '@/lib/routes/define-page';
 
 export default function Page() {
-  return <StudioLayout />;
+  return definePage({ route: '/' });
 }

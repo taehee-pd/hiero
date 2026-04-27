@@ -1,5 +1,7 @@
-import { EditorRedirect } from '@/components/editor/EditorRedirect';
+'use client';
+
+import { definePage } from '@/lib/routes/define-page';
 
 export default function EditorIndexPage() {
-  return <EditorRedirect />;
+  return definePage({ route: '/editor' });
 }

@@ -68,6 +68,7 @@
       "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@happy-dom/global-registrator": "^20.9.0",
+        "@playwright/test": "^1.59.1",
         "@storybook/addon-a11y": "^10.3.5",
         "@storybook/addon-docs": "^10.3.5",
         "@storybook/addon-themes": "^10.3.5",
@@ -108,9 +109,6 @@
     "packages/hiero-ui-icons": {
       "name": "@hiero/ui-icons",
       "version": "0.0.1",
-      "peerDependencies": {
-        "react": "^19.0.0",
-      },
     },
   },
   "packages": {
@@ -339,6 +337,8 @@
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.1.6", "", { "os": "win32", "cpu": "x64" }, "sha512-NRfO39AIrzBnixKbjuo2YiYhB6o9d8v/ymU9m/Xk8cyVk+k7XylniXkHwjs4s70wedVffc6bQNbufk5v0xEm0A=="],
 
     "@phosphor-icons/core": ["@phosphor-icons/core@2.1.1", "", {}, "sha512-v4ARvrip4qBCImOE5rmPUylOEK4iiED9ZyKjcvzuezqMaiRASCHKcRIuvvxL/twvLpkfnEODCOJp5dM4eZilxQ=="],
+
+    "@playwright/test": ["@playwright/test@1.59.1", "", { "dependencies": { "playwright": "1.59.1" }, "bin": { "playwright": "cli.js" } }, "sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg=="],
 
     "@polka/url": ["@polka/url@1.0.0-next.29", "", {}, "sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww=="],
 

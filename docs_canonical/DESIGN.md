@@ -90,6 +90,7 @@ readiness), tracked in `NEXT_PHASES.md`.
 | `IMPORT_ADAPTER_SDK.md` | Import adapter lifecycle and test contract |
 | `SYNC_TROUBLESHOOTING.md` | Sync pipeline error codes and resolution |
 | `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@hiero/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
+| `hiero-ui-icons/MIGRATION_PUBLISH_PLAN.md` | Execution plan for migrating app icon usage to Hiero-authored icons and running the in-repo edit/publish loop |
 | `PLAN.md` | Archived production-readiness plan (all gaps shipped/removed); kept for decision history |
 | `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
 | `specs/design-system-storybook.plan.md` | Active plan: three-layer component architecture (`ui`/`ds`/feature), Storybook gating, kibo-ui removal, toast fix, Phase 1–8 rollout |

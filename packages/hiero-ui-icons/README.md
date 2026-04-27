@@ -45,3 +45,5 @@ editor is a working copy; publishing writes back to the source file.
 See `docs_canonical/hiero-ui-icons/DECISIONS.md` for the full design
 decisions and `docs_canonical/hiero-ui-icons/INVENTORY.md` for the
 audit of current icon usage across the app.
+
+See `docs_canonical/hiero-ui-icons/MIGRATION_PUBLISH_PLAN.md` for the execution plan covering migration and the day-to-day edit/publish loop.

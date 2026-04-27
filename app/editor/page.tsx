@@ -1,5 +1,5 @@
-import { EditorShellClient } from '@/components/editor/EditorShellClient';
+import { EditorRedirect } from '@/components/editor/EditorRedirect';
 
 export default function EditorIndexPage() {
-  return <EditorShellClient />;
+  return <EditorRedirect />;
 }

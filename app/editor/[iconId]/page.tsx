@@ -1,4 +1,4 @@
-import { EditorShellClient } from '@/components/editor/EditorShellClient';
+import { EditorRedirect } from '@/components/editor/EditorRedirect';
 
 export async function generateStaticParams() {
   return [{ iconId: 'desktop-shell' }];
@@ -10,5 +10,5 @@ export default async function EditorPage({
   params: Promise<{ iconId: string }>;
 }) {
   const { iconId } = await params;
-  return <EditorShellClient initialIconId={iconId} />;
+  return <EditorRedirect iconId={iconId} />;
 }

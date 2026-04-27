@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { StatusBadge } from '@/components/ds/status-badge';
 import { BuildBadge } from '@/components/studio/BuildBadge';
+import { IS_INTERNAL_BUILD } from '@/lib/build-flags';
 import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
@@ -197,6 +198,47 @@ export function Navbar() {
     if (result) editorStore.getState().markSaved(payload.updatedAt);
   }, [serializeWorkspace]);
 
+  // Internal-build only — open/save the canonical @hiero/ui-icons source
+  // in one click. Dynamic-imported so the public bundle never reaches
+  // the helper or the icons.json data. The DropdownMenuItems below are
+  // also gated on IS_INTERNAL_BUILD so the bundler can DCE this branch.
+  const handleOpenHieroUiIconSet = useCallback(async () => {
+    if (!IS_INTERNAL_BUILD) return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      mod.openHieroUiIconSetInEditor();
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to open Hiero UI icon set: ${err.message}`
+          : 'Failed to open Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
+  const handleSaveHieroUiIconSet = useCallback(async () => {
+    if (!IS_INTERNAL_BUILD) return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const payload = mod.serializeHieroUiIconSet();
+      if (!payload) {
+        showToolbarError('No icon set is loaded — open it first.');
+        return;
+      }
+      const result = await saveProject(
+        payload.data,
+        mod.HIERO_UI_ICONS_SOURCE_FILENAME,
+      );
+      if (result) editorStore.getState().markSaved(payload.updatedAt);
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to save Hiero UI icon set: ${err.message}`
+          : 'Failed to save Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
   const handleExportSvgPackage = useCallback(() => {
     const { project } = editorStore.getState();
     if (!project) return;
@@ -263,6 +305,25 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => void handleOpenProject()}><UiIcon name="folder-open" size={16} className="size-4" />Open Project</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="save" size={16} className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  {IS_INTERNAL_BUILD && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => void handleOpenHieroUiIconSet()}
+                        data-testid="navbar-open-hiero-ui-icons"
+                      >
+                        <UiIcon name="package" size={16} className="size-4" />
+                        Open Hiero UI Icon Set
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleSaveHieroUiIconSet()}
+                        data-testid="navbar-save-hiero-ui-icons"
+                      >
+                        <UiIcon name="save" size={16} className="size-4" />
+                        Save Hiero UI Icon Set
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><UiIcon name="import" size={16} className="size-4" />Import Icons</DropdownMenuItem>
                 </DropdownMenuSubContent>

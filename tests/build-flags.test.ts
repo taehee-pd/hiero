@@ -8,7 +8,6 @@ import { describe, expect, test } from 'bun:test';
 function loadBuildFlags(channelEnv: string | undefined): {
   BUILD_CHANNEL: string;
   IS_INTERNAL_BUILD: boolean;
-  IS_PUBLIC_BUILD: boolean;
 } {
   const previous = process.env.NEXT_PUBLIC_BUILD_CHANNEL;
   if (channelEnv === undefined) {
@@ -28,7 +27,6 @@ function loadBuildFlags(channelEnv: string | undefined): {
   return {
     BUILD_CHANNEL: flags.BUILD_CHANNEL,
     IS_INTERNAL_BUILD: flags.IS_INTERNAL_BUILD,
-    IS_PUBLIC_BUILD: flags.IS_PUBLIC_BUILD,
   };
 }
 
@@ -37,14 +35,12 @@ describe('BUILD_CHANNEL', () => {
     const flags = loadBuildFlags(undefined);
     expect(flags.BUILD_CHANNEL).toBe('public');
     expect(flags.IS_INTERNAL_BUILD).toBe(false);
-    expect(flags.IS_PUBLIC_BUILD).toBe(true);
   });
 
   test('resolves to "internal" only when env is exactly "internal"', () => {
     const flags = loadBuildFlags('internal');
     expect(flags.BUILD_CHANNEL).toBe('internal');
     expect(flags.IS_INTERNAL_BUILD).toBe(true);
-    expect(flags.IS_PUBLIC_BUILD).toBe(false);
   });
 
   test('typo-safe: any unrecognized value defaults to "public"', () => {
@@ -59,13 +55,5 @@ describe('BUILD_CHANNEL', () => {
       ).toBe('public');
       expect(flags.IS_INTERNAL_BUILD).toBe(false);
     }
-  });
-
-  test('IS_INTERNAL_BUILD and IS_PUBLIC_BUILD are mutually exclusive', () => {
-    const internal = loadBuildFlags('internal');
-    expect(internal.IS_INTERNAL_BUILD).not.toBe(internal.IS_PUBLIC_BUILD);
-
-    const pub = loadBuildFlags(undefined);
-    expect(pub.IS_INTERNAL_BUILD).not.toBe(pub.IS_PUBLIC_BUILD);
   });
 });

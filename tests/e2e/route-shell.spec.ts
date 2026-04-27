@@ -70,3 +70,24 @@ for (const route of REGISTERED_ROUTES) {
     ).toBeVisible({ timeout: 10_000 });
   });
 }
+
+// Build identification surface — the channel + version triple is set in
+// next.config.mjs's headers() block AND inlined into the HTML <head> via
+// app/layout.tsx. Either path is enough for ops introspection; this spec
+// asserts the HTTP-header path works for the canonical shell route.
+test('X-Hiero-Build-Channel response header is present on /', async ({ request }) => {
+  const response = await request.get('/');
+  const channel = response.headers()['x-hiero-build-channel'];
+  expect(channel, 'X-Hiero-Build-Channel header should be set by next.config.mjs').toBeTruthy();
+  expect(['public', 'internal']).toContain(channel);
+});
+
+test('window.__HIERO_BUILD__ global is set before any client interaction', async ({ page }) => {
+  await page.goto('/');
+  const build = await page.evaluate(() => {
+    return (window as Window & { __HIERO_BUILD__?: { channel?: string; app?: string } }).__HIERO_BUILD__;
+  });
+  expect(build, 'window.__HIERO_BUILD__ should be inlined by app/layout.tsx').toBeTruthy();
+  expect(build?.channel).toBeTruthy();
+  expect(build?.app).toBeTruthy();
+});

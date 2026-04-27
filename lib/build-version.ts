@@ -31,6 +31,17 @@ export type BuildVersion = {
   hieroUiIconsVersion: string;
 };
 
+declare global {
+  interface Window {
+    /**
+     * Set by `app/layout.tsx` before any client code runs. Read by
+     * Playwright smoke tests + bug-report tooling. Frozen so consumers
+     * can't accidentally mutate it.
+     */
+    __HIERO_BUILD__?: Readonly<BuildVersion>;
+  }
+}
+
 const DEV_FALLBACK_TIME = '1970-01-01T00:00:00.000Z';
 
 export const BUILD_VERSION: BuildVersion = {

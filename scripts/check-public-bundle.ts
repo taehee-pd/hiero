@@ -31,10 +31,16 @@ import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dir, '..');
 const NEXT_DIR = resolve(ROOT, '.next');
+const OUT_DIR = resolve(ROOT, 'out');
 
-if (!existsSync(NEXT_DIR)) {
+// `.next/` is the always-present build output. `out/` only exists when
+// NEXT_OUTPUT_MODE=export was set; in that case the user-facing artifact
+// is `out/` and `.next/` only holds intermediate state. Scan both so the
+// check works for either output mode without the caller having to know
+// which one ran.
+if (!existsSync(NEXT_DIR) && !existsSync(OUT_DIR)) {
   console.error(
-    `❌ ${NEXT_DIR} does not exist. Run \`NEXT_PUBLIC_BUILD_CHANNEL=public bun run build\` first.`,
+    `❌ Neither ${NEXT_DIR} nor ${OUT_DIR} exists. Run \`NEXT_PUBLIC_BUILD_CHANNEL=public bun run build\` first.`,
   );
   process.exit(1);
 }
@@ -87,7 +93,13 @@ function walk(dir: string, hits: string[] = []): string[] {
 const STATIC_DIR = resolve(NEXT_DIR, 'static');
 const SERVER_DIR = resolve(NEXT_DIR, 'server');
 
-const staticFiles = existsSync(STATIC_DIR) ? walk(STATIC_DIR) : [];
+// User-facing files: .next/static/* (default mode) AND out/* (export mode).
+// In export mode `out/` IS the deployed artifact; missing it would leave
+// the largest leak surface unchecked.
+const staticFiles = [
+  ...(existsSync(STATIC_DIR) ? walk(STATIC_DIR) : []),
+  ...(existsSync(OUT_DIR) ? walk(OUT_DIR) : []),
+];
 const serverFiles = existsSync(SERVER_DIR) ? walk(SERVER_DIR) : [];
 
 const matches: Match[] = [];

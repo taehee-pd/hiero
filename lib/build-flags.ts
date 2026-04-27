@@ -30,5 +30,10 @@ function readChannel(): BuildChannel {
 }
 
 export const BUILD_CHANNEL: BuildChannel = readChannel();
+// Exported only for read-side consumers (e.g. the navbar BuildBadge
+// styling decision). DO NOT use this constant to gate a dynamic import
+// or render branch — Webpack does not constant-fold it across module
+// boundaries, so the gated code ends up in the public bundle anyway.
+// See tests/build-channel-gate.test.ts and CLAUDE.md "Bundle isolation"
+// for the env-var-literal pattern that DOES fold.
 export const IS_INTERNAL_BUILD: boolean = BUILD_CHANNEL === 'internal';
-export const IS_PUBLIC_BUILD: boolean = BUILD_CHANNEL === 'public';

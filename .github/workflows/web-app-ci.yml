@@ -140,9 +140,13 @@ jobs:
 
       - name: Resolve build version env
         id: ver
+        # Use bun rather than node — every other step in this workflow
+        # uses bun (via setup-bun@v2 above) and ubuntu-latest's preinstalled
+        # node is not a contract. If the runner image ever drops node, this
+        # step keeps working.
         run: |
-          echo "app=$(node -p "require('./package.json').version")" >>"$GITHUB_OUTPUT"
-          echo "ui=$(node -p "require('./packages/hiero-ui-icons/package.json').version")" >>"$GITHUB_OUTPUT"
+          echo "app=$(bun -e 'console.log(require("./package.json").version)')" >>"$GITHUB_OUTPUT"
+          echo "ui=$(bun -e 'console.log(require("./packages/hiero-ui-icons/package.json").version)')" >>"$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
 
       - name: Build web app
@@ -151,7 +155,12 @@ jobs:
           NEXT_PUBLIC_APP_VERSION: ${{ steps.ver.outputs.app }}
           NEXT_PUBLIC_HIERO_UI_ICONS_VERSION: ${{ steps.ver.outputs.ui }}
           NEXT_PUBLIC_BUILD_COMMIT: ${{ steps.ver.outputs.sha }}
-          NEXT_PUBLIC_BUILD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at }}
+          # Three-step fallback chain: head_commit (push), pull_request
+          # (pull_request_*), then run_started_at as a guaranteed-present
+          # last resort (workflow_dispatch re-runs and other event types
+          # leave the first two empty, and Empty-string passes the ??
+          # operator in next.config.mjs's reader).
+          NEXT_PUBLIC_BUILD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || github.run_started_at }}
         run: bun run build
 
       - name: Bundle isolation check

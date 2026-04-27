@@ -20,8 +20,20 @@ const buildChannel =
 function readJsonField(path, field, fallback) {
   try {
     const json = JSON.parse(readFileSync(path, 'utf-8'));
-    return json[field] ?? fallback;
-  } catch {
+    if (typeof json[field] !== 'string') {
+      console.warn(
+        `[next.config] ${path} is missing string field "${field}"; falling back to "${fallback}". Bug-report screenshots will show the fallback.`,
+      );
+      return fallback;
+    }
+    return json[field];
+  } catch (err) {
+    // Don't silently swallow — a missing package.json on a build is
+    // almost always a real problem (wrong cwd, broken symlink) and
+    // shipping `0.0.0-dev` to production hides it.
+    console.warn(
+      `[next.config] could not read ${field} from ${path} (${err instanceof Error ? err.message : String(err)}); falling back to "${fallback}".`,
+    );
     return fallback;
   }
 }
@@ -39,8 +51,17 @@ const hieroUiIconsVersion =
   );
 
 const buildCommit = process.env.NEXT_PUBLIC_BUILD_COMMIT ?? 'dev';
+// Sentinel epoch (matches lib/build-version.ts) so an unset BUILD_TIME
+// is visually obvious in bug reports and the navbar tooltip. CI always
+// populates this; if you see 1970-01-01 in production, the deployment's
+// env-var injection is broken. Fold an empty string back to the sentinel
+// because GitHub Actions can pass empty strings on workflow_dispatch
+// re-runs where head_commit is null.
+const DEV_FALLBACK_TIME = '1970-01-01T00:00:00.000Z';
 const buildTime =
-  process.env.NEXT_PUBLIC_BUILD_TIME ?? new Date().toISOString();
+  process.env.NEXT_PUBLIC_BUILD_TIME && process.env.NEXT_PUBLIC_BUILD_TIME.length > 0
+    ? process.env.NEXT_PUBLIC_BUILD_TIME
+    : DEV_FALLBACK_TIME;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

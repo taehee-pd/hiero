@@ -18,6 +18,14 @@
  * loading icons.json through the editor and saving back must be byte-stable
  * for `pnpm icons:verify` to pass on every CI run.
  */
+
+// 'use client' because this module is dynamic-imported from client
+// components (Toolbar, Navbar) and calls editorStore + setCurrentProjectPath,
+// which are client-only. If a future Server Component needs to consume
+// loadHieroUiIconSet() for SSR (e.g., an internal-only marketing landing),
+// extract loadHieroUiIconSet into a server-safe sibling module — the rest
+// (openHieroUiIconSetInEditor, serializeHieroUiIconSet, isViewingHieroUiIconSet)
+// stays here.
 'use client';
 
 import iconsJsonRaw from '@hiero/ui-icons/source/icons.json';

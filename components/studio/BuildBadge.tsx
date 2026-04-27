@@ -1,7 +1,7 @@
 'use client';
 
 import { BUILD_VERSION, formatBuildVersion } from '@/lib/build-version';
-import { IS_INTERNAL_BUILD } from '@/lib/build-flags';
+import { type BuildChannel } from '@/lib/build-flags';
 
 /**
  * Compact build identifier shown in the navbar.
@@ -21,9 +21,34 @@ import { IS_INTERNAL_BUILD } from '@/lib/build-flags';
  * they were on. A visible chip closes that loop.
  */
 export function BuildBadge() {
-  const tooltip = formatBuildVersion();
+  return (
+    <BuildBadgeView
+      channel={BUILD_VERSION.channel}
+      app={BUILD_VERSION.app}
+      commit={BUILD_VERSION.commit}
+      tooltip={formatBuildVersion()}
+    />
+  );
+}
 
-  if (!IS_INTERNAL_BUILD) {
+/**
+ * Pure presenter — split from BuildBadge above so tests can render it
+ * with explicit values. The wrapper that reads from BUILD_VERSION
+ * resolves the env at module-eval time and is hard to vary in a test
+ * without `require.cache` gymnastics that don't compose with happy-dom.
+ */
+export function BuildBadgeView({
+  channel,
+  app,
+  commit,
+  tooltip,
+}: {
+  channel: BuildChannel;
+  app: string;
+  commit: string;
+  tooltip: string;
+}) {
+  if (channel !== 'internal') {
     return (
       <span
         data-testid="build-badge"
@@ -31,7 +56,7 @@ export function BuildBadge() {
         title={tooltip}
         className="ml-1 select-none rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground"
       >
-        v{BUILD_VERSION.app}
+        v{app}
       </span>
     );
   }
@@ -45,7 +70,7 @@ export function BuildBadge() {
       title={tooltip}
       className="ml-1 select-none rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium tabular-nums text-amber-700 dark:text-amber-300"
     >
-      internal · v{BUILD_VERSION.app} · {BUILD_VERSION.commit}
+      internal · v{app} · {commit}
     </span>
   );
 }

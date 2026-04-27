@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { editorStore } from '../lib/editor-store/store';
 import {
@@ -9,6 +9,22 @@ import {
   serializeHieroUiIconSet,
 } from '../lib/integrations/hiero-ui-icons-source';
 import { setCurrentProjectPath } from '../lib/platform/bridge';
+
+// editorStore is a process-global; mutations leak across test files in
+// the same bun invocation. Capture the initial state and restore it
+// after each test so no other test sees a partial workspace from this
+// file's "no workspace loaded" branch.
+const STORE_INITIAL_STATE = editorStore.getState();
+
+beforeEach(() => {
+  editorStore.setState(STORE_INITIAL_STATE);
+  setCurrentProjectPath(undefined);
+});
+
+afterEach(() => {
+  editorStore.setState(STORE_INITIAL_STATE);
+  setCurrentProjectPath(undefined);
+});
 
 // These run regardless of build channel because the test environment
 // always exercises the code paths the helper exposes; the build-time

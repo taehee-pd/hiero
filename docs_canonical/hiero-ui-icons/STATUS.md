@@ -43,31 +43,40 @@ The mechanism exists but the binding is loose. Inventory:
 | `pnpm icons:build` automation post-save | not done | Designer drops to terminal. |
 | Authoring-loop documentation in `CLAUDE.md` | added 2026-04-27 | "Common Commands" lists `pnpm icons:import`, `pnpm icons:build`, `pnpm icons:verify`. |
 
-## Authoring loop (today's reality)
-
-Until the toolbar gains an "Open Hiero UI Icon Set" action, the loop is:
+## Authoring loop (internal-build maintainers — same-day publish)
 
 ```
-1. pnpm dev                                       # start the editor
-2. Toolbar → Open Project → packages/hiero-ui-icons/source/icons.json
+1. NEXT_PUBLIC_BUILD_CHANNEL=internal pnpm dev    # internal-channel editor
+2. File → Open Hiero UI Icon Set                  # one-click open (locked source)
 3. Edit in canvas
-4. Toolbar → Save → packages/hiero-ui-icons/source/icons.json   (overwrite)
-5. pnpm icons:build                               # regenerate generated/
-6. pnpm icons:verify                              # determinism gate
-7. pnpm test && pnpm build                        # app-level checks
-8. git add packages/hiero-ui-icons/ && git commit
+4. File → Save Hiero UI Icon Set                  # one-click save (Project shape, locked filename)
+5. Move the downloaded icons.json into packages/hiero-ui-icons/source/
+6. pnpm icons:build                               # regenerate generated/
+7. pnpm icons:verify                              # determinism gate
+8. pnpm test && pnpm build                        # app-level checks
+9. git add packages/hiero-ui-icons/ && git commit
 ```
+
+The "Open / Save Hiero UI Icon Set" menu items only render when
+`NEXT_PUBLIC_BUILD_CHANNEL=internal`. Public-channel users see the
+generic Open/Save Project actions and have no path to the canonical
+icon set. See `CLAUDE.md` "Build channels" + `docs_canonical/DEPLOYMENT.md`.
+
+## Authoring loop (public users / external contributors)
+
+Without the dogfood entry points, the loop falls back to the generic
+Open/Save Project flow against any user-chosen file. External
+contributors authoring their own icon sets follow the same pattern,
+just with their own JSON files instead of the Hiero canonical source.
 
 ## Next increments (priority order)
 
-1. **Toolbar entry point** — single click from the editor to open the
-   canonical source. Eliminates picking the wrong file.
-2. **Save-back binding** — when the loaded project came from
-   `packages/hiero-ui-icons/source/icons.json`, the Save action targets
-   that path, not "wherever the user last saved."
-3. **In-editor `icons:build` integration** — a follow-up button (or a
+1. **In-editor `icons:build` integration** — a follow-up button (or a
    git pre-commit hook) that runs `bun scripts/build-ui-icons.ts` so
    the determinism gate passes without context-switching to the terminal.
-4. **Add `pnpm icons:verify` to `web-app-ci.yml`** — currently the
-   determinism gate exists as a script but isn't gated on every PR.
-   This is a one-line workflow addition.
+2. **Direct save-without-download for the internal channel** — the
+   current Save action triggers a Blob download that the maintainer
+   manually moves into `packages/hiero-ui-icons/source/`. A Next.js
+   API route `POST /api/hiero-ui-icons/save` (gated to internal channel
+   + dev-mode only) could write the file directly. Removes one manual
+   step from the loop.

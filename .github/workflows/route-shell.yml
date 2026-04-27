@@ -42,28 +42,17 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
-
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
 
       - name: Build Next.js
-        run: pnpm build
+        run: bun run build
 
       - name: Run route-shell smoke
-        run: pnpm test:e2e
+        run: bunx playwright test
 
       - name: Upload Playwright report on failure
         if: failure()

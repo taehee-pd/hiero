@@ -78,6 +78,17 @@ jobs:
       - name: Enforce coverage thresholds
         run: bun run check:coverage
 
+      - name: Page registry + route consistency tests
+        # The four files added in Phase 1 of the route-divergence defense:
+        # the registry shape, the definePage helper, the check script's
+        # smoke, and the EditorRedirect render-time regression.
+        # `test:phase-a:coverage` above doesn't include them; without this
+        # step, the shell-consistency gate doesn't actually gate.
+        run: bun test tests/page-registry.test.ts tests/check-page-registry.test.ts tests/define-page.test.tsx tests/editor-redirect.test.tsx tests/editor-routes.test.ts
+
+      - name: Page registry coverage check
+        run: bun run test:registry
+
       - name: Build Storybook
         run: bun run storybook:build
 

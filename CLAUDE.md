@@ -16,7 +16,10 @@ pnpm dev           # Start dev server
 pnpm build         # Production build (output: .next/)
 pnpm lint          # ESLint check
 pnpm format:check  # Prettier check
-pnpm test          # Run all tests (splits into test:core + test:dom)
+pnpm test          # Run all tests (test:core + test:dom + test:registry)
+pnpm test:registry # Page-registry consistency check (Layer 1 of the route gate)
+pnpm test:e2e      # Playwright route-shell smoke (Layer 2). Cold-run requires:
+                   # `bunx playwright install --with-deps chromium` once.
 npx tsc --noEmit   # Type-check without emitting
 ```
 
@@ -25,6 +28,25 @@ npx tsc --noEmit   # Type-check without emitting
 > `test:dom` for React `.test.tsx` files) so happy-dom's DOMParser
 > can't contaminate the svg-sanitizer / import-svg tests that run in
 > the same bun process. See `bunfig.toml` for the full explanation.
+
+## Route divergence defense
+
+Every `app/**/page.tsx` enrols itself in `lib/routes/page-registry.ts` by
+calling `definePage({ route, ... })` from `lib/routes/define-page.tsx`.
+Three layers gate this:
+
+1. `pnpm test:registry` (= `bun scripts/check-page-registry.ts`) fails CI
+   if any page file forgets to enrol or declares an unregistered route.
+2. `pnpm test:e2e` runs `tests/e2e/route-shell.spec.ts` against the
+   built app, asserting each shell-route renders the canonical shell and
+   each redirect-route reaches its registered target.
+3. Chromatic snapshots one `Pages/Routes` story per editor route
+   (`app/_storybook/pages.stories.tsx`) so visual drift gates PRs at
+   the route level.
+
+Adding a new top-level route → add its `RoutePath` literal + `PageDefinition`
+entry to `lib/routes/page-registry.ts`. The check script's failure messages
+include paste-ready snippets.
 
 ## CI Emulation (run before every push)
 

@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import type { ReactElement } from 'react';
 
 import { definePage } from '@/lib/routes/define-page';
-import { PAGE_REGISTRY, type RoutePath } from '@/lib/routes/page-registry';
+import { type RoutePath } from '@/lib/routes/page-registry';
+import { resolveShell } from '@/lib/routes/resolve-shell';
 
 /**
  * Page-level stories — one per registered editor route.
@@ -30,28 +31,13 @@ import { PAGE_REGISTRY, type RoutePath } from '@/lib/routes/page-registry';
  */
 
 function resolveToShellTree(route: RoutePath): ReactElement {
-  const seen = new Set<RoutePath>();
-  let current: RoutePath = route;
-  while (true) {
-    if (seen.has(current)) {
-      throw new Error(`Redirect cycle starting at ${route}`);
-    }
-    seen.add(current);
-    const def = PAGE_REGISTRY[current];
-    if (def.kind === 'shell') {
-      // definePage's shell arm always returns a ReactElement (the registered
-      // shell component). Wrap in a fragment to satisfy Storybook's render
-      // signature, which is stricter than ReactNode.
-      return <>{definePage({ route: current })}</>;
-    }
-    if (def.kind === 'redirect') {
-      current = def.to;
-      continue;
-    }
-    throw new Error(
-      `Story for ${route} resolved to standalone (${current}); standalone routes don't have stories in this file.`,
-    );
-  }
+  // resolveShell() throws on cycles AND on standalone landings — both are
+  // exactly what we want for this story file. The fragment wrap satisfies
+  // Storybook's render signature, which is stricter than ReactNode.
+  // The cast is sound: when called against the default PAGE_REGISTRY (i.e.
+  // not in tests), `finalRoute` is always one of its keys, which IS RoutePath.
+  const { finalRoute } = resolveShell(route);
+  return <>{definePage({ route: finalRoute as RoutePath })}</>;
 }
 
 const meta: Meta = {

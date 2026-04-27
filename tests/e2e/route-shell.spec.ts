@@ -5,6 +5,7 @@ import {
   REGISTERED_ROUTES,
   type RoutePath,
 } from '../../lib/routes/page-registry';
+import { resolveShell } from '../../lib/routes/resolve-shell';
 
 /**
  * Route-shell consistency smoke test (Layer 2 of the route-divergence
@@ -25,31 +26,9 @@ function navigationUrl(route: RoutePath): string {
   return route.replace('[iconId]', 'desktop-shell');
 }
 
-// Resolve a redirect chain to its final non-redirect shell entry. Pages can
-// chain in principle (A → B → C); in practice they don't, but this handles
-// it and detects accidental cycles.
-function resolveShell(start: RoutePath): {
-  shell: string;
-  finalRoute: RoutePath;
-} {
-  const seen = new Set<RoutePath>();
-  let current: RoutePath = start;
-  while (true) {
-    if (seen.has(current)) {
-      throw new Error(`Redirect cycle detected starting at ${start}: ${[...seen, current].join(' → ')}`);
-    }
-    seen.add(current);
-    const def = PAGE_REGISTRY[current];
-    if (def.kind === 'redirect') {
-      current = def.to;
-      continue;
-    }
-    if (def.kind === 'shell') {
-      return { shell: def.shell, finalRoute: current };
-    }
-    throw new Error(`Route ${start} resolves to standalone (${current}); not in scope for this spec`);
-  }
-}
+// resolveShell() lives in lib/routes/resolve-shell.ts so its cycle guard
+// is unit-testable from tests/resolve-shell.test.ts. This file just
+// dispatches on the result.
 
 const SHELL_TESTID = {
   StudioLayout: 'studio-layout-root',

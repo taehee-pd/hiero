@@ -29,16 +29,27 @@ const ROOT = resolve(import.meta.dir, '..');
 const APP_DIR = resolve(ROOT, 'app');
 
 // ---------------------------------------------------------------------------
-// 1. Walk app/**/page.tsx (excluding underscore-prefixed and parens-grouped
-//    directories per Next.js conventions: app/_x is private, app/(x) is a
-//    route group whose name doesn't appear in the URL — neither is in scope
-//    for this check).
+// 1. Walk app/**/page.tsx, skipping the Next.js conventions whose names
+//    don't (or shouldn't) become routes:
+//
+//      _x         private folder              app/_storybook/
+//      (x)        route group                 app/(marketing)/
+//      (.)x       intercepting route          app/(.)photo/
+//      (..)x      intercepting route          app/(..)photo/
+//      (...)x     intercepting route          app/(...)photo/
+//      @x         parallel route slot         app/@modal/
+//      .x         hidden                      app/.cache/
+//
+//   The previous version only matched (...) when both ( and ) were the
+//   first/last char of the segment, which let intercepting routes through
+//   and produced misleading "add '/(.)foo' to the registry" advice.
 // ---------------------------------------------------------------------------
+
+const SKIP_DIR_RE = /^(_|\.|@|\(\.{1,3}\).*|\(.*\))/;
 
 function walk(dir: string, hits: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
-    if (entry.startsWith('_') || entry.startsWith('.')) continue;
-    if (entry.startsWith('(') && entry.endsWith(')')) continue;
+    if (SKIP_DIR_RE.test(entry)) continue;
     const full = join(dir, entry);
     const stat = statSync(full);
     if (stat.isDirectory()) {
@@ -56,6 +67,24 @@ function fileToRoute(absPath: string): string {
 }
 
 const pageFiles = existsSync(APP_DIR) ? walk(APP_DIR) : [];
+
+// Fail loudly if the walker finds zero pages. Without this guard, a
+// future "src/app" migration or a typo in APP_DIR would print
+// "All pages enrolled" against an empty set and exit 0 — silently
+// removing the gate this script exists to provide.
+if (pageFiles.length === 0) {
+  console.error(
+    `❌ scripts/check-page-registry.ts found 0 page files under ${APP_DIR}.`,
+  );
+  console.error(
+    `   This script's whole job is checking that every Next.js page enrols`,
+  );
+  console.error(
+    `   in PAGE_REGISTRY. Zero pages probably means the app/ tree moved.`,
+  );
+  console.error(`   Update APP_DIR in this script to match the new location.`);
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // 2. Verify each page file

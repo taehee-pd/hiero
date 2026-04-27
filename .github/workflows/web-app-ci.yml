@@ -79,24 +79,26 @@ jobs:
         run: bun run check:coverage
 
       - name: Page registry + route consistency tests
-        # The four files added in Phase 1 of the route-divergence defense:
-        # the registry shape, the definePage helper, the check script's
-        # smoke, and the EditorRedirect render-time regression.
+        # The Phase 1 + post-merge files for the route-divergence defense.
         # `test:phase-a:coverage` above doesn't include them; without this
         # step, the shell-consistency gate doesn't actually gate.
-        run: bun test tests/page-registry.test.ts tests/check-page-registry.test.ts tests/define-page.test.tsx tests/editor-redirect.test.tsx tests/editor-routes.test.ts
+        run: bun test tests/page-registry.test.ts tests/check-page-registry.test.ts tests/define-page.test.tsx tests/editor-redirect.test.tsx tests/editor-routes.test.ts tests/resolve-shell.test.ts tests/hiero-ui-icons-roundtrip.test.ts
 
       - name: Page registry coverage check
         run: bun run test:registry
+
+      - name: Hiero UI icons determinism gate
+        # `icons:verify` rebuilds packages/hiero-ui-icons/generated/ from
+        # source/icons.json and fails if the working tree is dirty. This
+        # gates Plan §2's "publish right away" loop: a clean Save in the
+        # editor should never produce a dirty diff after icons:build.
+        run: bun run icons:verify
 
       - name: Build Storybook
         run: bun run storybook:build
 
       - name: DS export coverage check
         run: bun scripts/check-ds-exports.ts
-
-      - name: Build web app
-        run: bun run build
 
       - name: Upload coverage artifact
         if: always()
@@ -106,3 +108,65 @@ jobs:
           path: coverage/
           retention-days: 14
           if-no-files-found: ignore
+
+  # Build matrix — both build channels are produced and verified on every
+  # PR. The `internal` channel is what maintainers ship to the dogfood
+  # deployment; `public` is what end users see. Each must build cleanly,
+  # and `public` additionally goes through the bundle-isolation check
+  # that ensures no internal-only data leaks out (see
+  # scripts/check-public-bundle.ts).
+  build:
+    name: Build (${{ matrix.channel }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [public, internal]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolve build version env
+        id: ver
+        # Use bun rather than node — every other step in this workflow
+        # uses bun (via setup-bun@v2 above) and ubuntu-latest's preinstalled
+        # node is not a contract. If the runner image ever drops node, this
+        # step keeps working.
+        run: |
+          echo "app=$(bun -e 'console.log(require("./package.json").version)')" >>"$GITHUB_OUTPUT"
+          echo "ui=$(bun -e 'console.log(require("./packages/hiero-ui-icons/package.json").version)')" >>"$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
+
+      - name: Build web app
+        env:
+          NEXT_PUBLIC_BUILD_CHANNEL: ${{ matrix.channel }}
+          NEXT_PUBLIC_APP_VERSION: ${{ steps.ver.outputs.app }}
+          NEXT_PUBLIC_HIERO_UI_ICONS_VERSION: ${{ steps.ver.outputs.ui }}
+          NEXT_PUBLIC_BUILD_COMMIT: ${{ steps.ver.outputs.sha }}
+          # Three-step fallback chain: head_commit (push), pull_request
+          # (pull_request_*), then run_started_at as a guaranteed-present
+          # last resort (workflow_dispatch re-runs and other event types
+          # leave the first two empty, and Empty-string passes the ??
+          # operator in next.config.mjs's reader).
+          NEXT_PUBLIC_BUILD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || github.run_started_at }}
+        run: bun run build
+
+      - name: Bundle isolation check
+        # Only meaningful for the public channel — the internal build is
+        # SUPPOSED to contain the icons.json envelope and the helper
+        # module. Running the check on internal builds would always fail
+        # (verified locally as a control test).
+        if: matrix.channel == 'public'
+        run: bun scripts/check-public-bundle.ts

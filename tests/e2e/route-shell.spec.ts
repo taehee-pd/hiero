@@ -5,6 +5,7 @@ import {
   REGISTERED_ROUTES,
   type RoutePath,
 } from '../../lib/routes/page-registry';
+import { resolveShell } from '../../lib/routes/resolve-shell';
 
 /**
  * Route-shell consistency smoke test (Layer 2 of the route-divergence
@@ -25,31 +26,9 @@ function navigationUrl(route: RoutePath): string {
   return route.replace('[iconId]', 'desktop-shell');
 }
 
-// Resolve a redirect chain to its final non-redirect shell entry. Pages can
-// chain in principle (A → B → C); in practice they don't, but this handles
-// it and detects accidental cycles.
-function resolveShell(start: RoutePath): {
-  shell: string;
-  finalRoute: RoutePath;
-} {
-  const seen = new Set<RoutePath>();
-  let current: RoutePath = start;
-  while (true) {
-    if (seen.has(current)) {
-      throw new Error(`Redirect cycle detected starting at ${start}: ${[...seen, current].join(' → ')}`);
-    }
-    seen.add(current);
-    const def = PAGE_REGISTRY[current];
-    if (def.kind === 'redirect') {
-      current = def.to;
-      continue;
-    }
-    if (def.kind === 'shell') {
-      return { shell: def.shell, finalRoute: current };
-    }
-    throw new Error(`Route ${start} resolves to standalone (${current}); not in scope for this spec`);
-  }
-}
+// resolveShell() lives in lib/routes/resolve-shell.ts so its cycle guard
+// is unit-testable from tests/resolve-shell.test.ts. This file just
+// dispatches on the result.
 
 const SHELL_TESTID = {
   StudioLayout: 'studio-layout-root',
@@ -91,3 +70,24 @@ for (const route of REGISTERED_ROUTES) {
     ).toBeVisible({ timeout: 10_000 });
   });
 }
+
+// Build identification surface — the channel + version triple is set in
+// next.config.mjs's headers() block AND inlined into the HTML <head> via
+// app/layout.tsx. Either path is enough for ops introspection; this spec
+// asserts the HTTP-header path works for the canonical shell route.
+test('X-Hiero-Build-Channel response header is present on /', async ({ request }) => {
+  const response = await request.get('/');
+  const channel = response.headers()['x-hiero-build-channel'];
+  expect(channel, 'X-Hiero-Build-Channel header should be set by next.config.mjs').toBeTruthy();
+  expect(['public', 'internal']).toContain(channel);
+});
+
+test('window.__HIERO_BUILD__ global is set before any client interaction', async ({ page }) => {
+  await page.goto('/');
+  const build = await page.evaluate(() => {
+    return (window as Window & { __HIERO_BUILD__?: { channel?: string; app?: string } }).__HIERO_BUILD__;
+  });
+  expect(build, 'window.__HIERO_BUILD__ should be inlined by app/layout.tsx').toBeTruthy();
+  expect(build?.channel).toBeTruthy();
+  expect(build?.app).toBeTruthy();
+});

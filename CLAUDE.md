@@ -16,7 +16,10 @@ pnpm dev           # Start dev server
 pnpm build         # Production build (output: .next/)
 pnpm lint          # ESLint check
 pnpm format:check  # Prettier check
-pnpm test          # Run all tests (splits into test:core + test:dom)
+pnpm test          # Run all tests (test:core + test:dom + test:registry)
+pnpm test:registry # Page-registry consistency check (Layer 1 of the route gate)
+pnpm test:e2e      # Playwright route-shell smoke (Layer 2). Cold-run requires:
+                   # `bunx playwright install --with-deps chromium` once.
 npx tsc --noEmit   # Type-check without emitting
 ```
 
@@ -25,6 +28,70 @@ npx tsc --noEmit   # Type-check without emitting
 > `test:dom` for React `.test.tsx` files) so happy-dom's DOMParser
 > can't contaminate the svg-sanitizer / import-svg tests that run in
 > the same bun process. See `bunfig.toml` for the full explanation.
+
+## Build channels
+
+Hiero ships from one codebase as **two builds**:
+
+- **public** (default) — what end users see. Strips internal admin
+  features and keeps the bundle clean of maintainer-only data.
+- **internal** — what maintainers use to dogfood the editor against
+  the canonical `@hiero/ui-icons` set. Adds maintenance toolbar
+  actions and surfaces the full version triple in the navbar chip.
+
+Set `NEXT_PUBLIC_BUILD_CHANNEL=internal` at build time to opt in. The
+default is `public`; any unrecognized value also defaults to `public`,
+so a CI typo can't accidentally ship internals. See `lib/build-flags.ts`.
+
+The version surface (`lib/build-version.ts`) is populated from
+`NEXT_PUBLIC_*` env vars at build time and surfaced in three places:
+
+- The navbar's `<BuildBadge>` chip — `v0.1.0` on public, `internal · v0.1.0 · abc123` on internal.
+- The `X-Hiero-Build-Channel` HTTP response header (set in `next.config.mjs`).
+- A `window.__HIERO_BUILD__` global for Playwright + bug reports.
+
+CI populates `NEXT_PUBLIC_APP_VERSION`, `NEXT_PUBLIC_BUILD_COMMIT`,
+`NEXT_PUBLIC_BUILD_TIME`, `NEXT_PUBLIC_HIERO_UI_ICONS_VERSION`. Local
+dev gets sane fallbacks from the package.json files so `pnpm dev` boots
+without env-file ceremony.
+
+**Bundle isolation.** The public channel is gated such that none of the
+internal-only data (`packages/hiero-ui-icons/source/icons.json`) ends up
+in the public bundle. The mechanism: gate the `await import(...)` call
+on the env-var literal `process.env.NEXT_PUBLIC_BUILD_CHANNEL` (which
+Webpack constant-folds), NOT on an imported `IS_INTERNAL_BUILD` constant
+(which the bundler doesn't fold across module boundaries). The CI script
+`scripts/check-public-bundle.ts` runs `bun run build` with
+`NEXT_PUBLIC_BUILD_CHANNEL=public`, then greps the `.next/` output for
+fingerprints of internal data; CI fails if any appear in user-facing
+chunks. If you add a new internal-only feature, follow the same pattern
+and add a fingerprint to the check.
+
+**Deployment topology.** Two Vercel projects (`hiero` public, open;
+`hiero-internal` auth-gated) point at the same repo. `vercel.json`
+encodes only project-agnostic settings (framework, install/build
+commands); per-project env vars (the channel switch, version pins)
+live in each project's Vercel dashboard. Full runbook:
+`docs_canonical/DEPLOYMENT.md`.
+
+## Route divergence defense
+
+Every `app/**/page.tsx` enrols itself in `lib/routes/page-registry.ts` by
+calling `definePage({ route, ... })` from `lib/routes/define-page.tsx`.
+Three layers gate this:
+
+1. `pnpm test:registry` (= `bun scripts/check-page-registry.ts`) fails CI
+   if any page file forgets to enrol or declares an unregistered route.
+2. `pnpm test:e2e` runs `tests/e2e/route-shell.spec.ts` against the
+   built app, asserting each shell-route renders the canonical shell and
+   each redirect-route reaches its registered target.
+3. Chromatic snapshots one `Pages/Routes` story per editor route
+   (`app/_storybook/pages.stories.tsx`) so visual drift gates PRs at
+   the route level.
+
+Adding a new top-level route → add its `RoutePath` literal + `PageDefinition`
+entry to `lib/routes/page-registry.ts`. The check script's failure messages
+include paste-ready snippets.
 
 ## CI Emulation (run before every push)
 

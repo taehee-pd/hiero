@@ -5,8 +5,13 @@ on:
     paths:
       - 'app/**'
       - 'components/**'
-      - 'lib/routes/**'
-      - 'lib/platform/routes.ts'
+      # Layer-2's whole point is catching runtime regressions in the
+      # redirect path. Anything the redirect or shell touches at boot
+      # belongs here — store, persistence, schema, and the helpers under
+      # lib/routes/. Don't narrow this without a Layer-2 alternative for
+      # the dropped paths; the previous filter (lib/routes/** only) let
+      # store/persistence changes silently bypass the gate.
+      - 'lib/**'
       - 'tests/e2e/**'
       - 'playwright.config.ts'
       - 'package.json'
@@ -18,8 +23,7 @@ on:
     paths:
       - 'app/**'
       - 'components/**'
-      - 'lib/routes/**'
-      - 'lib/platform/routes.ts'
+      - 'lib/**'
       - 'tests/e2e/**'
       - 'playwright.config.ts'
 

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { StatusBadge } from '@/components/ds/status-badge';
+import { BuildBadge } from '@/components/studio/BuildBadge';
 import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
@@ -196,6 +197,52 @@ export function Navbar() {
     if (result) editorStore.getState().markSaved(payload.updatedAt);
   }, [serializeWorkspace]);
 
+  // Internal-build only. See components/editor/Toolbar.tsx for the
+  // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
+  // literally rather than the imported IS_INTERNAL_BUILD constant —
+  // Webpack folds the env-var literal but not cross-module bindings,
+  // and only literal-folded gates produce a clean public bundle.
+  const handleOpenHieroUiIconSet = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      mod.openHieroUiIconSetInEditor();
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to open Hiero UI icon set: ${err.message}`
+          : 'Failed to open Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
+  const handleSaveHieroUiIconSet = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.serializeHieroUiIconSet();
+      if (!result.ok) {
+        showToolbarError(
+          result.reason === 'no-workspace'
+            ? 'No icon set is loaded — open it first.'
+            : 'Open the canonical icon set via "Open Hiero UI Icon Set" before saving as one.',
+        );
+        return;
+      }
+      const saved = await saveProject(
+        result.data,
+        mod.HIERO_UI_ICONS_SOURCE_FILENAME,
+      );
+      if (saved) editorStore.getState().markSaved(result.updatedAt);
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to save Hiero UI icon set: ${err.message}`
+          : 'Failed to save Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
   const handleExportSvgPackage = useCallback(() => {
     const { project } = editorStore.getState();
     if (!project) return;
@@ -262,6 +309,28 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => void handleOpenProject()}><UiIcon name="folder-open" size={16} className="size-4" />Open Project</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="save" size={16} className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  {/* Internal-build only — env-var literal so Webpack folds
+                      and DCE strips this subtree from public bundles. See
+                      Toolbar.tsx for the detailed comment. */}
+                  {process.env.NEXT_PUBLIC_BUILD_CHANNEL === 'internal' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => void handleOpenHieroUiIconSet()}
+                        data-testid="navbar-open-hiero-ui-icons"
+                      >
+                        <UiIcon name="package" size={16} className="size-4" />
+                        Open Hiero UI Icon Set
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleSaveHieroUiIconSet()}
+                        data-testid="navbar-save-hiero-ui-icons"
+                      >
+                        <UiIcon name="save" size={16} className="size-4" />
+                        Save Hiero UI Icon Set
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}><UiIcon name="import" size={16} className="size-4" />Import Icons</DropdownMenuItem>
                 </DropdownMenuSubContent>
@@ -363,6 +432,8 @@ export function Navbar() {
 
           {/* Search */}
           <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
+
+          <BuildBadge />
         </div>
       </header>
 

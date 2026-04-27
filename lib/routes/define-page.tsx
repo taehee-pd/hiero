@@ -46,6 +46,12 @@ export function definePage(args: DefinePageArgs): ReactNode {
         );
       }
       return args.children;
+    default:
+      // Exhaustiveness guard: when a new `kind` is added to PageDefinition,
+      // TypeScript narrows `definition` to the new arm here and refuses to
+      // assign it to `never`. Without this, the switch silently returns
+      // undefined for unhandled kinds.
+      return assertNever(definition);
   }
 }
 
@@ -53,5 +59,13 @@ function renderShell(shell: ShellId): ReactNode {
   switch (shell) {
     case 'StudioLayout':
       return <StudioLayout />;
+    default:
+      return assertNever(shell);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(
+    `Unhandled discriminant in definePage: ${JSON.stringify(value)}. Add a case in lib/routes/define-page.tsx.`,
+  );
 }

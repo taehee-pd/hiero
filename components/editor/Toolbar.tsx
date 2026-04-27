@@ -190,6 +190,61 @@ export function Toolbar() {
     }
   }, [serializeWorkspace]);
 
+  // Internal-build only. The gate uses the raw env var literal (not the
+  // imported IS_INTERNAL_BUILD constant) because Webpack constant-folds
+  // `process.env.NEXT_PUBLIC_*` inline but does NOT fold across module
+  // boundaries — gating on an imported constant keeps the dynamic import
+  // reachable from the bundler's perspective and ships the chunk
+  // (including the imported icons.json data) to public builds.
+  //
+  // With the env-var literal: in public builds the comparison folds to
+  // `'public' !== 'internal'` (always true), the early return is the
+  // only reachable branch, and the dynamic import is dead code and
+  // tree-shaken. The bundle-isolation check (scripts/check-public-bundle.ts)
+  // verifies this empirically on every CI run.
+  const handleOpenHieroUiIconSet = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      mod.openHieroUiIconSetInEditor();
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to open Hiero UI icon set: ${err.message}`
+          : 'Failed to open Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
+  const handleSaveHieroUiIconSet = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.serializeHieroUiIconSet();
+      if (!result.ok) {
+        showToolbarError(
+          result.reason === 'no-workspace'
+            ? 'No icon set is loaded — open it first.'
+            : 'Open the canonical icon set via "Open Hiero UI Icon Set" before saving as one.',
+        );
+        return;
+      }
+      const saved = await saveProject(
+        result.data,
+        mod.HIERO_UI_ICONS_SOURCE_FILENAME,
+      );
+      if (saved) {
+        editorStore.getState().markSaved(result.updatedAt);
+      }
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to save Hiero UI icon set: ${err.message}`
+          : 'Failed to save Hiero UI icon set.',
+      );
+    }
+  }, [showToolbarError]);
+
   const handleExportSvg = useCallback(async () => {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
@@ -364,6 +419,30 @@ export function Toolbar() {
                     <UiIcon name="folder-open" size={16} className="size-4" />
                     Open Project
                   </DropdownMenuItem>
+                  {/* Internal-build only. Gated on the env var literal so
+                      Webpack constant-folds and dead-code-eliminates the
+                      whole subtree in public builds (importing
+                      IS_INTERNAL_BUILD from build-flags.ts wouldn't fold
+                      across module boundaries). */}
+                  {process.env.NEXT_PUBLIC_BUILD_CHANNEL === 'internal' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => void handleOpenHieroUiIconSet()}
+                        data-testid="toolbar-open-hiero-ui-icons"
+                      >
+                        <UiIcon name="package" size={16} className="size-4" />
+                        Open Hiero UI Icon Set
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleSaveHieroUiIconSet()}
+                        data-testid="toolbar-save-hiero-ui-icons"
+                      >
+                        <UiIcon name="save" size={16} className="size-4" />
+                        Save Hiero UI Icon Set
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => setImportDialogOpen(true)}>
                     <UiIcon name="import" size={16} className="size-4" />

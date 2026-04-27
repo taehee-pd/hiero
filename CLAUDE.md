@@ -67,6 +67,13 @@ fingerprints of internal data; CI fails if any appear in user-facing
 chunks. If you add a new internal-only feature, follow the same pattern
 and add a fingerprint to the check.
 
+**Deployment topology.** Two Vercel projects (`hiero` public, open;
+`hiero-internal` auth-gated) point at the same repo. `vercel.json`
+encodes only project-agnostic settings (framework, install/build
+commands); per-project env vars (the channel switch, version pins)
+live in each project's Vercel dashboard. Full runbook:
+`docs_canonical/DEPLOYMENT.md`.
+
 ## Route divergence defense
 
 Every `app/**/page.tsx` enrols itself in `lib/routes/page-registry.ts` by

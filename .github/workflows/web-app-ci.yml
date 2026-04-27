@@ -82,10 +82,17 @@ jobs:
         # The Phase 1 + post-merge files for the route-divergence defense.
         # `test:phase-a:coverage` above doesn't include them; without this
         # step, the shell-consistency gate doesn't actually gate.
-        run: bun test tests/page-registry.test.ts tests/check-page-registry.test.ts tests/define-page.test.tsx tests/editor-redirect.test.tsx tests/editor-routes.test.ts tests/resolve-shell.test.ts
+        run: bun test tests/page-registry.test.ts tests/check-page-registry.test.ts tests/define-page.test.tsx tests/editor-redirect.test.tsx tests/editor-routes.test.ts tests/resolve-shell.test.ts tests/hiero-ui-icons-roundtrip.test.ts
 
       - name: Page registry coverage check
         run: bun run test:registry
+
+      - name: Hiero UI icons determinism gate
+        # `icons:verify` rebuilds packages/hiero-ui-icons/generated/ from
+        # source/icons.json and fails if the working tree is dirty. This
+        # gates Plan §2's "publish right away" loop: a clean Save in the
+        # editor should never produce a dirty diff after icons:build.
+        run: bun run icons:verify
 
       - name: Build Storybook
         run: bun run storybook:build

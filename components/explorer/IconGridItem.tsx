@@ -152,7 +152,7 @@ export function IconGridItem({
                 <div
                   aria-hidden="true"
                   className={cn(
-                    'flex size-10 items-center justify-center transition-transform duration-100 group-hover:scale-[1.04]',
+                    'flex size-10 items-center justify-center transition-transform duration-100 group-hover:scale-[1.04] [&_svg]:overflow-visible',
                     selected ? 'text-primary-foreground' : 'text-foreground',
                   )}
                   dangerouslySetInnerHTML={{ __html: svg }}

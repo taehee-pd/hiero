@@ -1028,7 +1028,7 @@ function ProjectCard({
                   >
                     {svg ? (
                       <div
-                        className="size-8 [&_svg]:h-full [&_svg]:w-full"
+                        className="size-8 [&_svg]:h-full [&_svg]:w-full [&_svg]:overflow-visible"
                         aria-hidden="true"
                         dangerouslySetInnerHTML={{ __html: svg }}
                       />

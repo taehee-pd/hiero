@@ -100,9 +100,6 @@ jobs:
       - name: DS export coverage check
         run: bun scripts/check-ds-exports.ts
 
-      - name: Build web app
-        run: bun run build
-
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -111,3 +108,56 @@ jobs:
           path: coverage/
           retention-days: 14
           if-no-files-found: ignore
+
+  # Build matrix — both build channels are produced and verified on every
+  # PR. The `internal` channel is what maintainers ship to the dogfood
+  # deployment; `public` is what end users see. Each must build cleanly,
+  # and `public` additionally goes through the bundle-isolation check
+  # that ensures no internal-only data leaks out (see
+  # scripts/check-public-bundle.ts).
+  build:
+    name: Build (${{ matrix.channel }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: validate
+
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [public, internal]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolve build version env
+        id: ver
+        run: |
+          echo "app=$(node -p "require('./package.json').version")" >>"$GITHUB_OUTPUT"
+          echo "ui=$(node -p "require('./packages/hiero-ui-icons/package.json').version")" >>"$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
+
+      - name: Build web app
+        env:
+          NEXT_PUBLIC_BUILD_CHANNEL: ${{ matrix.channel }}
+          NEXT_PUBLIC_APP_VERSION: ${{ steps.ver.outputs.app }}
+          NEXT_PUBLIC_HIERO_UI_ICONS_VERSION: ${{ steps.ver.outputs.ui }}
+          NEXT_PUBLIC_BUILD_COMMIT: ${{ steps.ver.outputs.sha }}
+          NEXT_PUBLIC_BUILD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at }}
+        run: bun run build
+
+      - name: Bundle isolation check
+        # Only meaningful for the public channel — the internal build is
+        # SUPPOSED to contain the icons.json envelope and the helper
+        # module. Running the check on internal builds would always fail
+        # (verified locally as a control test).
+        if: matrix.channel == 'public'
+        run: bun scripts/check-public-bundle.ts

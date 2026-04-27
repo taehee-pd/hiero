@@ -37,8 +37,9 @@ The mechanism exists but the binding is loose. Inventory:
 |---|---|---|
 | `icons.json` is a valid `Project` | done | Top-level keys `version, meta, icons, types`; loadable through the toolbar's existing Open Project flow. |
 | Round-trip determinism (load → save = no-op) | **gated** | `tests/hiero-ui-icons-roundtrip.test.ts` (added 2026-04-27) loads icons.json through `loadProject` and asserts ids, viewBoxes, sizes, and per-layer path data round-trip cleanly across all 106 icons. Failure tells the contributor to run `pnpm icons:import`. |
-| First-class "Open Hiero UI Icon Set" entry point in toolbar | not done | Designers still navigate via OS file picker. |
-| Save-back action that targets `packages/hiero-ui-icons/source/icons.json` | not done | The generic Save flow writes to the user-chosen path; nothing locks the destination. |
+| First-class "Open Hiero UI Icon Set" entry point in toolbar | done (internal builds only) | File menu item in both `components/editor/Toolbar.tsx` and `components/studio/Navbar.tsx`. Gated on `NEXT_PUBLIC_BUILD_CHANNEL=internal`; public builds don't render the menu item or bundle the icons.json data. See `lib/integrations/hiero-ui-icons-source.ts` and the `Build channels` section in `CLAUDE.md`. |
+| Save-back action that targets `packages/hiero-ui-icons/source/icons.json` | done (internal builds only) | "Save Hiero UI Icon Set" sibling action serializes as Project (not Workspace) and defaults the filename to `icons.json`. |
+| Bundle-isolation guarantee for the public channel | done | `scripts/check-public-bundle.ts` greps the public `.next/` output for fingerprints of `icons.json`. CI gates this on every PR via the `Build (public)` matrix step in `.github/workflows/web-app-ci.yml`. |
 | `pnpm icons:build` automation post-save | not done | Designer drops to terminal. |
 | Authoring-loop documentation in `CLAUDE.md` | added 2026-04-27 | "Common Commands" lists `pnpm icons:import`, `pnpm icons:build`, `pnpm icons:verify`. |
 

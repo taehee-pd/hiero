@@ -55,6 +55,18 @@ CI populates `NEXT_PUBLIC_APP_VERSION`, `NEXT_PUBLIC_BUILD_COMMIT`,
 dev gets sane fallbacks from the package.json files so `pnpm dev` boots
 without env-file ceremony.
 
+**Bundle isolation.** The public channel is gated such that none of the
+internal-only data (`packages/hiero-ui-icons/source/icons.json`) ends up
+in the public bundle. The mechanism: gate the `await import(...)` call
+on the env-var literal `process.env.NEXT_PUBLIC_BUILD_CHANNEL` (which
+Webpack constant-folds), NOT on an imported `IS_INTERNAL_BUILD` constant
+(which the bundler doesn't fold across module boundaries). The CI script
+`scripts/check-public-bundle.ts` runs `bun run build` with
+`NEXT_PUBLIC_BUILD_CHANNEL=public`, then greps the `.next/` output for
+fingerprints of internal data; CI fails if any appear in user-facing
+chunks. If you add a new internal-only feature, follow the same pattern
+and add a fingerprint to the check.
+
 ## Route divergence defense
 
 Every `app/**/page.tsx` enrols itself in `lib/routes/page-registry.ts` by

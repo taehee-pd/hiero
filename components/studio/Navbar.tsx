@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { StatusBadge } from '@/components/ds/status-badge';
 import { BuildBadge } from '@/components/studio/BuildBadge';
-import { IS_INTERNAL_BUILD } from '@/lib/build-flags';
 import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
@@ -198,12 +197,13 @@ export function Navbar() {
     if (result) editorStore.getState().markSaved(payload.updatedAt);
   }, [serializeWorkspace]);
 
-  // Internal-build only — open/save the canonical @hiero/ui-icons source
-  // in one click. Dynamic-imported so the public bundle never reaches
-  // the helper or the icons.json data. The DropdownMenuItems below are
-  // also gated on IS_INTERNAL_BUILD so the bundler can DCE this branch.
+  // Internal-build only. See components/editor/Toolbar.tsx for the
+  // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
+  // literally rather than the imported IS_INTERNAL_BUILD constant —
+  // Webpack folds the env-var literal but not cross-module bindings,
+  // and only literal-folded gates produce a clean public bundle.
   const handleOpenHieroUiIconSet = useCallback(async () => {
-    if (!IS_INTERNAL_BUILD) return;
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
     try {
       const mod = await import('@/lib/integrations/hiero-ui-icons-source');
       mod.openHieroUiIconSetInEditor();
@@ -217,7 +217,7 @@ export function Navbar() {
   }, [showToolbarError]);
 
   const handleSaveHieroUiIconSet = useCallback(async () => {
-    if (!IS_INTERNAL_BUILD) return;
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
     try {
       const mod = await import('@/lib/integrations/hiero-ui-icons-source');
       const payload = mod.serializeHieroUiIconSet();
@@ -305,7 +305,10 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => void handleOpenProject()}><UiIcon name="folder-open" size={16} className="size-4" />Open Project</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="save" size={16} className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
-                  {IS_INTERNAL_BUILD && (
+                  {/* Internal-build only — env-var literal so Webpack folds
+                      and DCE strips this subtree from public bundles. See
+                      Toolbar.tsx for the detailed comment. */}
+                  {process.env.NEXT_PUBLIC_BUILD_CHANNEL === 'internal' && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

@@ -56,7 +56,6 @@ import {
   selectCurrentType,
 } from '@/lib/editor-store/selectors';
 import { buildEditorRoute } from '@/lib/platform/routes';
-import { IS_INTERNAL_BUILD } from '@/lib/build-flags';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -191,14 +190,20 @@ export function Toolbar() {
     }
   }, [serializeWorkspace]);
 
-  // Internal-build only: open and save the canonical @hiero/ui-icons
-  // source as a single click. The integration helper is dynamic-imported
-  // so the public bundle never reaches it (or the icons.json data it
-  // imports). The DropdownMenuItems below are also gated on
-  // IS_INTERNAL_BUILD so the bundler can dead-code-eliminate this whole
-  // path in the public build.
+  // Internal-build only. The gate uses the raw env var literal (not the
+  // imported IS_INTERNAL_BUILD constant) because Webpack constant-folds
+  // `process.env.NEXT_PUBLIC_*` inline but does NOT fold across module
+  // boundaries — gating on an imported constant keeps the dynamic import
+  // reachable from the bundler's perspective and ships the chunk
+  // (including the imported icons.json data) to public builds.
+  //
+  // With the env-var literal: in public builds the comparison folds to
+  // `'public' !== 'internal'` (always true), the early return is the
+  // only reachable branch, and the dynamic import is dead code and
+  // tree-shaken. The bundle-isolation check (scripts/check-public-bundle.ts)
+  // verifies this empirically on every CI run.
   const handleOpenHieroUiIconSet = useCallback(async () => {
-    if (!IS_INTERNAL_BUILD) return;
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
     try {
       const mod = await import('@/lib/integrations/hiero-ui-icons-source');
       mod.openHieroUiIconSetInEditor();
@@ -212,7 +217,7 @@ export function Toolbar() {
   }, [showToolbarError]);
 
   const handleSaveHieroUiIconSet = useCallback(async () => {
-    if (!IS_INTERNAL_BUILD) return;
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
     try {
       const mod = await import('@/lib/integrations/hiero-ui-icons-source');
       const payload = mod.serializeHieroUiIconSet();
@@ -410,7 +415,12 @@ export function Toolbar() {
                     <UiIcon name="folder-open" size={16} className="size-4" />
                     Open Project
                   </DropdownMenuItem>
-                  {IS_INTERNAL_BUILD && (
+                  {/* Internal-build only. Gated on the env var literal so
+                      Webpack constant-folds and dead-code-eliminates the
+                      whole subtree in public builds (importing
+                      IS_INTERNAL_BUILD from build-flags.ts wouldn't fold
+                      across module boundaries). */}
+                  {process.env.NEXT_PUBLIC_BUILD_CHANNEL === 'internal' && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

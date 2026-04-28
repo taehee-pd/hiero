@@ -226,24 +226,39 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
         {/* Header */}
         <div className={cn('flex h-10 items-center gap-2 border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
           {listExpanded ? (
-            <>
-              <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
-              {selectedCount > 0 && (
-                <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 text-[10px] font-medium leading-4 text-primary tabular-nums">
+            selectedCount > 0 ? (
+              // Selection mode: replace the count text + new/import affordances
+              // with a full-width "{n} selected" pill, keep only the bulk
+              // download (Quick ZIP) and collapse buttons on the right.
+              // Reduces visual noise and focuses the row on the bulk action.
+              <>
+                <span className="flex h-6 min-w-0 flex-1 items-center rounded-md border border-primary/30 bg-primary/10 px-2 text-[11px] font-medium tabular-nums text-primary">
                   {selectedCount} selected
                 </span>
-              )}
-              <IconButton icon={<UiIcon name="plus" />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
-              <IconButton icon={<UiIcon name="folder-input" />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
-              <IconButton
-                icon={<UiIcon name="arrow-down-to-line" />}
-                aria-label="Quick ZIP export"
-                onClick={handleOpenExportDialog}
-                tooltip="Quick ZIP (SVG package)"
-                className="text-primary hover:bg-primary/10 hover:text-primary"
-              />
-              <IconButton icon={<UiIcon name="chevron-left" />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
-            </>
+                <IconButton
+                  icon={<UiIcon name="arrow-down-to-line" />}
+                  aria-label="Download selected as ZIP"
+                  onClick={handleOpenExportDialog}
+                  tooltip="Download selected as ZIP"
+                  className="text-primary hover:bg-primary/10 hover:text-primary"
+                />
+                <IconButton icon={<UiIcon name="chevron-left" />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
+              </>
+            ) : (
+              <>
+                <span className="studio-kicker min-w-0 flex-1 truncate px-1">{iconCount} icon{iconCount === 1 ? '' : 's'}</span>
+                <IconButton icon={<UiIcon name="plus" />} aria-label="New icon" onClick={handleCreateBlankIcon} tooltip="New icon" />
+                <IconButton icon={<UiIcon name="folder-input" />} aria-label="Import icons" onClick={() => setImportDialogOpen(true)} tooltip="Import icons" />
+                <IconButton
+                  icon={<UiIcon name="arrow-down-to-line" />}
+                  aria-label="Quick ZIP export"
+                  onClick={handleOpenExportDialog}
+                  tooltip="Quick ZIP (SVG package)"
+                  className="text-primary hover:bg-primary/10 hover:text-primary"
+                />
+                <IconButton icon={<UiIcon name="chevron-left" />} aria-label="Collapse icon list" onClick={toggleListPane} tooltip="Collapse" />
+              </>
+            )
           ) : (
             <IconButton icon={<UiIcon name="chevron-right" />} aria-label="Expand icon list" onClick={toggleListPane} tooltip="Expand" tooltipSide="right" />
           )}
@@ -254,23 +269,20 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
             {/* Search */}
             <div className="space-y-1 border-b border-border/40 px-2 py-1.5">
               <div className="relative">
-                <UiIcon name="search" size={14} className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <UiIcon name="search" size={14} className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  variant="pane"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search icons…"
                   aria-label="Search icons"
-                  className={cn(
-                    'h-7 rounded-lg border-border/70 bg-background/60 pl-7 text-xs',
-                    query ? 'pr-7' : 'pr-2',
-                  )}
-                  style={{ boxShadow: 'var(--shadow-outline)' }}
+                  className={cn('rounded-lg pl-7', query ? 'pr-7' : 'pr-2')}
                 />
                 {query ? (
                   <button
                     type="button"
                     onClick={() => setQuery('')}
-                    className="absolute right-4 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    className="absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     aria-label="Clear search"
                   >
                     <UiIcon name="x" size={12} className="size-3" />

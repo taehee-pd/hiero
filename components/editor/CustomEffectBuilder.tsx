@@ -83,7 +83,7 @@ export function CustomEffectBuilder({
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Kind</Label>
               <Select value={effect.kind} onValueChange={(v) => onUpdate({ kind: v as Effect['kind'] })}>
-                <SelectTrigger className="h-7 rounded-lg text-xs">
+                <SelectTrigger size="pane">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -98,7 +98,7 @@ export function CustomEffectBuilder({
               <Input
                 type="number" min="0" step="50"
                 value={effect.durationMs}
-                className="h-7 text-xs"
+                variant="pane"
                 onChange={(e) =>
                   onUpdate({ durationMs: Math.max(Number.parseInt(e.target.value, 10) || 0, 0) })
                 }
@@ -112,7 +112,7 @@ export function CustomEffectBuilder({
               <Input
                 type="number" min="0" step="50"
                 value={effect.delay ?? 0}
-                className="h-7 text-xs"
+                variant="pane"
                 onChange={(e) =>
                   onUpdate({ delay: Math.max(Number.parseInt(e.target.value, 10) || 0, 0) })
                 }
@@ -123,7 +123,7 @@ export function CustomEffectBuilder({
               <Input
                 type="text"
                 value={effect.repeat === 'infinite' ? 'infinite' : String(effect.repeat ?? 1)}
-                className="h-7 text-xs"
+                variant="pane"
                 onChange={(e) => {
                   const val = e.target.value.trim();
                   if (val === 'infinite') {
@@ -141,7 +141,7 @@ export function CustomEffectBuilder({
             <div className="grid gap-1">
               <Label className="text-[length:var(--text-caption)] text-muted-foreground">Direction</Label>
               <Select value={effect.direction ?? 'normal'} onValueChange={(v) => onUpdate({ direction: v as Effect['direction'] })}>
-                <SelectTrigger className="h-7 rounded-lg text-xs">
+                <SelectTrigger size="pane">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,7 +228,7 @@ function CustomTracksEditor({
         >
           <div className="flex items-center justify-between gap-2">
             <Select value={track.property} onValueChange={(v) => updateTrack(index, { property: v })}>
-              <SelectTrigger className="h-7 rounded-sm text-[length:var(--text-label)]">
+              <SelectTrigger size="pane">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -262,9 +262,9 @@ function CustomTracksEditor({
               Keyframes (comma-separated)
             </Label>
             <Input
+              variant="pane"
               type="text"
               value={(track.keyframes as number[]).join(', ')}
-              className="h-6 text-[length:var(--text-label)]"
               onChange={(e) => {
                 const values = e.target.value
                   .split(',')

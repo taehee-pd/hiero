@@ -115,7 +115,8 @@ export function ReleasePanel() {
             value={devServerUrl}
             onChange={(e) => setDevServerUrl(e.target.value)}
             placeholder="http://localhost:4400"
-            className="h-7 text-xs font-mono"
+            variant="pane"
+            className="font-mono"
           />
         </div>
       )}

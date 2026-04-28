@@ -29,16 +29,27 @@ function SelectTrigger({
   children,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
-  size?: 'sm' | 'default'
+  size?: 'sm' | 'default' | 'pane'
 }) {
+  // Universal trigger behavior — focus ring, value layout, icon shrink —
+  // shared across sizes; visual chrome (border, height, padding, bg, AND
+  // width) is owned by the size variant so callers don't have to bolt on
+  // `className="w-full"` per usage (Codex review finding #2).
+  const baseChrome =
+    "data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex items-center justify-between gap-2 whitespace-nowrap transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+  // Pane chrome composes `wire-input` so it matches `<Input variant="pane" />`
+  // exactly. `w-full` lives here so pane usages stack inline with no extra
+  // className. `default` / `sm` keep `w-fit` to match the original shadcn
+  // default — DESIGN.md §6 "Pane gutter & edge alignment".
+  const sizeChrome =
+    size === 'pane'
+      ? 'wire-input w-full'
+      : "border-input dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring w-fit rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs data-[size=default]:h-9 data-[size=sm]:h-8"
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
-      className={cn(
-        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(baseChrome, sizeChrome, className)}
       {...props}
     >
       {children}

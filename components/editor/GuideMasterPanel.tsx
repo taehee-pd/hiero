@@ -406,7 +406,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       <Button
                         type="button"
                         variant={guideStyle === 'subtle' ? 'secondary' : 'ghost'}
-                        className="justify-center"
+                        size="sm"
                         onClick={() => setGuideStyle('subtle')}
                       >
                         Subtle
@@ -414,7 +414,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
                       <Button
                         type="button"
                         variant={guideStyle === 'strong' ? 'secondary' : 'ghost'}
-                        className="justify-center"
+                        size="sm"
                         onClick={() => setGuideStyle('strong')}
                       >
                         Strong

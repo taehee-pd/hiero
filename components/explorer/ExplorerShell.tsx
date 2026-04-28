@@ -1137,7 +1137,7 @@ function ProjectDetailView({
       >
         <div className="space-y-4 px-2.5 py-3">
           <section>
-            <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold tracking-tight text-muted-foreground">
+            <h3 className="mb-1 px-2 text-[length:var(--text-label)] font-semibold tracking-tight text-muted-foreground">
               Filter
             </h3>
             <div className="grid gap-0.5">
@@ -1158,7 +1158,7 @@ function ProjectDetailView({
 
           {groups.length > 0 && (
             <section>
-              <h3 className="mb-1 px-1.5 text-[length:var(--text-label)] font-semibold tracking-tight text-muted-foreground">
+              <h3 className="mb-1 px-2 text-[length:var(--text-label)] font-semibold tracking-tight text-muted-foreground">
                 Categories
               </h3>
               <div className="grid gap-0.5">
@@ -1176,7 +1176,7 @@ function ProjectDetailView({
           )}
 
           <section>
-            <div className="mb-1 flex items-center justify-between px-1.5">
+            <div className="mb-1 flex items-center justify-between px-2">
               <h3 className="text-[length:var(--text-label)] font-semibold tracking-tight text-muted-foreground">
                 Collections
               </h3>

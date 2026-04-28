@@ -317,7 +317,7 @@ export function TypesSection({
           value={newTypeName}
           onChange={(e) => setNewTypeName(e.target.value)}
           placeholder="e.g. line, filled, colored"
-          className="wire-input"
+          variant="pane"
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -325,7 +325,7 @@ export function TypesSection({
             }
           }}
         />
-        <Button variant="outline" size="sm" className="wire-mini-button" onClick={handleAdd}>
+        <Button variant="pane" size="pane" onClick={handleAdd}>
           Add
         </Button>
       </div>
@@ -410,7 +410,7 @@ export function TypesSection({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-flex items-center text-muted-foreground/80">
-                            <UiIcon name="lock" size={12} className="size-3" />
+                            <UiIcon name="lock" size={16} className="size-4" />
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="right">Default type — cannot be deleted, but the label can be renamed.</TooltipContent>
@@ -543,8 +543,11 @@ function InlineEditableTitle({
   // entering/leaving edit mode. The underlying pattern: identical
   // height, padding, font, margin. The button's hover background + the
   // input's visible border live inside the same border-box.
+  // px-2 (8px) matches the inline form controls below (`.wire-input`,
+  // `.wire-mini-button`) so the title text glyph aligns with the input
+  // and tab text glyphs — DESIGN.md §6 "Pane gutter & edge alignment".
   const SHARED_BOX =
-    'h-6 min-w-0 w-full rounded-md px-1.5 text-sm font-semibold tracking-tight text-foreground';
+    'h-6 min-w-0 w-full rounded-md px-2 text-sm font-semibold tracking-tight text-foreground';
 
   if (editing) {
     return (
@@ -638,7 +641,7 @@ function LeftSidebar({
               onCommit={onRenameIcon}
             />
           </div>
-          <div className="flex items-center gap-1 min-h-[30px] px-0.5">
+          <div className="flex items-center gap-1 min-h-[30px]">
             <ToggleGroup
               type="single"
               size="sm"
@@ -652,14 +655,14 @@ function LeftSidebar({
               <ToggleGroupItem
                 value="icon"
                 aria-label="Icon"
-                className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+                className="min-h-7 !flex-none !justify-start rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
               >
                 Icon
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="guides"
                 aria-label="Guides"
-                className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+                className="min-h-7 !flex-none !justify-start rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
               >
                 Guides
               </ToggleGroupItem>
@@ -691,9 +694,9 @@ function LeftSidebar({
                   step="1"
                   placeholder="New size (px)"
                   aria-label="New variant size in pixels"
-                  className="wire-input"
+                  variant="pane"
                 />
-                <Button variant="outline" size="sm" className="wire-mini-button" onClick={onCreateVariant}>
+                <Button variant="pane" size="pane" onClick={onCreateVariant}>
                   Add
                 </Button>
               </div>
@@ -1339,17 +1342,19 @@ function RightSidebar({
   return (
     <aside className="wire-sidebar wire-sidebar-right">
       <div className="wire-sidebar-block wire-sidebar-head">
-        <InlineEditableTitle
-          value={selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
-          onCommit={(newValue) => {
-            if (selectedLayer) {
-              onRenameLayer(selectedLayer.id, newValue);
-            } else {
-              onRenameIcon(newValue);
-            }
-          }}
-        />
-        <div className="flex items-center gap-1 min-h-[30px] px-0.5">
+        <div className="wire-sidebar-title-row">
+          <InlineEditableTitle
+            value={selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
+            onCommit={(newValue) => {
+              if (selectedLayer) {
+                onRenameLayer(selectedLayer.id, newValue);
+              } else {
+                onRenameIcon(newValue);
+              }
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-1 min-h-[30px]">
           <ToggleGroup
             type="single"
             size="sm"
@@ -1361,14 +1366,14 @@ function RightSidebar({
             <ToggleGroupItem
               value="inspect"
               aria-label="Inspect"
-              className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+              className="min-h-7 !flex-none !justify-start rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
             >
               Inspect
             </ToggleGroupItem>
             <ToggleGroupItem
               value="animation"
               aria-label="Animation"
-              className="min-h-7 rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
+              className="min-h-7 !flex-none !justify-start rounded-[var(--radius-md)] px-2 text-[11px] leading-4 data-[state=on]:bg-background data-[state=on]:font-semibold"
             >
               Animation
             </ToggleGroupItem>
@@ -1556,7 +1561,8 @@ function RightSidebar({
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={selectedLayer.style.strokeWidth ?? 0}
-                        className="wire-input w-full pr-6"
+                        variant="pane"
+                        className="w-full pr-6"
                       />
                       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
                         px
@@ -1594,7 +1600,8 @@ function RightSidebar({
                       aria-valuemin={-9999}
                       aria-valuemax={9999}
                       aria-valuenow={selectedLayer.transform?.x ?? 0}
-                      className="wire-input w-full"
+                      variant="pane"
+                      className="w-full"
                     />
                   </RowField>
                   <RowField label="Y">
@@ -1612,7 +1619,8 @@ function RightSidebar({
                       aria-valuemin={-9999}
                       aria-valuemax={9999}
                       aria-valuenow={selectedLayer.transform?.y ?? 0}
-                      className="wire-input w-full"
+                      variant="pane"
+                      className="w-full"
                     />
                   </RowField>
                   <RowField label="Rotation">
@@ -1631,7 +1639,8 @@ function RightSidebar({
                         aria-valuemin={0}
                         aria-valuemax={360}
                         aria-valuenow={selectedLayer.transform?.rotate ?? 0}
-                        className="wire-input w-full pr-5"
+                        variant="pane"
+                        className="w-full pr-5"
                       />
                       <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
                         °
@@ -1648,7 +1657,8 @@ function RightSidebar({
                     key={currentIcon?.id}
                     defaultValue={currentIcon?.name ?? ''}
                     onBlur={(event) => onRenameIcon(event.target.value)}
-                    className="wire-input w-full"
+                    variant="pane"
+                    className="w-full"
                   />
                 </RowField>
                 <RowField label="Size">
@@ -1665,7 +1675,8 @@ function RightSidebar({
                       aria-valuemin={1}
                       aria-valuemax={512}
                       aria-valuenow={currentVariant?.size ?? 0}
-                      className="wire-input w-full pr-6"
+                      variant="pane"
+                      className="w-full pr-6"
                     />
                     <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
                       px
@@ -1755,7 +1766,7 @@ function RightSidebar({
                     className="h-6 rounded-md px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     onClick={onDeleteVariant}
                   >
-                    <UiIcon name="trash-2" size={12} className="size-3" />
+                    <UiIcon name="trash-2" size={16} className="size-4" />
                     Delete this size
                   </Button>
                 </div>
@@ -2270,18 +2281,16 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 <p className="wire-empty-note mt-1">Create a new icon or import an SVG to begin.</p>
                 <div className="mt-3 flex items-center justify-center gap-2">
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="wire-mini-button"
+                    variant="pane"
+                    size="pane"
                     onClick={handleCreateBlankIcon}
                   >
                     <UiIcon name="plus" size={14} className="size-3.5" />
                     New icon
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="wire-mini-button"
+                    variant="pane"
+                    size="pane"
                     onClick={() => setImportDialogOpen(true)}
                   >
                     <UiIcon name="folder-open" size={14} className="size-3.5" />

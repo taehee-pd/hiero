@@ -522,7 +522,7 @@ export function Navbar() {
       <Sheet open={distributionSheetOpen} onOpenChange={setDistributionSheetOpen}>
         <SheetContent side="right" className="sm:max-w-xl">
           <SheetHeader><SheetTitle>Distribution</SheetTitle></SheetHeader>
-          <div className="px-1 py-4"><SyncTargetPanelContent title="Distribution" description="Manage release targets and publish packages." /></div>
+          <div className="py-4"><SyncTargetPanelContent title="Distribution" description="Manage release targets and publish packages." /></div>
         </SheetContent>
       </Sheet>
 

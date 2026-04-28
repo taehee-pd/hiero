@@ -13,6 +13,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tag } from '@/components/ds/tag';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { exportLottie, type LottieExportOptions } from '@/lib/export/export-lottie';
 import {
@@ -101,30 +108,35 @@ export function LottieExportPanel() {
       <div className="grid grid-cols-2 gap-2">
         <div className="grid gap-1.5">
           <Label className="text-xs">FPS</Label>
-          <select
-            value={fps}
-            onChange={(e) => setFps(Number(e.target.value))}
-            className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
-          >
-            <option value={24}>24 fps</option>
-            <option value={30}>30 fps</option>
-            <option value={60}>60 fps</option>
-          </select>
+          <Select value={String(fps)} onValueChange={(v) => setFps(Number(v))}>
+            <SelectTrigger size="pane">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24">24 fps</SelectItem>
+              <SelectItem value="30">30 fps</SelectItem>
+              <SelectItem value="60">60 fps</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-1.5">
           <Label className="text-xs">Morph Quality</Label>
-          <select
+          <Select
             value={morphQuality}
-            onChange={(e) =>
-              setMorphQuality(e.target.value as LottieExportOptions['morphQuality'])
+            onValueChange={(v) =>
+              setMorphQuality(v as LottieExportOptions['morphQuality'])
             }
-            className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
           >
-            <option value="low">Low (5 steps)</option>
-            <option value="medium">Medium (10 steps)</option>
-            <option value="high">High (30 steps)</option>
-            <option value="max">Max (60 steps)</option>
-          </select>
+            <SelectTrigger size="pane">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low (5 steps)</SelectItem>
+              <SelectItem value="medium">Medium (10 steps)</SelectItem>
+              <SelectItem value="high">High (30 steps)</SelectItem>
+              <SelectItem value="max">Max (60 steps)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

@@ -378,6 +378,62 @@ When a dimension needs responsive behavior, expose the range as three
 tokens: `--<name>-min`, `--<name>` (the `clamp()`), and `--<name>-max`.
 The toolbar height is the first instance of this pattern.
 
+### Pane gutter & edge alignment
+
+Inside a pane, every primary text glyph — the pane title, tab labels,
+section headers, input field text, button labels — lands on **one
+shared column** so the eye runs cleanly down a single invisible
+vertical line. This is the consistent left-edge alignment used by
+Figma, Linear, and Sanity Studio. The failure mode this rule prevents
+is the staircase effect that arises when each component (title row,
+tab row, section header, input, list item) carries its own
+horizontal padding.
+
+The column sits at `pane-padding + control-padding`, where:
+
+- `pane-padding` = `var(--section-padding-x)` (the outer gutter — the
+  margin between the pane edge and any interactive box's outer edge).
+- `control-padding` = `12px` (`px-3` in Tailwind), the standard
+  internal padding of the form controls in this codebase (`Input`,
+  inline `Button`, `wire-mini-button`).
+
+Rules:
+
+- **One gutter and one control padding per pane.** Every interactive
+  text-bearing box (`InlineEditableTitle`, `ToggleGroupItem` tabs,
+  `Input`, mini buttons) uses `px-3`. Every plain text header
+  matches by adding `padding-inline: var(--section-padding-x)` to
+  itself (`wire-section-header`). Don't mix `px-1.5`, `px-2`, `px-3`
+  on text-bearing primary elements in the same pane — pick one and
+  hold the line.
+- **Pane padding equals section padding.** `wire-sidebar-head` uses
+  the same `--section-padding-x` and `--section-padding-y` tokens as
+  `wire-section`, so the head block, the section blocks, and every
+  header glyph stack vertically against the same column without
+  stacking paddings.
+- **Tabs need `justify-start` and `flex-none`.** A tab button with
+  `flex-1` and `justify-center` puts its glyph at
+  `(width − text-width)/2`, not at `padding-left` — which breaks
+  alignment for any text shorter than the button. Tabs must be
+  content-width (`!flex-none`) and `!justify-start` so the glyph
+  sits at exactly `padding-left`.
+- **Right side mirrors left.** Right-aligned actions (a `+`, a search
+  icon) inset by the same `var(--section-padding-x)`. The pane is
+  symmetric.
+- **No outdent for chrome.** Negative-margin outdents (bg extending
+  past the gutter) are reserved for full-bleed list-row selection
+  and similar focal moments, never for static section chrome.
+
+Reference: `.wire-sidebar-head` (uses both `--section-padding-x`
+and `--section-padding-y`), `.wire-sidebar-title-row`, and
+`.wire-section-header` (`padding-inline: var(--section-padding-x)`)
+in `app/globals.css`; `InlineEditableTitle`'s `SHARED_BOX` and
+the `!flex-none !justify-start` `ToggleGroupItem` className in
+`components/editor/EditorShell.tsx`. The tokens
+`--section-padding-x` and `--section-padding-y` in `app/globals.css`
+`:root` are the single source of truth — never hardcode pane
+padding.
+
 ### Whitespace philosophy
 
 - **Purposeful breathing room:** Apple-like generosity adapted for

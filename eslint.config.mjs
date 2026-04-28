@@ -207,4 +207,60 @@ export default tseslint.config(
       ],
     },
   },
+
+  // Pane-control discipline — DESIGN.md §6 "Pane gutter & edge alignment".
+  //
+  // The CVA pane variants on `Input` / `Button` / `SelectTrigger` are the
+  // source of truth for pane chrome. Hand-written `wire-input` /
+  // `wire-mini-button` className strings in feature files are a
+  // regression vector — the variant gets the bordered defaults and the
+  // wire-* class fails to win the cascade without `!important`. These
+  // files must reach pane chrome through the typed variant.
+  //
+  // The two structural recommendations Codex gave at the end of
+  // adversarial review (CVA variants + lint rule) — this is the lint half.
+  {
+    files: ['components/{editor,studio,explorer,export}/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        // Match the *string node itself* anywhere in the file rather than
+        // walking through `JSXAttribute > className` — that descendant
+        // selector silently missed the `cn('wire-input', …)` shape (Codex
+        // review finding #3). Inside pane files there is no legitimate
+        // reason for a string literal containing "wire-input" /
+        // "wire-mini-button" to exist outside the typed variant pipeline,
+        // so a flat literal-value match is correct here.
+        {
+          selector:
+            "Literal[value=/(?:^|\\s)wire-input(?:\\s|$)/]",
+          message:
+            "Don't reference `wire-input` from a className. Use `<Input variant=\"pane\" />` so the CVA variant emits this class without competing with shadcn's default chrome (DESIGN.md §6).",
+        },
+        {
+          selector:
+            "Literal[value=/(?:^|\\s)wire-mini-button(?:\\s|$)/]",
+          message:
+            "Don't reference `wire-mini-button` from a className. Use `<Button variant=\"pane\" size=\"pane\" />` so the CVA variant owns the chrome (DESIGN.md §6).",
+        },
+      ],
+    },
+  },
+  // Native `<select>` ships with browser-default chrome that doesn't
+  // compose with `wire-input`. Use
+  // `<Select><SelectTrigger size="pane">…</SelectTrigger></Select>` from
+  // `@/components/ui/select` so triggers match the pane column.
+  {
+    files: ['components/{editor,studio,explorer,export}/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='select']",
+          message:
+            "Don't use the native `<select>` in pane files — its browser chrome won't align with `wire-input`. Use `<Select><SelectTrigger size=\"pane\">…</SelectTrigger></Select>` from `@/components/ui/select` (DESIGN.md §6).",
+        },
+      ],
+    },
+  },
 );

@@ -14,6 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tag } from '@/components/ds/tag';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type { Project, SyncTarget } from '@/lib/schema/types';
@@ -261,7 +268,7 @@ function SyncTargetCard({
         <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
           {/* Version bump + publish */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-border/70 p-0.5">
+            <div className="flex items-center gap-1 rounded-[var(--radius-md)] bg-[color-mix(in_srgb,var(--bg-content)_94%,transparent)] p-0.5">
               {(['patch', 'minor', 'major'] as const).map((bump) => (
                 <button
                   key={bump}
@@ -418,27 +425,35 @@ function AddTargetForm({
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-1.5">
             <Label className="text-xs">Platform</Label>
-            <select
+            <Select
               value={platform}
-              onChange={(e) => setPlatform(e.target.value as SyncTarget['platform'])}
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              onValueChange={(v) => setPlatform(v as SyncTarget['platform'])}
             >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+              <SelectTrigger size="pane">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLATFORMS.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-1.5">
             <Label className="text-xs">Delivery Mode</Label>
-            <select
+            <Select
               value={deliveryMode}
-              onChange={(e) => setDeliveryMode(e.target.value as SyncTarget['deliveryMode'])}
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              onValueChange={(v) => setDeliveryMode(v as SyncTarget['deliveryMode'])}
             >
-              {DELIVERY_MODES.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              <SelectTrigger size="pane">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DELIVERY_MODES.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -480,14 +495,18 @@ function AddTargetForm({
             </div>
             <div className="grid gap-1.5">
               <Label className="text-xs">Auto-Publish</Label>
-              <select
+              <Select
                 value={autoPublishOn}
-                onChange={(e) => setAutoPublishOn(e.target.value as 'save' | 'manual')}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                onValueChange={(v) => setAutoPublishOn(v as 'save' | 'manual')}
               >
-                <option value="save">On save (5-min cooldown with cancel)</option>
-                <option value="manual">Manual only</option>
-              </select>
+                <SelectTrigger size="pane">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="save">On save (5-min cooldown with cancel)</SelectItem>
+                  <SelectItem value="manual">Manual only</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </>
         ) : (
@@ -551,14 +570,18 @@ function AddTargetForm({
         {platform === 'react' && (
           <div className="grid gap-1.5">
             <Label className="text-xs">TypeScript</Label>
-            <select
+            <Select
               value={typescript ? 'yes' : 'no'}
-              onChange={(e) => setTypescript(e.target.value === 'yes')}
-              className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+              onValueChange={(v) => setTypescript(v === 'yes')}
             >
-              <option value="yes">TypeScript (.tsx)</option>
-              <option value="no">JavaScript (.jsx)</option>
-            </select>
+              <SelectTrigger size="pane">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">TypeScript (.tsx)</SelectItem>
+                <SelectItem value="no">JavaScript (.jsx)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         )}
 
@@ -566,26 +589,31 @@ function AddTargetForm({
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
               <Label className="text-xs">Min iOS Version</Label>
-              <select
-                value={minIosVersion}
-                onChange={(e) => setMinIosVersion(e.target.value)}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
-              >
-                <option value="15">iOS 15</option>
-                <option value="16">iOS 16</option>
-                <option value="17">iOS 17</option>
-              </select>
+              <Select value={minIosVersion} onValueChange={setMinIosVersion}>
+                <SelectTrigger size="pane">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">iOS 15</SelectItem>
+                  <SelectItem value="16">iOS 16</SelectItem>
+                  <SelectItem value="17">iOS 17</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-1.5">
               <Label className="text-xs">UI Framework</Label>
-              <select
+              <Select
                 value={swiftUIMode}
-                onChange={(e) => setSwiftUIMode(e.target.value as 'swiftui' | 'uikit')}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                onValueChange={(v) => setSwiftUIMode(v as 'swiftui' | 'uikit')}
               >
-                <option value="swiftui">SwiftUI</option>
-                <option value="uikit">UIKit</option>
-              </select>
+                <SelectTrigger size="pane">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="swiftui">SwiftUI</SelectItem>
+                  <SelectItem value="uikit">UIKit</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         )}
@@ -623,14 +651,18 @@ function AddTargetForm({
             </div>
             <div className="grid gap-1.5">
               <Label className="text-xs">Shadow DOM</Label>
-              <select
+              <Select
                 value={shadowDom ? 'yes' : 'no'}
-                onChange={(e) => setShadowDom(e.target.value === 'yes')}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                onValueChange={(v) => setShadowDom(v === 'yes')}
               >
-                <option value="yes">Enabled</option>
-                <option value="no">Disabled</option>
-              </select>
+                <SelectTrigger size="pane">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yes">Enabled</SelectItem>
+                  <SelectItem value="no">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         )}

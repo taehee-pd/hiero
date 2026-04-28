@@ -245,6 +245,56 @@ export function Toolbar() {
     }
   }, [showToolbarError]);
 
+  // Filtered "used in app" subset — see lib/integrations/hiero-ui-icons-source.ts
+  // and components/studio/Navbar.tsx for the shared rationale.
+  const handleImportUsedHieroUiIcons = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.openUsedHieroUiIconsInEditor();
+      if (result.missing.length > 0) {
+        showToolbarError(
+          `Imported ${Object.keys(result.project.icons).length} used icons; ${result.missing.length} were missing from icons.json (run pnpm icons:check-used).`,
+        );
+      }
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to import used icons: ${err.message}`
+          : 'Failed to import used icons.',
+      );
+    }
+  }, [showToolbarError]);
+
+  const handleSaveUsedHieroUiIcons = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_BUILD_CHANNEL !== 'internal') return;
+    try {
+      const mod = await import('@/lib/integrations/hiero-ui-icons-source');
+      const result = mod.serializeMergedHieroUiIconSet();
+      if (!result.ok) {
+        showToolbarError(
+          result.reason === 'no-workspace'
+            ? 'No icon set is loaded — import the used icons first.'
+            : 'Import the used icons via "Import Used Icons" before saving the merged set.',
+        );
+        return;
+      }
+      const saved = await saveProject(
+        result.data,
+        mod.HIERO_UI_ICONS_SOURCE_FILENAME,
+      );
+      if (saved) {
+        editorStore.getState().markSaved(result.updatedAt);
+      }
+    } catch (err) {
+      showToolbarError(
+        err instanceof Error
+          ? `Failed to save used icons: ${err.message}`
+          : 'Failed to save used icons.',
+      );
+    }
+  }, [showToolbarError]);
+
   const handleExportSvg = useCallback(async () => {
     const state = editorStore.getState();
     const icon = selectCurrentIcon(state);
@@ -440,6 +490,20 @@ export function Toolbar() {
                       >
                         <UiIcon name="save" size={16} className="size-4" />
                         Save Hiero UI Icon Set
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleImportUsedHieroUiIcons()}
+                        data-testid="toolbar-import-used-hiero-ui-icons"
+                      >
+                        <UiIcon name="import" size={16} className="size-4" />
+                        Import Used Icons
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => void handleSaveUsedHieroUiIcons()}
+                        data-testid="toolbar-save-used-hiero-ui-icons"
+                      >
+                        <UiIcon name="save" size={16} className="size-4" />
+                        Save Used Icons (Merge)
                       </DropdownMenuItem>
                     </>
                   )}

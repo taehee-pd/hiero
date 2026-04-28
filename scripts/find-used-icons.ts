@@ -41,6 +41,27 @@ const OUTPUT_PATH = resolve(
 );
 const SCAN_EXTENSIONS = new Set(['.ts', '.tsx']);
 
+// Files whose icon usage doesn't ship to end users. Excluding them
+// keeps the inventory honest:
+//
+//   - `.stories.tsx` / `.stories.ts` reference icons purely for
+//     Storybook demos (e.g. an alignment-toolbar story flexes
+//     `align-left` / `bold` / `italic` even when those icons aren't
+//     wired into any production surface). Counting them inflates the
+//     editable subset and makes `pnpm icons:check-used` block changes
+//     based on demo content.
+//   - `.test.tsx` / `.test.ts` similarly reference icons for fixture
+//     setup; they're not user-facing surfaces.
+//   - Co-located docs (`.mdx` for token pages) aren't .ts/.tsx so the
+//     extension filter already drops them, but listing the suffix here
+//     keeps the policy obvious.
+const EXCLUDE_SUFFIXES = [
+  '.stories.tsx',
+  '.stories.ts',
+  '.test.tsx',
+  '.test.ts',
+];
+
 // Match any JSX element whose tag name ends in `Icon` (covers UiIcon,
 // HieroIcon, and future co-named components) with a literal `name` prop.
 // Examples that match:
@@ -52,6 +73,13 @@ const SCAN_EXTENSIONS = new Set(['.ts', '.tsx']);
 const ICON_USAGE_RE =
   /<([A-Z][A-Za-z0-9]*Icon)\s+[^>]*\bname\s*=\s*["']([a-z0-9-]+)["']/g;
 
+function isExcludedFile(name: string): boolean {
+  for (const suffix of EXCLUDE_SUFFIXES) {
+    if (name.endsWith(suffix)) return true;
+  }
+  return false;
+}
+
 function walk(dir: string, hits: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     if (entry.startsWith('.') || entry === 'node_modules') continue;
@@ -59,7 +87,7 @@ function walk(dir: string, hits: string[] = []): string[] {
     const stat = statSync(full);
     if (stat.isDirectory()) {
       walk(full, hits);
-    } else {
+    } else if (!isExcludedFile(entry)) {
       const dot = entry.lastIndexOf('.');
       if (dot >= 0 && SCAN_EXTENSIONS.has(entry.slice(dot))) {
         hits.push(full);

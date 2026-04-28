@@ -14,15 +14,11 @@
 
 export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "alert-triangle",
-  "align-center",
-  "align-left",
-  "align-right",
   "arrow-down-to-line",
   "arrow-right",
   "arrow-up-right",
   "arrow-up-to-line",
   "blend",
-  "bold",
   "bookmark",
   "check",
   "check-circle-2",
@@ -50,7 +46,6 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "help-circle",
   "import",
   "info",
-  "italic",
   "keyboard",
   "layout-grid",
   "link-2",
@@ -89,8 +84,6 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "square",
   "sun",
   "trash-2",
-  "triangle-alert",
-  "underline",
   "undo-2",
   "upload",
   "venetian-mask",
@@ -100,4 +93,4 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /** Count exposed for diagnostics (drift checks, README pins, etc.). */
-export const USED_ICON_COUNT = 84;
+export const USED_ICON_COUNT = 77;

@@ -18,9 +18,14 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
 const ROOT = resolve(import.meta.dir, '..');
+const INVENTORY_PATH = resolve(
+  ROOT,
+  'lib/integrations/used-icons.generated.ts',
+);
 
 // IIFE rather than top-level await because the project tsconfig targets
 // ES6/module=esnext-but-not-nodenext for Next.js compatibility, and TypeScript
@@ -28,7 +33,19 @@ const ROOT = resolve(import.meta.dir, '..');
 // IIFE just keeps `npx tsc --noEmit` (which CI runs as the type-check gate)
 // from failing here.
 async function main(): Promise<void> {
-  // 1. Refresh the inventory. Spawning rather than importing keeps the
+  // 1. Snapshot the committed inventory *before* regeneration so we can
+  //    detect drift. Without this the gate would silently re-pass after
+  //    the regeneration step rewrote `used-icons.generated.ts` to a new
+  //    state on disk: the in-process check would see the fresh content
+  //    and exit 0, but the committed file in the repo would now be stale.
+  //    That stale file is what ships in the editor's "Import Used Icons"
+  //    flow, so a green CI with a missing recently-added icon is the
+  //    exact failure mode this gate exists to prevent.
+  const committedBefore = existsSync(INVENTORY_PATH)
+    ? readFileSync(INVENTORY_PATH, 'utf-8')
+    : null;
+
+  // 2. Refresh the inventory. Spawning rather than importing keeps the
   //    side-effect of write-on-import out of the gate's import graph.
   const refresh = spawnSync(
     'bun',
@@ -40,7 +57,48 @@ async function main(): Promise<void> {
     process.exit(refresh.status ?? 1);
   }
 
-  // 2. Load both sets. Dynamic imports because the generated module was
+  // 3. Drift check. Read the file content from disk (not from a JS
+  //    import — bun's module cache could hand back the pre-refresh
+  //    snapshot) and compare to what was there before. Any difference
+  //    means the committed inventory is stale relative to current
+  //    source code.
+  const committedAfter = existsSync(INVENTORY_PATH)
+    ? readFileSync(INVENTORY_PATH, 'utf-8')
+    : null;
+  if (committedBefore !== committedAfter) {
+    console.error('');
+    console.error(
+      `❌ ${relative(ROOT, INVENTORY_PATH)} is stale.`,
+    );
+    console.error(
+      `   Regenerating from current sources produced a different file than what's committed.`,
+    );
+    console.error('');
+    console.error(`Fix:`);
+    console.error(`   pnpm icons:find-used && git add ${relative(ROOT, INVENTORY_PATH)}`);
+    console.error('');
+    console.error(
+      `Why this matters: the editor's "Import Used Icons" action and the`,
+    );
+    console.error(
+      `bundle-isolation contract both read the committed inventory file.`,
+    );
+    console.error(
+      `If a new \`<*Icon name="..."\` reference is added without committing`,
+    );
+    console.error(
+      `the regenerated inventory, the in-editor subset is wrong (missing icons)`,
+    );
+    console.error(
+      `and CI would otherwise still pass because the regenerated subset would`,
+    );
+    console.error(
+      `validate cleanly against icons.json on the next CI run.`,
+    );
+    process.exit(1);
+  }
+
+  // 4. Load both sets. Dynamic imports because the generated module was
   //    just (re)written and we want the freshest copy.
   const usedMod = (await import(
     resolve(ROOT, 'lib/integrations/used-icons.generated.ts')

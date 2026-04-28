@@ -1275,7 +1275,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   />
                 </div>
 
-                <label className="wire-field">
+                {/* `<div>`, not `<label>`, because the row's children are
+                    `<button>`s — a `<label>` would activate the first
+                    descendant button on any click in the row chrome and
+                    silently flip the point type (Codex review on PR #164).
+                    Other `wire-field` usages wrap a single `<Input>`, where
+                    label-activation is the intended UX. */}
+                <div className="wire-field">
                   <span className="wire-field-name">Type</span>
                   <div className="flex items-center gap-1">
                     {NODE_TYPE_OPTIONS.map((option) => (
@@ -1290,7 +1296,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
                       </NodeTypeButton>
                     ))}
                   </div>
-                </label>
+                </div>
 
                 <IconNumberField
                   label="Radius"

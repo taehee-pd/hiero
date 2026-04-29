@@ -764,10 +764,8 @@ function LeftSidebar({
       </div>
 
       {leftTab === 'guides' ? (
-        <div className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
-          </ScrollArea>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
         </div>
       ) : (
         <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">

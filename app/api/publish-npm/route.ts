@@ -10,6 +10,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,42 @@ type NpmPublishBody = {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
+  // 0. Feature-flag + caller authentication
+  if (process.env.NPM_PUBLISH_PROXY_ENABLED !== 'true') {
+    return NextResponse.json(
+      {
+        error: 'NPM_AUTH_FAILURE',
+        message: 'NPM publish proxy is disabled.',
+        statusCode: 503,
+      },
+      { status: 503 },
+    );
+  }
+
+  const proxySecret = process.env.NPM_PUBLISH_PROXY_SECRET;
+  if (!proxySecret) {
+    return NextResponse.json(
+      {
+        error: 'NPM_AUTH_FAILURE',
+        message: 'NPM_PUBLISH_PROXY_SECRET is not configured on the server.',
+        statusCode: 503,
+      },
+      { status: 503 },
+    );
+  }
+
+  const providedSecret = request.headers.get('x-coniva-publish-secret') ?? '';
+  if (!safeEqual(providedSecret, proxySecret)) {
+    return NextResponse.json(
+      {
+        error: 'NPM_AUTH_FAILURE',
+        message: 'Unauthorized publish request.',
+        statusCode: 401,
+      },
+      { status: 401 },
+    );
+  }
+
   // 1. Server-side token — never from client
   const token = process.env.NPM_PUBLISH_TOKEN;
   if (!token) {
@@ -73,6 +110,17 @@ export async function POST(request: Request) {
   }
 
   const req = validation.request!;
+  const registryValidation = validateRegistryAllowlist(req.registry);
+  if (!registryValidation.ok) {
+    return NextResponse.json(
+      {
+        error: 'VALIDATION_FAILURE',
+        message: registryValidation.message,
+        statusCode: 400,
+      },
+      { status: 400 },
+    );
+  }
 
   // 4. Execute publish
   try {
@@ -95,10 +143,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(
-      { kind: 'success', stdout: result.stdout },
-      { status: 200 },
-    );
+    return NextResponse.json({ kind: 'success', stdout: result.stdout }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error.';
     return NextResponse.json(
@@ -106,6 +151,47 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+function safeEqual(left: string, right: string): boolean {
+  const leftBuf = Buffer.from(left);
+  const rightBuf = Buffer.from(right);
+  if (leftBuf.length !== rightBuf.length) return false;
+  return timingSafeEqual(leftBuf, rightBuf);
+}
+
+function normalizeRegistry(registry: string): string | null {
+  try {
+    return new URL(registry).origin;
+  } catch {
+    return null;
+  }
+}
+
+function validateRegistryAllowlist(
+  registry: string,
+): { ok: true } | { ok: false; message: string } {
+  const allowedRaw =
+    process.env.NPM_PUBLISH_ALLOWED_REGISTRIES?.trim() || 'https://registry.npmjs.org';
+  const allowed = allowedRaw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map(normalizeRegistry)
+    .filter((entry): entry is string => Boolean(entry));
+  const normalizedRegistry = normalizeRegistry(registry);
+
+  if (!normalizedRegistry) {
+    return { ok: false, message: 'registry must be a valid URL.' };
+  }
+  if (!allowed.includes(normalizedRegistry)) {
+    return {
+      ok: false,
+      message: `registry "${registry}" is not in NPM_PUBLISH_ALLOWED_REGISTRIES.`,
+    };
+  }
+
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -171,10 +257,7 @@ async function executeNpmPublish(opts: {
     // lifecycle scripts (prepublishOnly, prepare, etc.) that execute arbitrary
     // commands during `npm publish`.
     const safePackageJson = sanitizePackageJson(opts.packageJson);
-    await writeFile(
-      join(cwd, 'package.json'),
-      JSON.stringify(safePackageJson, null, 2),
-    );
+    await writeFile(join(cwd, 'package.json'), JSON.stringify(safePackageJson, null, 2));
 
     // Write .npmrc with token (scoped to the registry host)
     const registryHost = new URL(opts.registry).host;
@@ -259,9 +342,7 @@ const ALLOWED_PKG_KEYS = new Set([
  * `preinstall`, `postinstall`, `prepublishOnly`, `prepare`, etc.
  * This prevents RCE via npm lifecycle hooks during `npm publish`.
  */
-function sanitizePackageJson(
-  input: Record<string, unknown>,
-): Record<string, unknown> {
+function sanitizePackageJson(input: Record<string, unknown>): Record<string, unknown> {
   const safe: Record<string, unknown> = {};
 
   for (const key of ALLOWED_PKG_KEYS) {

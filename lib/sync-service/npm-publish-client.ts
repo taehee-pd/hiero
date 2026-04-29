@@ -73,9 +73,15 @@ export async function publishNpmTarget(args: {
   }
 
   const payload = buildNpmPublishPayload(args);
+  const proxySecret = process.env.NEXT_PUBLIC_NPM_PUBLISH_PROXY_SECRET;
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (proxySecret) {
+    headers['x-hiero-publish-secret'] = proxySecret;
+  }
+
   const response = await fetch('/api/publish-npm', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
 

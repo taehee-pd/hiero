@@ -7,9 +7,9 @@ description: >-
   philosophy and typographic restraint. Token values below reflect the
   canonical dark theme; the light theme is documented in prose.
 colors:
-  primary: "#6DADFF"
-  primary-hover: "#8CBFFF"
-  primary-soft: "#1E3252"
+  primary: "#9E64D4"
+  primary-hover: "#B385E0"
+  primary-soft: "#2E1A4B"
   neutral: "#0A0A0A"
   neutral-hover: "#1A1F22"
   surface: "#21282D"
@@ -237,17 +237,17 @@ Design intent:
 ## Colors
 
 The palette is rooted in a high-contrast dark-first neutral system with a
-single, restrained blue accent. **Dark is the canonical theme** and its
-values are the normative design tokens above. A parallel light theme is
-documented at the end of this section for parity.
+single, restrained lilac purple accent. **Dark is the canonical theme**
+and its values are the normative design tokens above. A parallel light
+theme is documented at the end of this section for parity.
 
-- **Primary (`#6DADFF`):** A bright editorial blue used exclusively for
-  primary actions, focus indicators, and active states on dark surfaces.
-- **Primary hover (`#8CBFFF`):** A lifted variant for hover on primary
+- **Primary (`#9E64D4`):** A lilac purple used exclusively for primary
+  actions, focus indicators, and active states on dark surfaces.
+- **Primary hover (`#B385E0`):** A lifted variant for hover on primary
   CTAs — preserves accent identity while signalling interaction.
-- **Primary soft (`#1E3252`):** A deep tinted blue used as
+- **Primary soft (`#2E1A4B`):** A deep tinted purple used as
   selected-item background, active pane highlight, and accent badge
-  fill. Blue accent text reads cleanly on top.
+  fill. Lilac accent text reads cleanly on top.
 - **Neutral (`#0A0A0A`):** Shell background — near-black for the
   canonical dark theme.
 - **Surface (`#21282D`):** Panel surface tone sitting one step above the
@@ -279,8 +279,8 @@ not tokenized — dark is the single source of truth):
 | foreground             | `#090D10`                     |
 | foreground-secondary   | `#3C464D`                     |
 | foreground-tertiary    | `#7E8991`                     |
-| primary (accent)       | `#3186EE`                     |
-| primary-soft           | `rgba(49, 134, 238, 0.08)`    |
+| primary (accent)       | `#7B3FB8`                     |
+| primary-soft           | `rgba(123, 63, 184, 0.08)`    |
 | border                 | `rgba(0, 0, 0, 0.05)`         |
 | border-subtle          | `rgba(0, 0, 0, 0.06)`         |
 
@@ -647,7 +647,7 @@ When generating UI in this repository, follow this checklist:
 1. Start from existing layout and component primitives (`shadcn/ui`,
    `studio-*`, `workspace-*` classes).
 2. Keep dark theme hierarchy and panel contrast intact.
-3. Use blue accent (`primary`) sparingly for primary/active/focus
+3. Use the lilac accent (`primary`) sparingly for primary/active/focus
    states.
 4. Use `primary-soft` for selected backgrounds and accent badges.
 5. Preserve dense-but-readable spacing rhythm (12px panel padding, 8px
@@ -673,7 +673,7 @@ When generating UI in this repository, follow this checklist:
   count badge at 10px muted."
 - "Build an icon grid card: square aspect ratio, rounded-xl (14px),
   multi-layer shadow on hover. Icon preview centered with 60%
-  padding. Name below at 10px truncated. Active state: blue ring
+  padding. Name below at 10px truncated. Active state: lilac ring
   `0 0 0 2px primary`."
 - "Create a navbar: h-10, border-b at `border/70`, background. Project
   name at 13px font-semibold, save badge as pill (9999px) with amber
@@ -684,7 +684,7 @@ When generating UI in this repository, follow this checklist:
 
 > Build this as a dark, professional authoring tool UI for Hiero Studio
 > using existing component primitives, whisper-level multi-layer
-> shadows, clear focus states, and restrained blue accents. Use weight
+> shadows, clear focus states, and restrained lilac purple accents. Use weight
 > 450 for body text and 550 for labels. Apply pill radius for badges
 > and primary buttons. Prioritize editability, accessibility, and
 > layout stability over decorative styling.

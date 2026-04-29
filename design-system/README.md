@@ -66,9 +66,9 @@ Hiero's copy is **functional, precise, and unhurried** — a professional tool s
 The signature quality is **surfaces that barely exist** — depth through whisper-level multi-layered shadows rather than heavy borders or dramatic elevation. Inspired by ElevenLabs' typographic restraint, adapted for a dark-first workspace.
 
 ### Colors
-- **Primitives** are an 8-stop greyscale, blue scale (100–800), and semantic red/green/yellow, plus purple & teal for charts.
-- **Accent is a single blue** — `#3186EE` (light) / `#6DADFF` (dark). Used only for primary action, focus ring, active states, selected-item backgrounds (via translucent `--primary-soft`).
-- **No secondary brand color.** Never bluish-purple gradients, never glassmorphism.
+- **Primitives** are an 8-stop greyscale, lilac purple scale (100–800, brand accent), legacy blue scale (100–800), and semantic red/green/yellow, plus teal for charts.
+- **Accent is a single lilac purple** — `#7B3FB8` (light) / `#9E64D4` (dark). Used only for primary action, focus ring, active states, selected-item backgrounds (via translucent `--primary-soft`).
+- **No secondary brand color.** Never multi-hue gradients, never glassmorphism.
 - **Alpha-over-tint:** borders and hovers use `rgba(0,0,0,α)` / `rgba(255,255,255,α)` overlays rather than tinted solids — keeps panel hierarchy honest in both modes.
 
 ### Typography

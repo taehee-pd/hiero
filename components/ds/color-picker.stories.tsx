@@ -22,7 +22,7 @@ export default meta;
 type Story = StoryObj<typeof ColorPicker>;
 
 function FullPicker() {
-  const [color, setColor] = useState('#3186EE');
+  const [color, setColor] = useState('#9E64D4');
   return (
     <div className="w-64 rounded-lg border border-border p-3">
       <ColorPicker value={color} onChange={(v) => setColor(String(v))}>

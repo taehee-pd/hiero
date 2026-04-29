@@ -12,7 +12,7 @@ afterEach(() => { cleanup(); });
 
 test('ColorPicker renders without crashing', () => {
   const { container } = render(
-    <ColorPicker value="#3186EE" onChange={() => {}}>
+    <ColorPicker value="#9E64D4" onChange={() => {}}>
       <ColorPickerSelection className="h-36" />
       <ColorPickerHue />
     </ColorPicker>,

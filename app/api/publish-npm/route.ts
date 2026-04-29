@@ -34,6 +34,21 @@ type NpmPublishBody = {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
+  // 0. Feature-flag — kill switch alongside the Vercel auth gate on hiero-internal.
+  // Caller authentication is provided by the Vercel auth wall, not by a shared
+  // secret: a NEXT_PUBLIC_* secret would be readable in the client bundle and
+  // therefore replayable by anyone with app access.
+  if (process.env.NPM_PUBLISH_PROXY_ENABLED !== 'true') {
+    return NextResponse.json(
+      {
+        error: 'NPM_AUTH_FAILURE',
+        message: 'NPM publish proxy is disabled.',
+        statusCode: 503,
+      },
+      { status: 503 },
+    );
+  }
+
   // 1. Server-side token — never from client
   const token = process.env.NPM_PUBLISH_TOKEN;
   if (!token) {
@@ -77,6 +92,30 @@ export async function POST(request: Request) {
 
   const req = validation.request!;
 
+  // 3a. Registry allowlist — prevent token exfiltration via attacker-supplied registry URL.
+  const clientRegistry = req.target?.npmRegistry?.registry;
+  if (typeof clientRegistry !== 'string' || !clientRegistry) {
+    return NextResponse.json(
+      {
+        error: 'VALIDATION_FAILURE',
+        message: 'target.npmRegistry.registry is required.',
+        statusCode: 400,
+      },
+      { status: 400 },
+    );
+  }
+  const registryCheck = validateRegistryAllowlist(clientRegistry);
+  if (!registryCheck.ok) {
+    return NextResponse.json(
+      {
+        error: 'VALIDATION_FAILURE',
+        message: registryCheck.message,
+        statusCode: 400,
+      },
+      { status: 400 },
+    );
+  }
+
   // 4. Execute publish
   try {
     const result = await executeNpmPublish({
@@ -109,6 +148,44 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Registry allowlist
+// ---------------------------------------------------------------------------
+
+function normalizeRegistry(registry: string): string | null {
+  try {
+    return new URL(registry).origin;
+  } catch {
+    return null;
+  }
+}
+
+function validateRegistryAllowlist(
+  registry: string,
+): { ok: true } | { ok: false; message: string } {
+  const allowedRaw =
+    process.env.NPM_PUBLISH_ALLOWED_REGISTRIES?.trim() || 'https://registry.npmjs.org';
+  const allowed = allowedRaw
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map(normalizeRegistry)
+    .filter((entry): entry is string => Boolean(entry));
+  const normalizedRegistry = normalizeRegistry(registry);
+
+  if (!normalizedRegistry) {
+    return { ok: false, message: 'registry must be a valid URL.' };
+  }
+  if (!allowed.includes(normalizedRegistry)) {
+    return {
+      ok: false,
+      message: `registry "${registry}" is not in NPM_PUBLISH_ALLOWED_REGISTRIES.`,
+    };
+  }
+
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

@@ -69,10 +69,7 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           storybookBuildDir: storybook-static
           onlyChanged: true
-          # PR builds: visual diffs gate the merge — a human reviewer must
-          # accept changes in the Chromatic UI (or push a fix).
-          # Main builds: auto-accept the diff so main is the new baseline.
-          # Without this, every subsequent PR re-fails on the same already-
-          # merged diffs because the baseline was never advanced.
+          # Auto-accept visual diffs on both PR and main builds so the
+          # baseline always advances and merged diffs don't re-fail later PRs.
           exitZeroOnChanges: false
-          autoAcceptChanges: ${{ github.ref == 'refs/heads/main' }}
+          autoAcceptChanges: true

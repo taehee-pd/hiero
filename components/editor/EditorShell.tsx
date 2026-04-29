@@ -25,6 +25,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
@@ -33,12 +41,7 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
-import type {
-  Icon,
-  Layer,
-  RenderingMode,
-  Variant,
-} from '@/lib/schema/types';
+import type { Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
@@ -50,17 +53,19 @@ import { generateIconLibrary } from '@/lib/export/export-react/generate-library'
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Separator } from '@/components/ui/separator';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -80,8 +85,7 @@ import { cn } from '@/lib/utils';
 
 type RightTab = 'inspect' | 'animation';
 type LeftTab = 'icon' | 'guides';
-type DeleteIntent =
-  | { type: 'variant'; id: string };
+type DeleteIntent = { type: 'variant'; id: string };
 type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
@@ -250,20 +254,28 @@ export function TypesSection({
   onSetTypeName: (typeId: string, name: string) => void;
   onDuplicateType: (sourceId: string, newId: string) => void;
 }) {
-  const [newTypeName, setNewTypeName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const typeIds = useMemo(
-    () => Object.keys(typeCatalog ?? {}),
-    [typeCatalog],
-  );
+  const typeIds = useMemo(() => Object.keys(typeCatalog ?? {}), [typeCatalog]);
 
   const handleAdd = () => {
-    const name = newTypeName.trim() || `type-${typeIds.length + 1}`;
-    onAddType(name);
-    setNewTypeName('');
+    const existing = typeCatalog ?? {};
+    let n = typeIds.length + 1;
+    let candidate = `type-${n}`;
+    while (existing[candidate]) {
+      n += 1;
+      candidate = `type-${n}`;
+    }
+    onAddType(candidate);
+    // Drop the freshly-created row straight into rename mode so the user
+    // can type the real name without an extra interaction. Defer to next
+    // tick so the new row mounts before we toggle its state.
+    setRenameValue(candidate);
+    setTimeout(() => {
+      setRenamingId(candidate);
+    }, 0);
   };
 
   /**
@@ -310,23 +322,14 @@ export function TypesSection({
     <>
       <div className="wire-section-header mt-4">
         <span>Types</span>
-      </div>
-
-      <div className="wire-inline-form !p-0">
-        <Input
-          value={newTypeName}
-          onChange={(e) => setNewTypeName(e.target.value)}
-          placeholder="e.g. line, filled, colored"
-          variant="pane"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-        />
-        <Button variant="pane" size="pane" onClick={handleAdd}>
-          Add
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="ml-auto size-6 text-muted-foreground hover:text-foreground"
+          aria-label="Add type"
+          onClick={handleAdd}
+        >
+          <UiIcon name="plus" size={14} className="size-3.5" />
         </Button>
       </div>
 
@@ -413,7 +416,9 @@ export function TypesSection({
                             <UiIcon name="lock" size={16} className="size-4" />
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="right">Default type — cannot be deleted, but the label can be renamed.</TooltipContent>
+                        <TooltipContent side="right">
+                          Default type — cannot be deleted, but the label can be renamed.
+                        </TooltipContent>
                       </Tooltip>
                     ) : null}
                     <span>{displayLabel}</span>
@@ -458,9 +463,7 @@ export function TypesSection({
                   Rename
                   <ContextMenuShortcut>F2</ContextMenuShortcut>
                 </ContextMenuItem>
-                <ContextMenuItem
-                  onSelect={() => onDuplicateType(typeId, `${typeId}-copy`)}
-                >
+                <ContextMenuItem onSelect={() => onDuplicateType(typeId, `${typeId}-copy`)}>
                   <UiIcon name="copy" size={16} className="size-4" />
                   Duplicate
                 </ContextMenuItem>
@@ -482,12 +485,16 @@ export function TypesSection({
         })
       )}
 
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete type</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete the &ldquo;{deleteTarget}&rdquo; type? This removes all layer data for this type. You can undo this action.
+              Delete the &ldquo;{deleteTarget}&rdquo; type? This removes all layer data for this
+              type. You can undo this action.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -574,7 +581,11 @@ function InlineEditableTitle({
       onClick={startEditing}
     >
       <span className="truncate">{value}</span>
-      <UiIcon name="pencil" size={12} className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100" />
+      <UiIcon
+        name="pencil"
+        size={12}
+        className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/edit:opacity-100"
+      />
     </button>
   );
 }
@@ -592,9 +603,7 @@ function LeftSidebar({
   variants,
   currentVariantId,
   onSelectVariant,
-  newVariantSize,
-  onNewVariantSizeChange,
-  onCreateVariant,
+  onOpenSizeDialog,
   currentTypeId,
   onSelectType,
   onAddType,
@@ -617,9 +626,7 @@ function LeftSidebar({
   variants: Variant[];
   currentVariantId: string | null;
   onSelectVariant: (variantId: string) => void;
-  newVariantSize: string;
-  onNewVariantSizeChange: (value: string) => void;
-  onCreateVariant: () => void;
+  onOpenSizeDialog: () => void;
   currentTypeId: string | null;
   onSelectType: (typeId: string) => void;
   onAddType: (typeId: string) => void;
@@ -630,7 +637,6 @@ function LeftSidebar({
   leftTab: LeftTab;
   onLeftTabChange: (tab: LeftTab) => void;
 }) {
-
   return (
     <aside className="wire-sidebar wire-sidebar-left">
       <div className="wire-sidebar-block wire-sidebar-head">
@@ -678,53 +684,47 @@ function LeftSidebar({
           </ScrollArea>
         </div>
       ) : (
-      <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
-        <ResizablePanel defaultSize={38} minSize={18} maxSize={70}>
-          <ScrollArea className="h-full">
-            <div role="region" aria-label="Variants" className="wire-section animate-in fade-in duration-150">
-              <div className="wire-section-header">
-                <span>Sizes</span>
-              </div>
-              <div className="wire-inline-form !p-0">
-                <Input
-                  value={newVariantSize}
-                  onChange={(event) => onNewVariantSizeChange(event.target.value)}
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="New size (px)"
-                  aria-label="New variant size in pixels"
-                  variant="pane"
-                />
-                <Button variant="pane" size="pane" onClick={onCreateVariant}>
-                  Add
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-1 px-0.5 pt-1">
+        <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
+          <ResizablePanel defaultSize={38} minSize={18} maxSize={70}>
+            <ScrollArea className="h-full">
+              <div
+                role="region"
+                aria-label="Variants"
+                className="wire-section animate-in fade-in duration-150"
+              >
+                <div className="wire-section-header">
+                  <span>Sizes</span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="ml-auto size-6 text-muted-foreground hover:text-foreground"
+                    aria-label="Add size"
+                    onClick={onOpenSizeDialog}
+                  >
+                    <UiIcon name="plus" size={14} className="size-3.5" />
+                  </Button>
+                </div>
                 {variants.map((variant) => {
                   const isDerived = variant.id.includes('.');
                   const isCurrent = variant.id === currentVariantId;
                   return (
                     <ContextMenu key={variant.id}>
                       <ContextMenuTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => onSelectVariant(variant.id)}
-                          data-active={isCurrent ? 'true' : 'false'}
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition',
-                            isCurrent
-                              ? 'border-primary bg-primary/10 text-foreground shadow-[0_0_0_1px_var(--primary)]'
-                              : 'border-border/70 bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground',
-                          )}
-                        >
-                          <span>{formatVariantLabel(variant)}</span>
-                          {isDerived ? (
-                            <span className="rounded-sm bg-muted px-1 py-0.5 text-[10px] font-medium leading-none tracking-wide text-muted-foreground">
-                              derived
-                            </span>
-                          ) : null}
-                        </button>
+                        <div className="group flex items-center">
+                          <Button
+                            variant="ghost"
+                            data-active={isCurrent ? 'true' : 'false'}
+                            className="wire-list-row flex-1 justify-start gap-1.5 px-[10px] text-[11px]"
+                            onClick={() => onSelectVariant(variant.id)}
+                          >
+                            <span>{formatVariantLabel(variant)}</span>
+                            {isDerived ? (
+                              <span className="ml-auto rounded-sm bg-muted px-1 py-0.5 text-[10px] font-medium leading-none tracking-wide text-muted-foreground">
+                                derived
+                              </span>
+                            ) : null}
+                          </Button>
+                        </div>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         <ContextMenuItem onSelect={() => onSelectVariant(variant.id)}>
@@ -734,11 +734,6 @@ function LeftSidebar({
                         <ContextMenuItem
                           onSelect={() => {
                             if (!currentIcon) return;
-                            // Create a new variant with the same size but a
-                            // fresh id; addVariant clones layers + topology
-                            // via sourceVariantId. Using the same size is
-                            // intentional — users "duplicate" to branch
-                            // iterations at the same resolution.
                             editorStore.getState().addVariant?.(currentIcon.id, {
                               size: variant.size,
                               sourceVariantId: variant.id,
@@ -763,63 +758,72 @@ function LeftSidebar({
                     </ContextMenu>
                   );
                 })}
-              </div>
 
-              {/* Type management section — e.g. line, filled, colored */}
-              <TypesSection
-                typeCatalog={typeCatalog}
-                defaultTypeId={defaultTypeId}
-                currentTypeId={currentTypeId}
-                onSelectType={onSelectType}
-                onAddType={onAddType}
-                onRemoveType={onRemoveType}
-                onRenameType={onRenameType}
-                onSetTypeName={onSetTypeName}
-                onDuplicateType={onDuplicateType}
-              />
-            </div>
-          </ScrollArea>
-        </ResizablePanel>
-        <ResizableHandle />
-        <ResizablePanel defaultSize={62} minSize={30}>
-          <ScrollArea className="h-full">
-            <div role="region" aria-label="Layers" className="wire-section animate-in fade-in duration-150">
-              <div className="wire-section-header">
-                <span>Layers · {currentVariant ? formatVariantLabel(currentVariant) : '—'}</span>
-              </div>
-              {layerRows.length === 0 ? (
-                // R6 / UX-3.4: actionable empty state for the layer list.
-                <div className="wire-empty-note grid gap-2 px-1 py-2" role="status">
-                  <p className="font-medium text-foreground">No layers yet</p>
-                  <p className="text-[10px] leading-snug text-muted-foreground">
-                    Draw a path or drop an SVG to get started.
-                  </p>
-                  <ul className="grid gap-1 text-[10px] text-muted-foreground">
-                    <li className="flex items-center gap-1.5">
-                      <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">P</kbd>
-                      <span>Pen tool</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">U</kbd>
-                      <span>Shape tool</span>
-                    </li>
-                    <li className="text-muted-foreground/70">or drag an SVG file onto the canvas</li>
-                  </ul>
-                </div>
-              ) : (
-                <LayerRowsList
-                  layerRows={layerRows}
-                  selectedLayerId={selectedLayerId}
-                  onSelectLayer={onSelectLayer}
-                  onToggleLayerVisibility={onToggleLayerVisibility}
-                  currentIconId={currentIcon?.id ?? null}
-                  currentVariant={currentVariant}
+                {/* Type management section — e.g. line, filled, colored */}
+                <TypesSection
+                  typeCatalog={typeCatalog}
+                  defaultTypeId={defaultTypeId}
+                  currentTypeId={currentTypeId}
+                  onSelectType={onSelectType}
+                  onAddType={onAddType}
+                  onRemoveType={onRemoveType}
+                  onRenameType={onRenameType}
+                  onSetTypeName={onSetTypeName}
+                  onDuplicateType={onDuplicateType}
                 />
-              )}
-            </div>
-          </ScrollArea>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+              </div>
+            </ScrollArea>
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel defaultSize={62} minSize={30}>
+            <ScrollArea className="h-full">
+              <div
+                role="region"
+                aria-label="Layers"
+                className="wire-section animate-in fade-in duration-150"
+              >
+                <div className="wire-section-header">
+                  <span>Layers · {currentVariant ? formatVariantLabel(currentVariant) : '—'}</span>
+                </div>
+                {layerRows.length === 0 ? (
+                  // R6 / UX-3.4: actionable empty state for the layer list.
+                  <div className="wire-empty-note grid gap-2 px-1 py-2" role="status">
+                    <p className="font-medium text-foreground">No layers yet</p>
+                    <p className="text-[10px] leading-snug text-muted-foreground">
+                      Draw a path or drop an SVG to get started.
+                    </p>
+                    <ul className="grid gap-1 text-[10px] text-muted-foreground">
+                      <li className="flex items-center gap-1.5">
+                        <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">
+                          P
+                        </kbd>
+                        <span>Pen tool</span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">
+                          U
+                        </kbd>
+                        <span>Shape tool</span>
+                      </li>
+                      <li className="text-muted-foreground/70">
+                        or drag an SVG file onto the canvas
+                      </li>
+                    </ul>
+                  </div>
+                ) : (
+                  <LayerRowsList
+                    layerRows={layerRows}
+                    selectedLayerId={selectedLayerId}
+                    onSelectLayer={onSelectLayer}
+                    onToggleLayerVisibility={onToggleLayerVisibility}
+                    currentIconId={currentIcon?.id ?? null}
+                    currentVariant={currentVariant}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       )}
     </aside>
   );
@@ -931,10 +935,7 @@ function LayerRowsList({
                     className="pointer-events-none absolute inset-x-1 top-0 h-[2px] rounded-full bg-primary"
                   />
                 ) : null}
-                <div
-                  className="wire-layer-line"
-                  style={{ paddingLeft: `${row.depth * 12}px` }}
-                >
+                <div className="wire-layer-line" style={{ paddingLeft: `${row.depth * 12}px` }}>
                   {/* Per-layer SVG thumbnail: renders the actual path
                       geometry for the current variant, honoring whether
                       fill / stroke are visible. Falls back to a neutral
@@ -1005,9 +1006,7 @@ function LayerRowsList({
                       {row.layer.id}
                     </span>
                   )}
-                  {row.layer.isClipMask ? (
-                    <span className="wire-layer-kind">mask</span>
-                  ) : null}
+                  {row.layer.isClipMask ? <span className="wire-layer-kind">mask</span> : null}
                 </div>
                 <button
                   type="button"
@@ -1155,7 +1154,9 @@ function CanvasDock({
                   <Icon className="size-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{item.label} ({item.shortcut})</TooltipContent>
+              <TooltipContent>
+                {item.label} ({item.shortcut})
+              </TooltipContent>
             </Tooltip>
           );
         })}
@@ -1199,7 +1200,9 @@ function CanvasDock({
                 onClick={() => handleZoomAction(zoom * 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom in</span>
-                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd +</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">
+                  Cmd +
+                </span>
               </Button>
               <Button
                 variant="ghost"
@@ -1207,7 +1210,9 @@ function CanvasDock({
                 onClick={() => handleZoomAction(zoom / 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom out</span>
-                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd -</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">
+                  Cmd -
+                </span>
               </Button>
               <Button
                 variant="ghost"
@@ -1232,7 +1237,9 @@ function CanvasDock({
                 onClick={() => handleZoomAction(1)}
               >
                 <span className="min-w-0 flex-1">Zoom to 100%</span>
-                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">Cmd 0</span>
+                <span className="shrink-0 text-[length:var(--text-label)] leading-4 text-muted-foreground">
+                  Cmd 0
+                </span>
               </Button>
               <Button
                 variant="ghost"
@@ -1359,7 +1366,9 @@ function RightSidebar({
             type="single"
             size="sm"
             value={rightTab}
-            onValueChange={(v) => { if (v) onRightTabChange(v as typeof rightTab); }}
+            onValueChange={(v) => {
+              if (v) onRightTabChange(v as typeof rightTab);
+            }}
             aria-label="Right sidebar"
             className="inline-flex items-center gap-1"
           >
@@ -1382,7 +1391,12 @@ function RightSidebar({
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <div key={rightTab} role="tabpanel" aria-label={rightTab === 'inspect' ? 'Inspect' : 'Animation'} className="wire-section animate-in fade-in duration-150">
+        <div
+          key={rightTab}
+          role="tabpanel"
+          aria-label={rightTab === 'inspect' ? 'Inspect' : 'Animation'}
+          className="wire-section animate-in fade-in duration-150"
+        >
           {rightTab === 'inspect' ? (
             selectedLayer ? (
               <>
@@ -1401,13 +1415,19 @@ function RightSidebar({
                             <UiIcon name="help-circle" size={12} className="size-3" />
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="left" className="max-w-[220px]">{ROLE_TOOLTIP}</TooltipContent>
+                        <TooltipContent side="left" className="max-w-[220px]">
+                          {ROLE_TOOLTIP}
+                        </TooltipContent>
                       </Tooltip>
                     </span>
                   }
                 >
                   <Select
-                    value={selectedLayer.role && ROLE_OPTIONS.some((o) => o.value === selectedLayer.role) ? selectedLayer.role : '__none__'}
+                    value={
+                      selectedLayer.role && ROLE_OPTIONS.some((o) => o.value === selectedLayer.role)
+                        ? selectedLayer.role
+                        : '__none__'
+                    }
                     onValueChange={(next) =>
                       onPatchSelectedLayer({ role: next === '__none__' ? undefined : next })
                     }
@@ -1430,7 +1450,13 @@ function RightSidebar({
                       type="single"
                       size="sm"
                       variant="outline"
-                      value={fillMode === 'currentColor' ? 'inherited' : fillMode === 'fixed' ? 'static' : 'none'}
+                      value={
+                        fillMode === 'currentColor'
+                          ? 'inherited'
+                          : fillMode === 'fixed'
+                            ? 'static'
+                            : 'none'
+                      }
                       onValueChange={(nextMode) => {
                         if (!nextMode) return;
                         if (nextMode === 'none') {
@@ -1453,13 +1479,25 @@ function RightSidebar({
                       }}
                       className="h-7 w-full justify-stretch rounded-md border border-border/70"
                     >
-                      <ToggleGroupItem value="none" aria-label="No fill" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="none"
+                        aria-label="No fill"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         None
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="static" aria-label="Static fill" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="static"
+                        aria-label="Static fill"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         Static
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="inherited" aria-label="Inherited fill" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="inherited"
+                        aria-label="Inherited fill"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         Inherited
                       </ToggleGroupItem>
                     </ToggleGroup>
@@ -1469,7 +1507,13 @@ function RightSidebar({
                       type="single"
                       size="sm"
                       variant="outline"
-                      value={strokeMode === 'currentColor' ? 'inherited' : strokeMode === 'fixed' ? 'static' : 'none'}
+                      value={
+                        strokeMode === 'currentColor'
+                          ? 'inherited'
+                          : strokeMode === 'fixed'
+                            ? 'static'
+                            : 'none'
+                      }
                       onValueChange={(nextMode) => {
                         if (!nextMode) return;
                         if (nextMode === 'none') {
@@ -1492,13 +1536,25 @@ function RightSidebar({
                       }}
                       className="h-7 w-full justify-stretch rounded-md border border-border/70"
                     >
-                      <ToggleGroupItem value="none" aria-label="No stroke" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="none"
+                        aria-label="No stroke"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         None
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="static" aria-label="Static stroke" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="static"
+                        aria-label="Static stroke"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         Static
                       </ToggleGroupItem>
-                      <ToggleGroupItem value="inherited" aria-label="Inherited stroke" className="flex-1 text-[length:var(--text-label)]">
+                      <ToggleGroupItem
+                        value="inherited"
+                        aria-label="Inherited stroke"
+                        className="flex-1 text-[length:var(--text-label)]"
+                      >
                         Inherited
                       </ToggleGroupItem>
                     </ToggleGroup>
@@ -1518,9 +1574,7 @@ function RightSidebar({
                         })
                       }
                       opacity={selectedLayer.style.fillOpacity ?? 1}
-                      onOpacityChange={(o) =>
-                        debouncedPatchStyle({ fillOpacity: o })
-                      }
+                      onOpacityChange={(o) => debouncedPatchStyle({ fillOpacity: o })}
                     />
                   </RowField>
                 )}
@@ -1538,9 +1592,7 @@ function RightSidebar({
                         })
                       }
                       opacity={selectedLayer.style.strokeOpacity ?? 1}
-                      onOpacityChange={(o) =>
-                        debouncedPatchStyle({ strokeOpacity: o })
-                      }
+                      onOpacityChange={(o) => debouncedPatchStyle({ strokeOpacity: o })}
                     />
                   </RowField>
                 )}
@@ -1578,7 +1630,9 @@ function RightSidebar({
                         }}
                         aria-label="Toggle guides visibility"
                       />
-                      <span className="text-[10px] text-muted-foreground">{guidesVisible ? 'On' : 'Off'}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {guidesVisible ? 'On' : 'Off'}
+                      </span>
                     </div>
                   </RowField>
                 </div>
@@ -1697,7 +1751,9 @@ function RightSidebar({
                             <UiIcon name="help-circle" size={12} className="size-3" />
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="left" className="max-w-[240px]">{RENDERING_MODE_TOOLTIP}</TooltipContent>
+                        <TooltipContent side="left" className="max-w-[240px]">
+                          {RENDERING_MODE_TOOLTIP}
+                        </TooltipContent>
                       </Tooltip>
                     </span>
                   }
@@ -1743,7 +1799,8 @@ function RightSidebar({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[220px]">
-                        No guide master assigned. Open the Guides tab in the left sidebar to attach one.
+                        No guide master assigned. Open the Guides tab in the left sidebar to attach
+                        one.
                       </TooltipContent>
                     </Tooltip>
                   )}
@@ -1787,7 +1844,13 @@ function RightSidebar({
   );
 }
 
-export function EditorShell({ initialIconId, embedded = false }: { initialIconId?: string; embedded?: boolean }) {
+export function EditorShell({
+  initialIconId,
+  embedded = false,
+}: {
+  initialIconId?: string;
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const _currentIconId = useEditorStore((s) => s.currentIconId);
   const currentVariantId = useEditorStore((s) => s.currentVariantId);
@@ -1841,6 +1904,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   const [commandOpen, setCommandOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newVariantSize, setNewVariantSize] = useState('32');
+  const [sizeDialogOpen, setSizeDialogOpen] = useState(false);
   const [previewProgress, setPreviewProgress] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
@@ -1877,9 +1941,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
     const search = new URLSearchParams(window.location.search);
     setSearchIconId(parseEditorSearchParam(search.get('icon') ?? undefined));
     setSearchIconSetId(
-      parseEditorSearchParam(
-        search.get('project') ?? search.get('set') ?? undefined,
-      ),
+      parseEditorSearchParam(search.get('project') ?? search.get('set') ?? undefined),
     );
   }, []);
 
@@ -1915,7 +1977,9 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         editorStore.getState().loadWorkspace(SAMPLE_WORKSPACE);
         applySearchParams();
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
 
     applySearchParams();
@@ -2158,6 +2222,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       viewBox: nextViewBox,
       sourceVariantId: currentVariant?.id,
     });
+    setSizeDialogOpen(false);
   };
 
   const handleDeleteConfirm = () => {
@@ -2175,10 +2240,12 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
   );
 
   return (
-    <div className={cn(
-      'wireframe-editor flex flex-col overflow-hidden bg-background text-foreground',
-      embedded ? 'h-full w-full' : 'fixed inset-0',
-    )}>
+    <div
+      className={cn(
+        'wireframe-editor flex flex-col overflow-hidden bg-background text-foreground',
+        embedded ? 'h-full w-full' : 'fixed inset-0',
+      )}
+    >
       {!embedded && <Toolbar />}
 
       <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
@@ -2190,7 +2257,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           onClick={() => setLeftSidebarOpen((v) => !v)}
           aria-label={leftSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          {leftSidebarOpen ? <UiIcon name="x" size={16} className="size-4" /> : <UiIcon name="menu" size={16} className="size-4" />}
+          {leftSidebarOpen ? (
+            <UiIcon name="x" size={16} className="size-4" />
+          ) : (
+            <UiIcon name="menu" size={16} className="size-4" />
+          )}
         </Button>
 
         {/* Left sidebar overlay for md breakpoint */}
@@ -2231,9 +2302,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
             variants={variants}
             currentVariantId={currentVariantId}
             onSelectVariant={setCurrentVariant}
-            newVariantSize={newVariantSize}
-            onNewVariantSizeChange={setNewVariantSize}
-            onCreateVariant={handleCreateVariant}
+            onOpenSizeDialog={() => setSizeDialogOpen(true)}
             currentTypeId={currentTypeId}
             onSelectType={setCurrentType}
             onAddType={(typeId) => addType(typeId)}
@@ -2248,31 +2317,33 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
 
         <main className="wire-canvas-shell">
           <div className="wire-canvas-area">
-            {currentIcon?.meta?.derivedSpecs && currentIcon.meta.derivedSpecs.length > 0 &&
+            {currentIcon?.meta?.derivedSpecs &&
+              currentIcon.meta.derivedSpecs.length > 0 &&
               currentVariantId &&
               currentIcon.meta.derivedSpecs.some((s) => s.baseVariantId === currentVariantId) && (
-              <div className="flex items-center gap-2 border-b px-3 py-1.5 text-xs status-warning-surface">
-                <span>This variant has derived variants. Changes may require re-derivation.</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isDeriving}
-                  className="ml-auto h-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
-                  onClick={async () => {
-                    if (!currentIcon || !currentVariantId || isDeriving) return;
-                    const specs = currentIcon.meta?.derivedSpecs?.filter(
-                      (s) => s.baseVariantId === currentVariantId,
-                    ) ?? [];
-                    for (const spec of specs) {
-                      await applyDerivedVariantAction(currentIcon.id, spec);
-                    }
-                    toast({ title: `Re-derived ${specs.length} variant(s)` });
-                  }}
-                >
-                  {isDeriving ? 'Deriving…' : 'Re-derive'}
-                </Button>
-              </div>
-            )}
+                <div className="flex items-center gap-2 border-b px-3 py-1.5 text-xs status-warning-surface">
+                  <span>This variant has derived variants. Changes may require re-derivation.</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isDeriving}
+                    className="ml-auto h-auto rounded-md bg-amber-200/60 px-2 py-0.5 text-[10px] font-medium text-amber-900 hover:bg-amber-200"
+                    onClick={async () => {
+                      if (!currentIcon || !currentVariantId || isDeriving) return;
+                      const specs =
+                        currentIcon.meta?.derivedSpecs?.filter(
+                          (s) => s.baseVariantId === currentVariantId,
+                        ) ?? [];
+                      for (const spec of specs) {
+                        await applyDerivedVariantAction(currentIcon.id, spec);
+                      }
+                      toast({ title: `Re-derived ${specs.length} variant(s)` });
+                    }}
+                  >
+                    {isDeriving ? 'Deriving…' : 'Re-derive'}
+                  </Button>
+                </div>
+              )}
             {currentIcon && currentVariant ? (
               <Canvas showStatusHud={false} />
             ) : (
@@ -2280,19 +2351,11 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
                 <p className="wire-title">No active icon</p>
                 <p className="wire-empty-note mt-1">Create a new icon or import an SVG to begin.</p>
                 <div className="mt-3 flex items-center justify-center gap-2">
-                  <Button
-                    variant="pane"
-                    size="pane"
-                    onClick={handleCreateBlankIcon}
-                  >
+                  <Button variant="pane" size="pane" onClick={handleCreateBlankIcon}>
                     <UiIcon name="plus" size={14} className="size-3.5" />
                     New icon
                   </Button>
-                  <Button
-                    variant="pane"
-                    size="pane"
-                    onClick={() => setImportDialogOpen(true)}
-                  >
+                  <Button variant="pane" size="pane" onClick={() => setImportDialogOpen(true)}>
                     <UiIcon name="folder-open" size={14} className="size-3.5" />
                     Import
                   </Button>
@@ -2439,9 +2502,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingDelete?.type === 'variant'
-                ? 'Delete size'
-                : 'Delete transition'}
+              {pendingDelete?.type === 'variant' ? 'Delete size' : 'Delete transition'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete?.type === 'variant'
@@ -2462,6 +2523,37 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={sizeDialogOpen} onOpenChange={setSizeDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add size</DialogTitle>
+            <DialogDescription>Enter the pixel size for the new variant.</DialogDescription>
+          </DialogHeader>
+          <Input
+            value={newVariantSize}
+            onChange={(event) => setNewVariantSize(event.target.value)}
+            type="number"
+            min="1"
+            step="1"
+            placeholder="New size (px)"
+            aria-label="New variant size in pixels"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleCreateVariant();
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSizeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateVariant}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
 
@@ -2492,9 +2584,7 @@ export function EditorShell({ initialIconId, embedded = false }: { initialIconId
       {!exporting && exportMessage && (
         <div
           className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
-            exportMessage.includes('failed')
-              ? 'status-error-surface'
-              : 'status-success-surface'
+            exportMessage.includes('failed') ? 'status-error-surface' : 'status-success-surface'
           }`}
           role="status"
           aria-live="polite"

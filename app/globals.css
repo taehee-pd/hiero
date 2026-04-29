@@ -1455,6 +1455,14 @@
     -webkit-user-select: none;
   }
 
+  /* Sizes/Types rows: keep the default arrow cursor over the whole row,
+     including any nested text spans that would otherwise render an
+     I-beam from the button's text content. */
+  .wire-list-row,
+  .wire-list-row * {
+    cursor: default;
+  }
+
   /* Subtle hover tint on non-active rows — same accent color family as
    * wire-icon-button hover, so the whole left panel feels consistent. */
   .wire-layer-row:hover:not([data-active='true']),
@@ -1554,7 +1562,11 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    cursor: text;
+    /* The label is the idle (non-rename) state of the row; double-click
+     * swaps it for `.inline-rename-input`. We used to set `cursor: text`
+     * here as an edit-affordance hint, but the rest of the app uses the
+     * default arrow on row labels — keep it consistent. */
+    cursor: default;
     /* span default baseline alignment + inline-flex don't cooperate on
      * ellipsis; this `display: inline-block` fallback handles the span
      * case when the author uses a span instead of a div. */

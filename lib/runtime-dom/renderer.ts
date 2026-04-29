@@ -38,6 +38,7 @@ export class DomRenderer {
   private readonly icon: Icon;
   private readonly doc: Document;
   private svg: SVGSVGElement | null = null;
+  private ownsSvg = false;
   private variant: Variant | null = null;
   private renderedStateId: string | null = null;
   private layerElements = new Map<string, LayerRenderEntry>();
@@ -65,9 +66,11 @@ export class DomRenderer {
     let svg: SVGSVGElement;
     if (options?.existingSvg) {
       svg = options.existingSvg;
+      this.ownsSvg = false;
     } else {
       svg = this.doc.createElementNS(SVG_NS, 'svg');
       this.container.appendChild(svg);
+      this.ownsSvg = true;
     }
 
     const [vx, vy, vw, vh] = variant.viewBox;
@@ -283,9 +286,25 @@ export class DomRenderer {
   unmount(): void {
     this.clearTransitionElements();
     if (this.svg) {
-      this.svg.remove();
+      if (this.ownsSvg) {
+        this.svg.remove();
+      } else {
+        // SVG belongs to the host (e.g. React-rendered <svg ref>); leave it
+        // attached and only clear the layer/defs we appended. Removing it
+        // would orphan a node React still believes is mounted, which breaks
+        // the next render cycle (StrictMode double-fire, prop-driven driver
+        // recreation, etc.) — the wrapper would stay empty.
+        for (const entry of this.layerElements.values()) {
+          entry.element.remove();
+        }
+        const defs = this.svg.querySelector(
+          `defs[${MANAGED_DEFS_ATTR}="${MANAGED_DEFS_VALUE}"]`,
+        );
+        defs?.remove();
+      }
     }
     this.svg = null;
+    this.ownsSvg = false;
     this.variant = null;
     this.renderedStateId = null;
     this.layerElements.clear();

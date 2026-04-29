@@ -1275,11 +1275,15 @@ export const InspectorPanel = memo(function InspectorPanel() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
-                    Type
-                  </Label>
-                  <div className="flex flex-1 items-center gap-1">
+                {/* `<div>`, not `<label>`, because the row's children are
+                    `<button>`s — a `<label>` would activate the first
+                    descendant button on any click in the row chrome and
+                    silently flip the point type (Codex review on PR #164).
+                    Other `wire-field` usages wrap a single `<Input>`, where
+                    label-activation is the intended UX. */}
+                <div className="wire-field">
+                  <span className="wire-field-name">Type</span>
+                  <div className="flex items-center gap-1">
                     {NODE_TYPE_OPTIONS.map((option) => (
                       <NodeTypeButton
                         key={option.value}
@@ -1994,11 +1998,14 @@ function Section({
   title: string;
   children: React.ReactNode;
 }) {
+  // Use the shared `wire-section-header` so the title glyph sits on the
+  // pane column shared by all section labels — DESIGN.md §6
+  // "Pane gutter & edge alignment".
   return (
     <div className="flex flex-col gap-[var(--section-gap)]">
-      <span className="text-[length:var(--text-label)] font-semibold tracking-wide text-foreground-secondary">
-        {title}
-      </span>
+      <div className="wire-section-header">
+        <span>{title}</span>
+      </div>
       <div className="flex flex-col gap-[var(--field-gap)]">
         {children}
       </div>
@@ -2041,17 +2048,21 @@ function ReadOnlyField({
   value: string;
   mono?: boolean;
 }) {
+  // Vertical stack — label glyph and value glyph both land on the pane
+  // column instead of forcing a 72px label rail that creates its own
+  // local column. DESIGN.md §6 "Pane gutter & edge alignment".
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
-        {label}
-      </Label>
+    <label className="wire-field">
+      <span className="wire-field-name">{label}</span>
       <span
-        className={`flex-1 truncate rounded-lg border border-border/70 bg-background/60 px-3 py-1.5 text-xs ${mono ? 'font-mono' : ''} text-foreground`}
+        className={cn(
+          'min-h-[var(--field-height-md)] truncate rounded-[var(--radius-md)] bg-[color-mix(in_srgb,var(--bg-content)_94%,transparent)] px-2 py-1.5 text-[length:var(--text-label)] leading-4 text-foreground',
+          mono && 'font-mono',
+        )}
       >
         {value}
       </span>
-    </div>
+    </label>
   );
 }
 
@@ -2081,11 +2092,10 @@ function NumberField({
   );
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">
-        {label}
-      </Label>
+    <label className="wire-field">
+      <span className="wire-field-name">{label}</span>
       <Input
+        variant="pane"
         type="number"
         value={value ?? ''}
         onChange={handleChange}
@@ -2093,9 +2103,8 @@ function NumberField({
         max={max}
         step={step}
         disabled={disabled}
-        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
-    </div>
+    </label>
   );
 }
 
@@ -2137,18 +2146,18 @@ function AxisField({
   );
 
   return (
-    <div className="flex items-center gap-2">
-      <Label className="w-[72px] shrink-0 text-[length:var(--text-label)] text-muted-foreground">{label}</Label>
+    <label className="wire-field">
+      <span className="wire-field-name">{label}</span>
       <Input
+        variant="pane"
         type="text"
         inputMode="decimal"
         value={value ?? ''}
         placeholder={placeholder}
         disabled={disabled}
         onChange={handleChange}
-        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
-    </div>
+    </label>
   );
 }
 
@@ -2170,12 +2179,13 @@ function IconNumberField({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Label className="flex w-[72px] shrink-0 items-center gap-1 text-[length:var(--text-label)] text-muted-foreground">
+    <label className="wire-field">
+      <span className="wire-field-name flex items-center gap-1">
         <span className="font-mono text-sm leading-none">{icon}</span>
         <span>{label}</span>
-      </Label>
+      </span>
       <Input
+        variant="pane"
         type="number"
         value={value ?? ''}
         min={min}
@@ -2185,9 +2195,8 @@ function IconNumberField({
           const num = parseFloat(e.target.value);
           if (!Number.isNaN(num)) onChange(num);
         }}
-        className="h-8 flex-1 rounded-lg bg-input text-xs"
       />
-    </div>
+    </label>
   );
 }
 

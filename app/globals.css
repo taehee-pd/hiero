@@ -147,9 +147,17 @@
   --panel-gap: 8px;
 
   /* ── Section Spacing (editor panels, inspector) ── */
+  /* Pane gutter — see DESIGN.md §6 "Pane gutter & edge alignment".
+     The same token is used by `wire-sidebar-head`, `wire-section`, and
+     `wire-section-header`'s padding-inline so every primary glyph in a
+     pane lands on one column. Fixed (not clamp) and equal to `--space-2`
+     so the alignment invariant `gutter == control-padding` holds at
+     every viewport — a responsive gutter would silently break the
+     column at small widths. If you want responsive *outer* breathing
+     room, introduce a separate non-alignment shell token. */
   --section-gap: clamp(4px, 0.375rem, 8px);
-  --section-padding-x: clamp(10px, 0.75rem, 14px);
-  --section-padding-y: clamp(8px, 0.625rem, 12px);
+  --section-padding-x: var(--space-2);
+  --section-padding-y: var(--space-2);
   --field-gap: clamp(4px, 0.375rem, 6px);
 
   /* ── IconButton Frame + Inner Icon Sizes — DESIGN.md §9 ── */
@@ -776,7 +784,7 @@
     gap: 0.25rem;
     border-radius: 999px;
     border: 1px solid var(--border);
-    background: var(--muted);
+    background: var(--background-secondary);
     padding: 0.125rem 0.5rem;
     font-size: var(--text-caption);
     line-height: 1;
@@ -1328,14 +1336,18 @@
     flex-direction: column;
     gap: 8px;
     border-bottom: 1px solid var(--border-separator);
-    padding: 10px 12px 8px;
+    /* Use the same section spacing tokens on every side so vertical
+       breathing room mirrors the horizontal gutter. The title row,
+       tab row, and section headers below all share a single
+       left/right column (DESIGN.md §6 "Pane gutter & edge alignment").
+       Top/bottom use --section-padding-y for parity with `wire-section`. */
+    padding: var(--section-padding-y) var(--section-padding-x);
   }
 
   .wire-sidebar-title-stack {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 0 2px;
   }
 
   .wire-sidebar-title-row {
@@ -1401,7 +1413,12 @@
     display: flex;
     height: var(--field-height-sm);
     align-items: center;
-    padding: 0 2px;
+    /* Header glyph sits at the same column as text glyphs *inside*
+       form controls below (input text, button labels). Both inputs and
+       inline buttons use `px-3` (12px) — matching that here keeps every
+       primary glyph in the pane on one vertical line
+       (DESIGN.md §6 "Pane gutter & edge alignment"). */
+    padding: 0 var(--section-padding-x);
     font-size: var(--text-caption);
     line-height: 16px;
     font-weight: var(--type-weight-strong);
@@ -1422,12 +1439,12 @@
     width: 100%;
     align-items: center;
     gap: 6px;
-    min-height: 36px;
+    min-height: 30px;
     /* Symmetric horizontal padding so the row feels balanced when a
      * trailing control (eye icon, etc.) is rendered on the right edge.
-     * Was `8px 4px 8px 10px` — the tight right gutter made the eye
-     * icon look like it was clinging to the border. */
-    padding: 8px 10px;
+     * Padding is `var(--space-2)` (8px) on every side so the row's
+     * text glyph aligns with the pane column (DESIGN.md §6). */
+    padding: var(--space-2) !important;
     margin: 1px 0;
     border-radius: 8px;
     text-align: left;
@@ -1615,51 +1632,80 @@
 
   .wire-input,
   .wire-color {
-    min-height: var(--field-height-sm);
+    /* Single source of truth for pane-input chrome. Reach this class via
+       `<Input variant="pane" />` (see `components/ui/input.tsx`); the CVA
+       variant emits this class *instead of* the bordered `h-9 px-3 py-1`
+       defaults, so no `!important` is needed to win the cascade.
+       Padding `0 var(--space-2)` (8px) holds the column shared with
+       `<Button variant="pane" />` and `wire-section-header` —
+       DESIGN.md §6 "Pane gutter & edge alignment".
+       Background uses `--muted` (the recessive-surface semantic token,
+       resolves to greyscale-100 light / greyscale-700 dark) so the input
+       sits one elevation step away from the pane's `--bg-sidebar`.
+       Without this, the input fill matched the pane fill and read as
+       invisible. */
+    height: var(--field-height-md);
+    min-height: var(--field-height-md);
     width: 100%;
-    border: 1px solid var(--border-level-2);
+    border: 0;
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--bg-content) 94%, transparent);
+    background: var(--background-secondary);
     padding: 0 var(--space-2);
     font-size: var(--text-label);
     line-height: 16px;
     color: var(--foreground);
     outline: none;
-    transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+    transition: background-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  }
+
+  .wire-input:hover,
+  .wire-color:hover {
+    /* `--muted` and `--accent` resolve to the same greyscale step in
+       this token system, so plain `var(--accent)` would not change on
+       hover. Mix in 8% foreground for a perceptible lift. */
+    background: color-mix(in srgb, var(--background-secondary), var(--foreground) 8%);
   }
 
   .wire-color {
     padding: 2px;
   }
 
-  .wire-input:hover,
-  .wire-color:hover {
-    border-color: var(--border-level-3);
-  }
-
   .wire-input:focus,
   .wire-color:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+    background: color-mix(in srgb, var(--background-secondary), var(--foreground) 8%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent);
   }
 
   .wire-mini-button {
+    /* Single source of truth for pane-button chrome. Reach this class via
+       `<Button variant="pane" size="pane" />` (see
+       `components/ui/button.tsx`); the CVA variant emits this class
+       *instead of* the bordered `outline` chrome and the `h-8 px-3` of
+       size="sm", so no `!important` is needed. Height matches
+       `.wire-input` (`--field-height-md`) so the two stack inline.
+       Background uses `--muted` to match the input fill — same
+       elevation tier, same recessive surface (DESIGN.md §6). Hover
+       lifts to `--accent` for affordance. */
     display: inline-flex;
-    min-height: var(--field-height-sm);
+    min-height: var(--field-height-md);
     align-items: center;
     justify-content: center;
     gap: 4px;
-    border: 1px solid var(--border);
+    border: 0;
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--bg-content) 94%, transparent);
-    padding: 0 8px;
+    background: var(--background-secondary);
+    padding: 0 var(--space-2);
     font-size: 11px;
     line-height: 16px;
     color: var(--foreground);
+    transition: background-color var(--duration-fast) ease;
   }
 
   .wire-mini-button:hover {
-    background: color-mix(in srgb, var(--accent) 72%, transparent);
+    /* See note in `.wire-input:hover` — `--accent` and `--muted` are the
+       same value in this token system, so a perceptible hover requires
+       a small mix toward foreground. */
+    background: color-mix(in srgb, var(--background-secondary), var(--foreground) 8%);
   }
 
   .wire-mini-button:focus-visible {
@@ -1765,7 +1811,10 @@
     font-weight: var(--type-weight-medium);
     letter-spacing: 0.01em;
     color: var(--foreground-tertiary);
-    padding-bottom: var(--space-1);
+    /* Match the inset of input/button text inside this section so the
+       label glyph sits on the same column as the field controls below
+       — DESIGN.md §6 "Pane gutter & edge alignment". */
+    padding: 0 var(--section-padding-x) var(--space-1);
   }
 
   .wire-label + .wire-label,
@@ -1786,6 +1835,9 @@
     font-size: 10px;
     line-height: 14px;
     color: var(--foreground-tertiary);
+    /* Match the inset of input/button text inside this section so the
+       field-name glyph sits on the same column as the input below. */
+    padding-inline: var(--section-padding-x);
   }
 
   .wire-property-value {
@@ -1799,7 +1851,16 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
+    /* Children carry their own gutter padding (`.wire-field-name`,
+       `.wire-property-value`) so the row itself is flush. Stacking
+       padding here would double-shift the labels off the column. */
     padding-top: var(--field-gap);
+  }
+
+  /* Right-side value in a meta-row should mirror the field-name's
+     left padding so the value glyph aligns with the right column. */
+  .wire-meta-row > :last-child:not(.wire-field-name) {
+    padding-inline-end: var(--section-padding-x);
   }
 
   .wire-range {

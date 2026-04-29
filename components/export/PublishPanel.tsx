@@ -152,7 +152,8 @@ export function PublishPanel() {
                 setConfig((c) => ({ ...c, devServerUrl: e.target.value }))
               }
               placeholder="http://localhost:4400"
-              className="h-7 text-xs font-mono"
+              variant="pane"
+              className="font-mono"
             />
           </div>
           <div className="grid gap-1.5">
@@ -166,7 +167,7 @@ export function PublishPanel() {
                 setConfig((c) => ({ ...c, apiSecret: e.target.value }))
               }
               placeholder="Only needed if --secret is set on the server"
-              className="h-7 text-xs"
+              variant="pane"
             />
           </div>
         </div>

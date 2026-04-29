@@ -301,7 +301,7 @@ export type VariantInput = {
 };
 
 export type VariantPatch = Partial<
-  Pick<Variant, 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale' | 'variableValue' | 'weightControlPoints'>
+  Pick<Variant, 'name' | 'size' | 'viewBox' | 'renderingMode' | 'weight' | 'scale' | 'variableValue' | 'weightControlPoints'>
 >;
 
 type LegacyVariant = Variant & {
@@ -1721,6 +1721,7 @@ function createActions(): EditorActions {
           'weightControlPoints' in patch
             ? patch.weightControlPoints
             : variant.weightControlPoints;
+        const nextName = 'name' in patch ? patch.name : variant.name;
 
         if (
           nextSize === variant.size &&
@@ -1728,7 +1729,8 @@ function createActions(): EditorActions {
           nextRenderingMode === variant.renderingMode &&
           nextWeight === variant.weight &&
           nextScale === variant.scale &&
-          nextWeightControlPoints === variant.weightControlPoints
+          nextWeightControlPoints === variant.weightControlPoints &&
+          nextName === variant.name
         ) {
           return s;
         }
@@ -1745,6 +1747,7 @@ function createActions(): EditorActions {
                   ...icon.variants,
                   [variantId]: {
                     ...variant,
+                    name: nextName,
                     size: nextSize,
                     viewBox: nextViewBox,
                     renderingMode: nextRenderingMode,

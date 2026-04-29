@@ -86,7 +86,7 @@ import { cn } from '@/lib/utils';
 type RightTab = 'inspect' | 'animation';
 type LeftTab = 'icon' | 'guides';
 type DeleteIntent = { type: 'variant'; id: string };
-type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
+type VariantEditorPatch = Partial<Pick<Variant, 'name' | 'size' | 'viewBox' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
   { tool: 'select', label: 'Select', icon: MousePointer2, shortcut: 'V' },
@@ -211,6 +211,92 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
       <span className="wire-field-name">{label}</span>
       {children}
     </label>
+  );
+}
+
+// Document-level size editor for the active variant.
+//
+// Typing the size doesn't auto-commit because resizing rescales the
+// variant's viewBox (and therefore the artboard) — too disruptive to fire
+// on every keystroke. Instead, the field tracks a local draft and surfaces
+// a Confirm button once the draft differs from the committed size. Only
+// then is the patch applied: { size, viewBox: scaled, name: synced }.
+//
+// `name` is updated alongside size when the variant's existing name is the
+// stringified previous size — that's the auto-generated label produced by
+// addVariant. Hand-named variants are left alone.
+function DocumentSizeField({
+  variant,
+  onPatchVariant,
+}: {
+  variant: Variant;
+  onPatchVariant: (patch: VariantEditorPatch) => void;
+}) {
+  const committedSize = variant.size;
+  const [draft, setDraft] = useState<string>(String(committedSize));
+
+  useEffect(() => {
+    setDraft(String(committedSize));
+  }, [committedSize, variant.id]);
+
+  const parsed = Number.parseFloat(draft);
+  const isValid = Number.isFinite(parsed) && parsed > 0 && parsed <= 512;
+  const isDirty = isValid && parsed !== committedSize;
+
+  const commit = () => {
+    if (!isDirty) return;
+    const patch: VariantEditorPatch = {
+      size: parsed,
+      viewBox: scaleViewBox(variant.viewBox, parsed),
+    };
+    if (variant.name === String(committedSize)) {
+      patch.name = String(parsed);
+    }
+    onPatchVariant(patch);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="relative flex-1">
+        <Input
+          type="number"
+          min={1}
+          max={512}
+          step="1"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setDraft(String(committedSize));
+            }
+          }}
+          aria-valuemin={1}
+          aria-valuemax={512}
+          aria-valuenow={committedSize}
+          variant="pane"
+          className="w-full pr-6"
+        />
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+          px
+        </span>
+      </div>
+      {isDirty ? (
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          className="h-7 rounded-md px-2 text-[length:var(--text-label)]"
+          onClick={commit}
+          aria-label={`Confirm size ${parsed}px`}
+        >
+          Confirm
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -1716,26 +1802,17 @@ function RightSidebar({
                   />
                 </RowField>
                 <RowField label="Size">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={512}
-                      step="1"
-                      value={currentVariant?.size ?? 0}
-                      onChange={(event) =>
-                        onPatchVariant({ size: Number.parseFloat(event.target.value) || 24 })
-                      }
-                      aria-valuemin={1}
-                      aria-valuemax={512}
-                      aria-valuenow={currentVariant?.size ?? 0}
-                      variant="pane"
-                      className="w-full pr-6"
+                  {currentVariant ? (
+                    <DocumentSizeField
+                      key={currentVariant.id}
+                      variant={currentVariant}
+                      onPatchVariant={onPatchVariant}
                     />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
-                      px
+                  ) : (
+                    <span className="text-[length:var(--text-label)] text-muted-foreground">
+                      —
                     </span>
-                  </div>
+                  )}
                 </RowField>
                 <RowField
                   label={

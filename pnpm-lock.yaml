@@ -7,10 +7,10 @@ settings:
 importers:
   .:
     dependencies:
-      '@fontsource-variable/spline-sans':
-        specifier: ^5.2.8
-        version: 5.2.8
-      '@fontsource-variable/spline-sans-mono':
+      '@fontsource-variable/geist-mono':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@fontsource-variable/instrument-sans':
         specifier: ^5.2.8
         version: 5.2.8
       '@heroicons/react':
@@ -755,16 +755,16 @@ packages:
         integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==,
       }
 
-  '@fontsource-variable/spline-sans-mono@5.2.8':
+  '@fontsource-variable/geist-mono@5.2.7':
     resolution:
       {
-        integrity: sha512-Z1yYiEtP+8Gll5BJaR9dICK/ZTxoTWH+ZBH6rOTMWajPSOxwl7IZplkwX2J1QhMxqulhhdMrkRx6SkkLM+jLQw==,
+        integrity: sha512-ZKlZ5sjtalb2TwXKs400mAGDlt/+2ENLNySPx0wTz3bP3mWARCsUW+rpxzZc7e05d2qGch70pItt3K4qttbIYA==,
       }
 
-  '@fontsource-variable/spline-sans@5.2.8':
+  '@fontsource-variable/instrument-sans@5.2.8':
     resolution:
       {
-        integrity: sha512-Cn4tVu+wTZpJoD9zHN1fio0bPXq/79qE9yvQmiUz09rBZTJntKYNpA5bawDeRtS07dTxueeAVJqVwKGb0TNheQ==,
+        integrity: sha512-mTCaukbdIjjoipj2E3Q5XoZM3ZxJWdzyHevf/LG/0PHlfF9Q85pxOM7B7A9MerFyxmRzz5kVlumgIvgDSG4CPg==,
       }
 
   '@happy-dom/global-registrator@20.9.0':
@@ -5581,9 +5581,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fontsource-variable/spline-sans-mono@5.2.8': {}
+  '@fontsource-variable/geist-mono@5.2.7': {}
 
-  '@fontsource-variable/spline-sans@5.2.8': {}
+  '@fontsource-variable/instrument-sans@5.2.8': {}
 
   '@happy-dom/global-registrator@20.9.0':
     dependencies:

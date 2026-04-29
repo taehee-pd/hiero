@@ -45,8 +45,8 @@
     "storybook:test": "vitest --project=storybook"
   },
   "dependencies": {
-    "@fontsource-variable/spline-sans": "^5.2.8",
-    "@fontsource-variable/spline-sans-mono": "^5.2.8",
+    "@fontsource-variable/geist-mono": "^5.2.7",
+    "@fontsource-variable/instrument-sans": "^5.2.8",
     "@heroicons/react": "^2.2.0",
     "@hiero/ui-icons": "workspace:*",
     "@hookform/resolvers": "^3.9.1",

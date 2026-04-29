@@ -40,11 +40,11 @@ React 19 / Next 16 support so the spike pinned 10.
 Earlier phases used `next/font/local` (via the `geist` wrapper) and later
 `next/font/google`. Both paths crashed `@storybook/nextjs-vite` because
 its shim for `next/font` is incomplete. The current app loads fonts via
-`@fontsource-variable/spline-sans(-mono)` — plain CSS `@font-face`
-packages — which Vite handles natively, so the preview imports the same
-CSS as the app and Storybook now sees real Spline Sans with no shim
-required. Kept here for history in case a future phase reintroduces
-`next/font`.
+`@fontsource-variable/instrument-sans` + `@fontsource-variable/geist-mono`
+— plain CSS `@font-face` packages — which Vite handles natively, so the
+preview imports the same CSS as the app and Storybook now sees real
+Instrument Sans with no shim required. Kept here for history in case a
+future phase reintroduces `next/font`.
 
 ## Workaround #2 — `setProjectAnnotations` warning is a lie
 

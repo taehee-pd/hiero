@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/next';
-import '@fontsource-variable/spline-sans';
-import '@fontsource-variable/spline-sans-mono';
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/geist-mono';
 import { AutoSaveProvider } from '@/components/persistence/AutoSaveProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';

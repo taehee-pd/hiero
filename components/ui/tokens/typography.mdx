@@ -9,9 +9,9 @@ line-height, and letter-spacing below is a direct quote from the
 authoritative scale in DESIGN.md. No values are invented on this page.
 
 > **Primary UI font:** system sans stack (matching the app). **Display:**
-> Spline Sans at weight **450** — the Hiero equivalent of ElevenLabs'
+> Instrument Sans at weight **450** — the Hiero equivalent of ElevenLabs'
 > light-weight display approach. Lightness creates intrigue through
-> restraint. **Code / technical values:** Spline Sans Mono.
+> restraint. **Code / technical values:** Geist Mono.
 
 ## Scale
 
@@ -53,7 +53,7 @@ authoritative scale in DESIGN.md. No values are invented on this page.
           lineHeight: lh,
           letterSpacing: tracking,
           color: 'var(--foreground)',
-          fontFamily: 'var(--font-system, var(--font-spline-sans, system-ui))',
+          fontFamily: 'var(--font-system, var(--font-instrument-sans, system-ui))',
         }}
       >
         {sample}
@@ -69,9 +69,9 @@ authoritative scale in DESIGN.md. No values are invented on this page.
 | Token | Resolves to | Use |
 |---|---|---|
 | `--font-system` | system sans stack | primary UI font (matches the app shell) |
-| `--type-family-default` | `--font-spline-sans` | default text family |
-| `--type-family-display` | `--font-spline-sans` | display headings |
-| `--type-family-mono` | `--font-spline-mono` | code, technical values |
+| `--type-family-default` | `--font-instrument-sans` | default text family |
+| `--type-family-display` | `--font-instrument-sans` | display headings |
+| `--type-family-mono` | `--font-geist-mono` | code, technical values |
 
 ### Font weights
 
@@ -117,7 +117,7 @@ existing wire-* panel rules.
 
 - **Restrained weight as identity.** Like ElevenLabs' Waldenburg 300, Hiero uses weight **450** (not bold) for display text. The understated weight signals precision and professionalism.
 - **Positive letter-spacing on small text.** Labels and captions use `+0.03125rem` tracking for airy readability at small sizes, contrasting with the tighter display tracking.
-- **Monospace as ambient.** Spline Sans Mono at relaxed line-height for code values feels unhurried.
+- **Monospace as ambient.** Geist Mono at relaxed line-height for code values feels unhurried.
 
 ## Do / don't
 

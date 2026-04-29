@@ -156,7 +156,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="workspace-panel-header flex items-start justify-between gap-3 px-4 py-4">
-        <div>
+        <div className="min-w-0">
           <p className="workspace-kicker">Guides</p>
           <p className="mt-2 text-sm font-semibold text-foreground">Guide masters</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -201,7 +201,7 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
           ) : null}
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">New guide master</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Start from a preset, then tune items live on canvas.
@@ -247,13 +247,13 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">Guide library</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Grouped by target size. The active overlay master is highlighted.
                 </p>
               </div>
-              <span className="workspace-badge">{guideMasterList.length}</span>
+              <span className="workspace-badge shrink-0">{guideMasterList.length}</span>
             </div>
             <div className="mt-3 flex flex-col gap-3">
               {groupedMasters.length === 0 ? (
@@ -310,14 +310,14 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             {selectedMaster ? (
               <div className="space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="space-y-3">
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">Master details</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Rename, duplicate, or refine guide items. Changes preview immediately.
                     </p>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon-sm"

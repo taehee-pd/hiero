@@ -22,7 +22,7 @@ If the user invokes this skill without any other guidance, ask them what they wa
 
 - **No emoji anywhere.** No exclamation points in UI copy.
 - **Never use font-weight 700.** Body and display are **450**. Labels and emphasis are **550**.
-- **Single accent color.** Blue `#3186EE` (light) / `#6DADFF` (dark). No gradients, no glass, no bluish-purple anything.
+- **Single accent color.** Lilac purple `#7B3FB8` (light) / `#9E64D4` (dark). No gradients, no glass, no off-brand chroma.
 - **Dark-first.** Design in dark mode unless asked; use `rgba(255,255,255,α)` hovers instead of tinted solids.
 - **Icons:** Lucide at stroke-width 2, 14–20px. No hand-drawn SVGs for UI glyphs.
 - **Copy is functional, not persuasive.** `Select an icon to start editing`, not "Click here to get started!" Kbd hints are compact: `⌘S`, `⇧⌘Z`, `?`.

@@ -4,11 +4,13 @@
    Dark-first professional icon authoring workspace.
    ══════════════════════════════════════════════════ */
 
-/* ── Fonts: Spline Sans + Spline Sans Mono (Google Fonts, variable) ──
-   Loaded from Google Fonts. Variable axis is weight 300–700; we use 450
-   for body and 550 for emphasis. Consumers that need fully offline use
-   should swap this @import for locally hosted variable WOFF2 files. */
-@import url('https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300..700&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap');
+/* ── Fonts: Instrument Sans + Geist Mono (Google Fonts, variable) ──
+   Loaded from Google Fonts. Instrument Sans variable axis is weight
+   400–700; we use 450 for body and 550 for emphasis. Geist Mono is the
+   monospace family for technical values, hex colors, and code. Consumers
+   that need fully offline use should swap this @import for locally
+   hosted variable WOFF2 files. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Geist+Mono:wght@100..900&display=swap');
 
 :root {
   /* ── Primitive: Greyscale ── */
@@ -23,7 +25,17 @@
   --greyscale-800: #090D10;
   --greyscale-900: #0A0A0A;
 
-  /* ── Primitive: Blue (brand accent) ── */
+  /* ── Primitive: Purple (brand accent — lilac) ── */
+  --purple-100: #F1E7F9;
+  --purple-200: #D9B8EF;
+  --purple-300: #9E64D4;
+  --purple-400: #7B3FB8;
+  --purple-500: #5B22A0;
+  --purple-600: #3F0E7E;
+  --purple-700: #220552;
+  --purple-800: #0F0029;
+
+  /* ── Primitive: Blue (legacy palette, retained for chart accent + secondary surfaces) ── */
   --blue-100: #E0F9FF;
   --blue-200: #A8D3FF;
   --blue-300: #6DADFF;
@@ -37,7 +49,6 @@
   --red-100: #FFE4E8;  --red-200: #FFB1BE;  --red-300: #FF7287;  --red-400: #F1265A;  --red-500: #CD0035;  --red-600: #9B0019;  --red-700: #640007;  --red-800: #3B0004;  --red-900: #1A0002;
   --green-100: #E6FFDA; --green-200: #B8E39A; --green-300: #80BF5C; --green-400: #4E9E00; --green-500: #1F7B00; --green-600: #005700; --green-700: #003300; --green-800: #001D00; --green-900: #000A00;
   --yellow-100: #FFF7D2; --yellow-200: #FFE7A4; --yellow-300: #FFD37A; --yellow-400: #FFB061; --yellow-500: #DA7000; --yellow-600: #7B2400; --yellow-700: #3E0F00; --yellow-800: #220700; --yellow-900: #0D0200;
-  --purple-300: #D292FF; --purple-400: #BA5FFF;
   --teal-300: #55CFBD; --teal-400: #00B4A0;
 
   /* ── Primitive: Alpha overlays ── */
@@ -53,9 +64,9 @@
   --lighter-700: rgba(255,255,255,0.85);
 
   /* ── Typography families ── */
-  --font-sans: 'Spline Sans', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  --font-display: 'Spline Sans', system-ui, sans-serif;
-  --font-mono: 'Spline Sans Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Instrument Sans', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --font-system: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
 
   /* ── Typography weights (restrained — 450 / 550 is identity) ── */
@@ -125,7 +136,7 @@
   --background:           var(--greyscale-000);
   --background-secondary: var(--greyscale-100);
   --background-hover:     var(--darker-200);
-  --background-highlight: var(--blue-100);
+  --background-highlight: var(--purple-100);
 
   --foreground:           var(--greyscale-800);
   --foreground-secondary: var(--greyscale-600);
@@ -134,11 +145,11 @@
   --border:          var(--darker-100);
   --border-subtle:   rgba(0,0,0,0.06);
   --border-secondary: var(--darker-200);
-  --border-selected: var(--blue-500);
+  --border-selected: var(--purple-500);
 
-  --primary:             var(--blue-400);
+  --primary:             var(--purple-400);
   --primary-foreground:  var(--greyscale-000);
-  --primary-soft:        rgba(49,134,238,0.08);
+  --primary-soft:        rgba(123,63,184,0.08);
 
   --card:    var(--greyscale-000);
   --muted:   var(--greyscale-100);
@@ -153,7 +164,7 @@
   --background:           var(--greyscale-900);
   --background-secondary: var(--greyscale-700);
   --background-hover:     var(--lighter-400);
-  --background-highlight: var(--blue-700);
+  --background-highlight: var(--purple-700);
 
   --foreground:           var(--greyscale-000);
   --foreground-secondary: var(--greyscale-200);
@@ -162,11 +173,11 @@
   --border:          var(--lighter-300);
   --border-subtle:   rgba(255,255,255,0.06);
   --border-secondary: var(--lighter-400);
-  --border-selected: var(--blue-300);
+  --border-selected: var(--purple-300);
 
-  --primary:             var(--blue-300);
+  --primary:             var(--purple-300);
   --primary-foreground:  var(--greyscale-900);
-  --primary-soft:        rgba(109,173,255,0.12);
+  --primary-soft:        rgba(158,100,212,0.14);
 
   --card:    var(--greyscale-900);
   --muted:   var(--greyscale-700);

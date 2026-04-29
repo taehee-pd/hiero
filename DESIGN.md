@@ -7,9 +7,9 @@ description: >-
   philosophy and typographic restraint. Token values below reflect the
   canonical dark theme; the light theme is documented in prose.
 colors:
-  primary: "#6DADFF"
-  primary-hover: "#8CBFFF"
-  primary-soft: "#1E3252"
+  primary: "#9E64D4"
+  primary-hover: "#B385E0"
+  primary-soft: "#2E1A4B"
   neutral: "#0A0A0A"
   neutral-hover: "#1A1F22"
   surface: "#21282D"
@@ -26,43 +26,43 @@ colors:
   danger: "#FF6B6B"
 typography:
   display-hero:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 48px
     fontWeight: 450
     lineHeight: 1.17
     letterSpacing: -0.1875rem
   headline-lg:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 24px
     fontWeight: 450
     lineHeight: 1.33
     letterSpacing: -0.10625rem
   body-lg:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 15px
     fontWeight: 450
     lineHeight: 1.5625
     letterSpacing: -0.03125rem
   body-md:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 13px
     fontWeight: 450
     lineHeight: 1.375
     letterSpacing: -0.015625rem
   label-md:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 11px
     fontWeight: 550
     lineHeight: 1.0
     letterSpacing: 0.03125rem
   caption:
-    fontFamily: Spline Sans
+    fontFamily: Instrument Sans
     fontSize: 9px
     fontWeight: 550
     lineHeight: 0.875
     letterSpacing: 0.03125rem
   code:
-    fontFamily: Spline Sans Mono
+    fontFamily: Geist Mono
     fontSize: 13px
     fontWeight: 450
     lineHeight: 1.5
@@ -237,17 +237,17 @@ Design intent:
 ## Colors
 
 The palette is rooted in a high-contrast dark-first neutral system with a
-single, restrained blue accent. **Dark is the canonical theme** and its
-values are the normative design tokens above. A parallel light theme is
-documented at the end of this section for parity.
+single, restrained lilac purple accent. **Dark is the canonical theme**
+and its values are the normative design tokens above. A parallel light
+theme is documented at the end of this section for parity.
 
-- **Primary (`#6DADFF`):** A bright editorial blue used exclusively for
-  primary actions, focus indicators, and active states on dark surfaces.
-- **Primary hover (`#8CBFFF`):** A lifted variant for hover on primary
+- **Primary (`#9E64D4`):** A lilac purple used exclusively for primary
+  actions, focus indicators, and active states on dark surfaces.
+- **Primary hover (`#B385E0`):** A lifted variant for hover on primary
   CTAs — preserves accent identity while signalling interaction.
-- **Primary soft (`#1E3252`):** A deep tinted blue used as
+- **Primary soft (`#2E1A4B`):** A deep tinted purple used as
   selected-item background, active pane highlight, and accent badge
-  fill. Blue accent text reads cleanly on top.
+  fill. Lilac accent text reads cleanly on top.
 - **Neutral (`#0A0A0A`):** Shell background — near-black for the
   canonical dark theme.
 - **Surface (`#21282D`):** Panel surface tone sitting one step above the
@@ -279,8 +279,8 @@ not tokenized — dark is the single source of truth):
 | foreground             | `#090D10`                     |
 | foreground-secondary   | `#3C464D`                     |
 | foreground-tertiary    | `#7E8991`                     |
-| primary (accent)       | `#3186EE`                     |
-| primary-soft           | `rgba(49, 134, 238, 0.08)`    |
+| primary (accent)       | `#7B3FB8`                     |
+| primary-soft           | `rgba(123, 63, 184, 0.08)`    |
 | border                 | `rgba(0, 0, 0, 0.05)`         |
 | border-subtle          | `rgba(0, 0, 0, 0.06)`         |
 
@@ -298,21 +298,21 @@ not tokenized — dark is the single source of truth):
 
 ## Typography
 
-The typography strategy pairs the system sans stack with **Spline Sans**
-(Google Fonts, variable weight axis 300–700) for display text and
-**Spline Sans Mono** for code and precise numeric values. Both families
-are bundled via the `@fontsource-variable/spline-sans` and
-`@fontsource-variable/spline-sans-mono` npm packages (self-hosted
-variable WOFF2 files that ship the same Google Fonts assets).
+The typography strategy pairs the system sans stack with **Instrument Sans**
+(Google Fonts, variable weight axis 400–700) for display text and
+**Geist Mono** for code and precise numeric values. Both families
+are bundled via the `@fontsource-variable/instrument-sans` and
+`@fontsource-variable/geist-mono` npm packages (self-hosted variable
+WOFF2 files that ship the same Google Fonts assets).
 
-- **Display & headlines:** Spline Sans at weight **450** — the Hiero
+- **Display & headlines:** Instrument Sans at weight **450** — the Hiero
   equivalent of ElevenLabs' light-weight display approach. Lightness
   creates intrigue through restraint.
 - **Body & UI:** System sans stack at weight 450 for standard reading
   and control text.
 - **Labels & captions:** Weight **550** with positive letter-spacing for
   airy readability at small sizes.
-- **Code & technical values:** Spline Sans Mono, used wherever value
+- **Code & technical values:** Geist Mono, used wherever value
   precision matters.
 
 ### Principles
@@ -323,7 +323,7 @@ variable WOFF2 files that ship the same Google Fonts assets).
 - **Positive letter-spacing on small text:** Labels and captions use
   `+0.03125rem` tracking for airy readability at small sizes,
   contrasting with the tighter display tracking.
-- **Monospace as ambient:** Spline Sans Mono at relaxed line-height for code
+- **Monospace as ambient:** Geist Mono at relaxed line-height for code
   values feels unhurried.
 
 Do:
@@ -647,7 +647,7 @@ When generating UI in this repository, follow this checklist:
 1. Start from existing layout and component primitives (`shadcn/ui`,
    `studio-*`, `workspace-*` classes).
 2. Keep dark theme hierarchy and panel contrast intact.
-3. Use blue accent (`primary`) sparingly for primary/active/focus
+3. Use the lilac accent (`primary`) sparingly for primary/active/focus
    states.
 4. Use `primary-soft` for selected backgrounds and accent badges.
 5. Preserve dense-but-readable spacing rhythm (12px panel padding, 8px
@@ -673,7 +673,7 @@ When generating UI in this repository, follow this checklist:
   count badge at 10px muted."
 - "Build an icon grid card: square aspect ratio, rounded-xl (14px),
   multi-layer shadow on hover. Icon preview centered with 60%
-  padding. Name below at 10px truncated. Active state: blue ring
+  padding. Name below at 10px truncated. Active state: lilac ring
   `0 0 0 2px primary`."
 - "Create a navbar: h-10, border-b at `border/70`, background. Project
   name at 13px font-semibold, save badge as pill (9999px) with amber
@@ -684,7 +684,7 @@ When generating UI in this repository, follow this checklist:
 
 > Build this as a dark, professional authoring tool UI for Hiero Studio
 > using existing component primitives, whisper-level multi-layer
-> shadows, clear focus states, and restrained blue accents. Use weight
+> shadows, clear focus states, and restrained lilac purple accents. Use weight
 > 450 for body text and 550 for labels. Apply pill radius for badges
 > and primary buttons. Prioritize editability, accessibility, and
 > layout stability over decorative styling.

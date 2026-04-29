@@ -223,7 +223,20 @@ primitives only when composing new semantic tokens.
   <Swatch name="--greyscale-900" label="#0A0A0A" />
 </Grid>
 
-### Blue
+### Purple (brand accent — lilac)
+
+<Grid columns={4}>
+  <Swatch name="--purple-100" />
+  <Swatch name="--purple-200" />
+  <Swatch name="--purple-300" />
+  <Swatch name="--purple-400" />
+  <Swatch name="--purple-500" />
+  <Swatch name="--purple-600" />
+  <Swatch name="--purple-700" />
+  <Swatch name="--purple-800" />
+</Grid>
+
+### Blue (legacy)
 
 <Grid columns={4}>
   <Swatch name="--blue-100" />
@@ -278,13 +291,6 @@ primitives only when composing new semantic tokens.
   <Swatch name="--yellow-900" />
 </Grid>
 
-### Purple
-
-<Grid columns={4}>
-  <Swatch name="--purple-300" />
-  <Swatch name="--purple-400" />
-</Grid>
-
 ### Teal
 
 <Grid columns={4}>
@@ -331,8 +337,8 @@ whichever theme is currently active via the toolbar.
 | Text | `#090D10` | `#FFFFFF` |
 | Text secondary | `#3C464D` | `#CBD1D6` |
 | Text muted | `#7E8991` | `#7E8991` |
-| Accent | `#3186EE` | `#6DADFF` |
-| Accent soft | `rgba(49,134,238,0.08)` | `rgba(109,173,255,0.12)` |
+| Accent | `#7B3FB8` | `#9E64D4` |
+| Accent soft | `rgba(123,63,184,0.08)` | `rgba(158,100,212,0.14)` |
 | Border | `rgba(0,0,0,0.05)` | `rgba(255,255,255,0.20)` |
 | Border subtle | `rgba(0,0,0,0.06)` | `rgba(255,255,255,0.06)` |
 
@@ -342,4 +348,4 @@ whichever theme is currently active via the toolbar.
 - **Do** preserve panel/surface hierarchy through tone and border contrast before reaching for shadow.
 - **Don't** introduce new chroma families without an explicit product decision.
 - **Don't** raise accent saturation for ambient decoration.
-- **Don't** reach for foundational palette tokens (`--blue-400`, `--greyscale-700`) inside components — compose a semantic token instead.
+- **Don't** reach for foundational palette tokens (`--purple-400`, `--greyscale-700`) inside components — compose a semantic token instead.

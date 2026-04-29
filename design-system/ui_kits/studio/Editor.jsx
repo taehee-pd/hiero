@@ -86,8 +86,8 @@ function PropertiesPanel({ icon }) {
         <div className="field">
           <label>Fill</label>
           <div className="color-field">
-            <span className="color-swatch" style={{ background: '#3186EE' }} />
-            <span className="color-hex mono">#3186EE</span>
+            <span className="color-swatch" style={{ background: '#9E64D4' }} />
+            <span className="color-hex mono">#9E64D4</span>
           </div>
         </div>
         <div className="field">

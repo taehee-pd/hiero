@@ -8,10 +8,10 @@ afterEach(() => { cleanup(); });
 
 test('renders color swatch with correct background', () => {
   const { container } = render(
-    <ColorField value="#3186EE" onChange={() => {}} />,
+    <ColorField value="#9E64D4" onChange={() => {}} />,
   );
   const swatch = container.querySelector('button')!;
-  expect(swatch.style.backgroundColor).toBe('#3186EE');
+  expect(swatch.style.backgroundColor).toBe('#9E64D4');
 });
 
 test('renders hex input with uppercase value', () => {
@@ -25,7 +25,7 @@ test('renders hex input with uppercase value', () => {
 test('renders opacity input when onOpacityChange is provided', () => {
   const { container } = render(
     <ColorField
-      value="#3186EE"
+      value="#9E64D4"
       onChange={() => {}}
       opacity={0.8}
       onOpacityChange={() => {}}
@@ -37,7 +37,7 @@ test('renders opacity input when onOpacityChange is provided', () => {
 
 test('hides opacity input when onOpacityChange is absent', () => {
   const { container } = render(
-    <ColorField value="#3186EE" onChange={() => {}} />,
+    <ColorField value="#9E64D4" onChange={() => {}} />,
   );
   const inputs = container.querySelectorAll('input');
   expect(inputs.length).toBe(1); // hex only
@@ -45,7 +45,7 @@ test('hides opacity input when onOpacityChange is absent', () => {
 
 test('disabled state disables swatch and input', () => {
   const { container } = render(
-    <ColorField value="#3186EE" onChange={() => {}} disabled />,
+    <ColorField value="#9E64D4" onChange={() => {}} disabled />,
   );
   const inputs = container.querySelectorAll('input');
   for (const input of inputs) {

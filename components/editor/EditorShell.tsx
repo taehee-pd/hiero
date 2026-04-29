@@ -86,7 +86,7 @@ import { cn } from '@/lib/utils';
 type RightTab = 'inspect' | 'animation';
 type LeftTab = 'icon' | 'guides';
 type DeleteIntent = { type: 'variant'; id: string };
-type VariantEditorPatch = Partial<Pick<Variant, 'size' | 'renderingMode'>>;
+type VariantEditorPatch = Partial<Pick<Variant, 'name' | 'size' | 'viewBox' | 'renderingMode'>>;
 
 const TOOL_ITEMS = [
   { tool: 'select', label: 'Select', icon: MousePointer2, shortcut: 'V' },
@@ -211,6 +211,92 @@ function RowField({ label, children }: { label: React.ReactNode; children: React
       <span className="wire-field-name">{label}</span>
       {children}
     </label>
+  );
+}
+
+// Document-level size editor for the active variant.
+//
+// Typing the size doesn't auto-commit because resizing rescales the
+// variant's viewBox (and therefore the artboard) — too disruptive to fire
+// on every keystroke. Instead, the field tracks a local draft and surfaces
+// a Confirm button once the draft differs from the committed size. Only
+// then is the patch applied: { size, viewBox: scaled, name: synced }.
+//
+// `name` is updated alongside size when the variant's existing name is the
+// stringified previous size — that's the auto-generated label produced by
+// addVariant. Hand-named variants are left alone.
+function DocumentSizeField({
+  variant,
+  onPatchVariant,
+}: {
+  variant: Variant;
+  onPatchVariant: (patch: VariantEditorPatch) => void;
+}) {
+  const committedSize = variant.size;
+  const [draft, setDraft] = useState<string>(String(committedSize));
+
+  useEffect(() => {
+    setDraft(String(committedSize));
+  }, [committedSize, variant.id]);
+
+  const parsed = Number.parseFloat(draft);
+  const isValid = Number.isFinite(parsed) && parsed > 0 && parsed <= 512;
+  const isDirty = isValid && parsed !== committedSize;
+
+  const commit = () => {
+    if (!isDirty) return;
+    const patch: VariantEditorPatch = {
+      size: parsed,
+      viewBox: scaleViewBox(variant.viewBox, parsed),
+    };
+    if (variant.name === String(committedSize)) {
+      patch.name = String(parsed);
+    }
+    onPatchVariant(patch);
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="relative flex-1">
+        <Input
+          type="number"
+          min={1}
+          max={512}
+          step="1"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              commit();
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setDraft(String(committedSize));
+            }
+          }}
+          aria-valuemin={1}
+          aria-valuemax={512}
+          aria-valuenow={committedSize}
+          variant="pane"
+          className="w-full pr-6"
+        />
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+          px
+        </span>
+      </div>
+      {isDirty ? (
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          className="h-7 rounded-md px-2 text-[length:var(--text-label)]"
+          onClick={commit}
+          aria-label={`Confirm size ${parsed}px`}
+        >
+          Confirm
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -678,10 +764,8 @@ function LeftSidebar({
       </div>
 
       {leftTab === 'guides' ? (
-        <div className="min-h-0 flex-1">
-          <ScrollArea className="h-full">
-            <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
-          </ScrollArea>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
         </div>
       ) : (
         <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">
@@ -1187,7 +1271,7 @@ function CanvasDock({
                 value={zoomInput}
                 onChange={(event) => setZoomInput(event.target.value)}
                 onBlur={() => commitZoomInput({ closeMenu: false })}
-                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-spline-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                className="block h-7 w-full rounded-md border border-border bg-muted/50 px-2 font-[var(--font-instrument-sans)] text-[12px] leading-5 font-medium text-foreground outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 inputMode="decimal"
                 aria-label="Zoom percentage"
               />
@@ -1196,7 +1280,7 @@ function CanvasDock({
             <div className="flex flex-col py-1.5">
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom * 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom in</span>
@@ -1206,7 +1290,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(zoom / 1.25)}
               >
                 <span className="min-w-0 flex-1">Zoom out</span>
@@ -1216,7 +1300,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction('fit')}
               >
                 <span className="min-w-0 flex-1">Zoom to fit</span>
@@ -1226,14 +1310,14 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(0.5)}
               >
                 <span className="min-w-0 flex-1">Zoom to 50%</span>
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(1)}
               >
                 <span className="min-w-0 flex-1">Zoom to 100%</span>
@@ -1243,7 +1327,7 @@ function CanvasDock({
               </Button>
               <Button
                 variant="ghost"
-                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-spline-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-2 text-left font-[var(--font-instrument-sans)] text-[12px] leading-[18px] text-foreground hover:bg-accent/60"
                 onClick={() => handleZoomAction(2)}
               >
                 <span className="min-w-0 flex-1">Zoom to 200%</span>
@@ -1716,26 +1800,17 @@ function RightSidebar({
                   />
                 </RowField>
                 <RowField label="Size">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={512}
-                      step="1"
-                      value={currentVariant?.size ?? 0}
-                      onChange={(event) =>
-                        onPatchVariant({ size: Number.parseFloat(event.target.value) || 24 })
-                      }
-                      aria-valuemin={1}
-                      aria-valuemax={512}
-                      aria-valuenow={currentVariant?.size ?? 0}
-                      variant="pane"
-                      className="w-full pr-6"
+                  {currentVariant ? (
+                    <DocumentSizeField
+                      key={currentVariant.id}
+                      variant={currentVariant}
+                      onPatchVariant={onPatchVariant}
                     />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
-                      px
+                  ) : (
+                    <span className="text-[length:var(--text-label)] text-muted-foreground">
+                      —
                     </span>
-                  </div>
+                  )}
                 </RowField>
                 <RowField
                   label={

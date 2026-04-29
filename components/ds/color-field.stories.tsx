@@ -14,7 +14,7 @@ export default meta;
 type Story = StoryObj<typeof ColorField>;
 
 function ControlledColorField() {
-  const [color, setColor] = useState('#3186EE');
+  const [color, setColor] = useState('#9E64D4');
   return <ColorField value={color} onChange={setColor} />;
 }
 
@@ -50,7 +50,7 @@ export const Disabled: Story = {
 export const MultipleFields: Story = {
   render: () => {
     function Demo() {
-      const [fill, setFill] = useState('#3186EE');
+      const [fill, setFill] = useState('#9E64D4');
       const [stroke, setStroke] = useState('#0A0A0A');
       return (
         <div className="flex flex-col gap-3 max-w-xs">

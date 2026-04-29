@@ -115,15 +115,9 @@ export function useSyncPr(): UseSyncPrReturn {
       setState((s) => transitionToCreatingPr(s));
 
       try {
-        const syncApiToken = process.env.NEXT_PUBLIC_SYNC_API_AUTH_TOKEN;
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (syncApiToken) {
-          headers.Authorization = `Bearer ${syncApiToken}`;
-        }
-
         const response = await fetch('/api/github-sync/pr', {
           method: 'POST',
-          headers,
+          headers: { 'Content-Type': 'application/json' },
           signal: abort.signal,
           body: JSON.stringify({
             owner: settings.owner,

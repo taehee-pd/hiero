@@ -10,7 +10,6 @@
  */
 
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
 import type { Project, SyncTarget } from '@/lib/schema/types';
 import { compileProject } from '@/lib/export/compile-pipeline';
 import { buildPackageJson } from '@/lib/sync-service/connectors/npm-connector';
@@ -35,7 +34,10 @@ type NpmPublishBody = {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
-  // 0. Feature-flag + caller authentication (defense-in-depth alongside Vercel auth gate)
+  // 0. Feature-flag — kill switch alongside the Vercel auth gate on hiero-internal.
+  // Caller authentication is provided by the Vercel auth wall, not by a shared
+  // secret: a NEXT_PUBLIC_* secret would be readable in the client bundle and
+  // therefore replayable by anyone with app access.
   if (process.env.NPM_PUBLISH_PROXY_ENABLED !== 'true') {
     return NextResponse.json(
       {
@@ -44,30 +46,6 @@ export async function POST(request: Request) {
         statusCode: 503,
       },
       { status: 503 },
-    );
-  }
-
-  const proxySecret = process.env.NPM_PUBLISH_PROXY_SECRET;
-  if (!proxySecret) {
-    return NextResponse.json(
-      {
-        error: 'NPM_AUTH_FAILURE',
-        message: 'NPM_PUBLISH_PROXY_SECRET is not configured on the server.',
-        statusCode: 503,
-      },
-      { status: 503 },
-    );
-  }
-
-  const providedSecret = request.headers.get('x-hiero-publish-secret') ?? '';
-  if (!safeEqual(providedSecret, proxySecret)) {
-    return NextResponse.json(
-      {
-        error: 'NPM_AUTH_FAILURE',
-        message: 'Unauthorized publish request.',
-        statusCode: 401,
-      },
-      { status: 401 },
     );
   }
 
@@ -173,15 +151,8 @@ export async function POST(request: Request) {
 }
 
 // ---------------------------------------------------------------------------
-// Auth / allowlist helpers
+// Registry allowlist
 // ---------------------------------------------------------------------------
-
-function safeEqual(left: string, right: string): boolean {
-  const leftBuf = Buffer.from(left);
-  const rightBuf = Buffer.from(right);
-  if (leftBuf.length !== rightBuf.length) return false;
-  return timingSafeEqual(leftBuf, rightBuf);
-}
 
 function normalizeRegistry(registry: string): string | null {
   try {

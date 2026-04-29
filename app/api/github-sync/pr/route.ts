@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
 import { syncPr } from '@/lib/sync-service/sync-pr';
 import { validateSyncPrRequest } from '@/lib/sync-service/contracts';
 import { GitHubProvider } from '@/lib/sync-service/github-provider';
@@ -16,35 +15,6 @@ import { validateTokenFormat, preflightPermissionCheck } from '@/lib/sync-servic
  */
 export async function POST(request: Request) {
   const flags = readSyncFlags();
-  const syncApiToken = process.env.SYNC_API_AUTH_TOKEN;
-
-  // --- Auth: caller token (defense-in-depth alongside Vercel auth gate) ---
-  if (!syncApiToken) {
-    return NextResponse.json(
-      {
-        error: 'AUTH_FAILURE',
-        message: 'SYNC_API_AUTH_TOKEN is not configured on the server.',
-        statusCode: 503,
-      },
-      { status: 503 },
-    );
-  }
-
-  const authHeader = request.headers.get('authorization');
-  const providedToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice('Bearer '.length).trim()
-    : (request.headers.get('x-sync-api-token')?.trim() ?? '');
-
-  if (!timingSafeTokenEquals(providedToken, syncApiToken)) {
-    return NextResponse.json(
-      {
-        error: 'AUTH_FAILURE',
-        message: 'Missing or invalid sync API token.',
-        statusCode: 401,
-      },
-      { status: 401 },
-    );
-  }
 
   // --- Auth: server-side token ---
   const token = process.env.GITHUB_SYNC_TOKEN;
@@ -158,12 +128,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
-
-function timingSafeTokenEquals(left: string, right: string): boolean {
-  if (!left || !right) return false;
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return timingSafeEqual(leftBuffer, rightBuffer);
 }

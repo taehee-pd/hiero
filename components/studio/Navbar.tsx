@@ -513,11 +513,11 @@ export function Navbar() {
                   role="img"
                   aria-label="Hiero logo"
                   style={{
-                    maskImage: 'url(/hiero.svg?v=4)',
+                    maskImage: 'url(/hiero.svg?v=5)',
                     maskSize: 'contain',
                     maskRepeat: 'no-repeat',
                     maskPosition: 'center',
-                    WebkitMaskImage: 'url(/hiero.svg?v=4)',
+                    WebkitMaskImage: 'url(/hiero.svg?v=5)',
                     WebkitMaskSize: 'contain',
                     WebkitMaskRepeat: 'no-repeat',
                     WebkitMaskPosition: 'center',

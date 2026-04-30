@@ -3,8 +3,8 @@
   path { stroke: #191F1B; }
   @media (prefers-color-scheme: dark) { path { stroke: #F5F5F4; } }
 </style>
-<path d="M3 5L5 4.5V7L8 3L5.5 10L10 4L7 12L11 7L9.5 13L12.5 8L11.5 13.5L14 9.5L13 14L15.5 11V16L18 15L20.5 20.5" stroke="#191F1B" stroke-width="1.5" stroke-linejoin="bevel"/>
-<path d="M4 21H9M8 18L7 21" stroke="#191F1B" stroke-width="1.5"/>
-<path d="M12 18V21M10 21H16" stroke="#191F1B" stroke-width="1.5"/>
-<path d="M7 15L10 17L12 16L15 18" stroke="#191F1B" stroke-width="1.5"/>
+<path d="M3 5L5 4.5V7L8 3L5.5 10L10 4L7 12L11 7L9.5 13L12.5 8L11.5 13.5L14 9.5L13 14L15.5 11V16L18 15L20.5 20.5" stroke="#191F1B" stroke-width="1" stroke-linejoin="bevel"/>
+<path d="M4 21H9M8 18L7 21" stroke="#191F1B" stroke-width="1"/>
+<path d="M12 18V21M10 21H16" stroke="#191F1B" stroke-width="1"/>
+<path d="M7 15L10 17L12 16L15 18" stroke="#191F1B" stroke-width="1"/>
 </svg>

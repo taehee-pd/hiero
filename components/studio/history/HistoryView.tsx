@@ -158,9 +158,18 @@ export function HistoryView() {
         if (resolution === 'checkpoint') {
           // Snapshot the current dirty work as an explicit checkpoint
           // BEFORE we overwrite the editor with the historical workspace.
-          await saveDraftCheckpoint(
+          // Bail if the checkpoint write fails (storage quota, etc.) —
+          // continuing here would silently destroy the dirty work the
+          // user explicitly asked us to preserve.
+          const checkpoint = await saveDraftCheckpoint(
             `Auto-saved before restore from v${selectedFull.version}`,
           );
+          if (!checkpoint) {
+            setRestoreError(
+              'Could not save your current work as a checkpoint. Restore aborted to avoid losing changes.',
+            );
+            return;
+          }
         }
         await restoreSnapshotIntoDraft(selectedFull.id, {
           persistence: adapter,

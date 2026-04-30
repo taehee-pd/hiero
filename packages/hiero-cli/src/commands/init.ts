@@ -109,6 +109,13 @@ function emptyManifest(): string {
 export type InitIO = {
   log: (message: string) => void;
   prompt: (question: string, defaultValue?: string) => Promise<string>;
+  /**
+   * Release any underlying handles. The default TTY-backed io creates a
+   * lazy `readline` interface on the first `prompt` call which keeps
+   * stdin attached; without an explicit close the process never exits
+   * after `runInit` returns. Test ios with no handles can no-op.
+   */
+  dispose?: () => void;
 };
 
 function defaultIO(): InitIO {
@@ -122,6 +129,10 @@ function defaultIO(): InitIO {
       const suffix = defaultValue ? ` (${defaultValue})` : '';
       const answer = await rl.question(`${question}${suffix} `);
       return answer.trim() || defaultValue || '';
+    },
+    dispose: () => {
+      rl?.close();
+      rl = null;
     },
   };
 }
@@ -214,6 +225,22 @@ export async function runInit(
   cwd: string,
   flags: Record<string, string | boolean>,
   io: InitIO = defaultIO(),
+): Promise<void> {
+  try {
+    return await runInitInner(cwd, flags, io);
+  } finally {
+    // Release the readline handle (if any). Without this the lazy
+    // `readline` interface in defaultIO keeps stdin attached and the
+    // CLI process hangs after prompts complete. Test ios without
+    // handles supply a no-op or omit `dispose` entirely.
+    io.dispose?.();
+  }
+}
+
+async function runInitInner(
+  cwd: string,
+  flags: Record<string, string | boolean>,
+  io: InitIO,
 ): Promise<void> {
   if (flags['check']) {
     const checks = await runHealthChecks(cwd);

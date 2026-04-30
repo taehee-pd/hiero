@@ -199,6 +199,56 @@ describe('runInit --check', () => {
   });
 });
 
+describe('runInit dispose', () => {
+  it('calls io.dispose() on success so the readline handle is released', async () => {
+    const cwd = await tempDir();
+    try {
+      let disposeCalls = 0;
+      const io: InitIO & { logs: string[] } = {
+        logs: [],
+        log: () => {},
+        prompt: async (_q, def) => def ?? '',
+        dispose: () => {
+          disposeCalls += 1;
+        },
+      };
+      await runInit(cwd, { yes: true }, io);
+      expect(disposeCalls).toBe(1);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('calls io.dispose() even when runInit throws', async () => {
+    let disposeCalls = 0;
+    const io: InitIO = {
+      log: () => {},
+      prompt: async () => {
+        throw new Error('boom');
+      },
+      dispose: () => {
+        disposeCalls += 1;
+      },
+    };
+    const prevTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', {
+      configurable: true,
+      get: () => true,
+    });
+    const cwd = await tempDir();
+    try {
+      await expect(runInit(cwd, {}, io)).rejects.toThrow('boom');
+      expect(disposeCalls).toBe(1);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', {
+        configurable: true,
+        get: () => prevTTY,
+      });
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('runHealthChecks', () => {
   it('flags .env.local NOT in .gitignore as fail', async () => {
     const cwd = await tempDir();

@@ -62,7 +62,7 @@ describe('diffWorkspaces', () => {
       },
     });
     const diff = diffWorkspaces(before, after);
-    expect(diff.added).toEqual(['icon-b']);
+    expect(diff.added).toEqual(['default/icon-b']);
     expect(diff.removed).toEqual([]);
     expect(diff.modified).toEqual([]);
     expect(diff.isIdentical).toBe(false);
@@ -77,7 +77,7 @@ describe('diffWorkspaces', () => {
     });
     const after = makeWorkspace({ default: { 'icon-a': { id: 'icon-a', name: 'A' } } });
     const diff = diffWorkspaces(before, after);
-    expect(diff.removed).toEqual(['icon-b']);
+    expect(diff.removed).toEqual(['default/icon-b']);
     expect(diff.added).toEqual([]);
     expect(diff.modified).toEqual([]);
   });
@@ -90,14 +90,16 @@ describe('diffWorkspaces', () => {
       default: { 'icon-a': { id: 'icon-a', name: 'A renamed' } },
     });
     const diff = diffWorkspaces(before, after);
-    expect(diff.modified).toEqual(['icon-a']);
+    expect(diff.modified).toEqual(['default/icon-a']);
     expect(diff.added).toEqual([]);
     expect(diff.removed).toEqual([]);
   });
 
   it('namespaces by setId so same icon id across sets does not collide', () => {
     // 'icon-a' exists in both 'set1' and 'set2'. Removing it from set1
-    // should report a removal even though set2 still has its own.
+    // should report a removal scoped to that set; the entry in set2 is
+    // unaffected. Per the type, output keys are `${setId}/${iconId}`
+    // so the consumer can tell the two apart.
     const before = makeWorkspace({
       set1: { 'icon-a': { id: 'icon-a', name: 'A1' } },
       set2: { 'icon-a': { id: 'icon-a', name: 'A2' } },
@@ -106,8 +108,24 @@ describe('diffWorkspaces', () => {
       set2: { 'icon-a': { id: 'icon-a', name: 'A2' } },
     });
     const diff = diffWorkspaces(before, after);
-    expect(diff.removed).toEqual(['icon-a']);
+    expect(diff.removed).toEqual(['set1/icon-a']);
     expect(diff.added).toEqual([]);
+    // set2/icon-a still exists in `after`, so it is not in any list.
+    expect(diff.modified).toEqual([]);
+  });
+
+  it('reports per-set keys when the same icon id moves between sets', () => {
+    // Removing from set1 and adding identical content to set2 must
+    // produce two distinct entries — not collapse into "no change".
+    const before = makeWorkspace({
+      set1: { 'icon-a': { id: 'icon-a', name: 'A' } },
+    });
+    const after = makeWorkspace({
+      set2: { 'icon-a': { id: 'icon-a', name: 'A' } },
+    });
+    const diff = diffWorkspaces(before, after);
+    expect(diff.removed).toEqual(['set1/icon-a']);
+    expect(diff.added).toEqual(['set2/icon-a']);
   });
 
   it('sorts each list alphabetically', () => {
@@ -120,7 +138,11 @@ describe('diffWorkspaces', () => {
       },
     });
     const diff = diffWorkspaces(before, after);
-    expect(diff.added).toEqual(['icon-a', 'icon-b', 'icon-c']);
+    expect(diff.added).toEqual([
+      'default/icon-a',
+      'default/icon-b',
+      'default/icon-c',
+    ]);
   });
 
   it('totalAfter reflects the after workspace icon count', () => {

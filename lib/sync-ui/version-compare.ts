@@ -16,6 +16,14 @@
 
 import type { Workspace } from '@/lib/schema/types';
 
+/**
+ * Each entry in `added` / `removed` / `modified` is a globally unique
+ * `${setId}/${iconId}` key. Same icon id across two different sets is
+ * NOT collapsed — both retain their set-namespaced identity in the
+ * output so Version History can render the change accurately. Callers
+ * that need to display only the icon name should split on the first
+ * `/` (the setId can never contain a `/` because it's an iconSets key).
+ */
 export type WorkspaceDiff = {
   added: string[];
   removed: string[];
@@ -65,13 +73,13 @@ export function diffWorkspaces(
   for (const [key, ref] of afterMap) {
     const prior = beforeMap.get(key);
     if (!prior) {
-      added.push(ref.iconId);
+      added.push(ref.key);
     } else if (prior.payload !== ref.payload) {
-      modified.push(ref.iconId);
+      modified.push(ref.key);
     }
   }
   for (const [key, ref] of beforeMap) {
-    if (!afterMap.has(key)) removed.push(ref.iconId);
+    if (!afterMap.has(key)) removed.push(ref.key);
   }
 
   added.sort();

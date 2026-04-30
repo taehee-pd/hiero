@@ -92,3 +92,28 @@ export function toSnapshotMeta(
   const { workspaceSnapshot: _drop, ...meta } = snapshot;
   return meta;
 }
+
+/**
+ * Audit record for a Restore-to-Draft action. Append-only — there is no
+ * deleteRestoreEvent method in the persistence interface, so the audit
+ * trail can't be silently rewritten by Restore. 1:N relationship to
+ * VersionSnapshot (one snapshot can be restored many times).
+ */
+export type RestoreEvent = {
+  id: string;
+  /** Snapshot that was restored. */
+  snapshotId: string;
+  /** Snapshot version at the time of restore (denormalized for read speed). */
+  snapshotVersion: string;
+  /** ISO timestamp of when Restore was clicked. */
+  restoredAt: string;
+  /** Display name of the user who triggered the restore. */
+  restoredBy: string;
+  /**
+   * Project ID the restore wrote into. Stored so the audit row remains
+   * attributable even if the project is later renamed or deleted.
+   */
+  projectId: string | null;
+  /** Whether the user kept their pre-restore work as a checkpoint. */
+  preservedDirtyWorkAs: 'checkpoint' | 'discarded' | 'no-dirty-work';
+};

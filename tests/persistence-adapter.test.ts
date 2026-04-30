@@ -13,6 +13,7 @@ import type {
   SavedProject,
 } from '@/lib/persistence/adapter';
 import type {
+  RestoreEvent,
   VersionSnapshot,
   VersionSnapshotMeta,
 } from '@/lib/sync-service/version-snapshot';
@@ -133,6 +134,21 @@ class InMemoryAdapter implements PersistenceAdapter {
 
   async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
     return this.snapshots.get(id) ?? null;
+  }
+
+  private restoreEvents: RestoreEvent[] = [];
+
+  async appendRestoreEvent(event: RestoreEvent): Promise<void> {
+    if (this.restoreEvents.some((e) => e.id === event.id)) {
+      throw new Error(`duplicate restore event id: ${event.id}`);
+    }
+    this.restoreEvents.push(event);
+  }
+
+  async listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]> {
+    return this.restoreEvents
+      .filter((e) => e.snapshotId === snapshotId)
+      .sort((a, b) => (a.restoredAt < b.restoredAt ? 1 : -1));
   }
 }
 

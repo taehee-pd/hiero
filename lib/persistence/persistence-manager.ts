@@ -22,6 +22,11 @@ import type {
   ProjectMeta,
   SavedProject,
 } from './adapter';
+import type {
+  RestoreEvent,
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 
 const AUTO_SAVE_DEBOUNCE_MS = 500;
 
@@ -183,6 +188,30 @@ export class PersistenceManager {
   /** Delete a checkpoint by id. */
   async deleteCheckpoint(id: string): Promise<void> {
     await this.adapter.deleteCheckpoint(id);
+  }
+
+  // ---------------------------------------------------------------------
+  // Version history (Phase 3)
+  // ---------------------------------------------------------------------
+
+  /** List published version snapshots, newest first. */
+  async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+    return this.adapter.listVersionSnapshots();
+  }
+
+  /** Load a full version snapshot with its embedded workspace. */
+  async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+    return this.adapter.loadVersionSnapshot(id);
+  }
+
+  /** List restore-event audit rows for a snapshot, newest first. */
+  async listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]> {
+    return this.adapter.listRestoreEvents(snapshotId);
+  }
+
+  /** Direct accessor for callers that need to compose adapter operations. */
+  get persistence(): PersistenceAdapter {
+    return this.adapter;
   }
 
   dispose(): void {

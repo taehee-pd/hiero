@@ -18,6 +18,7 @@
 
 import type { Workspace } from '@/lib/schema/types';
 import type {
+  RestoreEvent,
   VersionSnapshot,
   VersionSnapshotMeta,
 } from '@/lib/sync-service/version-snapshot';
@@ -104,4 +105,14 @@ export interface PersistenceAdapter {
 
   /** Load a full snapshot (with workspace payload) by id. */
   loadVersionSnapshot(id: string): Promise<VersionSnapshot | null>;
+
+  /**
+   * Append a restore-event audit record. Append-only — the interface
+   * intentionally exposes no deleteRestoreEvent so the audit trail
+   * can't be silently rewritten.
+   */
+  appendRestoreEvent(event: RestoreEvent): Promise<void>;
+
+  /** List restore events for a snapshot, newest first. */
+  listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]>;
 }

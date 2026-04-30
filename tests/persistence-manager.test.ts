@@ -12,6 +12,7 @@ import type {
   SavedProject,
 } from '@/lib/persistence/adapter';
 import type {
+  RestoreEvent,
   VersionSnapshot,
   VersionSnapshotMeta,
 } from '@/lib/sync-service/version-snapshot';
@@ -28,16 +29,19 @@ function createMockAdapter() {
     { projectId: string; data: Workspace; createdAt: number; memo: string | null }
   >();
   const snapshots = new Map<string, VersionSnapshot>();
+  const restoreEvents: RestoreEvent[] = [];
   let checkpointSeq = 0;
 
   const adapter: PersistenceAdapter & {
     _store: typeof store;
     _checkpoints: typeof checkpoints;
     _snapshots: typeof snapshots;
+    _restoreEvents: typeof restoreEvents;
   } = {
     _store: store,
     _checkpoints: checkpoints,
     _snapshots: snapshots,
+    _restoreEvents: restoreEvents,
     async list(): Promise<ProjectMeta[]> {
       return Array.from(store.entries()).map(([id, r]) => ({
         id,
@@ -113,6 +117,14 @@ function createMockAdapter() {
     },
     async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
       return snapshots.get(id) ?? null;
+    },
+    async appendRestoreEvent(event) {
+      restoreEvents.push(event);
+    },
+    async listRestoreEvents(snapshotId) {
+      return restoreEvents
+        .filter((e) => e.snapshotId === snapshotId)
+        .sort((a, b) => (a.restoredAt < b.restoredAt ? 1 : -1));
     },
   };
 
@@ -293,6 +305,10 @@ describe('PersistenceManager', () => {
       async loadVersionSnapshot() {
         return null;
       },
+      async appendRestoreEvent() {},
+      async listRestoreEvents() {
+        return [];
+      },
     };
 
     const errorManager = new PersistenceManager(failingAdapter, {
@@ -463,6 +479,10 @@ describe('PersistenceManager', () => {
         },
         async loadVersionSnapshot() {
           return null;
+        },
+        async appendRestoreEvent() {},
+        async listRestoreEvents() {
+          return [];
         },
       };
       const errorMgr = new PersistenceManager(failingAdapter, {

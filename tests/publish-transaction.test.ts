@@ -77,6 +77,10 @@ function makeStubPersistence(): PersistenceAdapter & {
     async loadVersionSnapshot(id: string) {
       return snapshots.get(id) ?? null;
     },
+    async appendRestoreEvent() {},
+    async listRestoreEvents() {
+      return [];
+    },
   };
 }
 

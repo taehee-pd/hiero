@@ -23,6 +23,7 @@ export type RoutePath =
   | '/'
   | '/editor'
   | '/editor/[iconId]'
+  | '/history'
   | '/runtime-demo'
   | '/demo/runtime';
 
@@ -35,6 +36,7 @@ export const PAGE_REGISTRY = {
   '/': { kind: 'shell', shell: 'StudioLayout' },
   '/editor': { kind: 'redirect', to: '/' },
   '/editor/[iconId]': { kind: 'redirect', to: '/' },
+  '/history': { kind: 'standalone' },
   '/runtime-demo': { kind: 'standalone' },
   '/demo/runtime': { kind: 'standalone' },
 } as const satisfies Record<RoutePath, PageDefinition>;

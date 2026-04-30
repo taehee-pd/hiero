@@ -20,6 +20,7 @@
 
 import type { Workspace } from '@/lib/schema/types';
 import type {
+  RestoreEvent,
   VersionSnapshot,
   VersionSnapshotMeta,
 } from '@/lib/sync-service/version-snapshot';
@@ -32,12 +33,14 @@ import type {
 } from './adapter';
 
 const DB_NAME = 'hiero_projects';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 export const PROJECTS_STORE = 'projects';
 export const CHECKPOINTS_STORE = 'hiero_draft_checkpoints';
 export const CHECKPOINTS_INDEX_PROJECT_CREATED = 'projectId_createdAt';
 export const VERSION_SNAPSHOTS_STORE = 'hiero_version_snapshots';
 export const VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT = 'publishedAt';
+export const RESTORE_EVENTS_STORE = 'hiero_restore_events';
+export const RESTORE_EVENTS_INDEX_SNAPSHOT_RESTORED = 'snapshotId_restoredAt';
 
 type StoredProjectRecord = {
   id: string;
@@ -96,6 +99,17 @@ export function applyUpgrade(db: IDBDatabase, oldVersion: number): void {
           keyPath: 'id',
         });
         store.createIndex(VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT, 'publishedAt');
+      }
+    }
+    case 3: {
+      if (!db.objectStoreNames.contains(RESTORE_EVENTS_STORE)) {
+        const store = db.createObjectStore(RESTORE_EVENTS_STORE, {
+          keyPath: 'id',
+        });
+        store.createIndex(RESTORE_EVENTS_INDEX_SNAPSHOT_RESTORED, [
+          'snapshotId',
+          'restoredAt',
+        ]);
       }
     }
     /* eslint-enable no-fallthrough */
@@ -335,6 +349,35 @@ export class IndexedDBAdapter implements PersistenceAdapter {
         store.get(id),
       );
       return record ?? null;
+    } finally {
+      db.close();
+    }
+  }
+
+  async appendRestoreEvent(event: RestoreEvent): Promise<void> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, RESTORE_EVENTS_STORE, 'readwrite');
+      // `add` (not `put`) so duplicate ids throw — append-only contract.
+      await requestToPromise(store.add(event));
+    } finally {
+      db.close();
+    }
+  }
+
+  async listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, RESTORE_EVENTS_STORE, 'readonly');
+      const index = store.index(RESTORE_EVENTS_INDEX_SNAPSHOT_RESTORED);
+      const range = IDBKeyRange.bound(
+        [snapshotId, ''],
+        [snapshotId, '￿'],
+      );
+      const records = await requestToPromise<RestoreEvent[]>(
+        index.getAll(range),
+      );
+      return records.sort((a, b) => (a.restoredAt < b.restoredAt ? 1 : -1));
     } finally {
       db.close();
     }

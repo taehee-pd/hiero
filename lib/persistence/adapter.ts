@@ -1,18 +1,19 @@
 /**
  * Persistence adapter — unified interface for project storage.
  *
- * ```
- * ┌────────────────────┐
- * │    EditorStore      │
- * │    (Zustand)        │
- * │                     │
- * │  save() ────────────┼──► PersistenceAdapter.save()
- * │  load() ◄───────────┼──── PersistenceAdapter.load()
- * └────────────────────┘
- *          │
- *          └── IndexedDBAdapter (web)
- *                └── idb: hiero_projects table
- * ```
+ * Two durability tiers live behind this interface:
+ *
+ *   ┌────────────────────┐
+ *   │    EditorStore     │
+ *   │                    │
+ *   │  autosave ────────►│  PersistenceAdapter.save()       (debounced, IDB)
+ *   │  Cmd+S    ────────►│  PersistenceAdapter.createCheckpoint() (durable)
+ *   │  load()   ◄────────│  PersistenceAdapter.load() / loadCheckpoint()
+ *   └────────────────────┘
+ *
+ * Autosave is background safety. Draft checkpoints are intentful
+ * snapshots: timestamped, optionally memoed, restorable later. They live in
+ * a sibling IDB store and never overwrite each other.
  */
 
 import type { Workspace } from '@/lib/schema/types';
@@ -31,6 +32,26 @@ export type SavedProject = {
   updatedAt: number;
 };
 
+/**
+ * Metadata-only view of a draft checkpoint, used by list UIs that don't
+ * need the full workspace payload.
+ */
+export type DraftCheckpointMeta = {
+  id: string;
+  projectId: string;
+  createdAt: number;
+  memo: string | null;
+  iconCount: number;
+};
+
+/**
+ * Full draft checkpoint record. Includes the snapshot of the workspace
+ * at checkpoint time so it can be restored verbatim.
+ */
+export type DraftCheckpoint = DraftCheckpointMeta & {
+  data: Workspace;
+};
+
 export interface PersistenceAdapter {
   /** List all stored projects (metadata only). */
   list(): Promise<ProjectMeta[]>;
@@ -46,4 +67,25 @@ export interface PersistenceAdapter {
 
   /** Rename a project. No-op if not found. */
   rename(id: string, newName: string): Promise<void>;
+
+  /**
+   * Create a durable draft checkpoint. Distinct from autosave: never
+   * overwrites prior checkpoints, always allocates a new id.
+   */
+  createCheckpoint(
+    projectId: string,
+    data: Workspace,
+    memo: string | null,
+  ): Promise<DraftCheckpointMeta>;
+
+  /**
+   * List checkpoints for a project, newest first.
+   */
+  listCheckpoints(projectId: string): Promise<DraftCheckpointMeta[]>;
+
+  /** Load a full checkpoint by id. Returns null if not found. */
+  loadCheckpoint(id: string): Promise<DraftCheckpoint | null>;
+
+  /** Delete a checkpoint by id. No-op if not found. */
+  deleteCheckpoint(id: string): Promise<void>;
 }

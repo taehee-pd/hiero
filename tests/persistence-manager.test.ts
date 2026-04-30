@@ -4,7 +4,13 @@
 
 import { describe, it, expect, beforeEach, mock } from 'bun:test';
 import { PersistenceManager } from '@/lib/persistence/persistence-manager';
-import type { PersistenceAdapter, ProjectMeta, SavedProject } from '@/lib/persistence/adapter';
+import type {
+  DraftCheckpoint,
+  DraftCheckpointMeta,
+  PersistenceAdapter,
+  ProjectMeta,
+  SavedProject,
+} from '@/lib/persistence/adapter';
 import type { Workspace } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
@@ -13,9 +19,18 @@ import type { Workspace } from '@/lib/schema/types';
 
 function createMockAdapter() {
   const store = new Map<string, { data: Workspace; updatedAt: number }>();
+  const checkpoints = new Map<
+    string,
+    { projectId: string; data: Workspace; createdAt: number; memo: string | null }
+  >();
+  let checkpointSeq = 0;
 
-  const adapter: PersistenceAdapter & { _store: typeof store } = {
+  const adapter: PersistenceAdapter & {
+    _store: typeof store;
+    _checkpoints: typeof checkpoints;
+  } = {
     _store: store,
+    _checkpoints: checkpoints,
     async list(): Promise<ProjectMeta[]> {
       return Array.from(store.entries()).map(([id, r]) => ({
         id,
@@ -40,6 +55,46 @@ function createMockAdapter() {
       if (!r) return;
       r.data = { ...r.data, meta: { ...r.data.meta, name: newName } };
       r.updatedAt = Date.now();
+    },
+    async createCheckpoint(
+      projectId: string,
+      data: Workspace,
+      memo: string | null,
+    ): Promise<DraftCheckpointMeta> {
+      // Synthetic monotonic id+timestamp so list ordering is deterministic
+      // even when the test runs faster than 1ms per checkpoint.
+      checkpointSeq += 1;
+      const id = `ckpt_${checkpointSeq}`;
+      const createdAt = Date.now() + checkpointSeq;
+      checkpoints.set(id, { projectId, data, createdAt, memo });
+      return { id, projectId, createdAt, memo, iconCount: 0 };
+    },
+    async listCheckpoints(projectId: string): Promise<DraftCheckpointMeta[]> {
+      return Array.from(checkpoints.entries())
+        .filter(([, r]) => r.projectId === projectId)
+        .map(([id, r]) => ({
+          id,
+          projectId: r.projectId,
+          createdAt: r.createdAt,
+          memo: r.memo,
+          iconCount: 0,
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    },
+    async loadCheckpoint(id: string): Promise<DraftCheckpoint | null> {
+      const r = checkpoints.get(id);
+      if (!r) return null;
+      return {
+        id,
+        projectId: r.projectId,
+        createdAt: r.createdAt,
+        memo: r.memo,
+        iconCount: 0,
+        data: r.data,
+      };
+    },
+    async deleteCheckpoint(id: string): Promise<void> {
+      checkpoints.delete(id);
     },
   };
 
@@ -203,6 +258,16 @@ describe('PersistenceManager', () => {
       },
       async delete() {},
       async rename() {},
+      async createCheckpoint() {
+        throw new Error('not used');
+      },
+      async listCheckpoints() {
+        return [];
+      },
+      async loadCheckpoint() {
+        return null;
+      },
+      async deleteCheckpoint() {},
     };
 
     const errorManager = new PersistenceManager(failingAdapter, {
@@ -226,5 +291,157 @@ describe('PersistenceManager', () => {
     await new Promise((r) => setTimeout(r, 700));
 
     expect(onSaved).toHaveBeenCalledTimes(0);
+  });
+
+  // ---------------------------------------------------------------------
+  // Draft checkpoints (Phase 1: Save vs Autosave)
+  // ---------------------------------------------------------------------
+
+  describe('draft checkpoints', () => {
+    let onCheckpointSaved: ReturnType<typeof mock>;
+    let cpManager: PersistenceManager;
+
+    beforeEach(() => {
+      onCheckpointSaved = mock(() => {});
+      cpManager = new PersistenceManager(adapter, {
+        onSaved: onSaved as () => void,
+        onError: onError as (e: unknown) => void,
+        onCheckpointSaved: onCheckpointSaved as (meta: DraftCheckpointMeta) => void,
+      });
+    });
+
+    it('createCheckpoint persists a snapshot and fires onCheckpointSaved', async () => {
+      cpManager.setProjectId('cp-1');
+      const meta = await cpManager.createCheckpoint(makeWorkspace('Snap'), 'memo-text');
+
+      expect(meta.id).toMatch(/^ckpt_/);
+      expect(meta.memo).toBe('memo-text');
+      expect(onCheckpointSaved).toHaveBeenCalledTimes(1);
+      expect(adapter._checkpoints.size).toBe(1);
+    });
+
+    it('createCheckpoint auto-generates project ID when unset', async () => {
+      const meta = await cpManager.createCheckpoint(makeWorkspace('Snap'));
+      expect(cpManager.projectId).toMatch(/^project_/);
+      expect(meta.projectId).toBe(cpManager.projectId!);
+    });
+
+    it('createCheckpoint normalizes empty/whitespace memos to null', async () => {
+      cpManager.setProjectId('cp-2');
+      const a = await cpManager.createCheckpoint(makeWorkspace('A'), '');
+      const b = await cpManager.createCheckpoint(makeWorkspace('B'), '   ');
+      const c = await cpManager.createCheckpoint(makeWorkspace('C'), '  trimmed  ');
+
+      expect(a.memo).toBeNull();
+      expect(b.memo).toBeNull();
+      expect(c.memo).toBe('trimmed');
+    });
+
+    it('createCheckpoint never overwrites prior checkpoints', async () => {
+      cpManager.setProjectId('cp-3');
+      await cpManager.createCheckpoint(makeWorkspace('First'));
+      await cpManager.createCheckpoint(makeWorkspace('Second'));
+      await cpManager.createCheckpoint(makeWorkspace('Third'));
+
+      const list = await cpManager.listCheckpoints();
+      expect(list).toHaveLength(3);
+    });
+
+    it('createCheckpoint flushes a pending autosave first to avoid races', async () => {
+      cpManager.setProjectId('cp-race');
+      cpManager.scheduleSave(makeWorkspace('Pending autosave'));
+      // Don't wait for the debounce — checkpoint should flush it synchronously.
+      await cpManager.createCheckpoint(makeWorkspace('Checkpoint snapshot'));
+
+      // Autosave must have completed (V flushed before checkpoint write).
+      expect(onSaved).toHaveBeenCalledTimes(1);
+      expect(adapter._store.get('cp-race')!.data.meta.name).toBe('Pending autosave');
+      // Checkpoint contains its own payload, distinct from the autosave row.
+      const list = await cpManager.listCheckpoints();
+      expect(list).toHaveLength(1);
+      const loaded = await cpManager.loadCheckpoint(list[0].id);
+      expect(loaded!.data.meta.name).toBe('Checkpoint snapshot');
+    });
+
+    it('listCheckpoints returns newest-first', async () => {
+      cpManager.setProjectId('cp-4');
+      const first = await cpManager.createCheckpoint(makeWorkspace('First'));
+      const second = await cpManager.createCheckpoint(makeWorkspace('Second'));
+
+      const list = await cpManager.listCheckpoints();
+      expect(list[0].id).toBe(second.id);
+      expect(list[1].id).toBe(first.id);
+    });
+
+    it('listCheckpoints returns empty array when no project is set', async () => {
+      const list = await cpManager.listCheckpoints();
+      expect(list).toEqual([]);
+    });
+
+    it('listCheckpoints does not leak checkpoints across projects', async () => {
+      cpManager.setProjectId('proj-A');
+      await cpManager.createCheckpoint(makeWorkspace('A1'));
+      await cpManager.createCheckpoint(makeWorkspace('A2'));
+
+      cpManager.setProjectId('proj-B');
+      await cpManager.createCheckpoint(makeWorkspace('B1'));
+
+      const aList = await (async () => {
+        cpManager.setProjectId('proj-A');
+        return cpManager.listCheckpoints();
+      })();
+      expect(aList).toHaveLength(2);
+
+      cpManager.setProjectId('proj-B');
+      const bList = await cpManager.listCheckpoints();
+      expect(bList).toHaveLength(1);
+    });
+
+    it('loadCheckpoint returns null for missing id', async () => {
+      const loaded = await cpManager.loadCheckpoint('nonexistent');
+      expect(loaded).toBeNull();
+    });
+
+    it('deleteCheckpoint removes the record', async () => {
+      cpManager.setProjectId('cp-5');
+      const meta = await cpManager.createCheckpoint(makeWorkspace('Doomed'));
+      await cpManager.deleteCheckpoint(meta.id);
+
+      const list = await cpManager.listCheckpoints();
+      expect(list).toHaveLength(0);
+    });
+
+    it('createCheckpoint surfaces adapter errors via onError and rethrows', async () => {
+      const failingAdapter: PersistenceAdapter = {
+        async list() {
+          return [];
+        },
+        async load() {
+          return null;
+        },
+        async save() {},
+        async delete() {},
+        async rename() {},
+        async createCheckpoint() {
+          throw new Error('quota');
+        },
+        async listCheckpoints() {
+          return [];
+        },
+        async loadCheckpoint() {
+          return null;
+        },
+        async deleteCheckpoint() {},
+      };
+      const errorMgr = new PersistenceManager(failingAdapter, {
+        onError: onError as (e: unknown) => void,
+        onCheckpointSaved: onCheckpointSaved as (meta: DraftCheckpointMeta) => void,
+      });
+      errorMgr.setProjectId('err');
+
+      await expect(errorMgr.createCheckpoint(makeWorkspace('X'))).rejects.toThrow('quota');
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onCheckpointSaved).toHaveBeenCalledTimes(0);
+    });
   });
 });

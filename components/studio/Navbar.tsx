@@ -60,12 +60,24 @@ import { LottieExportPanel } from '@/components/export/LottieExportPanel';
 import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
 import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platform/bridge';
-import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
+import {
+  resetPersistenceForNewProject,
+  saveDraftCheckpoint,
+} from '@/lib/persistence/use-persistence';
+import {
+  deriveSaveState,
+  formatSaveStateLabel,
+  type SaveState,
+} from '@/lib/persistence/save-state';
+import { toast } from '@/components/ui/use-toast';
 
 export function Navbar() {
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Hiero');
   const isDirty = useEditorStore((s) => s.isDirty);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
+  const lastCheckpointAt = useEditorStore((s) => s.lastCheckpointAt);
+  const lastPublishedAt = useEditorStore((s) => s.lastPublishedAt);
+  const lastPublishedVersion = useEditorStore((s) => s.lastPublishedVersion);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
@@ -126,12 +138,34 @@ export function Navbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Relative time label
+  const saveState: SaveState = useMemo(
+    () =>
+      deriveSaveState({
+        isDirty,
+        lastAutosaveAt: lastSavedAt,
+        lastCheckpointAt,
+        lastPublishedAt,
+      }),
+    [isDirty, lastSavedAt, lastCheckpointAt, lastPublishedAt],
+  );
+
+  // Relative time tracks whichever timestamp is driving the current state:
+  // checkpoint when 'draft-saved', publish when 'published', autosave otherwise.
+  const drivingTimestamp =
+    saveState === 'published'
+      ? lastPublishedAt
+      : saveState === 'draft-saved'
+        ? lastCheckpointAt
+        : lastSavedAt;
+
   const [savedAgoLabel, setSavedAgoLabel] = useState<string | null>(null);
   useEffect(() => {
-    if (!lastSavedAt) { setSavedAgoLabel(null); return; }
+    if (!drivingTimestamp) {
+      setSavedAgoLabel(null);
+      return;
+    }
     const update = () => {
-      const diff = Math.floor((Date.now() - lastSavedAt) / 1000);
+      const diff = Math.floor((Date.now() - drivingTimestamp) / 1000);
       if (diff < 10) setSavedAgoLabel('just now');
       else if (diff < 60) setSavedAgoLabel(`${diff}s ago`);
       else if (diff < 3600) setSavedAgoLabel(`${Math.floor(diff / 60)}m ago`);
@@ -140,7 +174,7 @@ export function Navbar() {
     update();
     const interval = setInterval(update, 10_000);
     return () => clearInterval(interval);
-  }, [lastSavedAt]);
+  }, [drivingTimestamp]);
 
   useEffect(() => {
     return () => { if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current); };
@@ -196,6 +230,44 @@ export function Navbar() {
     const result = await saveProject(payload.data);
     if (result) editorStore.getState().markSaved(payload.updatedAt);
   }, [serializeWorkspace]);
+
+  /**
+   * Create a durable draft checkpoint. Distinct from autosave (which the
+   * editor store handles in the background every 500ms) and from
+   * `handleSave` above (which downloads a JSON project file). The Save
+   * IconButton in the toolbar and Cmd+S both call this.
+   */
+  const handleSaveCheckpoint = useCallback(async () => {
+    const result = await saveDraftCheckpoint();
+    if (!result) {
+      // No workspace, or persistence error already toasted by the manager.
+      return;
+    }
+    toast({ title: 'Saved draft', description: 'Checkpoint stored locally.' });
+  }, []);
+
+  // Global Cmd+S → create draft checkpoint. Skipped while a text input is
+  // focused so the OS-level Save dialog still works inside e.g. the
+  // project-rename input. Modifier match is intentionally strict: we
+  // require Cmd (mac) or Ctrl (other), not Alt or Shift.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 's') return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (event.altKey || event.shiftKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+      }
+      event.preventDefault();
+      void handleSaveCheckpoint();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleSaveCheckpoint]);
 
   // Internal-build only. See components/editor/Toolbar.tsx for the
   // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
@@ -360,7 +432,8 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={handleNewProject}><UiIcon name="file-plus-2" size={16} className="size-4" />New Project</DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => void handleOpenProject()}><UiIcon name="folder-open" size={16} className="size-4" />Open Project</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="save" size={16} className="size-4" />Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleSaveCheckpoint()}><UiIcon name="save" size={16} className="size-4" />Save draft<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleSave()}><UiIcon name="download" size={16} className="size-4" />Export project file…</DropdownMenuItem>
                   {/* Internal-build only — env-var literal so Webpack folds
                       and DCE strips this subtree from public bundles. See
                       Toolbar.tsx for the detailed comment. */}
@@ -480,17 +553,33 @@ export function Navbar() {
             </button>
           )}
 
-          <StatusBadge variant={isDirty ? 'warning' : 'neutral'}>
-            {isDirty ? 'Unsaved' : savedAgoLabel ? `Saved ${savedAgoLabel}` : 'Saved'}
-          </StatusBadge>
+          <span data-save-state={saveState}>
+            <StatusBadge
+              variant={
+                saveState === 'unsaved'
+                  ? 'warning'
+                  : saveState === 'published'
+                    ? 'success'
+                    : 'neutral'
+              }
+            >
+              {formatSaveStateLabel(saveState, savedAgoLabel, lastPublishedVersion)}
+            </StatusBadge>
+          </span>
         </div>
 
         <div className="flex-1" />
 
         {/* Right: quick actions */}
         <div className="flex items-center gap-0.5">
-          {/* Save */}
-          <IconButton icon={<UiIcon name="save" />} aria-label="Save" onClick={() => void handleSave()} kbd={['Cmd', 'S']} />
+          {/* Save draft checkpoint (Cmd+S). Distinct from "Save project file…"
+              in the dropdown menu, which downloads a JSON snapshot. */}
+          <IconButton
+            icon={<UiIcon name="save" />}
+            aria-label="Save draft"
+            onClick={() => void handleSaveCheckpoint()}
+            kbd={['Cmd', 'S']}
+          />
 
           {/* Undo/Redo */}
           <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />

@@ -22,6 +22,9 @@ function getManager(): PersistenceManager {
       onSaved: () => {
         editorStore.getState().markSaved();
       },
+      onCheckpointSaved: (meta) => {
+        editorStore.getState().markCheckpointSaved(meta.createdAt);
+      },
       onError: (error: unknown) => {
         const isQuota =
           error instanceof DOMException && error.name === 'QuotaExceededError';
@@ -162,4 +165,26 @@ export function resetPersistenceForNewProject(): void {
  */
 export function setPersistenceProjectId(id: string | null): void {
   getManager().setProjectId(id);
+}
+
+/**
+ * Create a durable draft checkpoint of the current workspace. Used by the
+ * Save IconButton and Cmd+S binding. Returns null if no workspace is
+ * loaded; otherwise returns the created checkpoint's metadata.
+ *
+ * Failures surface via the manager's onError toast; this function does
+ * not re-throw.
+ */
+export async function saveDraftCheckpoint(
+  memo: string | null = null,
+): Promise<{ id: string; createdAt: number } | null> {
+  const workspace = editorStore.getState().workspace;
+  if (!workspace) return null;
+  try {
+    const meta = await getManager().createCheckpoint(workspace, memo);
+    return { id: meta.id, createdAt: meta.createdAt };
+  } catch {
+    // onError toast already fired inside the manager.
+    return null;
+  }
 }

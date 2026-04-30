@@ -110,6 +110,16 @@ export type PrBodyOptions = {
   iconChanges?: IconChange[];
   /** Validation result from the sync pipeline. */
   validation?: { ok: boolean; errors: string[] };
+  /** Optional release-notes excerpt from the publish dialog. */
+  releaseNotes?: string;
+  /** Optional version label (e.g. "1.2.0"). */
+  version?: string;
+  /** Optional per-target results from the publish transaction. */
+  targetResults?: Array<{
+    kind: string;
+    status: 'success' | 'failed';
+    url?: string;
+  }>;
 };
 
 export function generatePrBody(
@@ -119,13 +129,28 @@ export function generatePrBody(
 ): string {
   const iconChanges = options?.iconChanges ?? [];
   const validation = options?.validation;
+  const releaseNotes = options?.releaseNotes?.trim() ?? '';
+  const version = options?.version?.trim() ?? '';
+  const targetResults = options?.targetResults ?? [];
   const lines: string[] = [];
 
   // --- Header ---
   lines.push('## Icon Source Sync');
   lines.push('');
-  lines.push(`Synced by **${escapeMarkdown(actorName)}** via Hiero.`);
+  lines.push(
+    version
+      ? `Synced by **${escapeMarkdown(actorName)}** via Hiero — release **v${escapeMarkdown(version)}**.`
+      : `Synced by **${escapeMarkdown(actorName)}** via Hiero.`,
+  );
   lines.push('');
+
+  // --- Release notes (if provided) ---
+  if (releaseNotes) {
+    lines.push('### Release notes');
+    lines.push('');
+    lines.push('> ' + releaseNotes.split('\n').join('\n> '));
+    lines.push('');
+  }
 
   // --- Schema version ---
   lines.push(`**Schema version:** icon \`${ICON_SOURCE_SCHEMA_VERSION}\` · manifest \`${SYNC_SOURCE_MANIFEST_SCHEMA_VERSION}\``);
@@ -217,6 +242,47 @@ export function generatePrBody(
     lines.push('- [ ] Compile pipeline — *will be verified by CI*');
   }
   lines.push('');
+
+  // --- Per-target publish results (if any) ---
+  if (targetResults.length > 0) {
+    lines.push('### Publish targets');
+    lines.push('');
+    for (const r of targetResults) {
+      const icon = r.status === 'success' ? '✅' : '❌';
+      const link = r.url ? ` — ${r.url}` : '';
+      lines.push(`- ${icon} \`${r.kind}\`${link}`);
+    }
+    lines.push('');
+  }
+
+  // --- Machine-readable metadata block (for bots / CI parsers) ---
+  // Fenced JSON keeps GitHub from rendering it; leading marker tag lets
+  // tools find this block deterministically without parsing markdown.
+  const metadata = {
+    schema: 'hiero.pr.metadata/v1',
+    version: version || null,
+    actor: actorName,
+    counts: {
+      iconsChanged: countUniqueIcons(changes),
+      filesAdded: changes.added.length,
+      filesUpdated: changes.updated.length,
+      filesDeleted: changes.deleted.length,
+    },
+    iconChanges: iconChanges.map((ic) => ({
+      iconDir: ic.iconDir,
+      kind: ic.kind,
+    })),
+    targetResults: targetResults.map((r) => ({
+      kind: r.kind,
+      status: r.status,
+      url: r.url ?? null,
+    })),
+  };
+  lines.push('<!-- hiero:metadata:start -->');
+  lines.push('```json');
+  lines.push(JSON.stringify(metadata, null, 2));
+  lines.push('```');
+  lines.push('<!-- hiero:metadata:end -->');
 
   return lines.join('\n');
 }

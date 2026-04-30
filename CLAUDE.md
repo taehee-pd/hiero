@@ -151,7 +151,7 @@ components/
 ├── editor/           # EditorShell, Canvas, LayerPanel, TransitionPanel, TimelineEditor
 ├── explorer/         # ExplorerShell, project management
 ├── studio/           # StudioLayout, NavPane, ListPane, Navbar (single-screen workspace)
-├── export/           # PublishPanel, ReleasePanel, export formats
+├── export/           # PublishDialog (unified publish flow), export formats
 ├── persistence/      # AutoSaveProvider
 ├── runtime/          # Runtime preview
 ├── ds/               # Hiero Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)

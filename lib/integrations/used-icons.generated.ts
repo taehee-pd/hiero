@@ -68,7 +68,6 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "play",
   "plus",
   "redo-2",
-  "refresh-cw",
   "repeat",
   "repeat-1",
   "rotate-ccw",
@@ -76,8 +75,6 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "save",
   "scissors-line-dashed",
   "search",
-  "server",
-  "settings",
   "shapes",
   "skip-back",
   "skip-forward",
@@ -93,4 +90,4 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /** Count exposed for diagnostics (drift checks, README pins, etc.). */
-export const USED_ICON_COUNT = 77;
+export const USED_ICON_COUNT = 74;

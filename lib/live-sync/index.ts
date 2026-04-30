@@ -12,7 +12,7 @@
  * or from this index with tree-shaking enabled by the bundler.
  */
 
-// Browser-safe — used by the editor's PublishPanel
+// Browser-safe — used by the editor's PublishDialog
 export { publishSourceFiles, pingDevServer } from './publish-transport';
 
 // Node.js only — used by the CLI and dev server

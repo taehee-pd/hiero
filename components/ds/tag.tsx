@@ -42,7 +42,7 @@ const variantConfig: Record<
  * status indicators. They don't represent system state (saved/unsaved,
  * connected/disconnected) — they classify data.
  *
- * Cross-feature consumers: SyncTargetPanel, ReleasePanel, SyncDiffPreview,
+ * Cross-feature consumers: SyncTargetPanel, PublishDialog, SyncDiffPreview,
  * SyncConflictPanel, LottieExportPanel.
  */
 function Tag({ children, variant = 'outline', className }: TagProps) {

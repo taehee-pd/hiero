@@ -30,6 +30,7 @@ import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
 import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
+import { deriveSaveState } from '@/lib/persistence/save-state';
 import {
   Sheet,
   SheetContent,
@@ -72,6 +73,9 @@ export function Toolbar() {
   const selectionCount = useEditorStore((s) => s.selection.layerIds.length);
   const isDirty = useEditorStore((s) => s.isDirty);
   const lastSavedAt = useEditorStore((s) => s.lastSavedAt);
+  const lastCheckpointAt = useEditorStore((s) => s.lastCheckpointAt);
+  const lastPublishedAt = useEditorStore((s) => s.lastPublishedAt);
+  const lastPublishedVersion = useEditorStore((s) => s.lastPublishedVersion);
   const currentIconName = useEditorStore((s) =>
     s.currentIconId ? (s.project?.icons[s.currentIconId]?.name ?? null) : null,
   );
@@ -94,15 +98,26 @@ export function Toolbar() {
     };
   }, []);
 
-  // UX-F8: Relative time ago string
+  const saveState = deriveSaveState({
+    isDirty,
+    lastAutosaveAt: lastSavedAt,
+    lastCheckpointAt,
+    lastPublishedAt,
+  });
+  const drivingTimestamp =
+    saveState === 'published'
+      ? lastPublishedAt
+      : saveState === 'draft-saved'
+        ? lastCheckpointAt
+        : lastSavedAt;
   const [savedAgoLabel, setSavedAgoLabel] = useState<string | null>(null);
   useEffect(() => {
-    if (!lastSavedAt) {
+    if (!drivingTimestamp) {
       setSavedAgoLabel(null);
       return;
     }
     const update = () => {
-      const diff = Math.floor((Date.now() - lastSavedAt) / 1000);
+      const diff = Math.floor((Date.now() - drivingTimestamp) / 1000);
       if (diff < 10) setSavedAgoLabel('just now');
       else if (diff < 60) setSavedAgoLabel(`${diff}s ago`);
       else if (diff < 3600) setSavedAgoLabel(`${Math.floor(diff / 60)}m ago`);
@@ -111,7 +126,7 @@ export function Toolbar() {
     update();
     const interval = setInterval(update, 10_000);
     return () => clearInterval(interval);
-  }, [lastSavedAt]);
+  }, [drivingTimestamp]);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [distributionSheetOpen, setDistributionSheetOpen] = useState(false);
@@ -418,20 +433,30 @@ export function Toolbar() {
               <p className="truncate text-[length:var(--text-heading)] font-semibold tracking-tight text-foreground">
                 {projectName}
               </p>
-              {/* UX-F8: Unsaved changes indicator with relative timestamp */}
               <Badge
                 variant="outline"
+                data-save-state={saveState}
                 className={`h-5 shrink-0 rounded-full px-2 text-[10px] tracking-tight ${
-                  isDirty
+                  saveState === 'unsaved'
                     ? 'status-warning-surface shadow-[inset_0_0_0_0.5px_var(--border-warning)]'
-                    : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
+                    : saveState === 'published'
+                      ? 'status-success-surface'
+                      : 'border-border/70 bg-background/80 text-muted-foreground shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]'
                 }`}
               >
-                {isDirty
+                {saveState === 'unsaved'
                   ? 'Unsaved changes'
-                  : savedAgoLabel
-                    ? `Saved ${savedAgoLabel}`
-                    : 'Saved'}
+                  : saveState === 'published'
+                    ? lastPublishedVersion
+                      ? `Published v${lastPublishedVersion}`
+                      : 'Published'
+                    : saveState === 'draft-saved'
+                      ? savedAgoLabel
+                        ? `Saved draft ${savedAgoLabel}`
+                        : 'Saved draft'
+                      : savedAgoLabel
+                        ? `Autosaved ${savedAgoLabel}`
+                        : 'Autosaved locally'}
               </Badge>
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[length:var(--text-label)] text-muted-foreground">

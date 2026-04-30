@@ -106,7 +106,7 @@ export type DevServerStatus = {
     runtimeMode: string;
     cacheDir?: string;
   }>;
-  /** Release targets from hiero.config.ts — used by ReleasePanel to render target cards. */
+  /** Release targets from hiero.config.ts — rendered by PublishDialog as target cards. */
   releaseTargets: Array<{
     kind: 'local-directory' | 'git-pr' | 'npm-registry';
     outputMode: 'snapshot';

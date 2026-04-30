@@ -5,7 +5,18 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import type { PersistenceAdapter, ProjectMeta, SavedProject } from '@/lib/persistence/adapter';
+import type {
+  DraftCheckpoint,
+  DraftCheckpointMeta,
+  PersistenceAdapter,
+  ProjectMeta,
+  SavedProject,
+} from '@/lib/persistence/adapter';
+import type {
+  RestoreEvent,
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 import type { Workspace } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
@@ -17,6 +28,18 @@ class InMemoryAdapter implements PersistenceAdapter {
     string,
     { id: string; name: string; data: Workspace; updatedAt: number; iconCount: number }
   >();
+  private checkpoints = new Map<
+    string,
+    {
+      id: string;
+      projectId: string;
+      data: Workspace;
+      createdAt: number;
+      memo: string | null;
+      iconCount: number;
+    }
+  >();
+  private checkpointSeq = 0;
 
   async list(): Promise<ProjectMeta[]> {
     return Array.from(this.store.values())
@@ -62,6 +85,70 @@ class InMemoryAdapter implements PersistenceAdapter {
       meta: { ...record.data.meta, name: newName },
     };
     record.updatedAt = Date.now();
+  }
+
+  async createCheckpoint(
+    projectId: string,
+    data: Workspace,
+    memo: string | null,
+  ): Promise<DraftCheckpointMeta> {
+    this.checkpointSeq += 1;
+    const id = `ckpt_${this.checkpointSeq}`;
+    const createdAt = Date.now() + this.checkpointSeq;
+    let iconCount = 0;
+    for (const setId of Object.keys(data.iconSets)) {
+      iconCount += Object.keys(data.iconSets[setId].icons).length;
+    }
+    this.checkpoints.set(id, { id, projectId, data, createdAt, memo, iconCount });
+    return { id, projectId, createdAt, memo, iconCount };
+  }
+
+  async listCheckpoints(projectId: string): Promise<DraftCheckpointMeta[]> {
+    return Array.from(this.checkpoints.values())
+      .filter((r) => r.projectId === projectId)
+      .map(({ data: _data, ...meta }) => meta)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  async loadCheckpoint(id: string): Promise<DraftCheckpoint | null> {
+    const record = this.checkpoints.get(id);
+    if (!record) return null;
+    return { ...record };
+  }
+
+  async deleteCheckpoint(id: string): Promise<void> {
+    this.checkpoints.delete(id);
+  }
+
+  private snapshots = new Map<string, VersionSnapshot>();
+
+  async saveVersionSnapshot(snapshot: VersionSnapshot): Promise<void> {
+    this.snapshots.set(snapshot.id, snapshot);
+  }
+
+  async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+    return Array.from(this.snapshots.values())
+      .map(({ workspaceSnapshot: _ws, ...meta }) => meta)
+      .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+  }
+
+  async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+    return this.snapshots.get(id) ?? null;
+  }
+
+  private restoreEvents: RestoreEvent[] = [];
+
+  async appendRestoreEvent(event: RestoreEvent): Promise<void> {
+    if (this.restoreEvents.some((e) => e.id === event.id)) {
+      throw new Error(`duplicate restore event id: ${event.id}`);
+    }
+    this.restoreEvents.push(event);
+  }
+
+  async listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]> {
+    return this.restoreEvents
+      .filter((e) => e.snapshotId === snapshotId)
+      .sort((a, b) => (a.restoredAt < b.restoredAt ? 1 : -1));
   }
 }
 
@@ -249,5 +336,69 @@ describe('PersistenceAdapter contract', () => {
     const originalIcons = Object.keys(ws.iconSets.default.icons);
     const loadedIcons = Object.keys(loaded!.data.iconSets.default.icons);
     expect(loadedIcons).toEqual(originalIcons);
+  });
+
+  // ---------------------------------------------------------------------
+  // Draft checkpoint contract
+  // ---------------------------------------------------------------------
+
+  it('createCheckpoint allocates a unique id and metadata', async () => {
+    const meta = await adapter.createCheckpoint('proj-1', makeWorkspace('A'), 'first save');
+    expect(meta.id).toMatch(/^ckpt_/);
+    expect(meta.projectId).toBe('proj-1');
+    expect(meta.memo).toBe('first save');
+    expect(meta.createdAt).toBeGreaterThan(0);
+  });
+
+  it('createCheckpoint allows null memo and never overwrites prior records', async () => {
+    const a = await adapter.createCheckpoint('proj-1', makeWorkspace('A'), null);
+    const b = await adapter.createCheckpoint('proj-1', makeWorkspace('B'), null);
+    expect(a.id).not.toBe(b.id);
+    const list = await adapter.listCheckpoints('proj-1');
+    expect(list).toHaveLength(2);
+  });
+
+  it('listCheckpoints returns newest-first', async () => {
+    const first = await adapter.createCheckpoint('proj-1', makeWorkspace('First'), null);
+    const second = await adapter.createCheckpoint('proj-1', makeWorkspace('Second'), null);
+    const list = await adapter.listCheckpoints('proj-1');
+    expect(list[0].id).toBe(second.id);
+    expect(list[1].id).toBe(first.id);
+  });
+
+  it('listCheckpoints scopes by projectId', async () => {
+    await adapter.createCheckpoint('proj-A', makeWorkspace('A1'), null);
+    await adapter.createCheckpoint('proj-A', makeWorkspace('A2'), null);
+    await adapter.createCheckpoint('proj-B', makeWorkspace('B1'), null);
+
+    const aList = await adapter.listCheckpoints('proj-A');
+    const bList = await adapter.listCheckpoints('proj-B');
+    expect(aList).toHaveLength(2);
+    expect(bList).toHaveLength(1);
+  });
+
+  it('loadCheckpoint returns the full workspace payload', async () => {
+    const ws = makeWorkspace('Loaded', 3);
+    const meta = await adapter.createCheckpoint('proj-1', ws, 'roundtrip');
+    const loaded = await adapter.loadCheckpoint(meta.id);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.data.meta.name).toBe('Loaded');
+    expect(Object.keys(loaded!.data.iconSets.default.icons)).toHaveLength(3);
+    expect(loaded!.memo).toBe('roundtrip');
+  });
+
+  it('loadCheckpoint returns null for missing id', async () => {
+    expect(await adapter.loadCheckpoint('nonexistent')).toBeNull();
+  });
+
+  it('deleteCheckpoint removes the record', async () => {
+    const meta = await adapter.createCheckpoint('proj-1', makeWorkspace('D'), null);
+    await adapter.deleteCheckpoint(meta.id);
+    expect(await adapter.loadCheckpoint(meta.id)).toBeNull();
+  });
+
+  it('deleteCheckpoint is a no-op for missing id', async () => {
+    await adapter.deleteCheckpoint('nonexistent');
+    // No throw.
   });
 });

@@ -15,7 +15,18 @@
 'use client';
 
 import type { Workspace } from '@/lib/schema/types';
-import type { PersistenceAdapter, ProjectMeta, SavedProject } from './adapter';
+import type {
+  DraftCheckpoint,
+  DraftCheckpointMeta,
+  PersistenceAdapter,
+  ProjectMeta,
+  SavedProject,
+} from './adapter';
+import type {
+  RestoreEvent,
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 
 const AUTO_SAVE_DEBOUNCE_MS = 500;
 
@@ -23,19 +34,24 @@ export class PersistenceManager {
   private adapter: PersistenceAdapter;
   private currentProjectId: string | null = null;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Workspace currently queued for the next debounced autosave. */
+  private pendingWorkspace: Workspace | null = null;
   private onSaved: (() => void) | null = null;
   private onError: ((error: unknown) => void) | null = null;
+  private onCheckpointSaved: ((meta: DraftCheckpointMeta) => void) | null = null;
 
   constructor(
     adapter: PersistenceAdapter,
     callbacks?: {
       onSaved?: () => void;
       onError?: (error: unknown) => void;
+      onCheckpointSaved?: (meta: DraftCheckpointMeta) => void;
     },
   ) {
     this.adapter = adapter;
     this.onSaved = callbacks?.onSaved ?? null;
     this.onError = callbacks?.onError ?? null;
+    this.onCheckpointSaved = callbacks?.onCheckpointSaved ?? null;
   }
 
   get projectId(): string | null {
@@ -56,8 +72,12 @@ export class PersistenceManager {
     if (this.saveTimer) {
       clearTimeout(this.saveTimer);
     }
+    this.pendingWorkspace = workspace;
     this.saveTimer = setTimeout(() => {
-      void this.executeSave(workspace);
+      const queued = this.pendingWorkspace;
+      this.saveTimer = null;
+      this.pendingWorkspace = null;
+      if (queued) void this.executeSave(queued);
     }, AUTO_SAVE_DEBOUNCE_MS);
   }
 
@@ -67,6 +87,7 @@ export class PersistenceManager {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
+    this.pendingWorkspace = null;
   }
 
   /** Save immediately (no debounce). */
@@ -112,6 +133,85 @@ export class PersistenceManager {
   /** Rename a project. */
   async renameProject(id: string, newName: string): Promise<void> {
     await this.adapter.rename(id, newName);
+  }
+
+  /**
+   * Create a durable draft checkpoint of the current workspace. Distinct
+   * from autosave: never overwrites prior checkpoints.
+   *
+   * Cancels any pending autosave first and flushes it synchronously so
+   * the autosave and checkpoint don't race the workspace write order.
+   */
+  async createCheckpoint(
+    workspace: Workspace,
+    memo: string | null = null,
+  ): Promise<DraftCheckpointMeta> {
+    // Flush any pending autosave first so the autosave row reflects the
+    // queued workspace, not whatever was current at checkpoint time.
+    // After the flush we still write the checkpoint with the explicit
+    // `workspace` arg the caller passed in.
+    if (this.saveTimer) {
+      const queued = this.pendingWorkspace;
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+      this.pendingWorkspace = null;
+      if (queued) await this.executeSave(queued);
+    }
+    if (!this.currentProjectId) {
+      this.currentProjectId = this.generateId();
+    }
+    try {
+      const meta = await this.adapter.createCheckpoint(
+        this.currentProjectId,
+        workspace,
+        memo && memo.trim().length > 0 ? memo.trim() : null,
+      );
+      this.onCheckpointSaved?.(meta);
+      return meta;
+    } catch (error: unknown) {
+      this.onError?.(error);
+      throw error;
+    }
+  }
+
+  /** List checkpoints for the current project, newest first. */
+  async listCheckpoints(): Promise<DraftCheckpointMeta[]> {
+    if (!this.currentProjectId) return [];
+    return this.adapter.listCheckpoints(this.currentProjectId);
+  }
+
+  /** Load a checkpoint by id. */
+  async loadCheckpoint(id: string): Promise<DraftCheckpoint | null> {
+    return this.adapter.loadCheckpoint(id);
+  }
+
+  /** Delete a checkpoint by id. */
+  async deleteCheckpoint(id: string): Promise<void> {
+    await this.adapter.deleteCheckpoint(id);
+  }
+
+  // ---------------------------------------------------------------------
+  // Version history (Phase 3)
+  // ---------------------------------------------------------------------
+
+  /** List published version snapshots, newest first. */
+  async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+    return this.adapter.listVersionSnapshots();
+  }
+
+  /** Load a full version snapshot with its embedded workspace. */
+  async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+    return this.adapter.loadVersionSnapshot(id);
+  }
+
+  /** List restore-event audit rows for a snapshot, newest first. */
+  async listRestoreEvents(snapshotId: string): Promise<RestoreEvent[]> {
+    return this.adapter.listRestoreEvents(snapshotId);
+  }
+
+  /** Direct accessor for callers that need to compose adapter operations. */
+  get persistence(): PersistenceAdapter {
+    return this.adapter;
   }
 
   dispose(): void {

@@ -68,8 +68,14 @@ export type EditorState = {
   project: Project | null;
   activeIconSetId: string | null;
   isDirty: boolean;
-  /** UX-F8: Timestamp of last successful save */
+  /** Timestamp (ms epoch) of last successful background autosave to IDB. */
   lastSavedAt: number | null;
+  /** Timestamp (ms epoch) of last explicit draft checkpoint (Cmd+S). */
+  lastCheckpointAt: number | null;
+  /** Timestamp (ms epoch) of last successful publish. Set by Phase 2. */
+  lastPublishedAt: number | null;
+  /** Version string of last published release (e.g. "1.2.0"). Phase 2. */
+  lastPublishedVersion: string | null;
   currentIconId: string | null;
   currentVariantId: string | null;
   /** Currently selected IconType id (e.g. "line", "filled"). */
@@ -152,6 +158,10 @@ export type EditorActions = {
   loadProject(project: ProjectInput, options?: LoadProjectOptions): void;
   newProject(): void;
   markSaved(updatedAt?: string): void;
+  /** Record a successful draft checkpoint at the given timestamp (default: now). */
+  markCheckpointSaved(at?: number): void;
+  /** Record a successful publish at the given timestamp + version. Phase 2. */
+  markPublished(version: string, at?: number): void;
   createBlankIcon(options?: { name?: string; size?: number }): string | null;
   insertIcon(icon: Icon): void;
   renameIcon(iconId: string, name: string): void;
@@ -355,6 +365,9 @@ const initialState: EditorState = {
   activeIconSetId: null,
   isDirty: false,
   lastSavedAt: null,
+  lastCheckpointAt: null,
+  lastPublishedAt: null,
+  lastPublishedVersion: null,
   currentIconId: null,
   currentVariantId: null,
   currentTypeId: null,
@@ -1360,6 +1373,19 @@ function createActions(): EditorActions {
           lastSavedAt: Date.now(),
         };
       });
+    },
+
+    markCheckpointSaved(at) {
+      editorStoreApi.setState(() => ({
+        lastCheckpointAt: at ?? Date.now(),
+      }));
+    },
+
+    markPublished(version, at) {
+      editorStoreApi.setState(() => ({
+        lastPublishedAt: at ?? Date.now(),
+        lastPublishedVersion: version,
+      }));
     },
 
     createBlankIcon(options) {

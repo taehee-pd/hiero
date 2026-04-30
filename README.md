@@ -76,7 +76,7 @@ components/
 ├── editor/             # Editor: canvas, toolbar, panels, inspector, timeline
 ├── explorer/           # Icon library browser and collection explorer
 ├── studio/             # StudioLayout — single-screen workspace shell
-├── export/             # Export workflow: PublishPanel, ReleasePanel, formats
+├── export/             # Export workflow: PublishDialog (unified Publish), formats
 ├── persistence/        # AutoSaveProvider (IndexedDB)
 ├── runtime/            # Runtime preview components
 ├── ui/                 # shadcn/ui components (57 files)
@@ -281,8 +281,8 @@ import IcChevronRight from '@hiero/icons/icons/IcChevronRight';
 
 Hiero supports a two-lane distribution model:
 
-- **Lane 1 — Live Sync:** Real-time publish transport (`lib/live-sync/`) with local-directory, git-pr, and npm-registry connectors. UI via `PublishPanel`.
-- **Lane 2 — Release:** Versioned releases with changelog generation via `ReleasePanel`. Supports `@hiero/cli` for CI integration.
+- **Lane 1 — Live Sync:** Real-time publish transport (`lib/live-sync/`) with local-directory, git-pr, and npm-registry connectors.
+- **Lane 2 — Release:** Versioned releases driven by the unified `PublishDialog` and orchestrated by `lib/sync-service/publish-transaction.ts`, which writes a `VersionSnapshot` per attempt and surfaces per-target results. Supports `@hiero/cli` for CI integration.
 - **CLI:** `packages/hiero-cli/` — `@hiero/cli` command-line tool for icon operations.
 
 ## GitHub PR Sync Pipeline

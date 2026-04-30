@@ -66,8 +66,8 @@ Hiero's copy is **functional, precise, and unhurried** — a professional tool s
 The signature quality is **surfaces that barely exist** — depth through whisper-level multi-layered shadows rather than heavy borders or dramatic elevation. Inspired by ElevenLabs' typographic restraint, adapted for a dark-first workspace.
 
 ### Colors
-- **Primitives** are an 8-stop greyscale, lilac purple scale (100–800, brand accent), legacy blue scale (100–800), and semantic red/green/yellow, plus teal for charts.
-- **Accent is a single lilac purple** — `#7B3FB8` (light) / `#9E64D4` (dark). Used only for primary action, focus ring, active states, selected-item backgrounds (via translucent `--primary-soft`).
+- **Primitives** are an 8-stop greyscale, lilac-violet scale (100–800, brand accent, hue locked at ~290), legacy blue scale (100–800), and semantic red/green/yellow, plus teal for charts.
+- **Accent is a single lilac-violet** — `#a885f2` (`--purple-400`) in BOTH light and dark mode, paired with **black foreground** on the brand surface. Contrast ratio ~6.7:1 — passes WCAG AA. The light brand reads as a confident accent on either background; one canonical color across modes keeps brand recognition tight. Used only for primary action, focus ring, active states, selected-item backgrounds (via the auto-derived translucent `--primary-soft`, defined as `color-mix(in srgb, var(--primary) <8|14>%, transparent)` so any future brand tweak propagates).
 - **No secondary brand color.** Never multi-hue gradients, never glassmorphism.
 - **Alpha-over-tint:** borders and hovers use `rgba(0,0,0,α)` / `rgba(255,255,255,α)` overlays rather than tinted solids — keeps panel hierarchy honest in both modes.
 

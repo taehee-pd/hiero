@@ -29,8 +29,12 @@ import { createZipBlob } from '@/lib/export/export-react/zip';
 import { SyncPrPanel } from '@/components/export/SyncPrPanel';
 import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
-import { resetPersistenceForNewProject } from '@/lib/persistence/use-persistence';
+import {
+  resetPersistenceForNewProject,
+  saveDraftCheckpoint,
+} from '@/lib/persistence/use-persistence';
 import { deriveSaveState } from '@/lib/persistence/save-state';
+import { toast } from '@/components/ui/use-toast';
 import {
   Sheet,
   SheetContent,
@@ -181,7 +185,10 @@ export function Toolbar() {
     }
   }, [showToolbarError]);
 
-  const serializeWorkspace = useCallback(() => {
+  // Retained as documentation for future toolbar exports that serialize
+  // the workspace into a JSON file. The plain Save button no longer uses
+  // it — it calls saveDraftCheckpoint (Phase 2.5 wiring fix).
+  const _serializeWorkspace = useCallback(() => {
     const { workspace } = editorStore.getState();
     if (!workspace) return null;
     const updatedAt = new Date().toISOString();
@@ -195,15 +202,15 @@ export function Toolbar() {
     };
   }, []);
 
+  // Unified Save — creates a durable draft checkpoint via the same
+  // path the studio Navbar uses (Phase 2.5 wiring fix). Pre-Phase-1
+  // file-download flow stays available via EditorShell's command
+  // palette ("Export project file…") and the Navbar's dropdown menu.
   const handleSave = useCallback(async () => {
-    const payload = serializeWorkspace();
-    if (!payload) return;
-
-    const result = await saveProject(payload.data);
-    if (result) {
-      editorStore.getState().markSaved(payload.updatedAt);
-    }
-  }, [serializeWorkspace]);
+    const result = await saveDraftCheckpoint();
+    if (!result) return;
+    toast({ title: 'Saved draft', description: 'Checkpoint stored locally.' });
+  }, []);
 
   // Internal-build only. The gate uses the raw env var literal (not the
   // imported IS_INTERNAL_BUILD constant) because Webpack constant-folds

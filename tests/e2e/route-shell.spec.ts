@@ -91,3 +91,30 @@ test('window.__HIERO_BUILD__ global is set before any client interaction', async
   expect(build?.channel).toBeTruthy();
   expect(build?.app).toBeTruthy();
 });
+
+// Phase 2.5 wiring fix coverage. These assertions guard against
+// regressions where the Publish + History entry points get accidentally
+// removed or relabeled. Each one targets a stable data-testid set in
+// components/studio/Navbar.tsx so the test is robust against icon /
+// label changes.
+test('/ exposes Publish + History buttons in the Navbar', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('navbar-publish')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('navbar-history')).toBeVisible();
+});
+
+test('Clicking Navbar Publish opens the unified Publish dialog', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('navbar-publish').click();
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByRole('dialog')).toContainText('Publish');
+});
+
+test('/history mounts the same Navbar chrome', async ({ page }) => {
+  await page.goto('/history');
+  // Navbar contributes the Publish + History buttons on this route too.
+  await expect(page.getByTestId('navbar-publish')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId('navbar-history')).toBeVisible();
+  // The history-view body is also present.
+  await expect(page.getByTestId('history-view')).toBeVisible();
+});

@@ -26,7 +26,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -61,6 +61,9 @@ import {
   type DirtyWorkResolution,
 } from '@/lib/sync-ui/restore-to-draft';
 import { diffWorkspaces, type WorkspaceDiff } from '@/lib/sync-ui/version-compare';
+import { Navbar } from '@/components/studio/Navbar';
+import { SetupHealthPanel } from '@/components/studio/SetupHealthPanel';
+import { useHieroConfig } from '@/lib/install-config/use-hiero-config';
 
 const adapter = new IndexedDBAdapter();
 
@@ -78,13 +81,22 @@ export function HistoryView() {
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreBanner, setRestoreBanner] = useState<string | null>(null);
 
-  // Initial load.
+  // Initial load + clear the navbar's "new versions" dot. We mark the
+  // user as having viewed the latest snapshot the moment they land on
+  // /history; the Navbar reads this key to decide whether to render
+  // the dot on the History IconButton.
   useEffect(() => {
     let cancelled = false;
     void adapter.listVersionSnapshots().then((list) => {
       if (cancelled) return;
       setSnapshots(list);
       if (list.length > 0) setSelectedId(list[0].id);
+      if (typeof window !== 'undefined' && list.length > 0) {
+        window.localStorage.setItem(
+          'hiero.history.lastViewedAt',
+          String(new Date(list[0].publishedAt).getTime()),
+        );
+      }
     });
     return () => {
       cancelled = true;
@@ -196,24 +208,27 @@ export function HistoryView() {
   );
 
   return (
-    <div className="flex flex-col gap-4 p-6" data-testid="history-view">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Version History
-        </h1>
-        <a
-          href="/"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          Back to studio →
-        </a>
-      </header>
+    <div className="flex flex-col" data-testid="history-view">
+      {/* Studio chrome — shared Navbar so /history carries the same
+          brand/save state/Publish + History buttons as the editor. The
+          History route writes to its own "lastViewedAt" key on mount so
+          the Navbar's new-versions dot clears as the user lands. */}
+      <Navbar />
 
-      {restoreBanner && (
-        <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-          {restoreBanner}
-        </div>
-      )}
+      <div className="flex flex-col gap-4 p-6 pt-4">
+        <header className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold tracking-tight">
+            Version History
+          </h1>
+        </header>
+
+        <HistorySetupHealth />
+
+        {restoreBanner && (
+          <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            {restoreBanner}
+          </div>
+        )}
 
       <div className="grid gap-4 md:grid-cols-[280px_1fr]">
         <aside className="flex flex-col gap-1 border-r pr-3">
@@ -380,6 +395,7 @@ export function HistoryView() {
           )}
         </section>
       </div>
+      </div>
 
       <Dialog
         open={confirmRestoreOpen}
@@ -416,5 +432,50 @@ export function HistoryView() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Setup Health surface for /history. Collapsed by default per the
+ * design review (Pass 7 #4): the page's primary content is the
+ * version list; health checks are an "operations" companion that
+ * shouldn't compete for attention. Mounts the existing
+ * `<SetupHealthPanel>` and routes config-state (loading/missing/
+ * invalid/loaded) into informational copy, never red error variants
+ * unless the schema is genuinely broken (Pass 7 #5).
+ */
+function HistorySetupHealth() {
+  const config = useHieroConfig();
+
+  let inner: ReactNode;
+  if (config.kind === 'loading') {
+    inner = (
+      <p className="text-xs text-muted-foreground">Loading config…</p>
+    );
+  } else if (config.kind === 'missing') {
+    inner = (
+      <p className="text-xs text-muted-foreground">
+        No <code>hiero.config.ts</code> detected — run{' '}
+        <code>npx hiero init</code> in your repo to scaffold one.
+      </p>
+    );
+  } else if (config.kind === 'invalid' || config.kind === 'fetch-error') {
+    inner = (
+      <p className="text-xs text-destructive">{config.message}</p>
+    );
+  } else {
+    inner = <SetupHealthPanel config={config.config} />;
+  }
+
+  return (
+    <details className="group rounded-md border bg-background/40">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm font-medium">
+        <span>Setup health</span>
+        <span className="text-[10px] text-muted-foreground group-open:hidden">
+          click to expand
+        </span>
+      </summary>
+      <div className="border-t p-3">{inner}</div>
+    </details>
   );
 }

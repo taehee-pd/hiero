@@ -24,10 +24,10 @@ export function SetupHealthPanel({ config }: { config: unknown }) {
       className="flex flex-col gap-2 rounded-md border bg-background/40 p-3 text-sm"
       data-testid="setup-health-panel"
     >
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Setup health</h3>
         <span className="text-[10px] text-muted-foreground">
-          run `hiero init --check` for credential checks
+          run <code className="rounded bg-muted px-1 py-0.5 text-[10px]">hiero init --check</code> for credential checks
         </span>
       </header>
       <ul className="flex flex-col gap-1">

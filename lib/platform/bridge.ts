@@ -70,7 +70,7 @@ async function pickFiles(options: { accept: string; multiple?: boolean }) {
   });
 }
 
-function downloadTextFile(content: string, fileName: string, mimeType: string) {
+export function downloadTextFile(content: string, fileName: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

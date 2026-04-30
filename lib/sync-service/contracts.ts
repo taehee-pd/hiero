@@ -50,6 +50,18 @@ export type SyncPrRequest = {
    * the base branch has drifted. Default: false.
    */
   force?: boolean;
+  /**
+   * Optional release context surfaced into the generated PR body.
+   * Set by `lib/sync-ui/publish-target-executor.ts` when the publish
+   * orchestrator (`executePublishTransaction`) drives a `git-pr`
+   * target. Threaded through to `generatePrBody` so the PR carries
+   * the release notes blockquote, version line, and JSON metadata
+   * block. Phase 2.5 wiring fix.
+   */
+  releaseMetadata?: {
+    version: string;
+    releaseNotes: string;
+  };
 };
 
 // ---------------------------------------------------------------------------

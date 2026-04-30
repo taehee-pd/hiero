@@ -37,9 +37,36 @@
 import './setup/happy-dom';
 import './setup/react';
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+// Phase 2.5 wiring fix: Navbar now uses `useRouter()` to push to /history.
+// Stub it before the static Navbar import so happy-dom doesn't trip over
+// the missing AppRouterContext.
+mock.module('next/navigation', () => ({
+  useRouter: () => ({
+    push: () => {},
+    replace: () => {},
+    back: () => {},
+    forward: () => {},
+    refresh: () => {},
+    prefetch: () => {},
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+// useHieroConfig fires fetch('/api/install-config') on mount. happy-dom
+// has no listener so the fetch rejects with ECONNREFUSED and the
+// resulting state update can interrupt userEvent typing. Stub the hook
+// to a synchronous "missing" response so the rename machine sees a
+// stable initial render.
+mock.module('@/lib/install-config/use-hiero-config', () => ({
+  useHieroConfig: () => ({ kind: 'missing', message: 'test stub' }),
+  clearHieroConfigCache: () => {},
+}));
+
 import { Navbar } from '@/components/studio/Navbar';
 import { editorStore } from '@/lib/editor-store/store';
 import type { Workspace } from '@/lib/schema/types';

@@ -375,6 +375,8 @@ export async function syncPr(
     const title = generatePrTitle(changes);
     const body = generatePrBody(changes, actor.name, {
       iconChanges: diff.iconChanges,
+      version: request.releaseMetadata?.version,
+      releaseNotes: request.releaseMetadata?.releaseNotes,
     });
     const prResult = await provider.createPullRequest(owner, repo, branch, baseBranch, title, body);
     pr = { number: prResult.number, url: prResult.url };

@@ -7,9 +7,10 @@ description: >-
   philosophy and typographic restraint. Token values below reflect the
   canonical dark theme; the light theme is documented in prose.
 colors:
-  primary: "#9E64D4"
-  primary-hover: "#B385E0"
-  primary-soft: "#2E1A4B"
+  primary: "#a885f2"
+  primary-foreground: "#0A0A0A"
+  primary-hover: "#8B61E0"
+  primary-soft: "color-mix(in srgb, var(--primary) 14%, transparent)"
   neutral: "#0A0A0A"
   neutral-hover: "#1A1F22"
   surface: "#21282D"
@@ -241,13 +242,20 @@ single, restrained lilac purple accent. **Dark is the canonical theme**
 and its values are the normative design tokens above. A parallel light
 theme is documented at the end of this section for parity.
 
-- **Primary (`#9E64D4`):** A lilac purple used exclusively for primary
-  actions, focus indicators, and active states on dark surfaces.
-- **Primary hover (`#B385E0`):** A lifted variant for hover on primary
-  CTAs — preserves accent identity while signalling interaction.
-- **Primary soft (`#2E1A4B`):** A deep tinted purple used as
-  selected-item background, active pane highlight, and accent badge
-  fill. Lilac accent text reads cleanly on top.
+- **Primary (`#a885f2`):** A lilac-violet used exclusively for primary
+  actions, focus indicators, and active states. Same brand color in
+  both light and dark mode — reads as a confident accent on either
+  background. Foreground on the brand is black (`--greyscale-900`,
+  `#0A0A0A`); contrast ratio ~6.7:1 passes WCAG AA for normal and
+  large text.
+- **Primary hover (`#8B61E0`):** A slightly darker, more saturated
+  variant for hover on primary CTAs — preserves brand identity while
+  signalling interaction. Sourced from `--purple-500` in the ramp.
+- **Primary soft (`color-mix(in srgb, var(--primary) 14%, transparent)`):**
+  An auto-derived translucent tint of the brand used as selected-item
+  background, active pane highlight, and accent badge fill. Defined
+  via `color-mix` so any future brand tweaks propagate without
+  hand-editing the soft variant.
 - **Neutral (`#0A0A0A`):** Shell background — near-black for the
   canonical dark theme.
 - **Surface (`#21282D`):** Panel surface tone sitting one step above the
@@ -279,8 +287,9 @@ not tokenized — dark is the single source of truth):
 | foreground             | `#090D10`                     |
 | foreground-secondary   | `#3C464D`                     |
 | foreground-tertiary    | `#7E8991`                     |
-| primary (accent)       | `#7B3FB8`                     |
-| primary-soft           | `rgba(123, 63, 184, 0.08)`    |
+| primary (accent)       | `#a885f2`                     |
+| primary-foreground     | `#0A0A0A` (black)             |
+| primary-soft           | `color-mix(in srgb, var(--primary) 8%, transparent)` |
 | border                 | `rgba(0, 0, 0, 0.05)`         |
 | border-subtle          | `rgba(0, 0, 0, 0.06)`         |
 

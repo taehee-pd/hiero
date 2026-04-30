@@ -64,15 +64,37 @@
   --yellow-800: #220700;
   --yellow-900: #0D0200;
 
-  /* Purple (brand accent — lilac) */
-  --purple-100: #F1E7F9;
-  --purple-200: #D9B8EF;
-  --purple-300: #9E64D4;
-  --purple-400: #7B3FB8;
-  --purple-500: #5B22A0;
-  --purple-600: #3F0E7E;
-  --purple-700: #220552;
-  --purple-800: #0F0029;
+  /* Purple — brand accent (lilac-violet).
+   *
+   * Built as a single tonal ramp around the brand center #a885f2
+   * (oklch 0.65 / 0.18 / 290). Hue is locked at ~290 across all stops;
+   * lightness steps cleanly from a near-white wash at 100 to a deep
+   * indigo at 800. Chroma rises into the mid stops, peaks around the
+   * brand, and tapers in the darks so 700/800 don't look muddy.
+   *
+   *   100 → wash background
+   *   200 → soft tint (subtle hover surfaces, dialog backgrounds)
+   *   300 → light surface (selected-row tint, badge background)
+   *   400 → THE BRAND (#a885f2) → --primary in both light + dark modes
+   *   500 → hover/active variant of the brand
+   *   600 → pressed / strong border
+   *   700 → deep accent (chart/data viz emphasis)
+   *   800 → near-black violet (titles on tinted backgrounds)
+   *
+   * Foreground on the brand is BLACK (--greyscale-900). Contrast
+   * ratio against #a885f2 is ~6.7:1 — passes WCAG AA for both normal
+   * and large text. The light brand → black text combination is
+   * intentional; both light and dark mode use the same brand color
+   * because #a885f2 reads as a confident accent on either background.
+   */
+  --purple-100: #F4EEFD;
+  --purple-200: #E1CFFA;
+  --purple-300: #C8AEF6;
+  --purple-400: #a885f2;
+  --purple-500: #8B61E0;
+  --purple-600: #6E45BE;
+  --purple-700: #4F2C95;
+  --purple-800: #2D1762;
 
   /* Teal */
   --teal-300: #55CFBD;
@@ -241,7 +263,10 @@
   --popover: var(--greyscale-000);
   --popover-foreground: var(--greyscale-800);
   --primary: var(--purple-400);
-  --primary-foreground: var(--greyscale-000);
+  /* Brand foreground is BLACK on the light brand color (#a885f2).
+   * Contrast ratio ~6.7:1 — passes WCAG AA. Locked semantically to
+   * --greyscale-900 so theme tweaks pick it up. */
+  --primary-foreground: var(--greyscale-900);
   --secondary: var(--greyscale-100);
   --secondary-foreground: var(--greyscale-600);
   --muted: var(--greyscale-100);
@@ -265,7 +290,7 @@
   --sidebar: var(--greyscale-000);
   --sidebar-foreground: var(--greyscale-800);
   --sidebar-primary: var(--purple-400);
-  --sidebar-primary-foreground: var(--greyscale-000);
+  --sidebar-primary-foreground: var(--greyscale-900);
   --sidebar-accent: var(--greyscale-100);
   --sidebar-accent-foreground: var(--greyscale-800);
   --sidebar-border: var(--darker-100);
@@ -274,8 +299,11 @@
   /* ── Editor ── */
   --canvas-bg: var(--greyscale-000);
 
-  /* ── Accent Soft ── */
-  --primary-soft: rgba(123, 63, 184, 0.08);
+  /* ── Accent Soft ──
+   * Derived from --primary via color-mix so the soft fill follows any
+   * future chroma/hue tweaks to the brand accent automatically. 8%
+   * matches the prior rgba alpha. */
+  --primary-soft: color-mix(in srgb, var(--primary) 8%, transparent);
 
   /* ── Typography ─── */
   /* Instrument Sans is loaded by @fontsource-variable/instrument-sans in
@@ -335,7 +363,10 @@
   --card-foreground: var(--greyscale-000);
   --popover: var(--greyscale-900);
   --popover-foreground: var(--greyscale-000);
-  --primary: var(--purple-300);
+  /* Same brand as light mode — #a885f2 with black foreground reads as
+   * a confident accent on the dark background too. Sidebar-primary
+   * follows. */
+  --primary: var(--purple-400);
   --primary-foreground: var(--greyscale-900);
   --secondary: var(--greyscale-700);
   --secondary-foreground: var(--greyscale-200);
@@ -357,7 +388,7 @@
   /* ── Sidebar ── */
   --sidebar: var(--greyscale-900);
   --sidebar-foreground: var(--greyscale-000);
-  --sidebar-primary: var(--purple-300);
+  --sidebar-primary: var(--purple-400);
   --sidebar-primary-foreground: var(--greyscale-900);
   --sidebar-accent: var(--greyscale-700);
   --sidebar-accent-foreground: var(--greyscale-000);
@@ -378,8 +409,10 @@
   --border-level-2: var(--border-separator);
   --border-level-3: rgba(255, 255, 255, 0.18);
 
-  /* ── Accent Soft (dark) ── */
-  --primary-soft: rgba(158, 100, 212, 0.14);
+  /* ── Accent Soft (dark) ──
+   * Same color-mix derivation as light mode (see comment in :root). 14%
+   * matches the prior rgba alpha. */
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
 
   /* ── Dark Shadow Levels (multi-layer, compensated opacity) ── */
   --shadow-inset-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.04);

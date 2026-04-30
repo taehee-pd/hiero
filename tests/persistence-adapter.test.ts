@@ -12,6 +12,10 @@ import type {
   ProjectMeta,
   SavedProject,
 } from '@/lib/persistence/adapter';
+import type {
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 import type { Workspace } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
@@ -113,6 +117,22 @@ class InMemoryAdapter implements PersistenceAdapter {
 
   async deleteCheckpoint(id: string): Promise<void> {
     this.checkpoints.delete(id);
+  }
+
+  private snapshots = new Map<string, VersionSnapshot>();
+
+  async saveVersionSnapshot(snapshot: VersionSnapshot): Promise<void> {
+    this.snapshots.set(snapshot.id, snapshot);
+  }
+
+  async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+    return Array.from(this.snapshots.values())
+      .map(({ workspaceSnapshot: _ws, ...meta }) => meta)
+      .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+  }
+
+  async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+    return this.snapshots.get(id) ?? null;
   }
 }
 

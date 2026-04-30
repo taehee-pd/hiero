@@ -20,6 +20,10 @@
 
 import type { Workspace } from '@/lib/schema/types';
 import type {
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
+import type {
   DraftCheckpoint,
   DraftCheckpointMeta,
   PersistenceAdapter,
@@ -28,10 +32,12 @@ import type {
 } from './adapter';
 
 const DB_NAME = 'hiero_projects';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 export const PROJECTS_STORE = 'projects';
 export const CHECKPOINTS_STORE = 'hiero_draft_checkpoints';
 export const CHECKPOINTS_INDEX_PROJECT_CREATED = 'projectId_createdAt';
+export const VERSION_SNAPSHOTS_STORE = 'hiero_version_snapshots';
+export const VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT = 'publishedAt';
 
 type StoredProjectRecord = {
   id: string;
@@ -82,6 +88,14 @@ export function applyUpgrade(db: IDBDatabase, oldVersion: number): void {
           'projectId',
           'createdAt',
         ]);
+      }
+    }
+    case 2: {
+      if (!db.objectStoreNames.contains(VERSION_SNAPSHOTS_STORE)) {
+        const store = db.createObjectStore(VERSION_SNAPSHOTS_STORE, {
+          keyPath: 'id',
+        });
+        store.createIndex(VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT, 'publishedAt');
       }
     }
     /* eslint-enable no-fallthrough */
@@ -283,6 +297,44 @@ export class IndexedDBAdapter implements PersistenceAdapter {
     try {
       const store = txStore(db, CHECKPOINTS_STORE, 'readwrite');
       await requestToPromise(store.delete(id));
+    } finally {
+      db.close();
+    }
+  }
+
+  async saveVersionSnapshot(snapshot: VersionSnapshot): Promise<void> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, VERSION_SNAPSHOTS_STORE, 'readwrite');
+      await requestToPromise(store.put(snapshot));
+    } finally {
+      db.close();
+    }
+  }
+
+  async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, VERSION_SNAPSHOTS_STORE, 'readonly');
+      const records = await requestToPromise<VersionSnapshot[]>(
+        store.getAll(),
+      );
+      return records
+        .map(({ workspaceSnapshot: _ws, ...meta }) => meta)
+        .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+    } finally {
+      db.close();
+    }
+  }
+
+  async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+    const db = await openDB();
+    try {
+      const store = txStore(db, VERSION_SNAPSHOTS_STORE, 'readonly');
+      const record = await requestToPromise<VersionSnapshot | undefined>(
+        store.get(id),
+      );
+      return record ?? null;
     } finally {
       db.close();
     }

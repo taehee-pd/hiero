@@ -17,6 +17,10 @@
  */
 
 import type { Workspace } from '@/lib/schema/types';
+import type {
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 
 export type ProjectMeta = {
   id: string;
@@ -88,4 +92,16 @@ export interface PersistenceAdapter {
 
   /** Delete a checkpoint by id. No-op if not found. */
   deleteCheckpoint(id: string): Promise<void>;
+
+  /**
+   * Persist a published version snapshot. Append-only — there is no
+   * `updateSnapshot`. Used by `publish-transaction.ts`.
+   */
+  saveVersionSnapshot(snapshot: VersionSnapshot): Promise<void>;
+
+  /** List version snapshots, newest first. */
+  listVersionSnapshots(): Promise<VersionSnapshotMeta[]>;
+
+  /** Load a full snapshot (with workspace payload) by id. */
+  loadVersionSnapshot(id: string): Promise<VersionSnapshot | null>;
 }

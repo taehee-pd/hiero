@@ -19,6 +19,8 @@ import {
   CHECKPOINTS_STORE,
   DB_VERSION,
   PROJECTS_STORE,
+  VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT,
+  VERSION_SNAPSHOTS_STORE,
 } from '@/lib/persistence/indexeddb-adapter';
 
 type MockStore = {
@@ -72,6 +74,7 @@ describe('applyUpgrade', () => {
 
     expect(stores.has(PROJECTS_STORE)).toBe(true);
     expect(stores.has(CHECKPOINTS_STORE)).toBe(true);
+    expect(stores.has(VERSION_SNAPSHOTS_STORE)).toBe(true);
 
     const checkpoints = stores.get(CHECKPOINTS_STORE)!;
     expect(checkpoints.keyPath).toBe('id');
@@ -80,9 +83,17 @@ describe('applyUpgrade', () => {
       name: CHECKPOINTS_INDEX_PROJECT_CREATED,
       keyPath: ['projectId', 'createdAt'],
     });
+
+    const snapshots = stores.get(VERSION_SNAPSHOTS_STORE)!;
+    expect(snapshots.keyPath).toBe('id');
+    expect(snapshots.indices).toHaveLength(1);
+    expect(snapshots.indices[0]).toEqual({
+      name: VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT,
+      keyPath: 'publishedAt',
+    });
   });
 
-  it('upgrade from v1 (existing projects store) only adds the checkpoints store', () => {
+  it('upgrade from v1 (existing projects store) adds checkpoints + snapshots', () => {
     // Simulate a user on v1: the projects store already exists.
     const { db, stores } = createMockDB({
       [PROJECTS_STORE]: { keyPath: 'id', indices: [] },
@@ -92,16 +103,19 @@ describe('applyUpgrade', () => {
 
     // Projects store untouched.
     expect(stores.get(PROJECTS_STORE)!.keyPath).toBe('id');
-    // Checkpoints store created.
+    // Both new stores created via the fallthrough chain.
     expect(stores.has(CHECKPOINTS_STORE)).toBe(true);
     expect(stores.get(CHECKPOINTS_STORE)!.indices[0].name).toBe(
       CHECKPOINTS_INDEX_PROJECT_CREATED,
     );
+    expect(stores.has(VERSION_SNAPSHOTS_STORE)).toBe(true);
+    expect(stores.get(VERSION_SNAPSHOTS_STORE)!.indices[0].name).toBe(
+      VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT,
+    );
   });
 
-  it('does not double-create stores that already exist (re-entrancy safety)', () => {
-    // Simulate a malformed prior install where both stores exist but
-    // upgrade fires with oldVersion=0 for some reason.
+  it('upgrade from v2 (Phase 1 user) only adds the snapshots store', () => {
+    // Simulate a user on v2: projects + checkpoints stores both exist.
     const { db, stores } = createMockDB({
       [PROJECTS_STORE]: { keyPath: 'id', indices: [] },
       [CHECKPOINTS_STORE]: {
@@ -115,14 +129,40 @@ describe('applyUpgrade', () => {
       },
     });
 
+    applyUpgrade(db, 2);
+
+    expect(stores.size).toBe(3);
+    expect(stores.has(VERSION_SNAPSHOTS_STORE)).toBe(true);
+  });
+
+  it('does not double-create stores that already exist (re-entrancy safety)', () => {
+    const { db, stores } = createMockDB({
+      [PROJECTS_STORE]: { keyPath: 'id', indices: [] },
+      [CHECKPOINTS_STORE]: {
+        keyPath: 'id',
+        indices: [
+          {
+            name: CHECKPOINTS_INDEX_PROJECT_CREATED,
+            keyPath: ['projectId', 'createdAt'],
+          },
+        ],
+      },
+      [VERSION_SNAPSHOTS_STORE]: {
+        keyPath: 'id',
+        indices: [
+          { name: VERSION_SNAPSHOTS_INDEX_PUBLISHED_AT, keyPath: 'publishedAt' },
+        ],
+      },
+    });
+
     expect(() => applyUpgrade(db, 0)).not.toThrow();
-    expect(stores.size).toBe(2);
+    expect(stores.size).toBe(3);
   });
 
   it('DB_VERSION matches the highest case in the upgrade ladder', () => {
-    // If a future phase adds a new case (e.g. case 2) without bumping
-    // DB_VERSION, fresh installs would never run that case. Pin the
-    // contract: DB_VERSION must equal (number of cases). Currently 2.
-    expect(DB_VERSION).toBe(2);
+    // If a future phase adds a new case (e.g. case 3) without bumping
+    // DB_VERSION, fresh installs would never run that case. Phase 3
+    // will bump this to 4 with the restore_events store.
+    expect(DB_VERSION).toBe(3);
   });
 });

@@ -11,6 +11,10 @@ import type {
   ProjectMeta,
   SavedProject,
 } from '@/lib/persistence/adapter';
+import type {
+  VersionSnapshot,
+  VersionSnapshotMeta,
+} from '@/lib/sync-service/version-snapshot';
 import type { Workspace } from '@/lib/schema/types';
 
 // ---------------------------------------------------------------------------
@@ -23,14 +27,17 @@ function createMockAdapter() {
     string,
     { projectId: string; data: Workspace; createdAt: number; memo: string | null }
   >();
+  const snapshots = new Map<string, VersionSnapshot>();
   let checkpointSeq = 0;
 
   const adapter: PersistenceAdapter & {
     _store: typeof store;
     _checkpoints: typeof checkpoints;
+    _snapshots: typeof snapshots;
   } = {
     _store: store,
     _checkpoints: checkpoints,
+    _snapshots: snapshots,
     async list(): Promise<ProjectMeta[]> {
       return Array.from(store.entries()).map(([id, r]) => ({
         id,
@@ -95,6 +102,17 @@ function createMockAdapter() {
     },
     async deleteCheckpoint(id: string): Promise<void> {
       checkpoints.delete(id);
+    },
+    async saveVersionSnapshot(snapshot: VersionSnapshot): Promise<void> {
+      snapshots.set(snapshot.id, snapshot);
+    },
+    async listVersionSnapshots(): Promise<VersionSnapshotMeta[]> {
+      return Array.from(snapshots.values())
+        .map(({ workspaceSnapshot: _ws, ...meta }) => meta)
+        .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+    },
+    async loadVersionSnapshot(id: string): Promise<VersionSnapshot | null> {
+      return snapshots.get(id) ?? null;
     },
   };
 
@@ -268,6 +286,13 @@ describe('PersistenceManager', () => {
         return null;
       },
       async deleteCheckpoint() {},
+      async saveVersionSnapshot() {},
+      async listVersionSnapshots() {
+        return [];
+      },
+      async loadVersionSnapshot() {
+        return null;
+      },
     };
 
     const errorManager = new PersistenceManager(failingAdapter, {
@@ -432,6 +457,13 @@ describe('PersistenceManager', () => {
           return null;
         },
         async deleteCheckpoint() {},
+        async saveVersionSnapshot() {},
+        async listVersionSnapshots() {
+          return [];
+        },
+        async loadVersionSnapshot() {
+          return null;
+        },
       };
       const errorMgr = new PersistenceManager(failingAdapter, {
         onError: onError as (e: unknown) => void,

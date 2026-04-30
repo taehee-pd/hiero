@@ -33,8 +33,8 @@ const variantClasses: Record<StatusBadgeVariant, string> = {
  * Sourced from DESIGN.md §7 (save status badge) and §4 (pill radius 9999px).
  * Uses the status-surface CSS classes defined in app/globals.css.
  *
- * Cross-feature consumers: Navbar (save status), PublishPanel (connection),
- * SyncPrPanel (sync phase), ReleasePanel (snapshot), SyncTargetPanel.
+ * Cross-feature consumers: Navbar (save status), PublishDialog (target
+ * status), SyncPrPanel (sync phase), SyncTargetPanel.
  */
 function StatusBadge({
   children,

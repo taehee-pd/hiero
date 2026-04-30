@@ -94,6 +94,40 @@ describe('generatePrBody enrichment', () => {
   });
 });
 
+// Phase 2.5 wiring fix: SyncPrRequest now carries optional
+// `releaseMetadata`, and `sync-pr.syncPr` threads it into
+// `generatePrBody`. This block verifies the threading without
+// exercising the full sync pipeline (no provider mock needed) — we
+// just assert that when callers DO pass releaseMetadata fields, the
+// downstream PR body picks them up via the same shape generatePrBody
+// has always supported.
+describe('PR enrichment — releaseMetadata threading', () => {
+  it('renders the release notes blockquote when sync caller passes them through', () => {
+    const body = generatePrBody(baseChanges, 'taehee', {
+      iconChanges: [{ iconDir: 'icon-play', kind: 'added' }],
+      version: '2.0.0',
+      releaseNotes: 'Big release.\nMultiple icons updated.',
+    });
+    expect(body).toContain('release **v2.0.0**');
+    expect(body).toContain('### Release notes');
+    expect(body).toContain('> Big release.');
+    expect(body).toContain('> Multiple icons updated.');
+    // Original iconChanges section stays in place.
+    expect(body).toContain('icon-play');
+  });
+
+  it('handles missing releaseMetadata gracefully (pre-Phase-4 callers unchanged)', () => {
+    // sync-pr's pre-Phase-4 call shape — only iconChanges, no version.
+    const body = generatePrBody(baseChanges, 'taehee', {
+      iconChanges: [{ iconDir: 'icon-play', kind: 'added' }],
+    });
+    expect(body).not.toContain('release **v');
+    expect(body).not.toContain('### Release notes');
+    // Metadata block is still emitted but with version=null.
+    expect(body).toContain('"version": null');
+  });
+});
+
 function extractMetadata(body: string): {
   schema: string;
   version: string | null;

@@ -45,6 +45,8 @@ import type { Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
+import { saveDraftCheckpoint } from '@/lib/persistence/use-persistence';
+import { toast as appToast } from '@/components/ui/use-toast';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
 import { exportSvgString } from '@/lib/export/export-svg';
 import { exportSvgPackage } from '@/lib/export/export-svg-package';
@@ -2152,14 +2154,24 @@ export function EditorShell({
     };
   };
 
+  // Unified Save — checkpoint, not file download (Phase 2.5 wiring fix).
+  // Matches the studio Navbar's behavior so Cmd+S means the same thing
+  // wherever the user invokes it. File-download flow stays available
+  // via handleExportProjectFile in the command palette.
   const handleSave = async () => {
+    const result = await saveDraftCheckpoint();
+    if (!result) return;
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 1500);
+    appToast({ title: 'Saved draft', description: 'Checkpoint stored locally.' });
+  };
+
+  const handleExportProjectFile = async () => {
     const payload = serializeWorkspace();
     if (!payload) return;
     const result = await saveProject(payload.data);
     if (result) {
       editorStore.getState().markSaved(payload.updatedAt);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 1500);
     }
   };
 
@@ -2506,12 +2518,21 @@ export function EditorShell({
             <CommandItem
               onSelect={() => {
                 setCommandOpen(false);
-                handleSave();
+                void handleSave();
               }}
             >
-              <UiIcon name="copy" size={16} className="size-4" />
-              <span>Save workspace</span>
-              <CommandShortcut>Cmd S</CommandShortcut>
+              <UiIcon name="save" size={16} className="size-4" />
+              <span>Save draft</span>
+              <CommandShortcut>⌘S</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                void handleExportProjectFile();
+              }}
+            >
+              <UiIcon name="download" size={16} className="size-4" />
+              <span>Export project file…</span>
             </CommandItem>
             <CommandItem
               onSelect={() => {

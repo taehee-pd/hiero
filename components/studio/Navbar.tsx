@@ -57,8 +57,16 @@ import { exportSvgPackage } from '@/lib/export/export-svg-package';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
-import { SyncTargetPanelContent } from '@/components/export/SyncTargetPanel';
+import { PublishDialog, type PublishTargetOption } from '@/components/export/publish/PublishDialog';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { KbdHint } from '@/components/ds/kbd-hint';
+import { IndexedDBAdapter } from '@/lib/persistence/indexeddb-adapter';
+import { createTargetExecutor } from '@/lib/sync-ui/publish-target-executor';
+import { useHieroConfig } from '@/lib/install-config/use-hiero-config';
+import { useRouter } from 'next/navigation';
+import type { ChangesSummary } from '@/lib/sync-service/version-snapshot';
 import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platform/bridge';
 import {
   resetPersistenceForNewProject,
@@ -106,7 +114,7 @@ export function Navbar() {
 
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [lottieSheetOpen, setLottieSheetOpen] = useState(false);
-  const [distributionSheetOpen, setDistributionSheetOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [confirmNewProjectOpen, setConfirmNewProjectOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -118,10 +126,82 @@ export function Navbar() {
   useEffect(() => setMounted(true), []);
 
   const project = useEditorStore((s) => s.project);
+  const workspace = useEditorStore((s) => s.workspace);
   const commandIcons = useMemo(
     () => Object.values(project?.icons ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [project?.icons],
   );
+
+  // Lifted hook + router so the History "new versions" dot and the
+  // Publish dialog can both use them without re-invoking each render
+  // pass. The config is fetched once per session (cached in
+  // use-hiero-config); router pushes to /history.
+  const router = useRouter();
+  const configState = useHieroConfig();
+
+  // Publish dialog props derived from the loaded config + active
+  // project. When no config or workspace is loaded the dialog renders
+  // its own empty state ("No release targets configured.").
+  const publishTargetOptions: PublishTargetOption[] = useMemo(() => {
+    if (configState.kind !== 'loaded') return [];
+    return (configState.config.releaseTargets ?? []).map((target) => ({
+      spec: { kind: target.kind, payload: target },
+      label:
+        target.kind === 'git-pr'
+          ? `${target.owner}/${target.repo}#${target.baseBranch}`
+          : target.kind === 'npm-registry'
+            ? target.packageName
+            : target.outputDir,
+      defaultEnabled: true,
+    }));
+  }, [configState]);
+
+  const publishExecutor = useMemo(() => {
+    if (!workspace || !project) return null;
+    return createTargetExecutor({
+      workspace,
+      project,
+      actor: { name: projectName },
+      releaseMetadata: { version: '', releaseNotes: '' },
+    });
+  }, [workspace, project, projectName]);
+
+  // Empty changes summary for now — Phase 2.5 wedge defers per-icon
+  // diff against the last published snapshot to a follow-up. Phase 3's
+  // diffWorkspaces could compute this if the publish flow loaded the
+  // most recent snapshot first.
+  const publishChangesSummary: ChangesSummary = useMemo(
+    () => ({ added: [], modified: [], removed: [] }),
+    [],
+  );
+
+  const persistence = useMemo(() => new IndexedDBAdapter(), []);
+
+  // History dot — solid lilac when there's a published snapshot newer
+  // than the last viewed timestamp. Read once on mount + whenever a
+  // publish completes (PublishDialog onPublished triggers a refresh).
+  const [hasNewVersions, setHasNewVersions] = useState(false);
+  const refreshHistoryDot = useCallback(async () => {
+    try {
+      const snapshots = await persistence.listVersionSnapshots();
+      if (snapshots.length === 0) {
+        setHasNewVersions(false);
+        return;
+      }
+      const lastViewedRaw =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('hiero.history.lastViewedAt')
+          : null;
+      const lastViewed = lastViewedRaw ? Number.parseInt(lastViewedRaw, 10) : 0;
+      const newest = new Date(snapshots[0].publishedAt).getTime();
+      setHasNewVersions(newest > lastViewed);
+    } catch {
+      setHasNewVersions(false);
+    }
+  }, [persistence]);
+  useEffect(() => {
+    void refreshHistoryDot();
+  }, [refreshHistoryDot]);
 
   // Global Cmd+K handler — only active when no icon is open
   // (when an icon is open, EditorShell provides its own richer command palette)
@@ -268,6 +348,28 @@ export function Navbar() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [handleSaveCheckpoint]);
+
+  // Global Cmd+Shift+P → open the unified Publish dialog. Same focus-
+  // guard rules as Cmd+S: skip when stdin is a text input so the
+  // chord doesn't steal in-input shortcuts.
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== 'p') return;
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (!event.shiftKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+      }
+      event.preventDefault();
+      setPublishDialogOpen(true);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Internal-build only. See components/editor/Toolbar.tsx for the
   // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
@@ -498,8 +600,9 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
                     <UiIcon name="file-json" size={16} className="size-4" />Lottie JSON…
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setDistributionSheetOpen(true)}>
-                    <UiIcon name="package" size={16} className="size-4" />Full distribution options…
+                  <DropdownMenuItem onSelect={() => setPublishDialogOpen(true)}>
+                    <UiIcon name="package" size={16} className="size-4" />Publish…
+                    <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -585,6 +688,48 @@ export function Navbar() {
           <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />
           <IconButton icon={<UiIcon name="redo-2" />} aria-label="Redo" onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
 
+          <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />
+
+          {/* Publish — primary CTA, text+icon button. Phase 2.5 wiring. */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 gap-1.5 px-2.5"
+                onClick={() => setPublishDialogOpen(true)}
+                data-testid="navbar-publish"
+              >
+                <UiIcon name="package" size={14} />
+                <span>Publish</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <span className="flex items-center gap-1.5">
+                Publish
+                <KbdHint keys={['Cmd', 'Shift', 'P']} />
+              </span>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* History — IconButton with optional "new versions" dot */}
+          <span className="relative inline-flex">
+            <IconButton
+              icon={<UiIcon name="clock" />}
+              aria-label={hasNewVersions ? 'Version history (new versions)' : 'Version history'}
+              onClick={() => router.push('/history')}
+              data-testid="navbar-history"
+            />
+            {hasNewVersions && (
+              <span
+                className="pointer-events-none absolute right-1 top-1 size-1.5 rounded-full bg-primary"
+                aria-hidden="true"
+              />
+            )}
+          </span>
+
+          <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />
+
           {/* Search */}
           <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
 
@@ -608,12 +753,26 @@ export function Navbar() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={distributionSheetOpen} onOpenChange={setDistributionSheetOpen}>
-        <SheetContent side="right" className="sm:max-w-xl">
-          <SheetHeader><SheetTitle>Distribution</SheetTitle></SheetHeader>
-          <div className="py-4"><SyncTargetPanelContent title="Distribution" description="Manage release targets and publish packages." /></div>
-        </SheetContent>
-      </Sheet>
+      {/* Publish dialog — single mount, opened from the toolbar button,
+          the dropdown's "Publish…" item, and the Cmd+Shift+P binding.
+          The legacy "Distribution" Sheet (mounting SyncTargetPanelContent)
+          was removed in Phase 2.5; this is the canonical surface now. */}
+      {workspace && project && publishExecutor && (
+        <PublishDialog
+          open={publishDialogOpen}
+          onOpenChange={setPublishDialogOpen}
+          workspace={workspace}
+          publishedBy={projectName}
+          suggestedVersion="0.1.0"
+          changesSummary={publishChangesSummary}
+          targetOptions={publishTargetOptions}
+          execute={publishExecutor}
+          persistence={persistence}
+          onPublished={() => {
+            void refreshHistoryDot();
+          }}
+        />
+      )}
 
       <AlertDialog open={confirmNewProjectOpen} onOpenChange={setConfirmNewProjectOpen}>
         <AlertDialogContent>
@@ -651,9 +810,29 @@ export function Navbar() {
       </Dialog>
 
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
-        <CommandInput placeholder="Search icons…" />
+        <CommandInput placeholder="Search icons or actions…" />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Actions">
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                setPublishDialogOpen(true);
+              }}
+            >
+              <UiIcon name="package" size={16} className="size-4" />
+              <span>Publish…</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                router.push('/history');
+              }}
+            >
+              <UiIcon name="clock" size={16} className="size-4" />
+              <span>Version history</span>
+            </CommandItem>
+          </CommandGroup>
           <CommandGroup heading="Icons">
             {commandIcons.map((icon) => (
               <CommandItem

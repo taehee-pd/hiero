@@ -420,13 +420,12 @@ The phases below convert this UX plan into executable UI work while preserving t
 **Goal:** lock outcome-only authoring contract in state/schema and UI copy.
 
 - Finalize/confirm `Transition` authored fields: `duration`, `cadence`, `fallbackOverride`, `correspondenceHints`.
-- Add schema/state migration defaults for `cadence: 'soft'` and empty pins.
+- Set initial defaults: `cadence: 'soft'`, empty `correspondenceHints`.
 - Introduce UI-copy lint checklist for banned algorithm terms in non-debug surfaces.
 - Define source-of-truth resolver output shape for plain-language fallback sentence.
 
 **Exit criteria**
 - No strategy field exists in authored transition payload.
-- Existing documents/projects load without data loss.
 - Non-debug UI contains zero algorithm vocabulary.
 
 ### Phase UX-B — Layer 1 controls (core authoring)

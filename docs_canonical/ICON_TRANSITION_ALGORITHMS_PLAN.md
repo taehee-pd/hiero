@@ -162,8 +162,9 @@ the existing `primitive` rule at `lib/schema/types.ts:200-207`):
 
 This resolves the schema collision raised in eng review:
 `Layer.path` and `Layer.compound` are not alternatives — `compound`
-is authoring metadata over the canonical `path.d`. Migration: every
-existing layer keeps `path` only and is unaffected.
+is authoring metadata over the canonical `path.d`. Layers without
+boolean operations stay simple (`path` only); compound layers add
+the tree as additional metadata.
 
 **`TopologyContract.layerPairs`** (`lib/schema/types.ts:421-426`)
 remains keyed off the authoring contract, which is `path.d`. When a

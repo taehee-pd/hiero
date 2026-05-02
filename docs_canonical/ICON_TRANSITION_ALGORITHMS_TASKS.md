@@ -87,8 +87,6 @@ phase, but the formal sign-off lives in G.
 - [ ] Add optional `compound?: { tree: CompoundNode; operands: Record<string, OperandRef>; cacheVersion: number }` to `Layer`.
 - [ ] Define `CompoundNode = { kind: 'leaf'; operandId: string } | { kind: 'op'; op: CompoundOp; children: CompoundNode[] }`.
 - [ ] Codify the **path-invariant rule** in `lib/schema/types.ts` next to the existing `primitive` invariant comment.
-- [ ] Migration: zero — existing layers keep `path` only.
-- [ ] Schema-version bump and round-trip tests across save/load.
 - [ ] **Regression test (plan §4.1):** two layers with `compound` trees that evaluate to the same `path.d` produce identical `TopologyContract.layerPairs` (i.e., contract is keyed off `path.d`, not `compound.tree`, so commutative reorderings produce the same contract).
 
 ### B2 — Editor wiring (plan §4.1, §4.6)
@@ -206,7 +204,6 @@ phase, but the formal sign-off lives in G.
 
 - [ ] Animation scheduler accepts `MotionCurves` per layer pair: `g(t)` for geometry progress, `α(t)` for opacity progress.
 - [ ] Default `α` offset of 8 % of duration (geometry leads opacity).
-- [ ] Backward compatibility: existing single-curve callers continue to work via `MotionCurves` constructed with `g === α`.
 
 ### D2 — Tier-default timing curves
 

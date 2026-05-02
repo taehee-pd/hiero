@@ -89,6 +89,7 @@ phase, but the formal sign-off lives in G.
 - [ ] Codify the **path-invariant rule** in `lib/schema/types.ts` next to the existing `primitive` invariant comment.
 - [ ] Migration: zero — existing layers keep `path` only.
 - [ ] Schema-version bump and round-trip tests across save/load.
+- [ ] **Regression test (plan §4.1):** two layers with `compound` trees that evaluate to the same `path.d` produce identical `TopologyContract.layerPairs` (i.e., contract is keyed off `path.d`, not `compound.tree`, so commutative reorderings produce the same contract).
 
 ### B2 — Editor wiring (plan §4.1, §4.6)
 
@@ -97,6 +98,7 @@ phase, but the formal sign-off lives in G.
 - [ ] Operand-level edits regenerate `path.d` from `compound.tree` and bump `cacheVersion`.
 - [ ] Add `convertToGroup(layerId)` action for the §4.3 non-destructive alternative to flatten.
 - [ ] Add `flattenCompound(layerId)` action that prompts before destroying the tree.
+- [ ] **Regression test (plan §4.1):** confirm `LayerBinding.compoundTrimMode` (consumed in `lib/export/export-lottie.ts:266,600,636`) continues to operate on rendered `path.d` subpaths, not on operands. Compound metadata must not change trim semantics.
 
 ### B3 — Compound authoring UX principles (plan §4.3)
 
@@ -137,7 +139,7 @@ phase, but the formal sign-off lives in G.
 - [ ] Implement **boundary matching with salient-feature detection** per **Baxter, Barla & Anjyo 2008 "Compatible Embedding for 2D Shape Animation"** for the ambiguous-turning-function-landscape case (used in front of the existing turning-function anchor when local-extrema density is high).
 - [ ] Add **ARAP quality wrap**:
   - Triangulation: **constrained Delaunay against contour-tree holes** via `poly2tri` (npm, BSD-3) or `cdt2d` (npm, MIT) as cross-check.
-  - **Compatible-triangulation pass** per Baxter 2008 §3 to extend the boundary correspondence to the interior.
+  - **Compatible-triangulation pass** per Baxter 2008 §3 to extend the boundary correspondence to the interior. **Surazhsky & Gotsman 2001** is the companion mathematical reference for compatibility constraints.
   - Solver: **two formulations**:
     - **Igarashi 2005 closed-form** (zhangzhensong/arap or deliagander/ARAPShapeManipulation as reference) — runtime / preview-on-hover path.
     - **Alexa 2000 polar-decomposed affine** — offline / export sampling path (tighter distortion bound, marginally slower).
@@ -150,6 +152,7 @@ phase, but the formal sign-off lives in G.
 - [ ] Forward/reversed orientation pick by integrated turning-angle distortion.
 - [ ] Sederberg-1993 intrinsic on open polyline.
 - [ ] Hausdorff first-pass / Discrete Fréchet ambiguity gate; route to T7 draw-emit when over threshold.
+- [ ] **Strict-containment trim gate (plan §5.2):** when source path strictly contains target along arc length (or vice versa) within ε, prefer the existing Lottie-style trim executor (`lib/runtime-core/draw-executor.ts`) over T7 draw-emit. This is the "right answer" branch for prefix/suffix relationships.
 
 ### C4 — T3 / T4 / T5 (multi-* + mixed) (plan §5.3, §5.4, §5.5)
 
@@ -157,7 +160,8 @@ phase, but the formal sign-off lives in G.
 - [ ] Cost matrix: centroid distance, bbox aspect/scale, signed-area, turning-function distance (Arkin 1991), z-order penalty.
 - [ ] Hard exclusion across roles enforced by per-level scoping (no inter-role finite penalty).
 - [ ] Tiebreaker: lexicographic `(fromIndex, toIndex)` after costs match within `ε = 1e-9`.
-- [ ] Hierarchical scoping per **Feng et al. 2018 "2D Shape Morphing via Automatic Feature Matching and Hierarchical Interpolation"** as the contemporary methodological reference; **Liu, Schneider & Klein 2010** as the closer reference for vector-contour decomposition.
+- [ ] Hierarchical scoping per **Feng et al. 2018 "2D Shape Morphing via Automatic Feature Matching and Hierarchical Interpolation"** as the contemporary methodological reference; **Liu, Schneider & Klein 2010** as the closer reference for vector-contour decomposition; **Whited et al. 2010 "BetweenIT"** as the conceptual inspiration for level-by-level decomposition (originally hand-drawn strokes; idea adopted, algorithm not).
+- [ ] **Compatible-embedding generalization for T3 (plan §5.3):** per Hungarian-matched pair, optionally invoke C2's Baxter 2008 boundary-matching + compatible-triangulation pipeline and ARAP wrap when per-pair distortion exceeds T1's intrinsic floor. Joint triangulation runs per pair, not across the full multi-shape.
 - [ ] Birth/death: outer subpath → centroid collapse + alpha; hole → radial collapse; open subpath → endpoint trim.
 - [ ] T5 splits into closed-channel (T3 path) + open-channel (T4 path); cross-type pairs route to T7.
 
@@ -169,7 +173,11 @@ phase, but the formal sign-off lives in G.
 - [ ] **Non-isomorphic-tree path:** flatten both to contour trees (§4.2) and run C4 per-level Hungarian; tree-shape disagreement enters cost matrix as soft signal **and** is recorded as the why-fallback signal.
 - [ ] **Compound ↔ simple:** flatten compound; lift `evenodd` self-intersecting simple sides to implicit contour tree.
 - [ ] **Cross-rule (`nonzero` ↔ `evenodd`):** route to T8 by default per plan §5.7 conservative default.
-- [ ] Operand-level boolean evaluation reuses Paper.js (`lib/editor-core/boolean-ops.ts`); for offsetting needs that arise within compound evaluation (e.g., subtractive shape with rounded corner), evaluate via `clipper2-ts` as a faster alternative to Paper.js round-trips.
+- [ ] Operand-level boolean evaluation reuses Paper.js (`lib/editor-core/boolean-ops.ts`).
+- [ ] **Tier-specific distortion estimates (plan §6):**
+  - T6 isomorphic distortion = `0` by definition (operands map identity-on-tree-position).
+  - T6 non-isomorphic distortion = T3 estimate + tree-shape penalty (number of structural mismatches between trees, normalized by max(|treeFrom|, |treeTo|)).
+  - T6 compound ↔ simple distortion = T3 estimate over the implicit contour tree.
 
 ### C6 — T7 (stroke ↔ fill) (plan §5.6)
 
@@ -177,6 +185,7 @@ phase, but the formal sign-off lives in G.
 - [ ] **Aligned skeletons → medial-axis thickening:** Tiller-Hanson (1984) offsetting from centerline outward implemented via **`clipper2-ts`** (`countertype/clipper2-ts`, BSL — pure-TS port of Angus Johnson's Clipper2) `InflatePaths` for the outer offsets, with `clipper2-wasm` (`ErikSom/Clipper2-WASM`) as the perf-critical fallback for large stroke counts; opacity over `α(t)`.
 - [ ] **Misaligned skeletons → directional draw + fill-emit:** stroke trims out on `g(t)`; fill draws in on `g(t)` shifted by 0.08·duration.
 - [ ] **No raw crossfade.** Enforced by lint or unit test on the T7 implementation.
+- [ ] **Tier-specific distortion estimate (plan §6):** T7 distortion = skeleton-alignment Hausdorff. Reported even when skeletons are misaligned (in which case the value drives whether the resolver should have fallen further to T8).
 
 ### C7 — T8 designed fallback library (plan §5.8)
 
@@ -201,8 +210,10 @@ phase, but the formal sign-off lives in G.
 
 ### D2 — Tier-default timing curves
 
-- [ ] Per-tier defaults table: T1/T3/T5 use `easeInOutCubic`; T2/T4 use `easeOutCubic` (stroke-feel); T7 uses asymmetric draw-out / fill-in pair; T8 fallbacks use the curves shipped with each named motion.
-- [ ] Authors override at the `Transition` level.
+- [ ] All non-fallback tiers (T1–T6) inherit the plan §1 global defaults: `g(t) = easeInOutCubic`, `α(t) = easeOutCubic` shifted 8 % (geometry leads opacity).
+- [ ] T7 uses the §5.6 0.08·duration shift between stroke trim-out and fill draw-in (already specified as a plan invariant; D2 just wires it through the scheduler).
+- [ ] T8 fallbacks use the curves shipped with each named motion (D3 owns the fixed `(g, α)` per fallback).
+- [ ] Authors override at the `Transition` level. Per-tier curve customization beyond plan §1 / §5.6 is a tasks-level decision, not a plan commitment — defer until corpus evidence (Phase G) shows a tier needs its own default.
 
 ### D3 — Designed fallback timing curves
 
@@ -286,6 +297,7 @@ phase, but the formal sign-off lives in G.
 
 - [ ] Run the §9.2 metric harness against every corpus pair for every shipped tier.
 - [ ] Publish per-tier baselines for boundary distortion, area monotonicity, self-intersection count, temporal jerk, parity error.
+- [ ] **Performance gate (plan §10):** realistic icons (≤ 20 subpaths, ≤ 200 vertices each) must resolve under 5 ms on commodity hardware. Recorded alongside the §9.2 metrics; a regression here gates merge the same way a metric regression does.
 
 ### G2 — Comparative baselines
 
@@ -351,6 +363,13 @@ These hold across all phases and gate any merge:
 - **Validation gating.** No tier merges without its corpus metrics
   attached and meeting the §9.3 success criterion vs. the baseline
   snapshot from A4.
+- **Vector-domain only (plan §12).** All resolver tiers operate in
+  the vector domain. Level-set, signed-distance-field, pixel-domain,
+  or neural-network-based morphs are out of scope and must not land
+  as experimental tiers without a plan amendment.
+- **No intra-variant state authoring (plan §12).** Cross-icon
+  transition remains the only authored axis. The resolver must not
+  acquire dependencies on per-variant state animation surfaces.
 
 ---
 

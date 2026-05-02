@@ -351,3 +351,150 @@ plan.
 - **No designer-facing reference of the academic citations** in the
   algorithm plan. Sederberg, Baxter, Igarashi, Arkin, etc. live
   entirely in `docs_canonical/`. The editor never shows a citation.
+
+
+---
+
+## 11. UX audit alignment to PR #174 (algorithm revamp UI)
+
+> Context note: this audit targets the UI-side implications of the algorithm revamp tracked by PR #174 and validates that the current UX plan preserves the authoring contract while adding enough implementation specificity for shipping.
+
+### 11.1 Contract integrity check
+
+- **Pass — algorithm opacity preserved.** The plan consistently enforces "no strategy picker" and keeps tier selection invisible outside debug mode.
+- **Pass — outcome-first control surface.** Editable inputs remain outcome-level (`duration`, `cadence`, `fallbackOverride`, `correspondenceHints`) and avoid mechanism-level leaks.
+- **Pass — progressive disclosure is coherent.** Default users can complete transition authoring in Layer 0/1 without touching Advanced.
+- **Guardrail needed — wording drift risk.** Any PR #174 copy/UI labels must be checked to prevent algorithm terms from leaking into non-debug strings.
+
+### 11.2 Interaction-model audit
+
+- **Preview-on-hover is the correct replacement for compatibility badges** and aligns with "show, don't score".
+- **T8 fallback override is correctly conditional,** but requires deterministic reveal rules:
+  - reveal only after a resolved T8 result exists for the active pair;
+  - keep hidden for non-T8 pairs;
+  - persist user override across editor reload.
+- **Correspondence pinning is correctly scoped to Advanced,** but needs explicit undo/redo semantics and pin-conflict behavior (replace vs multi-pin) to avoid authoring ambiguity.
+- **Cadence control is right-sized (2 states),** but requires clear state tokens in UI copy and accessibility labels.
+
+### 11.3 Information architecture audit
+
+- **Surface ownership is well-defined** (picker, Transition panel, Animation studio, Inspector, debug pill).
+- **Potential overlap to resolve:** Transition panel vs Animation studio ownership for fallback sentence + picker; implementation should pick a single primary home to reduce scanning cost.
+- **No new workspace is a UX strength** and should remain invariant during PR #174 rollout.
+
+### 11.4 Accessibility and trust audit
+
+- **Needs explicit a11y acceptance criteria** for new controls:
+  - keyboard-operable cadence toggle;
+  - keyboard and screen-reader operation for fallback picker;
+  - readable pin targets and focus affordances in canvas mode;
+  - narrated fallback explanation sentence via polite live region when resolution changes.
+- **Trust contract is strong** (`preview = runtime = export`) but should be tested with snapshot-style parity checks per tier/fallback path.
+
+### 11.5 UX risks introduced by algorithm revamp
+
+1. **Silent behavior shift risk:** users may perceive changed motion as regressions without understanding resolver improvements.
+2. **Discoverability risk:** correspondence pins may remain too hidden for users who need them most.
+3. **Control-fragmentation risk:** cadence + curve override can feel redundant if naming and hierarchy are unclear.
+4. **Debug bleed risk:** engineering signals can accidentally leak to production builds.
+
+### 11.6 Required adjustments to this plan (normative)
+
+- Add a **single-sentence fallback explanation component** spec with exact placement hierarchy:
+  1) Animation studio (primary),
+  2) Transition panel (only when studio collapsed/hidden).
+- Add **pinning behavior rules**:
+  - one source vertex/subpath may map to at most one target at a time;
+  - remapping replaces previous pin;
+  - deleting either endpoint deletes the pin;
+  - all pin actions are undoable.
+- Add **copy policy rule**: non-debug UI strings must never include algorithm-tier names or academic method terms.
+- Add **debug build guard**: debug pill and raw why-fallback details must be excluded unless `NEXT_PUBLIC_HIERO_DEBUG=1`.
+
+## 12. Phased action plan to implement PR #174 UX fully
+
+The phases below convert this UX plan into executable UI work while preserving the authoring contract.
+
+### Phase UX-A — Contract & schema hardening
+
+**Goal:** lock outcome-only authoring contract in state/schema and UI copy.
+
+- Finalize/confirm `Transition` authored fields: `duration`, `cadence`, `fallbackOverride`, `correspondenceHints`.
+- Add schema/state migration defaults for `cadence: 'soft'` and empty pins.
+- Introduce UI-copy lint checklist for banned algorithm terms in non-debug surfaces.
+- Define source-of-truth resolver output shape for plain-language fallback sentence.
+
+**Exit criteria**
+- No strategy field exists in authored transition payload.
+- Existing documents/projects load without data loss.
+- Non-debug UI contains zero algorithm vocabulary.
+
+### Phase UX-B — Layer 1 controls (core authoring)
+
+**Goal:** ship minimal, high-confidence transition authoring surface.
+
+- Implement cadence toggle (*Soft*/*Snappy*) with keyboard support and clear selected state.
+- Implement conditional fallback-motion picker visible only for T8 outcomes.
+- Persist fallback override and cadence per transition pair.
+- Add plain-language fallback explanation sentence tied to resolver result.
+
+**Exit criteria**
+- Users can complete authoring with Duration + Cadence + conditional Fallback only.
+- Fallback controls do not appear for non-T8 transitions.
+- All controls are keyboard reachable and screen-reader labeled.
+
+### Phase UX-C — Hover preview performance + trust guarantees
+
+**Goal:** make experiential preview the primary quality signal.
+
+- Implement picker hover-preview pipeline with prewarm/cache for ≤100 ms time-to-first-frame target.
+- Add subtle 120 ms ramp-in treatment before transition playback.
+- Freeze-to-end (`t=1`) while hovering; revert on hover end.
+- Add preview/runtime/export parity tests covering representative tiers and T8 fallback variants.
+
+**Exit criteria**
+- Median hover TTF ≤ 100 ms on canonical icon corpus.
+- Preview behavior is deterministic across repeated hovers.
+- Parity tests pass for preview/runtime/export.
+
+### Phase UX-D — Advanced correspondence pinning
+
+**Goal:** ship precise override mechanism without polluting default UX.
+
+- Add in-canvas pin affordances (vertex/subpath handles + compatible-target highlight).
+- Implement pin lifecycle: create, remap (replace), delete, undo/redo.
+- Persist pins in `correspondenceHints` with stable IDs resilient to normal edits.
+- Add one-time, dismissible discoverability hint triggered only after repeated T8 outcomes.
+
+**Exit criteria**
+- Pin operations are fully undoable.
+- Pins persist after reload and survive non-destructive path edits.
+- Default users never see pin UI unless Advanced is opened.
+
+### Phase UX-E — Compound layer Inspector affordances
+
+**Goal:** expose compound authoring structure while keeping transition UI clean.
+
+- Add boolean-op glyph identity in layer list.
+- Implement operand-tree disclosure with animated expand/collapse.
+- Support operand edits (reorder/op change/delete) with immediate canvas regeneration.
+- Implement "Flatten compound" confirm dialog with "Convert to group" primary alternative.
+
+**Exit criteria**
+- Compound structure is editable from Inspector only.
+- No compound-specific strategy/quality controls appear in transition surfaces.
+- Flatten flow is explicit, reversible via undo, and warning copy is clear.
+
+### Phase UX-F — Debug isolation, QA, and rollout safety
+
+**Goal:** keep engineer diagnostics powerful but production UX clean.
+
+- Gate tier labels, raw why-fallback reasons, and distortion estimates behind `NEXT_PUBLIC_HIERO_DEBUG=1`.
+- Add production build assertion ensuring debug components are absent/inert.
+- Create UX QA matrix: keyboard, screen reader, hover performance, fallback copy, pinning, compound flows.
+- Run design sign-off session against real icon corpus (easy/ambiguous/hard pairs).
+
+**Exit criteria**
+- Production builds expose zero debug diagnostics.
+- QA matrix passes with no P0/P1 usability regressions.
+- Design + engineering sign-off confirms PR #174 UX readiness.

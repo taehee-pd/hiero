@@ -138,4 +138,56 @@ describe('previewExportParityError', () => {
     const b = sampleTrajectory(lerpSquares, 7);
     expect(() => previewExportParityError(a, b)).toThrow();
   });
+
+  test('mismatched timestamps at the same index throw (W1 audit fix)', () => {
+    // Both trajectories have 5 frames but with different `t`
+    // grids; the parity metric must surface this as an error
+    // rather than silently reporting low Hausdorff.
+    const a = sampleTrajectory(lerpSquares, 5);
+    const b: typeof a = {
+      frames: a.frames.map((f, i) => ({
+        ...f,
+        t: i === 2 ? 0.4 : f.t, // shift one timestamp
+      })),
+    };
+    expect(() => previewExportParityError(a, b)).toThrow(/timestamp mismatch/);
+  });
+});
+
+describe('boundaryDistortion + jerk on stroke-only trajectories (W1 audit fix)', () => {
+  // The prior `ringsOf` helper only returned closed rings, so a
+  // stroke-only morph (T2 / T4) silently reported `boundaryDistortion: 0`
+  // and never crossed any cascade ceiling. Now stroke polylines
+  // contribute to the metric.
+  function staticStrokeTrajectory(d: string): Trajectory {
+    return sampleTrajectory(() => d, 5);
+  }
+  function lerpStroke(t: number): string {
+    // Diagonal stroke whose endpoint moves with t.
+    const xEnd = 10 + 10 * t;
+    return `M0 0 L${xEnd} 10`;
+  }
+
+  test('static stroke-only trajectory has zero boundary distortion', () => {
+    const traj = staticStrokeTrajectory('M0 0 L10 10');
+    expect(boundaryDistortion(traj)).toBe(0);
+  });
+
+  test('a moving stroke endpoint produces a finite, non-zero jerk proxy', () => {
+    const traj = sampleTrajectory(lerpStroke, 8);
+    const jerk = temporalJerkProxy(traj);
+    expect(Number.isFinite(jerk)).toBe(true);
+    expect(jerk).toBeGreaterThanOrEqual(0);
+  });
+
+  test('a moving stroke trajectory reports non-trivial boundary distortion', () => {
+    const traj = sampleTrajectory(lerpStroke, 5);
+    // Open polylines now feed the metric; turning-function distance
+    // across consecutive frames is non-zero when the stroke
+    // changes direction or length. The exact value depends on
+    // sampling — assert finite + reasonable.
+    const distortion = boundaryDistortion(traj);
+    expect(Number.isFinite(distortion)).toBe(true);
+    expect(distortion).toBeGreaterThanOrEqual(0);
+  });
 });

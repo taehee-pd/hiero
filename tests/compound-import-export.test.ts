@@ -45,6 +45,25 @@ function makeLayer(d: string, compound?: ReturnType<typeof buildLeftLeaningCompo
   } as Layer;
 }
 
+describe('W2-4: SVG import does NOT synthesize compound from nested subpaths', () => {
+  test('multi-subpath SVG path imports as a flat layer (no compound)', async () => {
+    // Bun's SVG import path uses DOMParser which is happy-dom
+    // territory; we exercise the contract via the source code
+    // grep instead of round-trip parsing. This proves no W2 audit
+    // regression: lib/import/import-svg.ts never reaches into
+    // `compound` to write authoring metadata for plain
+    // multi-subpath SVGs.
+    const { readFileSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const source = readFileSync(
+      resolve(import.meta.dir, '..', 'lib', 'import', 'import-svg.ts'),
+      'utf-8',
+    );
+    expect(source).not.toMatch(/\.compound\s*=/);
+    expect(source).not.toMatch(/compound:\s*\{[^}]*tree/);
+  });
+});
+
 describe('W2-4: export pipelines treat compound as authoring metadata', () => {
   test('runtime JSON export produces identical output for compound vs flat layer with same path.d', () => {
     const flat = makeLayer(COMBINED);
@@ -68,6 +87,30 @@ describe('W2-4: export pipelines treat compound as authoring metadata', () => {
     expect(JSON.stringify(exported).includes('"compound"')).toBe(false);
     expect(JSON.stringify(exported).includes('"operandId"')).toBe(false);
     expect(JSON.stringify(exported).includes('"cacheVersion"')).toBe(false);
+  });
+
+  test('no exporter source reads .compound.tree / .compound.operands / .compound.cacheVersion', async () => {
+    // Renderer-side invariant: every export pipeline reads only
+    // `Layer.path.d`. Mirrors the W2 compound-trim-mode
+    // regression for the broader export surface.
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const { resolve, join } = await import('node:path');
+    const exportDir = resolve(import.meta.dir, '..', 'lib', 'export');
+    const files = readdirSync(exportDir).filter(
+      (f) => f.endsWith('.ts') && !f.endsWith('.test.ts'),
+    );
+    for (const file of files) {
+      const source = readFileSync(join(exportDir, file), 'utf-8');
+      if (/\.compound\.tree/.test(source)) {
+        throw new Error(`${file} reads compound.tree`);
+      }
+      if (/\.compound\.operands/.test(source)) {
+        throw new Error(`${file} reads compound.operands`);
+      }
+      if (/\.compound\.cacheVersion/.test(source)) {
+        throw new Error(`${file} reads compound.cacheVersion`);
+      }
+    }
   });
 
   test('schema invariant: a layer with compound has a path.d that the renderer can use directly', () => {

@@ -45,8 +45,16 @@ const ROOT = parseRoot(process.argv);
 const ROOTS_TO_SCAN = ['components', 'app', 'lib/runtime-react'];
 
 const SKIP_DIR_RE = /^(node_modules|\.next|\.turbo|\.git|dist|build|coverage|storybook-static)$/;
+// Skip filenames that are intentionally engineer-facing surfaces:
+//   - *.test.tsx / *.spec.tsx / *.stories.tsx — test + Storybook
+//   - *.debug.tsx                              — convention prefix
+//   - *Debug*.tsx / *Debug*.ts                 — "anything-Debug-anything"
+//                                                catches TransitionDebugPill.tsx
+//                                                and friends regardless of
+//                                                trailing form
+//   - *.d.ts                                   — type declarations
 const SKIP_FILE_RE =
-  /\.(test|spec|stories)\.(t|j)sx?$|\.debug\.(t|j)sx?$|Debug\.tsx?$|\.d\.ts$/;
+  /\.(test|spec|stories)\.(t|j)sx?$|\.debug\.(t|j)sx?$|Debug.*\.(t|j)sx?$|\.d\.ts$/;
 
 const FILE_EXT_RE = /\.(t|j)sx?$/;
 

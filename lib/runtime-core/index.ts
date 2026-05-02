@@ -32,4 +32,6 @@ export * from './cascade-fallbacks';
 export * from './cascade-scheduler';
 export * from './correspondence-hints';
 export * from './resolver-cache';
+export * from './resolver-flag';
+export * from './timing-override';
 export * from './svg-serialize';

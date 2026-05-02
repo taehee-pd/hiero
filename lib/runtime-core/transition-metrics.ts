@@ -196,6 +196,16 @@ export function previewExportParityError(
   for (let i = 0; i < preview.frames.length; i++) {
     const a = preview.frames[i]!;
     const b = exported.frames[i]!;
+    // W1 audit fix: assert sample timestamps line up. The prior
+    // index-only matching let mis-aligned trajectories report
+    // false-low parity errors.
+    if (Math.abs(a.t - b.t) > 1e-6) {
+      throw new Error(
+        `previewExportParityError: frame ${i} timestamp mismatch ` +
+          `(preview.t=${a.t}, exported.t=${b.t}). Both trajectories ` +
+          `must sample the same t grid.`,
+      );
+    }
     const aRings = ringsOf(a.d);
     const bRings = ringsOf(b.d);
     const ringCount = Math.min(aRings.length, bRings.length);
@@ -211,9 +221,136 @@ export function previewExportParityError(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Sample every subpath in a `d` string as a polyline. Closed
+ * rings come from the contour tree; open subpaths come from the
+ * canonical command stream sampled at command endpoints. The W1
+ * audit flagged that the prior `ringsOf` only returned closed
+ * rings, which made `boundaryDistortion` and friends silently
+ * return 0 for stroke-only icons (every T2 / T4 corpus pair).
+ * Including open polylines fixes that — the metric now scores
+ * stroke trajectories too.
+ */
 function ringsOf(d: string): Point[][] {
-  const tree = buildContourTree(canonicalizePath(d));
-  return tree.rings.map((r) => r.points);
+  const canonical = canonicalizePath(d);
+  const tree = buildContourTree(canonical);
+  const closed = tree.rings.map((r) => r.points);
+  const open = openSubpathPolylines(canonical.d, tree.openSubpathIndices);
+  return [...closed, ...open];
+}
+
+/**
+ * Pull the M-anchored polyline for each open subpath out of the
+ * canonical `d` string. Curve segments are sampled at endpoints —
+ * adequate for the metrics' Hausdorff / turning-function reads.
+ */
+function openSubpathPolylines(d: string, openIndices: number[]): Point[][] {
+  if (openIndices.length === 0) return [];
+  const wanted = new Set(openIndices);
+  const polylines: Point[][] = [];
+  const tokens = tokenizePath(d);
+  let cursor = 0;
+  let subpathIndex = -1;
+  let current: Point[] | null = null;
+  let cx = 0;
+  let cy = 0;
+
+  function readNumber(): number {
+    return Number.parseFloat(tokens[cursor++] ?? '0');
+  }
+  function pushPoint(x: number, y: number) {
+    cx = x;
+    cy = y;
+    if (current) current.push({ x, y });
+  }
+
+  while (cursor < tokens.length) {
+    const token = tokens[cursor++];
+    if (!token || !/^[a-zA-Z]$/.test(token)) continue;
+    const upper = token.toUpperCase();
+    switch (upper) {
+      case 'M': {
+        if (current) polylines.push(current);
+        subpathIndex += 1;
+        cx = readNumber();
+        cy = readNumber();
+        current = wanted.has(subpathIndex) ? [{ x: cx, y: cy }] : null;
+        while (hasNumberPair(tokens, cursor)) {
+          pushPoint(readNumber(), readNumber());
+        }
+        break;
+      }
+      case 'L':
+        while (hasNumberPair(tokens, cursor)) {
+          pushPoint(readNumber(), readNumber());
+        }
+        break;
+      case 'Q':
+        while (hasNumberPair(tokens, cursor) && hasNumberPair(tokens, cursor + 2)) {
+          readNumber();
+          readNumber();
+          pushPoint(readNumber(), readNumber());
+        }
+        break;
+      case 'C':
+        while (
+          hasNumberPair(tokens, cursor) &&
+          hasNumberPair(tokens, cursor + 2) &&
+          hasNumberPair(tokens, cursor + 4)
+        ) {
+          readNumber();
+          readNumber();
+          readNumber();
+          readNumber();
+          pushPoint(readNumber(), readNumber());
+        }
+        break;
+      case 'A':
+        while (
+          hasNumber(tokens, cursor) &&
+          hasNumber(tokens, cursor + 1) &&
+          hasNumber(tokens, cursor + 2) &&
+          hasNumber(tokens, cursor + 3) &&
+          hasNumber(tokens, cursor + 4) &&
+          hasNumberPair(tokens, cursor + 5)
+        ) {
+          readNumber();
+          readNumber();
+          readNumber();
+          readNumber();
+          readNumber();
+          pushPoint(readNumber(), readNumber());
+        }
+        break;
+      case 'Z':
+        // closed — drop any in-flight polyline, this subpath
+        // belongs to the contour tree path
+        if (current) {
+          polylines.push(current);
+          current = null;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  if (current) polylines.push(current);
+  return polylines;
+}
+
+function tokenizePath(d: string): string[] {
+  const matches = d.match(/[a-zA-Z]|-?\d*\.?\d+(?:[eE][+-]?\d+)?/g);
+  return matches ?? [];
+}
+
+function hasNumber(tokens: string[], index: number): boolean {
+  const token = tokens[index];
+  if (!token) return false;
+  return /^-?\d*\.?\d+(?:[eE][+-]?\d+)?$/.test(token);
+}
+
+function hasNumberPair(tokens: string[], index: number): boolean {
+  return hasNumber(tokens, index) && hasNumber(tokens, index + 1);
 }
 
 function perRingPolylines(trajectory: Trajectory): Point[][][] {

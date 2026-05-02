@@ -259,7 +259,7 @@ affordance.
   information loss vs. today.
 - **Lottie / compiled-icon export** writes the cached `path.d` and
   the runtime SDK never sees `compound`. ARAP-augmented morphs are
-  exported via the export-time evaluator described in §9.
+  exported via the export-time evaluator described in §10.
 
 ### 4.6 Why this shape
 
@@ -309,18 +309,43 @@ are dominated by quantization noise; turning function is well-behaved
 at any scale and computable from the existing arc-length-resampled
 polyline.
 
-**Quality wrap: As-Rigid-As-Possible (ARAP)** (Alexa, Cohen-Or & Levin
-2000). Triangulate the polygon interior once (constrained Delaunay over
-the resampled boundary plus its holes from the contour tree), then
-interpolate per-triangle affine transforms in their polar-decomposed
-form. Eliminates the "swimming" artifact of pure intrinsic
-interpolation on non-convex shapes. ARAP **does** handle holes when
-the triangulation is constrained against the contour tree's hole
-rings; it does not handle self-intersecting boundaries — those are
-lifted to a contour tree first via the same evenodd reduction T6 uses.
+**Quality wrap: As-Rigid-As-Possible (ARAP).** Two formulations are
+in scope:
+
+- **Alexa, Cohen-Or & Levin 2000** is the canonical *interpolation*
+  formulation — given two compatibly-triangulated shapes, interpolate
+  per-triangle affine transforms in their polar-decomposed form. Used
+  here as the source for the math.
+- **Igarashi, Moscovich & Hughes 2005** is a faster, two-step
+  closed-form *manipulation* variant (rotation step then scale step;
+  each minimization is a system of linear equations). Designed for
+  real-time interaction. We use Igarashi's closed-form for the
+  preview-on-hover path (§7.E1) where ≤ 100 ms time-to-first-frame
+  matters; Alexa's formulation drives offline export sampling where
+  we can take a few extra ms for tighter distortion bounds. Both
+  share the same triangulation step.
+
+**Compatible triangulation step.** Triangulate the polygon interior
+once over the resampled boundary plus its holes from the contour
+tree. Use **Baxter, Barla & Anjyo 2008 ("Compatible Embedding for 2D
+Shape Animation")** as the algorithmic source. Baxter's contribution
+is a three-part pipeline: (1) boundary matching that *locates salient
+features* before turning-function anchoring runs (sharper start-vertex
+anchoring than turning-function extrema alone for shapes with weak
+turning-function maxima); (2) boundary simplification that maintains
+parametric correspondence; (3) compatible triangulation that extends
+the mapping to the interior — the step ARAP requires. Baxter's
+boundary-matching step replaces the dynamic-programming pass over the
+turning-function descriptor when the shapes have ambiguous turning-
+function landscapes (e.g., shapes with many shallow local extrema).
+
+ARAP **does** handle holes when the triangulation is constrained
+against the contour tree's hole rings; it does not handle self-
+intersecting boundaries — those are lifted to a contour tree first
+via the same evenodd reduction T6 uses.
 
 **ARAP trigger predicate:** the turning-function variation across the
-boundary above a threshold. Empirical threshold belongs in §10.
+boundary above a threshold. Empirical threshold belongs in §11.
 
 **Degradation:** if vertex correspondence cannot be established with
 distortion under the cascade's distortion floor (§6), drop to T7
@@ -384,12 +409,25 @@ tiebreaker: when two assignments share total cost within `ε = 1e-9`,
 prefer the lexicographically smaller `(fromIndex, toIndex)` pair.
 Specified to make preview/export bit-stable.
 
-**Hierarchical scoping** (Whited et al. 2010 *"BetweenIT"* applies as
-inspiration — the original paper operates on hand-drawn stroke
-animation, not vector contours; Liu, Schneider & Klein 2010
-*"Decomposing Curves into Segments for Shape Blending"* is the closer
-reference). We adopt the level-by-level scoping idea, not the full
-shape-tree algorithm.
+**Hierarchical scoping** is grounded in three references:
+
+- **Whited et al. 2010 *"BetweenIT"*** as conceptual inspiration —
+  the original paper operates on hand-drawn stroke animation, not
+  vector contours; we adopt the *idea* of level-by-level
+  decomposition, not the full shape-tree algorithm.
+- **Liu, Schneider & Klein 2010 *"Decomposing Curves into Segments
+  for Shape Blending"*** as the closer reference for vector contours.
+- **Feng et al. 2018 *"2D Shape Morphing via Automatic Feature
+  Matching and Hierarchical Interpolation"*** as the contemporary
+  vindication — independently arrives at the same level-by-level
+  Hungarian + per-pair morph topology used here, with empirical
+  results on icon-class inputs. Adopted as a methodological
+  reference for the corpus-based threshold calibration in §11.
+
+The compatible-embedding pipeline (Baxter 2008) generalizes
+naturally to multi-shape T3 by applying its boundary-matching +
+compatible-triangulation steps to each Hungarian-matched pair, then
+running ARAP over the joint triangulation per pair.
 
 ### 5.4 T4 — multi open ↔ multi open
 
@@ -481,7 +519,7 @@ rendered region than either endpoint — rendered region is always
 evaluated under each endpoint's own rule and crossfaded over `α(t)`
 when continuous interpolation does not exist. **Default for cross-
 rule pairs: route to T8 fallback** until empirical evidence supports
-a designed crossfade (this resolves §10's open question
+a designed crossfade (this resolves §11's open question
 conservatively).
 
 ### 5.8 T8 — designed fallback library
@@ -622,8 +660,11 @@ the Animate panel revamp (`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md`).
 | Algorithm | Source | Used for |
 |-----------|--------|----------|
 | Intrinsic vertex-path interpolation | Sederberg, Gao, Wang & Mu, "2D Shape Blending: An Intrinsic Solution to the Vertex Path Problem", SIGGRAPH 1993 | T1, T2 primary |
-| As-Rigid-As-Possible interpolation | Alexa, Cohen-Or & Levin, "As-Rigid-As-Possible Shape Interpolation", SIGGRAPH 2000 | T1 quality wrap |
-| Compatible triangulations | Surazhsky & Gotsman, "Controllable Morphing of Compatible Planar Triangulations", TOG 2001 | ARAP triangulation step |
+| As-Rigid-As-Possible interpolation | Alexa, Cohen-Or & Levin, "As-Rigid-As-Possible Shape Interpolation", SIGGRAPH 2000 | T1 quality wrap (offline / export sampling) |
+| ARAP closed-form (interactive) | Igarashi, Moscovich & Hughes, "As-Rigid-As-Possible Shape Manipulation", SIGGRAPH 2005 | T1 quality wrap (preview-on-hover real-time path) |
+| Compatible embedding | Baxter, Barla & Anjyo, "Compatible Embedding for 2D Shape Animation", IEEE TVCG 2009 (TR 2008) | boundary matching, simplification, compatible triangulation — used by T1 ARAP and T3 multi-shape generalization |
+| Compatible triangulations | Surazhsky & Gotsman, "Controllable Morphing of Compatible Planar Triangulations", TOG 2001 | ARAP triangulation step (companion reference) |
+| Hierarchical icon-class morphing | Feng et al., "2D Shape Morphing via Automatic Feature Matching and Hierarchical Interpolation", 2018 | contemporary methodological vindication of T3 / T6 hierarchical Hungarian approach |
 | Turning-function metric | Arkin, Chew, Huttenlocher, Kedem & Mitchell, "An Efficiently Computable Metric for Comparing Polygonal Shapes", PAMI 1991 | correspondence cost in Hungarian; vertex anchoring at extrema |
 | Discrete curve evolution | Latecki & Lakaemper, "Shape Similarity Measure Based on Correspondence of Visual Parts", PAMI 2000 | open-curve simplification & matching |
 | Discrete Fréchet distance | Eiter & Mannila, 1994 | open-curve similarity gate |
@@ -648,6 +689,8 @@ treatment).
 
 **Open-source implementations cross-checked:**
 
+*Already in tree or already conceptually mirrored.*
+
 - **Flubber** (Veltman, BSD-3, archived 2018): subpath winding
   normalization, ring matching by bbox/area. Current
   `cross-icon-morph.ts` is closest to this. We retain its winding
@@ -659,12 +702,42 @@ treatment).
   hierarchy. Already a dependency
   (`lib/editor-core/boolean-ops.ts`); reused for compound evaluation
   and contour-tree construction.
-- **GSAP MorphSVG** (proprietary, Club GreenSock licensed): not
-  leverageable — referenced for behavior only via published
-  documentation, not for code.
+
+*Candidates to add — production-quality JS/TS implementations
+identified by this plan's research pass.*
+
+- **poly2tri** (`r3mi/poly2tri.js`, BSD-3): mature 2D constrained
+  Delaunay triangulation with native support for polygon contours,
+  holes, and Steiner points. Drives the ARAP triangulation step.
+- **cdt2d** (Mikola Lysenko, MIT): alternate constrained Delaunay
+  on planar straight-line graphs; used as cross-check or fallback
+  when poly2tri rejects a degenerate input.
+- **hungarian-on3** (npm, MIT): O(n³) Hungarian implementation
+  benchmarked at ~13× faster than common JS alternatives on 1000×1000
+  matrices. Drives the per-level rectangular Hungarian in §5.3 / §5.4.
+  `@havelessbemore/hungarian` is the rectangular-explicit alternative.
+- **clipper2-ts** (`countertype/clipper2-ts`, BSL — pure TS port of
+  Angus Johnson's Clipper2) and **clipper2-wasm** (WASM port for
+  perf-critical paths): polygon clipping plus offsetting. Drives the
+  T7 Tiller-Hanson medial-axis thickening — `InflatePaths` performs
+  the offsetting we need with the same numerical guarantees as the
+  industrial Clipper2 reference.
+
+*Reference implementations of the cited algorithms.*
+
+- **Igarashi 2005 ARAP** — multiple open implementations exist
+  (`zhangzhensong/arap`, `deliagander/ARAPShapeManipulation`)
+  covering the closed-form two-step solver. We do not depend on
+  these but use them as algorithmic reference checks during
+  validation (§9).
+
+*Behavior-only references (no code reuse).*
+
+- **GSAP MorphSVG** (proprietary, Club GreenSock licensed):
+  referenced for behavior only via published documentation.
 - **Skia `SkPath::Op`** (BSD-3, C++): industrial reference for
   `fill-rule` semantics. WASM build or out-of-process oracle would
-  be needed for use as a test ground truth; not in scope.
+  be needed as a test ground truth; not in scope.
 - **Lottie / lottie-web** (Apache 2.0): trim-path semantics. Already
   mirrored in `draw-executor.ts`. T7 keeps Lottie-format
   compatibility for export.
@@ -780,7 +853,7 @@ operationalizes the §1 motion contract in measurable form.
   on tree/operand edits. Resolver-level memoization keys off
   `(layerId, cacheVersion)` — not off tree-shape hashing — so
   memoization correctness does not depend on a canonical-form
-  tree-equivalence question. This dodges the §10 open question on
+  tree-equivalence question. This dodges the §11 open question on
   commutative reordering.
 
 ---

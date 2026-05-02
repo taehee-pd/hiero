@@ -213,6 +213,29 @@ export type Layer = {
    * than silently hiding the Sides/Points control.
    */
   formerPrimitiveKind?: PrimitiveShape['kind'];
+  /**
+   * Optional non-destructive compound representation. When present,
+   * `path.d` is the *cached evaluation* of `compound.tree` over
+   * `compound.operands`. The renderer / exporter / hit-tester always
+   * reads `path.d`; only the Inspector and the W3+ resolver read
+   * `compound`.
+   *
+   * Path-invariant rule (mirrored on the `primitive` invariant
+   * above): when `path.d` is mutated outside the compound-evaluation
+   * flow, `compound` MUST be cleared. `patchLayer` enforces this;
+   * `applyBoolean` is the one path that writes both atomically.
+   *
+   * Plan: docs_canonical/ICON_TRANSITION_INTEGRATED_PLAN.md §2.2,
+   * docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §4.1.
+   */
+  compound?: LayerCompound;
+  /**
+   * Breadcrumb set when a compound is cleared because the path was
+   * mutated outside the compound-evaluation flow. Mirrors
+   * `formerPrimitiveKind` so the Inspector can explain why the
+   * operand-tree disclosure has gone away.
+   */
+  formerCompound?: true;
   style: {
     fill?: PaintRef;
     stroke?: PaintRef;
@@ -296,6 +319,60 @@ export type SvgUnsupportedFeature = {
   refId?: string;
   raw?: string;
   attributes?: Record<string, string>;
+};
+
+// ---------------------------------------------------------------------------
+// Compound paths (non-destructive boolean operations)
+// ---------------------------------------------------------------------------
+
+/**
+ * Boolean operation kinds the editor authors. Mirrors the
+ * `BooleanMode` accepted by `lib/editor-core/boolean-ops.ts` (which
+ * consumes Paper.js).
+ */
+export type CompoundOp = 'unite' | 'subtract' | 'intersect' | 'exclude';
+
+/**
+ * One node in a compound expression tree. A leaf references a stored
+ * operand by id; an op applies a {@link CompoundOp} to its children
+ * in left-to-right order. The tree is shape-only; operand geometry
+ * lives in {@link LayerCompound.operands}.
+ *
+ * Trees are generally small (most compounds are one op + two leaves);
+ * deeper trees describe operator chains like `subtract(unite(A, B), C)`.
+ */
+export type CompoundNode =
+  | { kind: 'leaf'; operandId: string }
+  | { kind: 'op'; op: CompoundOp; children: CompoundNode[] };
+
+/**
+ * Operand geometry referenced by `CompoundNode.kind === 'leaf'`.
+ * `transform` is optional and applies before evaluation; in the
+ * common case operands have no transform and inherit the layer's.
+ */
+export type CompoundOperand = {
+  d: string;
+  transform?: {
+    x?: number;
+    y?: number;
+    rotate?: number;
+    scaleX?: number;
+    scaleY?: number;
+  };
+};
+
+/**
+ * The compound metadata block on `Layer`. See `Layer.compound` for
+ * the path-invariant contract.
+ */
+export type LayerCompound = {
+  tree: CompoundNode;
+  operands: Record<string, CompoundOperand>;
+  /**
+   * Bumped on every tree/operand edit. Drives resolver memoisation
+   * (W4 cache key) without depending on canonical-form tree-equality.
+   */
+  cacheVersion: number;
 };
 
 // ---------------------------------------------------------------------------

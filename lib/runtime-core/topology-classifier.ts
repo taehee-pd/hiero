@@ -15,6 +15,7 @@
  * @module
  */
 import type { Layer } from '../schema';
+import { hasCompound } from '../schema/compound';
 import { canonicalizeLayerPath } from './path-normalization';
 import type { CanonicalPath } from './path-normalization';
 import { buildContourTree } from './contour-tree';
@@ -138,10 +139,11 @@ function fillRuleOf(layer: Layer): FillRule {
 }
 
 function hasCompoundField(layer: Layer): boolean {
-  // Compound metadata is added in W2-1; until then, no layer carries
-  // the field. The classifier reads it via a tolerant property lookup
-  // so it lights up automatically once the schema lands.
-  return Boolean((layer as { compound?: unknown }).compound);
+  // Delegate the structural check to schema/compound's `hasCompound`,
+  // which validates the `{ tree, operands, cacheVersion }` shape
+  // rather than just truthiness — so an in-flight or hand-edited
+  // partial compound doesn't accidentally route morphs into T6.
+  return hasCompound(layer);
 }
 
 function isStrokeOnlyStyle(layer: Layer): boolean {

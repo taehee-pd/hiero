@@ -12,6 +12,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
+import { CompoundLayerSection } from './CompoundLayerSection';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorField } from '@/components/ds/color-field';
 import { Tag, type TagVariant } from '@/components/ds/tag';
@@ -151,6 +152,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentType);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
+  const flattenCompound = useEditorStore((s) => s.flattenCompound);
+  const convertToGroup = useEditorStore((s) => s.convertToGroup);
   const isDeriving = useEditorStore((s) => s.isDeriving);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -1054,6 +1057,28 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 <InlineMessage>
                   Shape was modified — {layer.formerPrimitiveKind === 'polygon' ? 'sides' : 'points'}{' '}
                   can no longer be edited parametrically. Draw a new {layer.formerPrimitiveKind} to edit it by count again.
+                </InlineMessage>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
+
+          {layer.compound && currentIconId ? (
+            <>
+              <CompoundLayerSection
+                layer={layer}
+                onFlatten={() => flattenCompound(currentIconId, layer.id)}
+                onConvertToGroup={() => convertToGroup(currentIconId, layer.id)}
+              />
+              <Separator />
+            </>
+          ) : layer.formerCompound ? (
+            <>
+              <Section title="Compound">
+                <InlineMessage>
+                  This was a compound shape — its operand structure was lost
+                  when the path was edited directly. Re-build with a Boolean
+                  action to make operands editable again.
                 </InlineMessage>
               </Section>
               <Separator />

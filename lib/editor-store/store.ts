@@ -40,6 +40,10 @@ import type {
   PendingPenHandleState,
 } from './types';
 import { booleanOp, type BooleanMode } from '@/lib/editor-core/boolean-ops';
+import {
+  buildLeftLeaningCompound,
+  operandIdsInTree,
+} from '@/lib/schema/compound';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import { buildPrimitivePath } from '@/lib/editor-core/path-shapes';
 import { areTopologiesCompatible, computeTopology } from '@/lib/editor-core/topology';
@@ -288,6 +292,19 @@ export type EditorActions = {
   toggleIconSelection(iconId: string): void;
   clearIconSelection(): void;
   applyBoolean(mode: BooleanMode): Promise<void>;
+  /**
+   * W2-2 — drop the compound metadata on a layer, leaving the cached
+   * `path.d` as a plain authored path. Destructive (the operand tree
+   * is gone after this); the Inspector prompts before invoking.
+   */
+  flattenCompound(iconId: string, layerId: string): void;
+  /**
+   * W2-2 — convert a compound layer back into one sibling layer per
+   * operand, preserving operand geometry. Non-destructive
+   * alternative to `flattenCompound`; offered as the primary action
+   * in the Inspector's Flatten dialog.
+   */
+  convertToGroup(iconId: string, layerId: string): void;
   /** Phase N: generate a derived variant (fill/slash/circle/square/badge). */
   applyDerivedVariant(
     iconId: string,
@@ -2253,6 +2270,18 @@ function createActions(): EditorActions {
           nextLayer.formerPrimitiveKind = layer.primitive.kind;
           delete nextLayer.primitive;
         }
+        // Invariant (W2-1): the same rule for `compound` — `path.d` is
+        // the cached evaluation of `compound.tree`, so any direct `path`
+        // mutation outside the compound flow (i.e., the patch doesn't
+        // also carry a fresh `compound`) makes the cached evaluation
+        // stale. Clear `compound` and stamp `formerCompound` so the
+        // Inspector can explain why the operand tree disappeared.
+        // `applyBoolean` and `flattenCompound` supply `compound` in the
+        // same patch to preserve / drop it explicitly.
+        if (patch.path && !('compound' in patch) && layer.compound) {
+          nextLayer.formerCompound = true;
+          delete nextLayer.compound;
+        }
 
         const patchState = writeCurrentLayers(s, (prev) => {
           const nextLayers = { ...prev, [layerId]: nextLayer };
@@ -3766,29 +3795,50 @@ function createActions(): EditorActions {
       }));
       if (selectedLayers.some(({ layer }) => !layer?.path?.d)) return;
 
-      let result = selectedLayers[0]!.layer.path!.d;
-      for (const { layer } of selectedLayers.slice(1)) {
-        result = await booleanOp(mode, result, layer.path!.d);
+      // W2-2: build the non-destructive compound metadata alongside
+      // the cached evaluation. The author's selected operand order
+      // (selection-list order) is preserved in the tree.
+      const operandData = selectedLayers.map(({ layer }) => ({
+        d: layer.path!.d,
+      }));
+      let result = operandData[0]!.d;
+      for (let i = 1; i < operandData.length; i++) {
+        result = await booleanOp(mode, result, operandData[i]!.d);
       }
+      const primaryLayerId = selectedLayerIds[0]!;
+      const compoundMeta = buildLeftLeaningCompound(
+        mode,
+        operandData,
+        primaryLayerId,
+      );
 
       temporalState.pause();
       try {
         editorStoreApi.setState((s) => {
-          const primaryLayerId = selectedLayerIds[0]!;
           const live = readCurrentLayers(s);
           const primaryLayer = live?.[primaryLayerId];
           if (!live || !primaryLayer?.path) return s;
 
+          // If the primary layer was already a compound, bump
+          // cacheVersion atop the previous so resolver memo keys
+          // strictly increase on every edit.
+          const nextCacheVersion = primaryLayer.compound
+            ? primaryLayer.compound.cacheVersion + 1
+            : compoundMeta.cacheVersion;
+          const nextCompound = { ...compoundMeta, cacheVersion: nextCacheVersion };
+
           const patch = writeCurrentLayers(s, (prev) => {
             const next = { ...prev };
-            // Uphold the path-invariant: clear any stale `primitive` on the
-            // survivor and stamp `formerPrimitiveKind` for the Inspector
-            // affordance. Then drop the consumed layers.
-            const { primitive: dropped, ...withoutPrim } = primaryLayer;
+            // Uphold the primitive-invariant: clear any stale `primitive`
+            // on the survivor and stamp `formerPrimitiveKind` so the
+            // Inspector can explain the regression. Then drop the
+            // consumed layers.
+            const { primitive: dropped, formerCompound: _droppedFC, ...withoutMeta } = primaryLayer;
             next[primaryLayerId] = {
-              ...withoutPrim,
+              ...withoutMeta,
               ...(dropped ? { formerPrimitiveKind: dropped.kind } : {}),
               path: { ...primaryLayer.path, d: result },
+              compound: nextCompound,
             };
             for (const layerId of selectedLayerIds.slice(1)) {
               delete next[layerId];
@@ -3805,6 +3855,73 @@ function createActions(): EditorActions {
         temporalState.resume();
         temporalState.commit(`boolean:${mode}`);
       }
+    },
+
+    flattenCompound(iconId, layerId) {
+      editorStoreApi.setState((s) => {
+        if (s.editScope.kind === 'icon' && iconId !== s.currentIconId) return s;
+        const live = readCurrentLayers(s);
+        const layer = live?.[layerId];
+        if (!live || !layer?.compound) return s;
+        const patch = writeCurrentLayers(s, (prev) => {
+          const next = { ...prev };
+          const { compound: _dropped, ...withoutCompound } = layer;
+          next[layerId] = {
+            ...withoutCompound,
+            // Stamp the breadcrumb so the Inspector can explain the
+            // operand tree is gone.
+            formerCompound: true,
+          };
+          return next;
+        });
+        return patch ?? s;
+      });
+      temporalState.commit('compound:flatten');
+    },
+
+    convertToGroup(iconId, layerId) {
+      editorStoreApi.setState((s) => {
+        if (s.editScope.kind === 'icon' && iconId !== s.currentIconId) return s;
+        const live = readCurrentLayers(s);
+        const layer = live?.[layerId];
+        if (!live || !layer?.compound) return s;
+        const operandIds = operandIdsInTree(layer.compound.tree);
+        const patch = writeCurrentLayers(s, (prev) => {
+          const next = { ...prev };
+          // Replace the compound layer with one sibling layer per
+          // operand. New layer ids derive from `${layerId}/${operandId}`
+          // for stability across re-runs.
+          delete next[layerId];
+          for (const opId of operandIds) {
+            const operand = layer.compound!.operands[opId];
+            if (!operand) continue;
+            const siblingId = `${layerId}/${opId}`;
+            next[siblingId] = {
+              ...layer,
+              id: siblingId,
+              compound: undefined,
+              formerCompound: undefined,
+              primitive: undefined,
+              formerPrimitiveKind: undefined,
+              path: {
+                ...(layer.path ?? { d: '' }),
+                d: operand.d,
+              },
+              transform: operand.transform ?? layer.transform,
+            };
+          }
+          return next;
+        });
+        if (!patch) return s;
+        return {
+          ...patch,
+          selection: {
+            layerIds: operandIds.map((opId) => `${layerId}/${opId}`),
+            pointIds: [],
+          },
+        };
+      });
+      temporalState.commit('compound:convertToGroup');
     },
 
     async applyDerivedVariant(iconId, spec) {

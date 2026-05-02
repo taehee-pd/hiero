@@ -21,6 +21,7 @@ import { selectCurrentLayerPanelRows } from '@/lib/editor-store/selectors';
 import { selectCurrentVariant } from '@/lib/editor-store/selectors';
 import { useInlineRename, useMarqueeSelection } from '@/lib/editor-hooks';
 import { computeVariableValue } from '@/lib/runtime-core/variable-value';
+import { rootOpGlyph } from '@/lib/schema/compound';
 import type { PaintRef } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
@@ -367,6 +368,15 @@ export const LayerPanel = memo(function LayerPanel() {
                   <div className="flex items-center gap-2">
                     {maskLayerId ? (
                       <UiIcon name="link-2" size={12} className="size-3 shrink-0 text-muted-foreground" />
+                    ) : null}
+                    {layer.compound ? (
+                      <span
+                        aria-label="Compound layer"
+                        title="Compound shape — open the Inspector to edit operands"
+                        className="font-mono text-xs leading-none text-muted-foreground shrink-0"
+                      >
+                        {rootOpGlyph(layer.compound) ?? '∪'}
+                      </span>
                     ) : null}
                     {/*
                       UX-F4: Inline rename. Label and input share the

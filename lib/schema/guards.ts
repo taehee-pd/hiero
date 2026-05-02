@@ -53,7 +53,7 @@ export function isTransition(val: unknown): val is RuntimeTransitionIntent {
   // are applied at resolve time.
   if (val.duration !== undefined && typeof val.duration !== 'number') return false;
   if (val.cadence !== undefined) {
-    const validCadences = ['soft', 'snappy', 'custom'];
+    const validCadences = ['soft', 'snappy'];
     if (!validCadences.includes(val.cadence as string)) return false;
   }
   if (val.fallbackOverride !== undefined && typeof val.fallbackOverride !== 'string') {

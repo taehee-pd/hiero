@@ -400,12 +400,16 @@ export type GradientStop = { offset: number; color: string; opacity?: number };
 
 /**
  * Authored cadence (Layer 1 in the UX progressive-disclosure model).
- * `'soft'` and `'snappy'` are the user-facing values; `'custom'` is
- * reserved for the Layer-2 timing-curve override.
+ * `'soft'` (default) and `'snappy'` are the only authored values
+ * today. The Layer-2 timing-curve override (W4-8) widens this back
+ * to include `'custom'` plus a separate `Transition.timing` block.
+ * Until that lands the union stays narrow — a silent soft fallback
+ * for an unknown cadence breaks the §1 motion contract (two
+ * distinct cadences, predictable).
  *
- * Mirrors the `Cadence` type in `lib/runtime-core/motion-curves.ts`.
+ * MUST stay in sync with `lib/runtime-core/motion-curves.ts`.
  */
-export type Cadence = 'soft' | 'snappy' | 'custom';
+export type Cadence = 'soft' | 'snappy';
 
 /**
  * Named, art-directed fallback motions. Closed list — anything not in

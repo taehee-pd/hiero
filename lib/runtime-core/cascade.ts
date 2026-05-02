@@ -43,6 +43,8 @@ import { resolveIntrinsicStrict } from './cascade-tiers/intrinsic-strict';
 import { resolveHierarchicalMatch } from './cascade-tiers/hierarchical-match';
 import { resolveDrawCoordinated } from './cascade-tiers/draw-coordinated';
 import { resolveDesignedFallback } from './cascade-tiers/designed-fallback';
+import type { ResolverCache } from './resolver-cache';
+import type { CorrespondenceHints } from '../schema/types';
 
 /**
  * The input every tier sees. Pre-computed once so each tier's
@@ -57,6 +59,13 @@ export type CascadeInput = {
   taxonomy: TaxonomyId;
   cadence: Cadence;
   motion: MotionCurves;
+  /**
+   * Author-supplied correspondence hints (W4-4). Subpath hints
+   * become hard constraints on the hierarchical-match cost matrix;
+   * vertex hints anchor per-pair correspondence inside intrinsic-
+   * strict. Empty by default; tiers ignore unless they consume.
+   */
+  hints: CorrespondenceHints;
 };
 
 /**
@@ -111,16 +120,45 @@ export function resolverTiers(): readonly ResolverTier[] {
  * @param to     target layer
  * @param opts   optional cadence override (defaults to `'soft'`)
  */
+export type ResolveMorphOptions = {
+  cadence?: Cadence;
+  /**
+   * W4-4 — author-supplied correspondence hints from the
+   * `Transition` schema. When omitted, the cascade runs with no
+   * pinned correspondences (default).
+   */
+  hints?: CorrespondenceHints;
+  /**
+   * W4-3 — optional resolver cache. Pass the same instance across
+   * multiple `resolveMorph` calls (e.g., over the playback of a
+   * preview) to memoize the cascade's work. Pure: no globals.
+   */
+  cache?: ResolverCache;
+};
+
+const EMPTY_HINTS: CorrespondenceHints = { subpath: [], vertex: [] };
+
 export function resolveMorph(
   from: Layer,
   to: Layer,
-  opts: { cadence?: Cadence } = {},
+  opts: ResolveMorphOptions = {},
 ): MorphResolution {
+  const cadence = opts.cadence ?? 'soft';
+
+  // Cache fast path. Hints are deliberately not part of the cache
+  // key — pinning is rare and the cache hit-rate would collapse if
+  // every hint mutation invalidated. Authors with non-empty hints
+  // bypass the cache.
+  if (opts.cache && (!opts.hints || isEmptyHints(opts.hints))) {
+    const hit = opts.cache.get(from, to, cadence);
+    if (hit) return hit;
+  }
+
   const fromTopology = describeLayer(from);
   const toTopology = describeLayer(to);
   const taxonomy = classifyTopologyPair(fromTopology, toTopology);
-  const cadence = opts.cadence ?? 'soft';
   const motion = defaultMotionCurves(cadence);
+  const hints = opts.hints ?? EMPTY_HINTS;
 
   const input: CascadeInput = {
     from,
@@ -130,6 +168,7 @@ export function resolveMorph(
     taxonomy,
     cadence,
     motion,
+    hints,
   };
 
   for (const tier of TIERS) {
@@ -141,7 +180,7 @@ export function resolveMorph(
       continue;
     }
     if (result.distortion > tier.ceiling) continue;
-    return {
+    const resolution: MorphResolution = {
       interpolator: result.interpolator,
       motion: result.motion,
       taxonomy,
@@ -149,6 +188,10 @@ export function resolveMorph(
       distortion: result.distortion,
       signal: result.signal,
     };
+    if (opts.cache && isEmptyHints(hints)) {
+      opts.cache.set(from, to, cadence, resolution);
+    }
+    return resolution;
   }
 
   // Unreachable — designed-fallback's ceiling is +Infinity and it
@@ -167,4 +210,8 @@ export function resolveMorph(
 export function tierCeiling(name: ResolverTier): number {
   const tier = TIERS.find((t) => t.name === name);
   return tier?.ceiling ?? Number.POSITIVE_INFINITY;
+}
+
+function isEmptyHints(hints: CorrespondenceHints): boolean {
+  return hints.subpath.length === 0 && hints.vertex.length === 0;
 }

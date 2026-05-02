@@ -20,7 +20,6 @@
  * Plan: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §5.6.
  */
 import type { CascadeInput, TierResult } from '../cascade';
-import { fallbackMotion } from '../cascade-fallbacks';
 
 export function resolveDrawCoordinated(input: CascadeInput): TierResult | null {
   if (input.taxonomy !== 'T7') return null;
@@ -32,12 +31,14 @@ export function resolveDrawCoordinated(input: CascadeInput): TierResult | null {
   // Misaligned-skeleton path: the interpolator returns source
   // geometry for the first half, target for the second half. The
   // runtime scheduler interleaves opacity via `motion.alpha` and
-  // the per-fallback offset.
+  // the cadence-derived `alphaOffsetRatio` (0.08 on `'soft'`,
+  // 0.04 on `'snappy'`). The §5.6 spec calls for the geometry/
+  // opacity offset to live on the cascade input's motion — borrow
+  // it here rather than the named-fallback library's
+  // `draw-replace` motion (which carries offset=0 because designed
+  // fallbacks are sequenced internally by their own choreography).
   const interpolator = (t: number) => (t < 0.5 ? fromD : toD);
-
-  // Borrow the draw-replace motion curves — same choreography
-  // contract (sequential geometry + opacity-led handoff).
-  const motion = fallbackMotion('draw-replace') ?? input.motion;
+  const motion = input.motion;
 
   return {
     interpolator,

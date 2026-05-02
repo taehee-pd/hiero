@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-05-02T12:47:29.418Z",
+  "resolvers": [
+    "auto-morph"
+  ],
+  "sets": [
+    {
+      "name": "canonical",
+      "description": "Wave-1 seed corpus. One representative pair per T1..T8. Roadmap target is >=40 pairs (>=5 per category) — this is the seed; corpus curation continues across waves.",
+      "pairs": [
+        {
+          "pairId": "t1-circle-to-rounded-square",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.365295,
+                "areaMonotonicityError": 0.046667,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t2-checkmark-to-x",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t3-dice-2-to-dice-3",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 28.284271
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t4-hamburger-to-equals",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t5-bubble-with-tail-to-bubble",
+          "expectedTaxonomy": "T5",
+          "observedTaxonomy": "T5",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t7-outline-square-to-filled-square",
+          "expectedTaxonomy": "T7",
+          "observedTaxonomy": "T7",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t8-spinner-to-checkmark",
+          "expectedTaxonomy": "T8",
+          "observedTaxonomy": "T8",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "stress",
+      "description": "Wave-1 stub. Roadmap target is >=30 adversarial pairs (nested holes, alternation depth >= 3, mixed cardinality, extreme concavity, near-symmetric ambiguity). Curation continues across waves alongside the canonical set.",
+      "pairs": [
+        {
+          "pairId": "stress-nested-holes",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

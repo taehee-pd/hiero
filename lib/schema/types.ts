@@ -321,19 +321,130 @@ export type GradientStop = { offset: number; color: string; opacity?: number };
 // Transitions — runtime-owned, icon-to-icon
 // ---------------------------------------------------------------------------
 
+/**
+ * Authored cadence (Layer 1 in the UX progressive-disclosure model).
+ * `'soft'` and `'snappy'` are the user-facing values; `'custom'` is
+ * reserved for the Layer-2 timing-curve override.
+ *
+ * Mirrors the `Cadence` type in `lib/runtime-core/motion-curves.ts`.
+ */
+export type Cadence = 'soft' | 'snappy' | 'custom';
+
+/**
+ * Named, art-directed fallback motions. Closed list — anything not in
+ * this union is a contract violation. The resolver picks a default
+ * by topological signal; the author can override at the `Transition`
+ * level when the cascade has landed in T8.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §5.8.
+ */
+export type FallbackName =
+  | 'radial-pop'
+  | 'directional-replace-up'
+  | 'directional-replace-down'
+  | 'directional-replace-left'
+  | 'directional-replace-right'
+  | 'directional-replace-toward'
+  | 'directional-replace-away'
+  | 'draw-replace'
+  | 'scale-pop';
+
+/**
+ * Address of a vertex within a canonicalized layer path. `subpathId`
+ * is a stable identifier derived during canonicalization; it survives
+ * non-destructive path edits. `vertexIndex` is the 0-based position
+ * within the subpath's resampled polyline.
+ */
+export type VertexAddr = {
+  subpathId: string;
+  vertexIndex: number;
+};
+
+/**
+ * Author-supplied correspondence pins. Subpath hints constrain the
+ * Hungarian assignment; vertex hints anchor per-pair vertex
+ * correspondence inside T1. Hints are pair-specific (live on
+ * `Transition`, not `Layer`) and feed the resolver as *hard*
+ * constraints, not soft penalties.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §4.4.
+ */
+export type CorrespondenceHints = {
+  subpath: Array<[fromId: string, toId: string]>;
+  vertex: Array<[from: VertexAddr, to: VertexAddr]>;
+};
+
 export type RuntimeTransitionIntent = {
   id: string;
   fromIconId: string;
   toIconId: string;
   fromVariantId: string;
   toVariantId: string;
+  /**
+   * @deprecated W4 — strategy selection moves into the resolver
+   * cascade. Authors no longer pick a tier. Surfaced only via the
+   * debug pill (NEXT_PUBLIC_HIERO_DEBUG=1). Retained on the schema
+   * during W1-W3 so the legacy resolver continues to render.
+   */
   strategy: 'auto' | 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
+  /**
+   * @deprecated W4 — superseded by `Transition.duration` (seconds).
+   * The two co-exist during W1-W3; resolver derivation lives in
+   * transition-resolver.ts.
+   */
   durationMs: number;
+  /**
+   * @deprecated W4 — superseded by `Transition.cadence` and the
+   * Layer-2 timing-curve override.
+   */
   easing?: string | SpringConfig;
+  /**
+   * @deprecated W4 — superseded by `Transition.fallbackOverride`
+   * with the named fallback library (`directional-replace-*` etc.).
+   */
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
 };
 
+/**
+ * `Transition` is the authored representation of an icon-to-icon
+ * transition. Algorithm reads it; UI writes it.
+ *
+ * **Authored axes (the contract):** `duration`, `cadence`,
+ * `fallbackOverride`, `correspondenceHints`. These are the only
+ * fields the user is *allowed* to configure. Anything else here is
+ * either identity (`id`, `fromIconId`, `toIconId`, variant ids),
+ * non-strategy infrastructure (`layerBindings.compoundTrimMode`,
+ * `stagger`, `effects`), or `@deprecated W4` legacy that ships out
+ * with the new cascade.
+ *
+ * Schema-lint enforces no NEW algorithm-mechanism field lands on
+ * `Transition` — see `scripts/check-non-debug-copy.ts` and the W1-U1
+ * contract test.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_INTEGRATED_PLAN.md §2.1.
+ */
 export type Transition = RuntimeTransitionIntent & {
+  /**
+   * Duration in **seconds**. Canonical authored value (Layer 1).
+   * Resolver derives the legacy `durationMs` from this; W4 will
+   * delete `durationMs` outright.
+   */
+  duration?: number;
+  /** Cadence axis (Layer 1). Defaults to `'soft'`. */
+  cadence?: Cadence;
+  /**
+   * Author override for the named fallback motion. Surfaced in the UI
+   * only when the resolver landed in T8 for this pair. Defaults to
+   * the resolver's pick when absent.
+   */
+  fallbackOverride?: FallbackName;
+  /**
+   * Author-supplied correspondence pins (Layer 2). Defaults to no
+   * pins on either axis.
+   */
+  correspondenceHints?: CorrespondenceHints;
+
+  // ── identity / infrastructure (not user-authored) ──
   from?: string;
   to?: string;
   variantId?: string;
@@ -341,6 +452,20 @@ export type Transition = RuntimeTransitionIntent & {
   stagger?: TransitionStagger;
   effects?: string[];
 };
+
+/**
+ * Authored fields the W1-U1 schema lint enforces. Used by the
+ * `scripts/check-transition-schema.ts` lint to ensure no new
+ * algorithm-mechanism field lands on `Transition`.
+ */
+export const TRANSITION_AUTHORED_AXES = [
+  'duration',
+  'cadence',
+  'fallbackOverride',
+  'correspondenceHints',
+] as const;
+
+export type TransitionAuthoredAxis = (typeof TRANSITION_AUTHORED_AXES)[number];
 
 export type LayerBinding = {
   fromLayerId?: string;

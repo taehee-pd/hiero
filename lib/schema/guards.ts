@@ -48,6 +48,23 @@ export function isTransition(val: unknown): val is RuntimeTransitionIntent {
   const validStrategies = ['strictMorph', 'bestGuessMorph', 'lineAnimation', 'replace'];
   if (!validStrategies.includes(val.strategy as string)) return false;
   if (typeof val.durationMs !== 'number') return false;
+  // Authored-axis validation (W1-U1): when these fields are present,
+  // their shapes must match the contract. Absence is fine — defaults
+  // are applied at resolve time.
+  if (val.duration !== undefined && typeof val.duration !== 'number') return false;
+  if (val.cadence !== undefined) {
+    const validCadences = ['soft', 'snappy', 'custom'];
+    if (!validCadences.includes(val.cadence as string)) return false;
+  }
+  if (val.fallbackOverride !== undefined && typeof val.fallbackOverride !== 'string') {
+    return false;
+  }
+  if (val.correspondenceHints !== undefined) {
+    if (!isObject(val.correspondenceHints)) return false;
+    const hints = val.correspondenceHints;
+    if (hints.subpath !== undefined && !Array.isArray(hints.subpath)) return false;
+    if (hints.vertex !== undefined && !Array.isArray(hints.vertex)) return false;
+  }
   return true;
 }
 

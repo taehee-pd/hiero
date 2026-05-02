@@ -1,0 +1,15 @@
+{
+  "name": "stress",
+  "description": "Wave-1 stub. Roadmap target is >=30 adversarial pairs (nested holes, alternation depth >= 3, mixed cardinality, extreme concavity, near-symmetric ambiguity). Curation continues across waves alongside the canonical set.",
+  "pairs": [
+    {
+      "id": "stress-nested-holes",
+      "description": "Outer + hole + island (alternation depth 2) morphs to outer + larger hole, no island.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M20 20 L80 20 L80 80 L20 80 Z M40 40 L60 40 L60 60 L40 60 Z",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z M10 10 L90 10 L90 90 L10 90 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    }
+  ]
+}

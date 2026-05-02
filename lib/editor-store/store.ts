@@ -3886,16 +3886,25 @@ function createActions(): EditorActions {
         const layer = live?.[layerId];
         if (!live || !layer?.compound) return s;
         const operandIds = operandIdsInTree(layer.compound.tree);
+        const assignedSiblingIds: string[] = [];
         const patch = writeCurrentLayers(s, (prev) => {
           const next = { ...prev };
           // Replace the compound layer with one sibling layer per
-          // operand. New layer ids derive from `${layerId}/${operandId}`
-          // for stability across re-runs.
+          // operand. Sibling ids derive from `${layerId}/${operandId}`,
+          // with a `~N` suffix loop to avoid clobbering an existing
+          // layer id (W2 audit §1: prevent the silent-overwrite
+          // footgun if a previous convertToGroup or unrelated layer
+          // already occupies the canonical slot).
           delete next[layerId];
           for (const opId of operandIds) {
             const operand = layer.compound!.operands[opId];
             if (!operand) continue;
-            const siblingId = `${layerId}/${opId}`;
+            let siblingId = `${layerId}/${opId}`;
+            let dedupeIndex = 1;
+            while (next[siblingId]) {
+              siblingId = `${layerId}/${opId}~${dedupeIndex++}`;
+            }
+            assignedSiblingIds.push(siblingId);
             next[siblingId] = {
               ...layer,
               id: siblingId,
@@ -3916,7 +3925,7 @@ function createActions(): EditorActions {
         return {
           ...patch,
           selection: {
-            layerIds: operandIds.map((opId) => `${layerId}/${opId}`),
+            layerIds: assignedSiblingIds,
             pointIds: [],
           },
         };

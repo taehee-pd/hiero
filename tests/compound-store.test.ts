@@ -274,6 +274,56 @@ describe('convertToGroup (W2-2)', () => {
     editorStore.setState({ favorites: [], openTabs: [], activeTabId: null });
   });
 
+  test('dedupes sibling ids when the canonical slot already exists (W2 audit §1)', async () => {
+    // Pre-seed a layer at the canonical sibling-id slot
+    // `${layerId}/${operandId}` so convertToGroup must dedupe.
+    const { iconId } = bootstrapWithLayers([
+      makeLayer('A', SQUARE_A),
+      makeLayer('B', SQUARE_B),
+    ]);
+    await editorStore.getState().applyBoolean('unite');
+    const survivor = activeLayer('A')!;
+    const operandIds = Object.keys(survivor.compound!.operands);
+    const canonicalSiblingId = `A/${operandIds[0]!}`;
+    // Inject a pre-existing layer at the canonical slot.
+    editorStore.setState((s) => {
+      if (!s.project) return s;
+      const variant =
+        s.project.icons[s.currentIconId!]!.variants[s.currentVariantId!]!;
+      const layers = {
+        ...variant.layers,
+        [canonicalSiblingId]: makeLayer(canonicalSiblingId, 'M0 0 L1 0 L1 1 L0 1 Z')[1],
+      };
+      return {
+        project: {
+          ...s.project,
+          icons: {
+            ...s.project.icons,
+            [s.currentIconId!]: {
+              ...s.project.icons[s.currentIconId!]!,
+              variants: {
+                ...s.project.icons[s.currentIconId!]!.variants,
+                [s.currentVariantId!]: { ...variant, layers },
+              },
+            },
+          },
+        },
+      } as unknown as ReturnType<typeof editorStore.getState>;
+    });
+
+    editorStore.getState().convertToGroup(iconId, 'A');
+
+    // The pre-existing layer at the canonical slot is preserved
+    // unchanged; the convertToGroup output goes to a `~1` suffixed
+    // slot.
+    expect(activeLayer(canonicalSiblingId)).toBeDefined();
+    expect(activeLayer(canonicalSiblingId)!.path?.d).toBe(
+      'M0 0 L1 0 L1 1 L0 1 Z',
+    );
+    // The new sibling id has the dedupe suffix.
+    expect(activeLayer(`${canonicalSiblingId}~1`)).toBeDefined();
+  });
+
   test('explodes a 2-operand compound into 2 sibling layers', async () => {
     const { iconId } = bootstrapWithLayers([
       makeLayer('A', SQUARE_A),

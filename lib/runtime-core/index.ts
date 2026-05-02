@@ -26,4 +26,7 @@ export * from './weight-interpolation';
 export * from './intrinsic-interpolation';
 export * from './open-path-guard';
 export * from './auto-morph';
+export * from './cascade';
+export * from './cascade-fallbacks';
+export * from './cascade-scheduler';
 export * from './svg-serialize';

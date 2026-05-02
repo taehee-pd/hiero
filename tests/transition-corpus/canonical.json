@@ -57,6 +57,15 @@
       "toStyle": "fill"
     },
     {
+      "id": "t6-donut-to-disc",
+      "description": "T6 compound: donut (outer rect ∖ inner rect) morphs to a disc (outer rect alone). The cached path.d carries both subpaths on the source side; the rendered geometry is what the cascade morphs.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M30 30 L70 30 L70 70 L30 70 Z",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
       "id": "t8-spinner-to-checkmark",
       "description": "T8 hard-incompatible: open arc stroke vs closed check fill — structurally incompatible. Lands on draw-replace.",
       "fromD": "M50 10 A40 40 0 1 1 49 10",

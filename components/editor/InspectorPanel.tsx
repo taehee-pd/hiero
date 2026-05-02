@@ -154,6 +154,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
   const flattenCompound = useEditorStore((s) => s.flattenCompound);
   const convertToGroup = useEditorStore((s) => s.convertToGroup);
+  const editScope = useEditorStore((s) => s.editScope);
   const isDeriving = useEditorStore((s) => s.isDeriving);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -1063,9 +1064,17 @@ export const InspectorPanel = memo(function InspectorPanel() {
             </>
           ) : null}
 
-          {layer.compound && currentIconId ? (
+          {layer.compound && currentIconId && editScope.kind === 'icon' ? (
             <>
+              {/* W2 audit §1: keying on layer.id ensures the
+                  AlertDialog confirm-state resets when the user
+                  switches selection while a flatten dialog is
+                  open, so confirming flatten can't accidentally
+                  fire against a different layer. The scope guard
+                  above prevents the section rendering in
+                  guideMaster scope where its store actions no-op. */}
               <CompoundLayerSection
+                key={layer.id}
                 layer={layer}
                 onFlatten={() => flattenCompound(currentIconId, layer.id)}
                 onConvertToGroup={() => convertToGroup(currentIconId, layer.id)}

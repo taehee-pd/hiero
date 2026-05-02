@@ -116,11 +116,32 @@ export function hasCompound(layer: Pick<Layer, 'compound'>): boolean {
   // Defensive shape check: tolerate the field being present but
   // mid-write or hand-edited. The classifier and Inspector treat a
   // structurally-invalid compound as "absent" so the runtime never
-  // chokes on partial data.
-  return (
-    typeof c.cacheVersion === 'number' &&
-    c.tree !== undefined &&
-    typeof c.operands === 'object' &&
-    c.operands !== null
-  );
+  // chokes on partial data. We validate the tree's discriminator —
+  // a malformed `{ kind: 'foo' }` tree counts as absent and routes
+  // morphs through the non-T6 path.
+  if (typeof c.cacheVersion !== 'number') return false;
+  if (typeof c.operands !== 'object' || c.operands === null) return false;
+  if (!c.tree || typeof c.tree !== 'object') return false;
+  return isValidCompoundNode(c.tree as CompoundNode);
+}
+
+function isValidCompoundNode(node: CompoundNode): boolean {
+  if (node.kind === 'leaf') {
+    return typeof node.operandId === 'string' && node.operandId.length > 0;
+  }
+  if (node.kind === 'op') {
+    if (
+      node.op !== 'unite' &&
+      node.op !== 'subtract' &&
+      node.op !== 'intersect' &&
+      node.op !== 'exclude'
+    ) {
+      return false;
+    }
+    if (!Array.isArray(node.children) || node.children.length === 0) {
+      return false;
+    }
+    return node.children.every(isValidCompoundNode);
+  }
+  return false;
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-02T12:47:29.418Z",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
   "resolvers": [
     "auto-morph"
   ],
@@ -102,6 +102,24 @@
           "pairId": "t7-outline-square-to-filled-square",
           "expectedTaxonomy": "T7",
           "observedTaxonomy": "T7",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t6-donut-to-disc",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
           "taxonomyMatch": true,
           "resolverResults": {
             "auto-morph": {

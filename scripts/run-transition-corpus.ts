@@ -156,10 +156,16 @@ function parseArgs(argv: string[]): {
   outFile: string | null;
   resolver: ResolverName | 'all';
   sampleCount: number;
+  frozenTimestamp: boolean;
 } {
   let outFile: string | null = null;
   let resolver: ResolverName | 'all' = 'all';
   let sampleCount = 11;
+  // When `--frozen-timestamp` is passed, the report uses a stable
+  // sentinel for `generatedAt` so repeated runs produce byte-equal
+  // output. Used when committing the baseline.json snapshot — the
+  // W1-audit-cleanup test asserts round-trip stability.
+  let frozenTimestamp = false;
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--out' && argv[i + 1]) {
@@ -174,9 +180,11 @@ function parseArgs(argv: string[]): {
       if (!Number.isFinite(sampleCount) || sampleCount < 2) {
         throw new Error(`--samples must be an integer >= 2`);
       }
+    } else if (arg === '--frozen-timestamp') {
+      frozenTimestamp = true;
     }
   }
-  return { outFile, resolver, sampleCount };
+  return { outFile, resolver, sampleCount, frozenTimestamp };
 }
 
 function main() {
@@ -188,7 +196,9 @@ function main() {
 
   const sets = ['canonical.json', 'stress.json'].map(loadSet);
   const report: CorpusReport = {
-    generatedAt: new Date().toISOString(),
+    generatedAt: args.frozenTimestamp
+      ? '1970-01-01T00:00:00.000Z'
+      : new Date().toISOString(),
     resolvers: resolvers.map((r) => r.name),
     sets: sets.map((set) => ({
       name: set.name,

@@ -31,13 +31,16 @@ export type MotionCurves = {
 /**
  * Authored cadence as exposed in the editor's Layer-1 toggle.
  *
- * `'soft'` (default) and `'snappy'` are the only user-facing values.
- * `'custom'` is reserved for the Layer-2 timing-curve override; when
- * present, the resolver consumes the override-supplied curves.
+ * `'soft'` (default) and `'snappy'` are the only authored values
+ * today. The Layer-2 timing-curve override surfaces in W4-8; when
+ * it lands the union widens to include `'custom'` plus a separate
+ * `Transition.timing` block. Until then there is no third value —
+ * a silently-soft fallback for an unknown cadence breaks the
+ * §1 motion contract (two distinct cadences, predictable).
  *
  * UX ref: docs_canonical/ICON_TRANSITION_UX_PLAN.md §3 Layer 1.
  */
-export type Cadence = 'soft' | 'snappy' | 'custom';
+export type Cadence = 'soft' | 'snappy';
 
 const SOFT: MotionCurves = {
   g: getEasingFunction('ease-in-out'),

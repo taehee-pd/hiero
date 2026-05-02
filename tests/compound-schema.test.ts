@@ -146,4 +146,44 @@ describe('hasCompound (structural shape check, not just truthiness)', () => {
     });
     expect(hasCompound(layer)).toBe(false);
   });
+
+  test('returns false when tree.kind is unknown (malformed import)', () => {
+    const layer = layerWithCompound({
+      tree: { kind: 'foo' } as unknown as never,
+      operands: { a: { d: SQUARE_A } },
+      cacheVersion: 1,
+    });
+    expect(hasCompound(layer)).toBe(false);
+  });
+
+  test('returns false when an op node has no children', () => {
+    const layer = layerWithCompound({
+      tree: { kind: 'op', op: 'unite', children: [] },
+      operands: {},
+      cacheVersion: 1,
+    });
+    expect(hasCompound(layer)).toBe(false);
+  });
+
+  test('returns false when an op uses an unknown operator', () => {
+    const layer = layerWithCompound({
+      tree: {
+        kind: 'op',
+        op: 'fizz' as unknown as 'unite',
+        children: [{ kind: 'leaf', operandId: 'a' }],
+      },
+      operands: { a: { d: SQUARE_A } },
+      cacheVersion: 1,
+    });
+    expect(hasCompound(layer)).toBe(false);
+  });
+
+  test('returns false when a leaf has an empty operandId', () => {
+    const layer = layerWithCompound({
+      tree: { kind: 'leaf', operandId: '' },
+      operands: { '': { d: SQUARE_A } },
+      cacheVersion: 1,
+    });
+    expect(hasCompound(layer)).toBe(false);
+  });
 });

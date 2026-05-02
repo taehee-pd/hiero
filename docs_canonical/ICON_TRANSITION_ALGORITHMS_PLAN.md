@@ -633,6 +633,9 @@ the Animate panel revamp (`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md`).
 | Voronoi-based medial axis | Aichholzer, Aurenhammer, Alberts & Gärtner, 1995 | T7 skeleton alignment test |
 | Curve offsetting | Tiller & Hanson, "Offsets of Two-Dimensional Profiles", 1984 | T7 medial-axis thickening |
 | Point-in-polygon containment | Sunday; Foley/van Dam | contour-tree construction |
+| Elastic shape analysis (SRVF) | Srivastava, Klassen, Joshi & Jermyn, "Shape Analysis of Elastic Curves in Euclidean Spaces", TPAMI 2011 | diagnostic baseline for correspondence quality audits; not in runtime path |
+| Gromov-Wasserstein correspondence | Peyré, Cuturi & Solomon, "Gromov-Wasserstein Averaging of Kernel and Distance Matrices", ICML 2016 | research fallback for future non-isomorphic compound matching with large cardinality deltas |
+| Mean value coordinates | Floater, "Mean Value Coordinates", CAGD 2003 | optional post-ARAP cage smoothing experiment for severe concavities (research-only) |
 
 Citations removed since v1: shape contexts (Belongie 2002 — replaced
 by Arkin 1991 turning function for icon scale); Sederberg-Greenwood
@@ -671,7 +674,72 @@ treatment).
 
 ---
 
-## 9. Determinism, performance, exportability
+## 9. Validation protocol (academic + OSS-grounded)
+
+To satisfy design review quality without collapsing into task-level
+execution, the plan adds a reproducible validation protocol that can be
+run on any candidate resolver implementation.
+
+### 9.1 Corpus design
+
+Build and freeze a benchmark corpus with three strata:
+
+1. **Canonical topology set** (minimum 40 pairs): explicit coverage of
+   T1–T8 with at least five pairs per category.
+2. **Stress topology set** (minimum 30 pairs): adversarial cases —
+   nested holes, ring/island alternation depth ≥ 3, open/closed mixed
+   with cardinality mismatch, extreme concavity, and near-symmetric
+   ambiguity that challenges Hungarian tie-breaking.
+3. **Production set** (all icons in `@hiero/ui-icons` with authored
+   transitions): serves as ecological validity layer.
+
+The corpus stores source SVG/path data, expected topology labels,
+expected fallback family (when applicable), and authored hints (when
+present).
+
+### 9.2 Quantitative metrics
+
+Each transition is evaluated by the following metrics over sampled
+frames `t ∈ [0,1]`:
+
+- **Boundary distortion:** turning-function distance integrated over
+  time (primary metric used by cascade floors).
+- **Area monotonicity error:** detects implausible oscillation in
+  filled region area (critical for T6 hole birth/death).
+- **Self-intersection count:** any emergent self-intersections in
+  intermediate contours (hard failure for T1/T3/T6 unless explicitly
+  permitted by fallback).
+- **Temporal jerk proxy:** finite-difference third derivative of key
+  boundary landmarks to detect "snap then ooze" failures against §1
+  cadence.
+- **Preview/export parity error:** Hausdorff delta between runtime
+  sampled frames and exported frames at matching timestamps.
+
+### 9.3 Comparative baselines
+
+Every corpus pair is compared against:
+
+- current Hiero resolver baseline (`cross-icon-morph.ts` path),
+- Flubber-style greedy ring matching,
+- d3-interpolate-path single-path interpolation (where applicable),
+- proposed cascade tier output.
+
+Success criterion is not "wins every metric on every pair"; it is:
+proposed cascade strictly reduces catastrophic failures (hard topology
+misreads, role-swaps, severe distortions) while preserving determinism
+and export parity.
+
+### 9.4 Human-perception check
+
+Because icon motion quality is perceptual, add a blinded pairwise
+evaluation over a fixed panel (design + engineering reviewers). For each
+pair, reviewers choose preferred motion and rate predictability
+("I can guess where this point goes") on a 5-point Likert scale. This
+operationalizes the §1 motion contract in measurable form.
+
+---
+
+## 10. Determinism, performance, exportability
 
 - **Determinism.** All algorithms are deterministic given
   canonicalized input. Canonicalization
@@ -717,7 +785,7 @@ treatment).
 
 ---
 
-## 10. Open research questions
+## 11. Open research questions
 
 Flagged for future work; not blockers for this plan to commit:
 
@@ -741,7 +809,7 @@ Flagged for future work; not blockers for this plan to commit:
 
 ---
 
-## 11. Non-goals
+## 12. Non-goals
 
 - **No intra-variant state authoring.** Cross-icon transition remains
   the only authored axis (`specs/editor/cross-icon-transitions.md`).

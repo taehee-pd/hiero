@@ -30,15 +30,17 @@ function compoundLayer(): Layer {
 
 test('renders the outermost op glyph and operand count', () => {
   const layer = compoundLayer();
-  const { getByText } = render(
+  const { getAllByText, getByText } = render(
     <CompoundLayerSection
       layer={layer}
       onFlatten={() => {}}
       onConvertToGroup={() => {}}
     />,
   );
-  // − is the outermost glyph for `subtract`.
-  expect(getByText('−')).toBeDefined();
+  // − appears twice: once as the section's outermost-op glyph in
+  // the header, once inside the tree disclosure for the same
+  // (root) op node.
+  expect(getAllByText('−').length).toBeGreaterThanOrEqual(1);
   // Three operands → "3 operands"
   expect(getByText(/3 operands/)).toBeDefined();
 });

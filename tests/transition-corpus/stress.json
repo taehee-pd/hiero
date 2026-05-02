@@ -1,6 +1,6 @@
 {
   "name": "stress",
-  "description": "Wave-1 stub. Roadmap target is >=30 adversarial pairs (nested holes, alternation depth >= 3, mixed cardinality, extreme concavity, near-symmetric ambiguity). Curation continues across waves alongside the canonical set.",
+  "description": "Adversarial pairs that stress the resolver cascade beyond the canonical seed: nested holes, alternation depth >= 3, mixed cardinality, extreme concavity, near-symmetric ambiguity, tangentially-touching rings, and cross-rule fill-rule changes. The W5 calibration corpus draws from this set.",
   "pairs": [
     {
       "id": "stress-nested-holes",
@@ -10,6 +10,267 @@
       "expectedTaxonomy": "T3",
       "fromStyle": "fill",
       "toStyle": "fill"
+    },
+    {
+      "id": "stress-alternation-depth-3",
+      "description": "Outer + hole + island + hole-in-island (depth 3). The contour tree must classify alternation correctly all the way down.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M15 15 L85 15 L85 85 L15 85 Z M30 30 L70 30 L70 70 L30 70 Z M45 45 L55 45 L55 55 L45 55 Z",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z M15 15 L85 15 L85 85 L15 85 Z M30 30 L70 30 L70 70 L30 70 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-tangential-rings",
+      "description": "Two closed rings sharing a single boundary vertex. Containment must NOT mistakenly nest them (W1 audit fixture).",
+      "fromD": "M0 0 L10 0 L10 10 L0 10 Z M10 0 L20 0 L20 10 L10 10 Z",
+      "toD": "M0 0 L20 0 L20 10 L0 10 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-near-symmetric-ambiguity",
+      "description": "Two near-identical squares offset by 1 px. Hungarian assignment ties; the lexicographic tiebreaker must produce a stable pick across runs.",
+      "fromD": "M0 0 L10 0 L10 10 L0 10 Z M11 0 L21 0 L21 10 L11 10 Z",
+      "toD": "M0 1 L10 1 L10 11 L0 11 Z M12 1 L22 1 L22 11 L12 11 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-mixed-cardinality-5-to-1",
+      "description": "Five small squares morph to one large square (4 birth/death + 1 morph).",
+      "fromD": "M0 0 L4 0 L4 4 L0 4 Z M6 0 L10 0 L10 4 L6 4 Z M12 0 L16 0 L16 4 L12 4 Z M18 0 L22 0 L22 4 L18 4 Z M0 6 L4 6 L4 10 L0 10 Z",
+      "toD": "M0 0 L20 0 L20 10 L0 10 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-extreme-concavity-star",
+      "description": "5-pointed star with deep concave notches. Centroid sits in the cutout; representative-point selection must lie inside the actual filled region.",
+      "fromD": "M50 0 L61 35 L100 35 L68 57 L80 91 L50 70 L20 91 L32 57 L0 35 L39 35 Z",
+      "toD": "M50 0 L100 50 L50 100 L0 50 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-extreme-concavity-gear",
+      "description": "12-tooth gear with pronounced radial concavity. Stresses the turning-function descriptor + ARAP wrap.",
+      "fromD": "M50 5 L55 5 L55 15 L65 17 L70 8 L75 11 L73 21 L82 28 L91 23 L93 28 L85 35 L88 45 L98 47 L97 53 L88 55 L85 65 L93 72 L91 77 L82 72 L73 79 L75 89 L70 92 L65 83 L55 85 L55 95 L50 95 L45 95 L45 85 L35 83 L30 92 L25 89 L27 79 L18 72 L9 77 L7 72 L15 65 L12 55 L3 53 L2 47 L12 45 L15 35 L7 28 L9 23 L18 28 L27 21 L25 11 L30 8 L35 17 L45 15 L45 5 Z",
+      "toD": "M50 0 A50 50 0 1 0 50 100 A50 50 0 1 0 50 0 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-multi-open-7-to-3",
+      "description": "Seven horizontal stroke lines morph to three. Stresses the rectangular Hungarian birth/death routing (T4).",
+      "fromD": "M0 5 L100 5 M0 15 L100 15 M0 25 L100 25 M0 35 L100 35 M0 45 L100 45 M0 55 L100 55 M0 65 L100 65",
+      "toD": "M0 20 L100 20 M0 35 L100 35 M0 50 L100 50",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-mixed-closed-and-open",
+      "description": "Closed body + 3 open ticks morphs to closed body + 2 open ticks (T5 channel split with cardinality drop).",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M20 110 L20 130 M50 110 L50 130 M80 110 L80 130",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z M30 110 L30 130 M70 110 L70 130",
+      "expectedTaxonomy": "T5",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-curve-heavy-rotation",
+      "description": "Cubic-heavy quarter-circle morphs to its 90° rotation. Tests winding-normalisation + start-vertex anchoring.",
+      "fromD": "M50 0 C75 0 100 25 100 50 L100 0 Z",
+      "toD": "M50 0 L100 0 C100 25 75 50 50 50 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-sliver-shape",
+      "description": "Long thin sliver morphs to a square. Aspect ratio change ≈ 50×; stresses ARAP triangulation quality.",
+      "fromD": "M0 49 L100 49 L100 51 L0 51 Z",
+      "toD": "M40 0 L60 0 L60 100 L40 100 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-rotational-symmetry-square",
+      "description": "Square morphs to a 45°-rotated square. Multiple equivalent vertex correspondences exist; the resolver must pick a stable one.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z",
+      "toD": "M50 0 L100 50 L50 100 L0 50 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-hole-grows-to-fill",
+      "description": "Donut whose hole grows until it consumes the outer boundary, leaving an empty result. T3 cardinality 2 → 0.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M10 10 L90 10 L90 90 L10 90 Z",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-evenodd-self-intersecting",
+      "description": "Bowtie shape with self-intersecting edges under evenodd. The contour tree handles this without crashing; cascade picks T1.",
+      "fromD": "M0 0 L10 10 L10 0 L0 10 Z",
+      "toD": "M0 0 L10 0 L10 10 L0 10 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-cross-rule-nonzero-to-evenodd",
+      "description": "Same geometry, fillRule changes from nonzero to evenodd. Routes to T8 by default per algorithms-plan §5.7.",
+      "fromD": "M0 0 L10 0 L10 10 L0 10 Z M3 3 L7 3 L7 7 L3 7 Z",
+      "toD": "M0 0 L10 0 L10 10 L0 10 Z M3 3 L7 3 L7 7 L3 7 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-dot-grid-rotated",
+      "description": "3×3 dot grid morphs to its 45° rotation. Hungarian assignment must match dots by content, not by index.",
+      "fromD": "M0 0 L4 0 L4 4 L0 4 Z M8 0 L12 0 L12 4 L8 4 Z M16 0 L20 0 L20 4 L16 4 Z M0 8 L4 8 L4 12 L0 12 Z M8 8 L12 8 L12 12 L8 12 Z M16 8 L20 8 L20 12 L16 12 Z M0 16 L4 16 L4 20 L0 20 Z M8 16 L12 16 L12 20 L8 20 Z M16 16 L20 16 L20 20 L16 20 Z",
+      "toD": "M10 0 L14 4 L10 8 L6 4 Z M2 8 L6 12 L2 16 L-2 12 Z M18 8 L22 12 L18 16 L14 12 Z M10 16 L14 20 L10 24 L6 20 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-arrow-rotation-90",
+      "description": "Right-arrow stroke morphs to down-arrow stroke (90° rotation). Tests open-path orientation pick.",
+      "fromD": "M0 50 L100 50 M70 20 L100 50 L70 80",
+      "toD": "M50 0 L50 100 M20 70 L50 100 L80 70",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-arrow-rotation-180",
+      "description": "Right-arrow morphs to left-arrow (180° rotation). Reversed orientation pick should win.",
+      "fromD": "M0 50 L100 50 M70 20 L100 50 L70 80",
+      "toD": "M0 50 L100 50 M30 20 L0 50 L30 80",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-spinner-arc-different-sweeps",
+      "description": "Quarter-arc to half-arc — same start point, target arc spans a wider sweep.",
+      "fromD": "M50 0 A50 50 0 0 1 100 50",
+      "toD": "M50 0 A50 50 0 0 1 50 100",
+      "expectedTaxonomy": "T2",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-checkmark-shrink-to-prefix",
+      "description": "Long check (full path) morphs to short check (prefix only). Trim-style strict-containment gate should win over T7 draw-emit.",
+      "fromD": "M0 50 L40 90 L100 0",
+      "toD": "M0 50 L20 70",
+      "expectedTaxonomy": "T2",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-letter-l-to-square",
+      "description": "L-shape morphs to a square (concave → convex). Centroid is outside the L's filled region; representative-point algo must compensate.",
+      "fromD": "M0 0 L20 0 L20 8 L8 8 L8 20 L0 20 Z",
+      "toD": "M0 0 L20 0 L20 20 L0 20 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-many-tiny-rings",
+      "description": "10 small dots form a wreath; morph to 10 dots in a different (rotated) arrangement. Subpath count = 10 on both sides.",
+      "fromD": "M50 0 L52 2 L50 4 L48 2 Z M93 25 L95 27 L93 29 L91 27 Z M93 75 L95 77 L93 79 L91 77 Z M50 100 L52 102 L50 104 L48 102 Z M7 75 L9 77 L7 79 L5 77 Z M7 25 L9 27 L7 29 L5 27 Z M50 50 L52 52 L50 54 L48 52 Z M70 30 L72 32 L70 34 L68 32 Z M30 70 L32 72 L30 74 L28 72 Z M70 70 L72 72 L70 74 L68 72 Z",
+      "toD": "M30 30 L32 32 L30 34 L28 32 Z M70 30 L72 32 L70 34 L68 32 Z M30 70 L32 72 L30 74 L28 72 Z M70 70 L72 72 L70 74 L68 72 Z M50 10 L52 12 L50 14 L48 12 Z M50 90 L52 92 L50 94 L48 92 Z M10 50 L12 52 L10 54 L8 52 Z M90 50 L92 52 L90 54 L88 52 Z M50 50 L52 52 L50 54 L48 52 Z M30 50 L32 52 L30 54 L28 52 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-chevron-flip",
+      "description": "Up-chevron morphs to down-chevron. Endpoint orientation flip; Latecki turning-angle distortion should pick the reversed pairing.",
+      "fromD": "M0 30 L50 0 L100 30",
+      "toD": "M0 0 L50 30 L100 0",
+      "expectedTaxonomy": "T2",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-plus-to-minus",
+      "description": "+ (two crossed strokes) morphs to − (single stroke). T4 birth/death — one stroke retracts.",
+      "fromD": "M0 50 L100 50 M50 0 L50 100",
+      "toD": "M10 50 L90 50",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-eye-to-circle",
+      "description": "Eye outline (lens shape, two arcs) morphs to a perfect circle. Same closed topology, different curvature.",
+      "fromD": "M0 50 C25 0 75 0 100 50 C75 100 25 100 0 50 Z",
+      "toD": "M50 0 C77 0 100 23 100 50 C100 77 77 100 50 100 C23 100 0 77 0 50 C0 23 23 0 50 0 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-pinch-narrow-isthmus",
+      "description": "Dumbbell shape (two circles connected by narrow neck) morphs to a single oval. Tests near-degenerate triangulation through the pinch point.",
+      "fromD": "M0 30 C0 10 20 10 20 30 L40 30 C40 10 60 10 60 30 L60 70 C60 90 40 90 40 70 L20 70 C20 90 0 90 0 70 Z",
+      "toD": "M0 30 C0 10 60 10 60 30 L60 70 C60 90 0 90 0 70 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-stroke-to-fill-skeleton-aligned",
+      "description": "Outline circle morphs to filled circle (T7 skeleton-aligned baseline).",
+      "fromD": "M50 0 A50 50 0 1 0 50 100 A50 50 0 1 0 50 0 Z",
+      "toD": "M50 0 A50 50 0 1 0 50 100 A50 50 0 1 0 50 0 Z",
+      "expectedTaxonomy": "T7",
+      "fromStyle": "stroke",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-stroke-to-fill-skeleton-misaligned",
+      "description": "Stroked spiral morphs to filled square — skeletons cannot align; T7 must fall through to misaligned-skeleton path.",
+      "fromD": "M50 50 L60 40 L40 30 L70 20 L20 10 L80 0",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z",
+      "expectedTaxonomy": "T8",
+      "fromStyle": "stroke",
+      "toStyle": "fill"
+    },
+    {
+      "id": "stress-spinner-half-rotation",
+      "description": "Half-circle arc morphs to its rotated counterpart (start/end swap). Tests open-path forward/reversed orientation pick.",
+      "fromD": "M0 50 A50 50 0 0 1 100 50",
+      "toD": "M100 50 A50 50 0 0 1 0 50",
+      "expectedTaxonomy": "T2",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "stress-disconnected-multi-stroke-grow",
+      "description": "Single stroke grows into three disconnected strokes (1 → 3, T4 cardinality climb).",
+      "fromD": "M0 50 L100 50",
+      "toD": "M0 25 L30 25 M40 50 L60 50 M70 75 L100 75",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
     }
   ]
 }

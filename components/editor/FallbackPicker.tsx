@@ -67,7 +67,15 @@ export function FallbackPicker({
               type="button"
               role="radio"
               aria-checked={selected}
-              onClick={() => onChange(name === resolverPicked ? undefined : name)}
+              // W4 audit §5: clicking a chip ALWAYS pins it as the
+              // explicit override. The previous toggle-on-equality
+              // behaviour silently un-pinned an explicit override
+              // when the resolver's auto-pick happened to match,
+              // surprising authors who'd set the override on
+              // purpose. To clear the override, the user picks the
+              // dedicated "Use auto" affordance below.
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(name)}
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] leading-none transition',
                 selected
@@ -88,6 +96,15 @@ export function FallbackPicker({
           );
         })}
       </div>
+      {override !== undefined ? (
+        <button
+          type="button"
+          onClick={() => onChange(undefined)}
+          className="self-start text-[10px] uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Use auto ({FALLBACK_DISPLAY_NAME[resolverPicked]})
+        </button>
+      ) : null}
     </fieldset>
   );
 }

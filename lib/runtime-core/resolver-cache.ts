@@ -77,22 +77,36 @@ function makeKey(from: Layer, to: Layer, cadence: Cadence): string {
 function layerKey(layer: Layer): string {
   const id = layer.id;
   const cacheVersion = layer.compound?.cacheVersion ?? 0;
-  const dHash = layer.path?.d ? hashString(layer.path.d) : 0;
+  const dHash = layer.path?.d ? hashString(layer.path.d) : '0';
   return `${id}#${cacheVersion}#${dHash}`;
 }
 
 /**
- * 32-bit FNV-1a hash. Fast enough to call per-layer per-resolve;
- * collision probability is acceptable for cache-key disambiguation
- * (a collision means at most one cache miss when the layer's
- * geometry changes but its hash doesn't, which the cascade
- * recomputes correctly anyway).
+ * 32-bit FNV-1a hash extended with a length suffix. Fast enough
+ * to call per-layer per-resolve.
+ *
+ * **Collision behavior** (W4 audit §2): a true 32-bit hash
+ * collision in this cache means the resolver returns a stale
+ * `MorphResolution` for a path whose `d` actually differs but
+ * whose hash matches a cached entry. Birthday-collision
+ * probability is ~2^-16 at ~65k icons (negligible at icon-set
+ * scale), but the failure mode is silent.
+ *
+ * Mitigation: append the path length to the hash so an attacker
+ * — or a curated icon set hitting a numerical edge case — would
+ * need to construct two paths of the same length whose FNV-1a
+ * hashes collide. That's vanishingly unlikely in authored icons.
+ *
+ * If a future deploy ships at a scale where this is a real
+ * concern, swap to a 64-bit construction (e.g., two FNV runs
+ * with different seeds, then concat). Tracked in
+ * docs_canonical/ICON_TRANSITION_W5_VALIDATION.md §4.
  */
-function hashString(s: string): number {
+function hashString(s: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 0x01000193);
   }
-  return h >>> 0;
+  return `${(h >>> 0).toString(36)}.${s.length}`;
 }

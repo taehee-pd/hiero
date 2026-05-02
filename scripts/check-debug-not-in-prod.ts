@@ -33,11 +33,19 @@ const NEXT_DIR = resolve(ROOT, '.next');
  * Strings the debug pill renders verbatim. If ANY of these reach
  * the production bundle, the guard has been bypassed and the lint
  * fails. Add new fingerprints when adding new debug surfaces.
+ *
+ * W4 audit §10: extended to cover every static literal in the pill
+ * body (taxonomy, distortion, ceiling labels). Dynamic content
+ * from `signalToDebugString` evades the grep but the pill's
+ * surrounding labels would be a tell-tale leak.
  */
 const DEBUG_FINGERPRINTS = [
   'transition-debug-pill', // data-testid on the pill body
   'Engine chose: ',
   'Transition resolver debug info', // aria-label
+  'taxonomy: ',
+  'distortion: ',
+  'ceiling: ',
 ];
 
 type Hit = { file: string; fingerprint: string };

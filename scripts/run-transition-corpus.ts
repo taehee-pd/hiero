@@ -22,6 +22,11 @@ import type { CorpusPair, CorpusSet } from '../tests/transition-corpus/types';
 
 import { autoMorph, type MorphInterpolator } from '../lib/runtime-core';
 import {
+  BASELINE_RESOLVERS,
+  type BaselineName,
+} from '../lib/runtime-core/baseline-resolvers';
+import { resolveMorph } from '../lib/runtime-core/cascade';
+import {
   areaMonotonicityError,
   boundaryDistortion,
   sampleTrajectory,
@@ -36,12 +41,22 @@ const ROOT = resolve(import.meta.dir, '..');
 const FILL: PaintRef = { mode: 'fixed', value: '#000' };
 const STROKE: PaintRef = { mode: 'fixed', value: '#000' };
 
-type ResolverName = 'auto-morph';
+type ResolverName = 'auto-morph' | 'cascade-v2' | BaselineName;
 
 type ResolverImpl = {
   name: ResolverName;
   resolve(pair: CorpusPair): MorphInterpolator | null;
 };
+
+function buildBaselineImpl(name: BaselineName): ResolverImpl {
+  const resolver = BASELINE_RESOLVERS[name];
+  return {
+    name,
+    resolve(pair) {
+      return resolver(pair.fromD, pair.toD);
+    },
+  };
+}
 
 const RESOLVERS: Record<ResolverName, ResolverImpl> = {
   'auto-morph': {
@@ -51,6 +66,19 @@ const RESOLVERS: Record<ResolverName, ResolverImpl> = {
       return result?.interpolator ?? null;
     },
   },
+  'cascade-v2': {
+    name: 'cascade-v2',
+    resolve(pair) {
+      const fromStyle = pair.fromStyle ?? 'fill';
+      const toStyle = pair.toStyle ?? 'fill';
+      const fromLayer = buildLayer(pair.fromD, fromStyle);
+      const toLayer = buildLayer(pair.toD, toStyle);
+      return resolveMorph(fromLayer, toLayer).interpolator;
+    },
+  },
+  'hiero-legacy': buildBaselineImpl('hiero-legacy'),
+  'flubber-style-greedy': buildBaselineImpl('flubber-style-greedy'),
+  'd3-interpolate-path-style': buildBaselineImpl('d3-interpolate-path-style'),
 };
 
 type FrameMetrics = {

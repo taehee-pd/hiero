@@ -37,14 +37,45 @@ describe('resolveTimingOverride', () => {
 });
 
 describe('isValidTimingOverride', () => {
-  test('accepts well-formed overrides', () => {
+  test('accepts well-formed named overrides', () => {
     expect(
       isValidTimingOverride({ g: 'ease-in-out', alpha: 'ease-out-cubic' }),
     ).toBe(true);
   });
 
+  test('accepts parametric cubic-bezier easings', () => {
+    expect(
+      isValidTimingOverride({
+        g: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        alpha: 'cubic-bezier(0.0, 0, 0.2, 1)',
+      }),
+    ).toBe(true);
+  });
+
+  test('accepts parametric steps easings', () => {
+    expect(isValidTimingOverride({ g: 'steps(5, start)', alpha: 'steps(3)' })).toBe(true);
+  });
+
   test('rejects empty easing strings', () => {
     expect(isValidTimingOverride({ g: '', alpha: 'ease-out' })).toBe(false);
+  });
+
+  test('rejects unknown named easings (W4 audit §8: no silent linear fallback)', () => {
+    expect(
+      isValidTimingOverride({ g: 'ease-in-cubicc', alpha: 'ease-out' }),
+    ).toBe(false);
+    expect(
+      isValidTimingOverride({ g: 'ease-out', alpha: 'mystery-curve' }),
+    ).toBe(false);
+  });
+
+  test('rejects malformed parametric easings', () => {
+    expect(
+      isValidTimingOverride({ g: 'cubic-bezier(0.4)', alpha: 'ease-out' }),
+    ).toBe(false);
+    expect(
+      isValidTimingOverride({ g: 'steps()', alpha: 'ease-out' }),
+    ).toBe(false);
   });
 
   test('rejects out-of-range alpha offsets', () => {

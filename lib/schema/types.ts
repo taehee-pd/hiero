@@ -419,16 +419,19 @@ export type Cadence = 'soft' | 'snappy';
  *
  * Spec: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §5.8.
  */
-export type FallbackName =
-  | 'radial-pop'
-  | 'directional-replace-up'
-  | 'directional-replace-down'
-  | 'directional-replace-left'
-  | 'directional-replace-right'
-  | 'directional-replace-toward'
-  | 'directional-replace-away'
-  | 'draw-replace'
-  | 'scale-pop';
+export const FALLBACK_NAMES = [
+  'radial-pop',
+  'directional-replace-up',
+  'directional-replace-down',
+  'directional-replace-left',
+  'directional-replace-right',
+  'directional-replace-toward',
+  'directional-replace-away',
+  'draw-replace',
+  'scale-pop',
+] as const;
+
+export type FallbackName = (typeof FALLBACK_NAMES)[number];
 
 /**
  * Address of a vertex within a canonicalized layer path. `subpathId`

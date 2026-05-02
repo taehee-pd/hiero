@@ -48,14 +48,40 @@ export function resolveTimingOverride(override: TimingOverride): MotionCurves {
 }
 
 /**
+ * Easing names accepted by the timing override. W4 audit §8: the
+ * raw `getEasingFunction` silently falls back to `linear` for
+ * unknown names, so a typo like `'ease-in-cubicc'` would resolve
+ * to linear at runtime without warning. We enumerate the accepted
+ * named easings here and accept the parametric `cubic-bezier(...)`
+ * / `steps(...)` forms via regex shape; anything else fails
+ * validation at write time.
+ */
+const NAMED_EASINGS = new Set<string>([
+  'linear',
+  'ease-in',
+  'ease-out',
+  'ease-in-out',
+  'ease-in-cubic',
+  'ease-out-cubic',
+]);
+
+const PARAMETRIC_EASING_RE =
+  /^(?:cubic-bezier\(\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*,\s*-?\d*\.?\d+\s*\)|steps\(\s*\d+(?:\s*,\s*(?:start|end))?\s*\))$/;
+
+function isValidEasingName(name: string): boolean {
+  if (NAMED_EASINGS.has(name)) return true;
+  return PARAMETRIC_EASING_RE.test(name);
+}
+
+/**
  * Validate a {@link TimingOverride} payload — used by the schema
  * lint when the W4-8 UI writes the override field.
  */
 export function isValidTimingOverride(value: unknown): value is TimingOverride {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  if (typeof v.g !== 'string' || v.g.length === 0) return false;
-  if (typeof v.alpha !== 'string' || v.alpha.length === 0) return false;
+  if (typeof v.g !== 'string' || !isValidEasingName(v.g)) return false;
+  if (typeof v.alpha !== 'string' || !isValidEasingName(v.alpha)) return false;
   if (
     v.alphaOffsetRatio !== undefined &&
     (typeof v.alphaOffsetRatio !== 'number' ||

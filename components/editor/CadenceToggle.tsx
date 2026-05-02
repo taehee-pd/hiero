@@ -65,6 +65,11 @@ export function CadenceToggle({ value, onChange, disabled }: Props) {
             aria-checked={selected}
             aria-label={`${LABELS[cadence]} cadence — ${DESCRIPTIONS[cadence]}`}
             disabled={disabled}
+            // Roving tabindex per ARIA radiogroup pattern (W4 audit
+            // §5): only the selected radio is in the tab order so
+            // Tab lands on the group once; arrow keys navigate
+            // within. Unselected radios get tabIndex=-1.
+            tabIndex={selected ? 0 : -1}
             onClick={() => onChange(cadence)}
             onKeyDown={handleKeyDown}
             className={cn(

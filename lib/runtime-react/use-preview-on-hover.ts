@@ -128,6 +128,15 @@ export function usePreviewOnHover({
     }
 
     startTime.current = null;
+    // W4 audit §6: seed the visible state with the t=0 frame of
+    // the new resolution before the first RAF tick fires. Without
+    // this seed the next render shows the previous transition's
+    // last frame for one paint while RAF is being scheduled,
+    // visible as a flicker on rapid hover-target switches.
+    {
+      const seed = sampleMorph(resolution, 0);
+      setState({ d: seed.d, alpha: seed.alpha, resolution });
+    }
 
     const tick = (now: number) => {
       if (startTime.current === null) startTime.current = now;

@@ -64,17 +64,17 @@ jobs:
         run: bun run storybook:build --output-dir storybook-static
 
       - name: Publish to Chromatic
-        uses: chromaui/action@latest
-        with:
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          storybookBuildDir: storybook-static
-          # `onlyChanged: true` (TurboSnap) was bailing early on PRs
-          # with sizeable lockfile / dep deltas — the action exited
-          # non-zero before publishing snapshots, blocking the check
-          # despite both auto-accept flags. PR #173 ran in 138s with
-          # full snapshots; #174's TurboSnap'd attempts ran 67-73s and
-          # failed before completing. Full snapshots are correct here:
-          # branch deps did legitimately change, so the conservative
-          # path is to re-snapshot everything.
-          exitZeroOnChanges: true
-          autoAcceptChanges: true
+        # Calling the CLI directly (pinned at chromatic@16.3.0 in
+        # package.json) instead of `chromaui/action@latest`. The
+        # `@latest` action wrapper produced consistent CI failures on
+        # this branch with all six other checks green; pinning the
+        # CLI version makes the publish step reproducible regardless
+        # of upstream wrapper changes.
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        run: |
+          bun x chromatic \
+            --project-token "$CHROMATIC_PROJECT_TOKEN" \
+            --storybook-build-dir storybook-static \
+            --auto-accept-changes \
+            --exit-zero-on-changes

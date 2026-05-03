@@ -68,13 +68,13 @@ jobs:
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           storybookBuildDir: storybook-static
-          onlyChanged: true
-          # Auto-accept visual diffs on both PR and main builds so the
-          # baseline always advances and merged diffs don't re-fail later
-          # PRs. Both flags together: `autoAcceptChanges` advances the
-          # baseline; `exitZeroOnChanges` keeps the action's exit code
-          # green when changes are detected (and now silently accepted),
-          # so the CI check doesn't block the PR on the diff that just
-          # got auto-approved.
+          # `onlyChanged: true` (TurboSnap) was bailing early on PRs
+          # with sizeable lockfile / dep deltas — the action exited
+          # non-zero before publishing snapshots, blocking the check
+          # despite both auto-accept flags. PR #173 ran in 138s with
+          # full snapshots; #174's TurboSnap'd attempts ran 67-73s and
+          # failed before completing. Full snapshots are correct here:
+          # branch deps did legitimately change, so the conservative
+          # path is to re-snapshot everything.
           exitZeroOnChanges: true
           autoAcceptChanges: true

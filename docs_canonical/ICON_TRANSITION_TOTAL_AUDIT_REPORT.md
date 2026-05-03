@@ -68,3 +68,87 @@ D1 matched, D2 matched, D3 matched, D4 matched, D5 matched, D6 matched, D7 match
 
 ## Final verdict
 NOT-READY-WHY: codebase is implementation-complete for planned non-human/non-install-blocked work, but release flip criteria are intentionally unmet (W5 human gates + unresolved dependency-blocked algorithm upgrades + unresolved bun frozen-lockfile fetchability in this environment). Ship-ready only **modulo** those explicit gates.
+
+---
+
+## Post-audit follow-up (2026-05-03, HEAD 71c7868)
+
+After this audit was filed at 2c4e1dc, three follow-up commits landed
+on the same branch addressing the actionable items the audit flagged
+as PARTIAL:
+
+### Resolved
+- **Invariant 5 (preview ≡ runtime ≡ exported Lottie) for the Lottie
+  path** — `lib/export/export-lottie.ts` now calls `sampleForLottie`
+  against the V2 cascade resolution and emits a multi-keyframe
+  shape animation. Gated behind `isResolverV2Enabled()` so the
+  default 2-keyframe linear bezier path still runs until W4-10
+  flips the flag. Closes the D9 deferral for Lottie. (711726e)
+- **Resolver V2 flag consumed in the authoring surface** —
+  `components/editor/TransitionPanel.tsx` now resolves the V2
+  cascade against the primary layer pair (when the flag is on) and
+  routes the resulting `MorphResolution` to `FallbackPicker` /
+  `FallbackSentence`, replacing the hard-coded `resolverPicked='radial-pop'`
+  / `resolution=null` placeholders. (711726e)
+- **W2-3 operand-select wire-through** —
+  `components/editor/InspectorPanel.tsx` now passes
+  `onOperandSelect` and `selectedOperandId` to `CompoundLayerSection`
+  so the W2-3 contract ("clicking an operand selects it") survives
+  re-renders. (711726e)
+- **`boundaryDistortion` silent-zero on multi-* pairs** —
+  `lib/runtime-core/transition-metrics.ts` now scores per-frame-pair
+  `Math.min(rings)` instead of globally truncating to
+  `min(ringsOf(frame).length)`. A vanishing ring still contributes
+  turning-function distance over the frames where it existed, and
+  the metric no longer silently returns 0 when any single frame
+  produces zero polylines. (711726e)
+
+### Removed as dead code
+The 3 OSS scaffold modules and the orphan hover-preview hook were
+deleted because they had zero in-tree consumers and would have
+broken CI (the OSS deps were not declared in `package.json` or
+either lockfile). The corresponding D-row claims about scaffolds
+"in tree but unused" no longer apply because the scaffolds no
+longer exist. (877bf82)
+
+- `lib/runtime-core/cascade-tiers/arap-wrap.ts` (poly2tri import)
+- `lib/runtime-core/cascade-tiers/hungarian-matcher.ts` (hungarian-on3 import)
+- `lib/runtime-core/cascade-tiers/medial-axis-thickening.ts` (clipper2-ts import)
+- `types/hungarian-on3.d.ts` (only needed by hungarian-matcher)
+- `lib/runtime-react/use-preview-on-hover.ts` + its `export *` line
+  in `runtime-react/index.ts` (zero consumers; reintroduce when a
+  picker / hover-preview UI lands)
+
+The `'arap-quality-wrap'` literal in the `ResolverTier` union
+stayed — referenced by `tests/transition-signal-messages.test.ts`
+as a sample tier name and documents the future tier.
+
+### Still deferred (unchanged)
+- **Invariant 5 for the compiled-icon export path** — needs a
+  `CompiledLayerBinding.keyframes` schema field, a populator in
+  `lib/export/export-compiled-icon.ts` (currently emits
+  `transitions: []`), a codegen template update in
+  `lib/export/export-react-components.ts`, and a runtime SDK path
+  that consumes the keyframes. Multi-surface coordination, not a
+  wiring fix; left for a dedicated batch.
+- **W4-7 canvas drag for correspondence pinning** — pinning store
+  helpers are present (`lib/editor-store/correspondence-pinning.ts`),
+  but the drag-vertex-onto-vertex interaction in
+  `components/editor/Canvas.tsx` and the new
+  `CorrespondencePins.tsx` overlay are not built.
+- **W5-4 / W5-5 human-review protocols** — by design, human-gated.
+- **OSS algorithm upgrades (Hungarian, Tiller-Hanson, ARAP solver)**
+  — deps not in lockfile; W3 baselines remain authoritative until
+  W5 calibration evidence supports the swap.
+- **Production corpus file** — data-dependent; remains empty.
+- **Cross-line / template tokeniser in copy-lint** — minor
+  enhancement.
+- **64-bit cache hash** — perf concern only; FNV-1a + length suffix
+  still sufficient.
+
+### Verification at follow-up HEAD
+- `npx tsc --noEmit` — clean
+- `pnpm lint` — clean
+- `pnpm test` — 1664 + 222 = 1886 tests pass
+- `pnpm test:registry` — clean (page registry consistent)
+- `pnpm test:copy-lint` — clean (no banned vocabulary)

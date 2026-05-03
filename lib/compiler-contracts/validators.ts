@@ -195,6 +195,15 @@ export function isCompiledLayerBinding(val: unknown): val is CompiledLayerBindin
   if (val.morph !== undefined) {
     if (!isObject(val.morph)) return false;
     if (!['strict', 'bestGuess'].includes(val.morph.topology as string)) return false;
+    if (val.morph.keyframes !== undefined) {
+      if (!Array.isArray(val.morph.keyframes)) return false;
+      for (const kf of val.morph.keyframes) {
+        if (!isObject(kf)) return false;
+        if (typeof kf.t !== 'number' || kf.t < 0 || kf.t > 1) return false;
+        if (typeof kf.d !== 'string') return false;
+        if (typeof kf.alpha !== 'number') return false;
+      }
+    }
   }
 
   return true;

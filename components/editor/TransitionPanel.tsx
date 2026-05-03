@@ -19,9 +19,19 @@ import {
 } from '@/lib/runtime-core';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { RuntimeTransitionIntent, LayerBinding, LayerSnapshot, TransitionStagger } from '@/lib/schema/types';
+import type {
+  Cadence,
+  FallbackName,
+  RuntimeTransitionIntent,
+  LayerBinding,
+  LayerSnapshot,
+  TransitionStagger,
+} from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
+import { CadenceToggle } from './CadenceToggle';
 import { EasingPicker, type EasingValue } from './EasingPicker';
+import { FallbackPicker } from './FallbackPicker';
+import { FallbackSentence } from './FallbackSentence';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -199,6 +209,17 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
   const [formPlaybackMode, setFormPlaybackMode] = useState<PlaybackMode>('byLayer');
+  // W4-5 Layer-1 authored axes — cadence + fallbackOverride. These
+  // co-exist with the legacy easing/direction during W3-W4 and
+  // become the canonical authored values once the V2 cascade flips
+  // on (W4-10 / W5 ship-checklist gate). The schema's
+  // `Transition.cadence` and `Transition.fallbackOverride` carry
+  // them through to the runtime; the legacy fields are
+  // `@deprecated W4` in lib/schema/types.ts.
+  const [formCadence, setFormCadence] = useState<Cadence>('soft');
+  const [formFallbackOverride, setFormFallbackOverride] = useState<
+    FallbackName | undefined
+  >(undefined);
 
   // --- Advanced disclosure state (§2.3) ---
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -639,6 +660,36 @@ export const TransitionPanel = memo(function TransitionPanel() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* 3.5 Cadence + Fallback (W4-5 Layer-1 authored axes).
+          These persist to Transition.cadence and
+          Transition.fallbackOverride. They co-exist with the
+          legacy Easing/Direction during W3-W4 and become
+          canonical once the V2 cascade flips on (W4-10). The
+          plain-language fallback sentence renders only when
+          the resolver lands on a fallback tier — until the V2
+          cascade is wired into the preview path, the sentence
+          stays null on the legacy resolver. */}
+      <div className="grid gap-1.5">
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          Cadence
+        </Label>
+        <CadenceToggle value={formCadence} onChange={setFormCadence} />
+        <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
+          Soft eases in and out; Snappy lands faster.
+        </p>
+      </div>
+      <div className="grid gap-1.5">
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          Fallback motion
+        </Label>
+        <FallbackPicker
+          resolverPicked="radial-pop"
+          override={formFallbackOverride}
+          onChange={setFormFallbackOverride}
+        />
+        <FallbackSentence resolution={null} />
       </div>
 
       {/* 4. Preview */}

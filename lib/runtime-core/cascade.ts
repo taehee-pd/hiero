@@ -41,6 +41,7 @@ import { resolveIdentity } from './cascade-tiers/identity';
 import { resolveCompoundIsomorphic } from './cascade-tiers/compound-isomorphic';
 import { resolveIntrinsicStrict } from './cascade-tiers/intrinsic-strict';
 import { resolveHierarchicalMatch } from './cascade-tiers/hierarchical-match';
+import { resolveArapQualityWrap } from './cascade-tiers/arap';
 import { resolveDrawCoordinated } from './cascade-tiers/draw-coordinated';
 import { resolveDesignedFallback } from './cascade-tiers/designed-fallback';
 import type { ResolverCache } from './resolver-cache';
@@ -95,15 +96,17 @@ type Tier = {
  * Tier order. Conservative-first then permissive: identity →
  * compound-isomorphic → intrinsic-strict → hierarchical-match →
  * arap-quality-wrap (W4) → draw-coordinated (T7) →
- * designed-fallback (T8). ARAP is omitted in W3; the
- * hierarchical-match tier is the W3 quality ceiling for non-strict
- * morphs.
+ * designed-fallback (T8). ARAP fires only when its trigger
+ * predicate (high turning-function variation) holds; otherwise
+ * the cascade jumps from hierarchical-match straight to
+ * draw-coordinated.
  */
 const TIERS: Tier[] = [
   { name: 'identity', ceiling: 0, resolve: resolveIdentity },
   { name: 'compound-isomorphic', ceiling: 0, resolve: resolveCompoundIsomorphic },
   { name: 'intrinsic-strict', ceiling: 0.20, resolve: resolveIntrinsicStrict },
   { name: 'hierarchical-match', ceiling: 0.50, resolve: resolveHierarchicalMatch },
+  { name: 'arap-quality-wrap', ceiling: 0.55, resolve: resolveArapQualityWrap },
   { name: 'draw-coordinated', ceiling: 0.60, resolve: resolveDrawCoordinated },
   { name: 'designed-fallback', ceiling: Number.POSITIVE_INFINITY, resolve: resolveDesignedFallback },
 ];

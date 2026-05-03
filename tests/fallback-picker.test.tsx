@@ -14,7 +14,8 @@ test('renders every named fallback as a radio chip', () => {
   const { getAllByRole } = render(
     <FallbackPicker resolverPicked="radial-pop" override={undefined} onChange={() => {}} />,
   );
-  // 9 fallbacks in the closed FallbackName union.
+  // 9 fallbacks in the closed FallbackName union; Radix
+  // ToggleGroup type="single" maps each item to role="radio".
   expect(getAllByRole('radio').length).toBe(9);
 });
 
@@ -55,18 +56,24 @@ test('clicking a chip pins it explicitly via override (W4 audit §5 fix)', () =>
 });
 
 test('clicking the resolver-picked chip while no override exists pins it explicitly', () => {
-  // The FIX: clicking the auto-picked chip does NOT silently un-pin
-  // a different override; it explicitly pins the resolver's value.
-  let override: FallbackName | undefined = undefined;
+  // The W4-audit-fix invariant: clicking the auto-picked chip
+  // does NOT silently un-pin a different override; it explicitly
+  // pins the resolver's value as the override. Radix returns ''
+  // on re-click of the active item; the component treats that as
+  // "re-pin to the currently effective value".
+  let captured: FallbackName | undefined = undefined;
+  const handleChange = (next: FallbackName | undefined) => {
+    captured = next;
+  };
   const { getByRole } = render(
     <FallbackPicker
       resolverPicked="radial-pop"
-      override={override}
-      onChange={(next) => { override = next; }}
+      override={undefined}
+      onChange={handleChange}
     />,
   );
-  fireEvent.click(getByRole('radio', { name: /Radial Pop/ }));
-  expect(override).toBe('radial-pop');
+  fireEvent.click(getByRole('radio', { name: /resolver's pick/ }));
+  expect(captured as FallbackName | undefined).toBe('radial-pop');
 });
 
 test('the "Use auto" affordance appears only when override is set, and clears it', () => {
@@ -91,4 +98,12 @@ test('the "Use auto" affordance appears only when override is set, and clears it
     />,
   );
   expect(queryByText(/Use auto/)).toBeNull();
+});
+
+test('built on the shadcn ToggleGroup primitive (data-slot tag)', () => {
+  const { container } = render(
+    <FallbackPicker resolverPicked="radial-pop" override={undefined} onChange={() => {}} />,
+  );
+  expect(container.querySelector('[data-slot="toggle-group"]')).not.toBeNull();
+  expect(container.querySelectorAll('[data-slot="toggle-group-item"]').length).toBe(9);
 });

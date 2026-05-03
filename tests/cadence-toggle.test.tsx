@@ -9,14 +9,17 @@ afterEach(() => {
   cleanup();
 });
 
-test('renders both Soft and Snappy radio buttons', () => {
-  const { getByRole } = render(<CadenceToggle value="soft" onChange={() => {}} />);
-  // ARIA radiogroup pattern.
-  expect(getByRole('radiogroup')).toBeDefined();
-  const soft = getByRole('radio', { name: /Soft cadence/ });
-  const snappy = getByRole('radio', { name: /Snappy cadence/ });
-  expect(soft).toBeDefined();
-  expect(snappy).toBeDefined();
+test('renders both Soft and Snappy radio items inside a group', () => {
+  const { getByRole, getAllByRole } = render(
+    <CadenceToggle value="soft" onChange={() => {}} />,
+  );
+  // Radix `ToggleGroup` with `type="single"` renders the root as
+  // role="group" and items as role="radio". This contract is
+  // inherited from the primitive — we don't add it ourselves.
+  expect(getByRole('group', { name: /Cadence/ })).toBeDefined();
+  expect(getAllByRole('radio').length).toBe(2);
+  expect(getByRole('radio', { name: /Soft cadence/ })).toBeDefined();
+  expect(getByRole('radio', { name: /Snappy cadence/ })).toBeDefined();
 });
 
 test('selected state is reflected in aria-checked', () => {
@@ -25,12 +28,10 @@ test('selected state is reflected in aria-checked', () => {
   expect(getByRole('radio', { name: /Snappy cadence/ }).getAttribute('aria-checked')).toBe('false');
 });
 
-test('roving tabindex: only the selected radio has tabIndex 0', () => {
-  // ARIA radiogroup pattern — Tab lands on the group once; arrow
-  // keys navigate within. Unselected radios get tabIndex=-1.
-  const { getByRole } = render(<CadenceToggle value="soft" onChange={() => {}} />);
-  expect(getByRole('radio', { name: /Soft cadence/ }).getAttribute('tabindex')).toBe('0');
-  expect(getByRole('radio', { name: /Snappy cadence/ }).getAttribute('tabindex')).toBe('-1');
+test('selected state is reflected in data-state="on" (visual targeting)', () => {
+  const { getByRole } = render(<CadenceToggle value="snappy" onChange={() => {}} />);
+  expect(getByRole('radio', { name: /Snappy cadence/ }).getAttribute('data-state')).toBe('on');
+  expect(getByRole('radio', { name: /Soft cadence/ }).getAttribute('data-state')).toBe('off');
 });
 
 test('clicking a non-selected radio fires onChange with its value', () => {
@@ -44,24 +45,34 @@ test('clicking a non-selected radio fires onChange with its value', () => {
   expect(getByRole('radio', { name: /Snappy cadence/ }).getAttribute('aria-checked')).toBe('true');
 });
 
-test('arrow-right cycles to the next cadence; arrow-left cycles back', () => {
+test('clicking the selected radio does not fire a deselect (cadence is mandatory)', () => {
   let value = 'soft' as 'soft' | 'snappy';
-  const { getByRole, rerender } = render(
+  const { getByRole } = render(
     <CadenceToggle value={value} onChange={(next) => { value = next; }} />,
   );
-  const soft = getByRole('radio', { name: /Soft cadence/ });
-  fireEvent.keyDown(soft, { key: 'ArrowRight' });
-  expect(value).toBe('snappy');
-  rerender(<CadenceToggle value={value} onChange={(next) => { value = next; }} />);
-  fireEvent.keyDown(getByRole('radio', { name: /Snappy cadence/ }), { key: 'ArrowLeft' });
+  // Radix `type="single"` would normally return '' on re-click of
+  // the active item; the component intercepts and ignores so the
+  // cadence axis is always set to a valid value.
+  fireEvent.click(getByRole('radio', { name: /Soft cadence/ }));
   expect(value).toBe('soft');
 });
 
-test('disabled prop is propagated to every radio', () => {
+test('disabled prop is propagated to the group', () => {
   const { getAllByRole } = render(
     <CadenceToggle value="soft" onChange={() => {}} disabled />,
   );
   for (const button of getAllByRole('radio')) {
     expect((button as HTMLButtonElement).disabled).toBe(true);
   }
+});
+
+test('built on the shadcn ToggleGroup primitive (data-slot tag)', () => {
+  // Anchors the primitive choice — if a future refactor swaps to a
+  // different primitive without updating the W4-5 audit notes, this
+  // test surfaces the change.
+  const { container } = render(
+    <CadenceToggle value="soft" onChange={() => {}} />,
+  );
+  expect(container.querySelector('[data-slot="toggle-group"]')).not.toBeNull();
+  expect(container.querySelectorAll('[data-slot="toggle-group-item"]').length).toBe(2);
 });

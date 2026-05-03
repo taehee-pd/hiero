@@ -6,16 +6,22 @@
  * Surfaces only when the resolver lands on `designed-fallback`
  * (T8) — the parent gates on `tier === 'designed-fallback'` before
  * mounting. The picker shows the named fallback library; the
- * resolver's auto-pick is highlighted as "Auto"; the user's
- * selection persists on `Transition.fallbackOverride`.
+ * resolver's auto-pick is highlighted via a sibling "Auto" badge;
+ * the user's selection persists on `Transition.fallbackOverride`.
+ *
+ * Built on the shadcn/Radix `ToggleGroup` primitive (single-
+ * select). The chip aesthetic uses small Toggle items wrapping
+ * full-width-of-content; the primitive provides the keyboard
+ * model (roving tabindex, ←/→/Home/End) and ARIA semantics.
  *
  * UX ref: docs_canonical/ICON_TRANSITION_UX_PLAN.md §3 Layer 1.
  */
 import { useId } from 'react';
 
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { FALLBACK_DISPLAY_NAME } from '@/lib/runtime-core/transition-signal-messages';
-import type { FallbackName } from '@/lib/schema/types';
+import { FALLBACK_NAMES, type FallbackName } from '@/lib/schema/types';
 
 type Props = {
   /** The fallback the resolver picked automatically. */
@@ -24,19 +30,6 @@ type Props = {
   override: FallbackName | undefined;
   onChange: (next: FallbackName | undefined) => void;
 };
-
-// Closed list — kept in sync with the FallbackName union.
-const ALL_FALLBACKS: FallbackName[] = [
-  'radial-pop',
-  'directional-replace-up',
-  'directional-replace-down',
-  'directional-replace-left',
-  'directional-replace-right',
-  'directional-replace-toward',
-  'directional-replace-away',
-  'draw-replace',
-  'scale-pop',
-];
 
 export function FallbackPicker({
   resolverPicked,
@@ -53,34 +46,40 @@ export function FallbackPicker({
       >
         Fallback motion
       </legend>
-      <div
-        role="radiogroup"
+      <ToggleGroup
+        type="single"
+        variant="outline"
+        size="sm"
+        value={effective}
+        onValueChange={(next) => {
+          // Radix returns '' when the user clicks the active
+          // item. The W4-audit-fix behaviour is "clicking ALWAYS
+          // pins the chosen fallback explicitly" — re-clicking the
+          // resolver's auto-pick should pin it as the override
+          // rather than silently deselecting. So when next is '',
+          // treat it as a re-pin of the currently effective
+          // fallback. The "Use auto" affordance is the only path
+          // that clears the override.
+          onChange((next as FallbackName) || effective);
+        }}
         aria-labelledby={`${groupId}-legend`}
-        className="flex flex-wrap gap-1.5"
+        className="flex flex-wrap gap-1.5 [&>*]:flex-grow-0 [&>*]:rounded-full [&>*]:border [&>*]:border-border/60 [&>*]:px-2.5 [&>*]:text-[11px]"
       >
-        {ALL_FALLBACKS.map((name) => {
-          const selected = name === effective;
+        {FALLBACK_NAMES.map((name) => {
           const isAuto = name === resolverPicked && override === undefined;
           return (
-            <button
+            <ToggleGroupItem
               key={name}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              // W4 audit §5: clicking a chip ALWAYS pins it as the
-              // explicit override. The previous toggle-on-equality
-              // behaviour silently un-pinned an explicit override
-              // when the resolver's auto-pick happened to match,
-              // surprising authors who'd set the override on
-              // purpose. To clear the override, the user picks the
-              // dedicated "Use auto" affordance below.
-              tabIndex={selected ? 0 : -1}
-              onClick={() => onChange(name)}
+              value={name}
+              aria-label={
+                isAuto
+                  ? `${FALLBACK_DISPLAY_NAME[name]} (resolver's pick)`
+                  : FALLBACK_DISPLAY_NAME[name]
+              }
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] leading-none transition',
-                selected
-                  ? 'border-accent bg-accent/40 font-semibold text-accent-foreground'
-                  : 'border-border/60 bg-background text-muted-foreground hover:bg-accent/20 hover:text-foreground',
+                'inline-flex items-center gap-1 leading-none',
+                isAuto &&
+                  'data-[state=on]:font-semibold data-[state=on]:text-accent-foreground',
               )}
             >
               <span>{FALLBACK_DISPLAY_NAME[name]}</span>
@@ -92,10 +91,10 @@ export function FallbackPicker({
                   Auto
                 </span>
               ) : null}
-            </button>
+            </ToggleGroupItem>
           );
         })}
-      </div>
+      </ToggleGroup>
       {override !== undefined ? (
         <button
           type="button"

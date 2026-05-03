@@ -39,6 +39,7 @@ import type {
 } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import { CadenceToggle } from './CadenceToggle';
+import { CorrespondencePinsOverlay } from './CorrespondencePinsOverlay';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { FallbackPicker } from './FallbackPicker';
 import { FallbackSentence } from './FallbackSentence';
@@ -802,6 +803,8 @@ export const TransitionPanel = memo(function TransitionPanel() {
         onCorrespondenceHintsChange={setCorrespondenceHints}
         sourceSubpathCount={sourceSubpathCount}
         targetSubpathCount={targetSubpathCount}
+        sourceSnapshot={sourceSnapshot}
+        targetSnapshot={targetSnapshot}
       />
 
       {/* Playback controls */}
@@ -846,6 +849,8 @@ function AdvancedDisclosure({
   onCorrespondenceHintsChange,
   sourceSubpathCount,
   targetSubpathCount,
+  sourceSnapshot,
+  targetSnapshot,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -859,6 +864,8 @@ function AdvancedDisclosure({
   onCorrespondenceHintsChange: (next: CorrespondenceHints) => void;
   sourceSubpathCount: number;
   targetSubpathCount: number;
+  sourceSnapshot: LayerSnapshot | null;
+  targetSnapshot: LayerSnapshot | null;
 }) {
   return (
     <details
@@ -933,6 +940,12 @@ function AdvancedDisclosure({
           onChange={onCorrespondenceHintsChange}
           sourceSubpathCount={sourceSubpathCount}
           targetSubpathCount={targetSubpathCount}
+        />
+        <CorrespondencePinsOverlay
+          sourceSnapshot={sourceSnapshot}
+          targetSnapshot={targetSnapshot}
+          hints={correspondenceHints}
+          onChange={onCorrespondenceHintsChange}
         />
       </div>
     </details>

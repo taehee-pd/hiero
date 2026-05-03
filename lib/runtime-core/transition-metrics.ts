@@ -60,14 +60,26 @@ export function sampleTrajectory(
  * Higher = worse. Bounded below by 0.
  */
 export function boundaryDistortion(trajectory: Trajectory): number {
-  const ringSeqs = perRingPolylines(trajectory);
-  if (ringSeqs.length === 0) return 0;
+  // W4 audit fix (multi-* silent zero): walk consecutive frame pairs
+  // directly instead of routing through `perRingPolylines`, which
+  // globally truncates to `min(ringsOf(frame).length)` and silently
+  // returns 0 whenever any single frame produces zero polylines —
+  // a common failure mode for synchronized multi-subpath morphs at
+  // intermediate `t`. The per-pair `Math.min` here scores whatever
+  // rings the two frames share, so a ring that vanishes mid-morph
+  // still contributes turning-function distance over the frames
+  // where it existed.
+  const perFrame = trajectory.frames.map((f) => ringsOf(f.d));
+  if (perFrame.length < 2) return 0;
   let total = 0;
   let pairCount = 0;
-  for (const seq of ringSeqs) {
-    for (let i = 1; i < seq.length; i++) {
-      const a = turningFunction(seq[i - 1]!);
-      const b = turningFunction(seq[i]!);
+  for (let i = 1; i < perFrame.length; i++) {
+    const prev = perFrame[i - 1]!;
+    const curr = perFrame[i]!;
+    const ringCount = Math.min(prev.length, curr.length);
+    for (let r = 0; r < ringCount; r++) {
+      const a = turningFunction(prev[r]!);
+      const b = turningFunction(curr[r]!);
       total += turningFunctionDistance(a, b);
       pairCount += 1;
     }

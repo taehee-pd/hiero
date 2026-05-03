@@ -17,6 +17,9 @@ import {
   resolveTransition,
   TransitionScheduler,
 } from '@/lib/runtime-core';
+import { resolveMorph } from '@/lib/runtime-core/cascade';
+import type { MorphResolution } from '@/lib/runtime-core/morph-resolution';
+import { isResolverV2Enabled } from '@/lib/runtime-core/resolver-flag';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type {
@@ -293,6 +296,43 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const result = autoMorph(fromD, toD);
     return result?.selectedStrategy ?? 'fallback';
   }, [sourceSnapshot, targetSnapshot]);
+
+  // W4 audit fix: resolve the V2 cascade against the primary layer
+  // pair so the FallbackPicker / FallbackSentence reflect the
+  // resolver's actual landing tier instead of a hard-coded
+  // `radial-pop` placeholder. Gated on the V2 flag — when the flag
+  // is off, both stay null and the picker shows the legacy default.
+  const morphResolution = useMemo<MorphResolution | null>(() => {
+    if (!isResolverV2Enabled()) return null;
+    if (!sourceSnapshot || !targetSnapshot) return null;
+    const fromIds = Object.keys(sourceSnapshot.layers);
+    const toIds = Object.keys(targetSnapshot.layers);
+    if (fromIds.length === 0 || toIds.length === 0) return null;
+    const sharedId = fromIds.find((id) => Boolean(targetSnapshot.layers[id]));
+    const fromId = sharedId ?? fromIds[0]!;
+    const toId = sharedId ?? toIds[0]!;
+    const fromLayer = sourceSnapshot.layers[fromId];
+    const toLayer = targetSnapshot.layers[toId];
+    if (!fromLayer?.path?.d || !toLayer?.path?.d) return null;
+    try {
+      return resolveMorph(fromLayer, toLayer, { cadence: formCadence });
+    } catch {
+      return null;
+    }
+  }, [sourceSnapshot, targetSnapshot, formCadence]);
+
+  // Derive the picker's "auto" suggestion from the cascade signal:
+  // `designed-fallback` carries an explicit `fallbackName`; any other
+  // tier means the cascade morphed without falling through, so the
+  // pre-V2 default of `radial-pop` is the right placeholder for the
+  // "if you opted out of auto-morph, here's the next-best motion"
+  // affordance.
+  const resolverPickedFallback: FallbackName =
+    morphResolution?.signal &&
+    'fallbackName' in morphResolution.signal &&
+    morphResolution.signal.fallbackName
+      ? morphResolution.signal.fallbackName
+      : 'radial-pop';
 
   // --- Scheduler lifecycle ---
   const stopScheduler = useCallback(() => {
@@ -685,11 +725,11 @@ export const TransitionPanel = memo(function TransitionPanel() {
           Fallback motion
         </Label>
         <FallbackPicker
-          resolverPicked="radial-pop"
+          resolverPicked={resolverPickedFallback}
           override={formFallbackOverride}
           onChange={setFormFallbackOverride}
         />
-        <FallbackSentence resolution={null} />
+        <FallbackSentence resolution={morphResolution} />
       </div>
 
       {/* 4. Preview */}

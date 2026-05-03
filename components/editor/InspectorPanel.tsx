@@ -165,6 +165,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const transitionPreview = useEditorStore((s) => s.transitionPreview);
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
+  // W2-3 operand selection state. The CompoundLayerSection contract
+  // is "clicking an operand selects it"; the selection has to live
+  // in the parent so it survives re-renders and we can route it to
+  // the path-editor selection in a future patch. Local state is
+  // fine until that wiring lands — store-routed selection would
+  // require a new store slice and isn't part of W4 scope.
+  const [selectedOperandId, setSelectedOperandId] = useState<string | null>(null);
   const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
   const [matrixSizes, setMatrixSizes] = useState<number[]>([16, 24]);
   const [matrixWeights, setMatrixWeights] = useState<SymbolWeight[]>(['regular', 'bold']);
@@ -1078,6 +1085,8 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 layer={layer}
                 onFlatten={() => flattenCompound(currentIconId, layer.id)}
                 onConvertToGroup={() => convertToGroup(currentIconId, layer.id)}
+                onOperandSelect={setSelectedOperandId}
+                selectedOperandId={selectedOperandId}
               />
               <Separator />
             </>

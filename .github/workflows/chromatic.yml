@@ -64,17 +64,12 @@ jobs:
         run: bun run storybook:build --output-dir storybook-static
 
       - name: Publish to Chromatic
-        # Calling the CLI directly (pinned at chromatic@16.3.0 in
-        # package.json) instead of `chromaui/action@latest`. The
-        # `@latest` action wrapper produced consistent CI failures on
-        # this branch with all six other checks green; pinning the
-        # CLI version makes the publish step reproducible regardless
-        # of upstream wrapper changes.
-        env:
-          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-        run: |
-          bun x chromatic \
-            --project-token "$CHROMATIC_PROJECT_TOKEN" \
-            --storybook-build-dir storybook-static \
-            --auto-accept-changes \
-            --exit-zero-on-changes
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          storybookBuildDir: storybook-static
+          onlyChanged: true
+          # Auto-accept visual diffs on both PR and main builds so the
+          # baseline always advances and merged diffs don't re-fail later PRs.
+          exitZeroOnChanges: false
+          autoAcceptChanges: true

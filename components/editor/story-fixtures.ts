@@ -92,7 +92,12 @@ function seedEditorStoryStateWithCompound() {
     ),
   };
   variant.layers = { ...variant.layers, donut: compoundLayer };
-  variant.types.default!.layers = { ...variant.types.default!.layers, donut: compoundLayer };
+  if (variant.types?.default) {
+    variant.types.default.layers = {
+      ...variant.types.default.layers,
+      donut: compoundLayer,
+    };
+  }
 
   const state = editorStore.getState();
   state.loadProject(structuredClone(project));

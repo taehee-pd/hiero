@@ -174,10 +174,14 @@ function extractSubpaths(d: string, closedFlags: boolean[]): ExtractedSubpath[] 
   const result: ExtractedSubpath[] = [];
   let current: ExtractedSubpath | null = null;
   let cursor = 0;
-  let cx = 0;
-  let cy = 0;
-  let startX = 0;
-  let startY = 0;
+  // Cursor-position trackers for the SVG path parser. Written by
+  // every command that consumes coordinates and read by the M case
+  // when seeding a new subpath. The first valid path always begins
+  // with M which overwrites the initial values; declared with the
+  // definite-assignment assertion to satisfy TS without seeding a
+  // dead `= 0` the lint would flag.
+  let cx!: number;
+  let cy!: number;
 
   function readNumber(): number {
     return Number.parseFloat(tokens[cursor++] ?? '0');
@@ -200,8 +204,6 @@ function extractSubpaths(d: string, closedFlags: boolean[]): ExtractedSubpath[] 
         const subpathIndex = result.length;
         cx = readNumber();
         cy = readNumber();
-        startX = cx;
-        startY = cy;
         current = {
           subpathIndex,
           points: [{ x: cx, y: cy }],
@@ -257,10 +259,10 @@ function extractSubpaths(d: string, closedFlags: boolean[]): ExtractedSubpath[] 
         }
         break;
       case 'Z':
-        // Snap cursor back to subpath start; closure is already
-        // recorded via `closedFlags`.
-        cx = startX;
-        cy = startY;
+        // Closure is recorded via `closedFlags`; the cursor
+        // position is irrelevant after Z because the next
+        // command in canonical output is always an M (which
+        // re-seeds cx/cy).
         break;
       default:
         // canonicalizePath emits absolute M / L / Q / C / A / Z only.

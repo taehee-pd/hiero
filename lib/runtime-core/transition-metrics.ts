@@ -252,8 +252,11 @@ function openSubpathPolylines(d: string, openIndices: number[]): Point[][] {
   let cursor = 0;
   let subpathIndex = -1;
   let current: Point[] | null = null;
-  let cx = 0;
-  let cy = 0;
+  // Cursor-position trackers — same SVG-parser pattern as
+  // `extractSubpaths` in contour-tree.ts. Definite-assignment
+  // assertion sidesteps a dead `= 0` that the lint would flag.
+  let cx!: number;
+  let cy!: number;
 
   function readNumber(): number {
     return Number.parseFloat(tokens[cursor++] ?? '0');

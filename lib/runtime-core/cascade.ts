@@ -45,6 +45,7 @@ import { resolveDrawCoordinated } from './cascade-tiers/draw-coordinated';
 import { resolveDesignedFallback } from './cascade-tiers/designed-fallback';
 import type { ResolverCache } from './resolver-cache';
 import type { CorrespondenceHints } from '../schema/types';
+import { emitResolutionEvent } from './transition-telemetry';
 
 /**
  * The input every tier sees. Pre-computed once so each tier's
@@ -134,6 +135,19 @@ export type ResolveMorphOptions = {
    * preview) to memoize the cascade's work. Pure: no globals.
    */
   cache?: ResolverCache;
+  /**
+   * W5-6 — telemetry metadata. When provided, the cascade emits a
+   * `TelemetryEvent` per resolve via the active emitter
+   * (`setTelemetryEmitter`; default no-op). `durationMs` carries
+   * the authored transition duration so the dashboard can slice
+   * by "did the user override the project default."
+   * `iconSetVersion` lets ops alarm on fallback-rate spikes after
+   * an icon-set update.
+   */
+  telemetry?: {
+    durationMs: number;
+    iconSetVersion?: string | null;
+  };
 };
 
 const EMPTY_HINTS: CorrespondenceHints = { subpath: [], vertex: [] };
@@ -190,6 +204,9 @@ export function resolveMorph(
     };
     if (opts.cache && isEmptyHints(hints)) {
       opts.cache.set(from, to, cadence, resolution);
+    }
+    if (opts.telemetry) {
+      emitResolutionEvent(resolution, opts.telemetry);
     }
     return resolution;
   }

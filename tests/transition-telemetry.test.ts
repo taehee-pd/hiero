@@ -82,4 +82,32 @@ describe('transition-telemetry', () => {
     const wasA = setTelemetryEmitter(b);
     expect(wasA).toBe(a);
   });
+
+  test('resolveMorph auto-emits when telemetry option is supplied (W5-6)', () => {
+    const buffer: TelemetryEvent[] = [];
+    setTelemetryEmitter(captureToBuffer(buffer));
+
+    resolveMorph(
+      fillLayer('M0 0 L10 0 L10 10 L0 10 Z', 'a'),
+      fillLayer('M5 5 L15 5 L15 15 L5 15 Z', 'b'),
+      { telemetry: { durationMs: 240, iconSetVersion: '1.0.0' } },
+    );
+
+    expect(buffer.length).toBe(1);
+    expect(buffer[0]!.durationMs).toBe(240);
+    expect(buffer[0]!.iconSetVersion).toBe('1.0.0');
+    expect(buffer[0]!.tier).toBeDefined();
+  });
+
+  test('resolveMorph does NOT emit when telemetry option is absent', () => {
+    const buffer: TelemetryEvent[] = [];
+    setTelemetryEmitter(captureToBuffer(buffer));
+
+    resolveMorph(
+      fillLayer('M0 0 L10 0 L10 10 L0 10 Z', 'a'),
+      fillLayer('M5 5 L15 5 L15 15 L5 15 Z', 'b'),
+    );
+
+    expect(buffer.length).toBe(0);
+  });
 });

@@ -97,6 +97,58 @@ test('Flatten dialog cancel does not fire the handler', () => {
   expect(flattenCalls).toBe(0);
 });
 
+test('operand leaves are non-interactive when no onOperandSelect is provided', () => {
+  const { container } = render(
+    <CompoundLayerSection
+      layer={compoundLayer()}
+      onFlatten={() => {}}
+      onConvertToGroup={() => {}}
+    />,
+  );
+  // Read-only mode: no buttons inside the operand tree disclosure.
+  // The tree renders divs only.
+  const treeButtons = container.querySelectorAll(
+    'button[aria-label^="Select operand"]',
+  );
+  expect(treeButtons.length).toBe(0);
+});
+
+test('operand leaves become clickable buttons when onOperandSelect is provided (W2-3)', () => {
+  let selected: string | null = null;
+  const { getAllByLabelText } = render(
+    <CompoundLayerSection
+      layer={compoundLayer()}
+      onFlatten={() => {}}
+      onConvertToGroup={() => {}}
+      onOperandSelect={(id) => { selected = id; }}
+    />,
+  );
+  // Three operands → three "Select operand …" buttons.
+  const buttons = getAllByLabelText(/Select operand/);
+  expect(buttons.length).toBe(3);
+  fireEvent.click(buttons[1]!);
+  expect(selected).not.toBeNull();
+  expect((selected as unknown as string).endsWith('/op1')).toBe(true);
+});
+
+test('selectedOperandId reflects via aria-pressed on the matching leaf', () => {
+  const layer = compoundLayer();
+  const operandIds = Object.keys(layer.compound!.operands);
+  const { getAllByLabelText } = render(
+    <CompoundLayerSection
+      layer={layer}
+      onFlatten={() => {}}
+      onConvertToGroup={() => {}}
+      onOperandSelect={() => {}}
+      selectedOperandId={operandIds[1]}
+    />,
+  );
+  const buttons = getAllByLabelText(/Select operand/);
+  expect(buttons[0]!.getAttribute('aria-pressed')).toBe('false');
+  expect(buttons[1]!.getAttribute('aria-pressed')).toBe('true');
+  expect(buttons[2]!.getAttribute('aria-pressed')).toBe('false');
+});
+
 test('returns null for layers without a compound', () => {
   const layer: Layer = {
     id: 'L',

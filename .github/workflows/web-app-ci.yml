@@ -170,3 +170,16 @@ jobs:
         # (verified locally as a control test).
         if: matrix.channel == 'public'
         run: bun scripts/check-public-bundle.ts
+
+      - name: Transition debug-pill build guard (W4-9)
+        # Greps the production `.next/` output for debug-pill
+        # fingerprints (`'transition-debug-pill'`, `'Engine chose: '`,
+        # `'taxonomy: '`, …). The pill component gates on
+        # `process.env.NEXT_PUBLIC_HIERO_DEBUG === '1'` which Webpack
+        # constant-folds at build time; this guard catches a
+        # regression where the gate is bypassed and engineer-only
+        # debug surfaces leak into a production bundle. Only the
+        # public channel ships to end users so the internal build
+        # is exempt (engineers use the debug surface).
+        if: matrix.channel == 'public'
+        run: bun scripts/check-debug-not-in-prod.ts

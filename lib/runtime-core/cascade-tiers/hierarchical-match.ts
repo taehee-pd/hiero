@@ -23,6 +23,7 @@
  * §5.4, §5.5.
  */
 import { attemptCrossIconMorph, bestGuessMorph } from '../morph';
+import { resolveSubpathPins } from '../correspondence-hints';
 import { sampleTrajectory, boundaryDistortion } from '../transition-metrics';
 import type { CascadeInput, TierResult } from '../cascade';
 
@@ -42,12 +43,31 @@ export function resolveHierarchicalMatch(input: CascadeInput): TierResult | null
   const toCanonical = input.toTopology.canonical;
   if (!fromCanonical || !toCanonical) return null;
 
+  // W4-4 — apply author-supplied subpath pins by re-ordering both
+  // sides' canonical paths so pinned pairs share index. The greedy
+  // matcher in `attemptCrossIconMorph` / `bestGuessMorph` pairs by
+  // *position* after normalisation, so a re-ordering propagates
+  // pins through to the matched output without changing the
+  // underlying engine. Hungarian-aware cost-matrix masking lands
+  // alongside the `hungarian-on3` install (W3.5).
+  const pins = resolveSubpathPins(
+    input.hints,
+    fromCanonical.stats.subpathCount,
+    toCanonical.stats.subpathCount,
+  );
+  const fromD = pins.length > 0
+    ? reorderSubpaths(fromCanonical.d, pins.map((p) => p.fromIndex))
+    : fromCanonical.d;
+  const toD = pins.length > 0
+    ? reorderSubpaths(toCanonical.d, pins.map((p) => p.toIndex))
+    : toCanonical.d;
+
   // Try best-guess first (handles same-topology, padded-segments
   // pairs); fall through to the cross-icon engine for differing
   // subpath counts.
-  let interpolator = bestGuessMorph(fromCanonical.d, toCanonical.d);
+  let interpolator = bestGuessMorph(fromD, toD);
   if (!interpolator) {
-    interpolator = attemptCrossIconMorph(fromCanonical.d, toCanonical.d);
+    interpolator = attemptCrossIconMorph(fromD, toD);
   }
   if (!interpolator) return null;
 
@@ -58,6 +78,40 @@ export function resolveHierarchicalMatch(input: CascadeInput): TierResult | null
     distortion,
     signal: null,
   };
+}
+
+/**
+ * Re-order the subpaths of a canonical `d` string so the
+ * `priorityIndices` (in their listed order) come first, followed
+ * by the remaining subpaths in their original order. Used by the
+ * W4-4 hint plumbing to push pinned subpaths to the front so the
+ * greedy matcher pairs them by index.
+ */
+function reorderSubpaths(d: string, priorityIndices: number[]): string {
+  const subpaths = splitSubpaths(d);
+  if (subpaths.length === 0) return d;
+  const seen = new Set<number>();
+  const reordered: string[] = [];
+  for (const idx of priorityIndices) {
+    if (idx < 0 || idx >= subpaths.length || seen.has(idx)) continue;
+    reordered.push(subpaths[idx]!);
+    seen.add(idx);
+  }
+  for (let i = 0; i < subpaths.length; i++) {
+    if (!seen.has(i)) reordered.push(subpaths[i]!);
+  }
+  return reordered.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Split a canonical `d` string into its constituent subpaths. The
+ * canonical path emits absolute commands; subpaths are demarcated
+ * by `M`. We split the command stream on each `M` and re-attach
+ * the `M` to the chunk that follows.
+ */
+function splitSubpaths(d: string): string[] {
+  const parts = d.split(/(?=\bM)/);
+  return parts.map((p) => p.trim()).filter((p) => p.length > 0);
 }
 
 function estimateDistortion(interpolator: (t: number) => string): number {

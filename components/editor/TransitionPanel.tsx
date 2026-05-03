@@ -24,6 +24,7 @@ import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type {
   Cadence,
+  CorrespondenceHints,
   FallbackName,
   RuntimeTransitionIntent,
   LayerBinding,
@@ -230,6 +231,19 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [advancedStaggerOverride, setAdvancedStaggerOverride] =
     useState<TransitionStagger['mode'] | 'inherit'>('inherit');
 
+  // --- Correspondence pinning state (W4-7 Layer 2) ---
+  // Session-local draft of `Transition.correspondenceHints`. The
+  // schema field exists for icon-authored Transition persistence,
+  // but the editor-store doesn't yet expose transition-authoring
+  // actions — for now hints live on the panel and feed
+  // `resolveMorph(opts.hints)` directly. Vertex pins (W4-7 canvas
+  // drag) and subpath pins (Advanced disclosure UI) both write
+  // here through the pure helpers in
+  // `lib/editor-store/correspondence-pinning.ts`.
+  const [correspondenceHints, setCorrespondenceHints] = useState<CorrespondenceHints>(
+    () => ({ subpath: [], vertex: [] }),
+  );
+
   // --- Preview state ---
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
   const schedulerRef = useRef<TransitionScheduler | null>(null);
@@ -315,11 +329,14 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const toLayer = targetSnapshot.layers[toId];
     if (!fromLayer?.path?.d || !toLayer?.path?.d) return null;
     try {
-      return resolveMorph(fromLayer, toLayer, { cadence: formCadence });
+      return resolveMorph(fromLayer, toLayer, {
+        cadence: formCadence,
+        hints: correspondenceHints,
+      });
     } catch {
       return null;
     }
-  }, [sourceSnapshot, targetSnapshot, formCadence]);
+  }, [sourceSnapshot, targetSnapshot, formCadence, correspondenceHints]);
 
   // Derive the picker's "auto" suggestion from the cascade signal:
   // `designed-fallback` carries an explicit `fallbackName`; any other

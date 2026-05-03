@@ -70,6 +70,11 @@ jobs:
           storybookBuildDir: storybook-static
           onlyChanged: true
           # Auto-accept visual diffs on both PR and main builds so the
-          # baseline always advances and merged diffs don't re-fail later PRs.
-          exitZeroOnChanges: false
+          # baseline always advances and merged diffs don't re-fail later
+          # PRs. Both flags together: `autoAcceptChanges` advances the
+          # baseline; `exitZeroOnChanges` keeps the action's exit code
+          # green when changes are detected (and now silently accepted),
+          # so the CI check doesn't block the PR on the diff that just
+          # got auto-approved.
+          exitZeroOnChanges: true
           autoAcceptChanges: true

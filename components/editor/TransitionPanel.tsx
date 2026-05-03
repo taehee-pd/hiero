@@ -19,8 +19,14 @@ import {
 } from '@/lib/runtime-core';
 import { resolveMorph } from '@/lib/runtime-core/cascade';
 import type { MorphResolution } from '@/lib/runtime-core/morph-resolution';
+import { canonicalizePath } from '@/lib/runtime-core/path-normalization';
 import { isResolverV2Enabled } from '@/lib/runtime-core/resolver-flag';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
+import {
+  pinSubpath,
+  unpinSubpath,
+} from '@/lib/editor-store/correspondence-pinning';
+import { subpathIdFromIndex } from '@/lib/runtime-core/correspondence-hints';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type {
   Cadence,
@@ -286,6 +292,18 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const variant = projectIcons?.[tgtIconId]?.variants[tgtVariantId];
     return variant ? variantToSnapshot(variant) : null;
   }, [projectIcons, tgtIconId, tgtVariantId]);
+
+  // Per-side subpath count for the W4-7 pinning UI. Counted off the
+  // primary layer's path (first layer with a `d`) — matches what
+  // the cascade picks up at resolve time.
+  const sourceSubpathCount = useMemo(
+    () => subpathCountOfFirstLayer(sourceSnapshot),
+    [sourceSnapshot],
+  );
+  const targetSubpathCount = useMemo(
+    () => subpathCountOfFirstLayer(targetSnapshot),
+    [targetSnapshot],
+  );
 
   // --- Engine readout ---
   // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
@@ -780,6 +798,10 @@ export const TransitionPanel = memo(function TransitionPanel() {
         advancedStaggerOverride={advancedStaggerOverride}
         onAdvancedStaggerOverrideChange={setAdvancedStaggerOverride}
         playbackMode={formPlaybackMode}
+        correspondenceHints={correspondenceHints}
+        onCorrespondenceHintsChange={setCorrespondenceHints}
+        sourceSubpathCount={sourceSubpathCount}
+        targetSubpathCount={targetSubpathCount}
       />
 
       {/* Playback controls */}
@@ -820,6 +842,10 @@ function AdvancedDisclosure({
   advancedStaggerOverride,
   onAdvancedStaggerOverrideChange,
   playbackMode,
+  correspondenceHints,
+  onCorrespondenceHintsChange,
+  sourceSubpathCount,
+  targetSubpathCount,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -829,6 +855,10 @@ function AdvancedDisclosure({
   advancedStaggerOverride: TransitionStagger['mode'] | 'inherit';
   onAdvancedStaggerOverrideChange: (next: TransitionStagger['mode'] | 'inherit') => void;
   playbackMode: PlaybackMode;
+  correspondenceHints: CorrespondenceHints;
+  onCorrespondenceHintsChange: (next: CorrespondenceHints) => void;
+  sourceSubpathCount: number;
+  targetSubpathCount: number;
 }) {
   return (
     <details
@@ -898,6 +928,12 @@ function AdvancedDisclosure({
             </SelectContent>
           </Select>
         </div>
+        <SubpathPinsSection
+          hints={correspondenceHints}
+          onChange={onCorrespondenceHintsChange}
+          sourceSubpathCount={sourceSubpathCount}
+          targetSubpathCount={targetSubpathCount}
+        />
       </div>
     </details>
   );
@@ -1171,4 +1207,153 @@ function CrossIconEndpointPicker({
       </div>
     </fieldset>
   );
+}
+
+// ---------------------------------------------------------------------------
+// W4-7 subpath-pinning helpers
+// ---------------------------------------------------------------------------
+
+function subpathCountOfFirstLayer(snapshot: LayerSnapshot | null): number {
+  if (!snapshot) return 0;
+  for (const layer of Object.values(snapshot.layers)) {
+    if (!layer.path?.d) continue;
+    return canonicalizePath(layer.path.d).stats.subpathCount;
+  }
+  return 0;
+}
+
+/**
+ * Subpath-pinning section for the Advanced disclosure. Renders two
+ * dropdowns (from-subpath, to-subpath) plus a list of pinned pairs
+ * as removable chips. Hides itself when neither side has more than
+ * one subpath — single-subpath pairs have nothing to pin and would
+ * just add noise. Vertex-level pinning lands in Stage C via canvas
+ * drag.
+ */
+function SubpathPinsSection({
+  hints,
+  onChange,
+  sourceSubpathCount,
+  targetSubpathCount,
+}: {
+  hints: CorrespondenceHints;
+  onChange: (next: CorrespondenceHints) => void;
+  sourceSubpathCount: number;
+  targetSubpathCount: number;
+}) {
+  const [draftFromIdx, setDraftFromIdx] = useState<number>(0);
+  const [draftToIdx, setDraftToIdx] = useState<number>(0);
+
+  if (sourceSubpathCount < 2 && targetSubpathCount < 2) return null;
+
+  const sourceOptions = Array.from({ length: sourceSubpathCount }, (_, i) => i);
+  const targetOptions = Array.from({ length: targetSubpathCount }, (_, i) => i);
+
+  const handleAdd = () => {
+    if (
+      draftFromIdx < 0 ||
+      draftFromIdx >= sourceSubpathCount ||
+      draftToIdx < 0 ||
+      draftToIdx >= targetSubpathCount
+    ) {
+      return;
+    }
+    const next = pinSubpath(
+      hints,
+      subpathIdFromIndex(draftFromIdx),
+      subpathIdFromIndex(draftToIdx),
+    );
+    onChange(next);
+  };
+
+  const handleRemove = (fromId: string) => {
+    onChange(unpinSubpath(hints, fromId));
+  };
+
+  return (
+    <div className="grid gap-1">
+      <Label className="text-[10px] font-medium text-muted-foreground">
+        Subpath pins
+      </Label>
+      <p className="text-[10px] text-muted-foreground/70">
+        Force a source subpath to pair with a target subpath.
+        Overrides automatic geometry-based matching.
+      </p>
+      <div className="flex items-center gap-1">
+        <Select
+          value={String(draftFromIdx)}
+          onValueChange={(v) => setDraftFromIdx(Number.parseInt(v, 10))}
+        >
+          <SelectTrigger
+            aria-label="Source subpath"
+            className="h-7 flex-1 rounded-md text-[length:var(--text-label)]"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sourceOptions.map((i) => (
+              <SelectItem key={i} value={String(i)}>
+                Source #{i}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span aria-hidden className="text-[10px] text-muted-foreground">↔</span>
+        <Select
+          value={String(draftToIdx)}
+          onValueChange={(v) => setDraftToIdx(Number.parseInt(v, 10))}
+        >
+          <SelectTrigger
+            aria-label="Target subpath"
+            className="h-7 flex-1 rounded-md text-[length:var(--text-label)]"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {targetOptions.map((i) => (
+              <SelectItem key={i} value={String(i)}>
+                Target #{i}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 rounded-md px-2 text-[10px]"
+          onClick={handleAdd}
+        >
+          Pin
+        </Button>
+      </div>
+      {hints.subpath.length > 0 ? (
+        <ul className="flex flex-wrap gap-1 pt-1">
+          {hints.subpath.map(([fromId, toId]) => (
+            <li
+              key={`${fromId}->${toId}`}
+              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-foreground/80"
+            >
+              <span>{shortSubpathId(fromId)} ↔ {shortSubpathId(toId)}</span>
+              <button
+                type="button"
+                aria-label={`Remove pin ${fromId} ↔ ${toId}`}
+                onClick={() => handleRemove(fromId)}
+                className="ml-0.5 rounded-full px-1 leading-none text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function shortSubpathId(id: string): string {
+  // `subpath:N` → `#N`. Anything else passes through verbatim so a
+  // future hint vocabulary doesn't silently lose information here.
+  const match = /^subpath:(\d+)$/.exec(id);
+  return match ? `#${match[1]}` : id;
 }

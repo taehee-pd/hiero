@@ -17,10 +17,7 @@ import {
   resolveTransition,
   TransitionScheduler,
 } from '@/lib/runtime-core';
-import { resolveMorph } from '@/lib/runtime-core/cascade';
-import type { MorphResolution } from '@/lib/runtime-core/morph-resolution';
 import { canonicalizePath } from '@/lib/runtime-core/path-normalization';
-import { isResolverV2Enabled } from '@/lib/runtime-core/resolver-flag';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import {
   pinSubpath,
@@ -31,7 +28,6 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import type {
   Cadence,
   CorrespondenceHints,
-  FallbackName,
   RuntimeTransitionIntent,
   LayerBinding,
   LayerSnapshot,
@@ -41,8 +37,6 @@ import { variantToSnapshot } from '@/lib/schema/types';
 import { CadenceToggle } from './CadenceToggle';
 import { CorrespondencePinsOverlay } from './CorrespondencePinsOverlay';
 import { EasingPicker, type EasingValue } from './EasingPicker';
-import { FallbackPicker } from './FallbackPicker';
-import { FallbackSentence } from './FallbackSentence';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -220,17 +214,16 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
   const [formPlaybackMode, setFormPlaybackMode] = useState<PlaybackMode>('byLayer');
-  // W4-5 Layer-1 authored axes — cadence + fallbackOverride. These
-  // co-exist with the legacy easing/direction during W3-W4 and
-  // become the canonical authored values once the V2 cascade flips
-  // on (W4-10 / W5 ship-checklist gate). The schema's
-  // `Transition.cadence` and `Transition.fallbackOverride` carry
-  // them through to the runtime; the legacy fields are
-  // `@deprecated W4` in lib/schema/types.ts.
+  // W4-5 Layer-1 authored cadence axis. Co-exists with the legacy
+  // easing/direction during W3-W4 and becomes canonical once the
+  // V2 cascade flips on (W4-10 / W5 ship-checklist gate). The
+  // schema's `Transition.cadence` carries it through to the
+  // runtime; the legacy easing field is `@deprecated W4` in
+  // lib/schema/types.ts. The fallback override UI was removed —
+  // the resolver picks by topological signal and authors no
+  // longer override; `Transition.fallbackOverride` remains in the
+  // schema for migration / programmatic authoring.
   const [formCadence, setFormCadence] = useState<Cadence>('soft');
-  const [formFallbackOverride, setFormFallbackOverride] = useState<
-    FallbackName | undefined
-  >(undefined);
 
   // --- Advanced disclosure state (§2.3) ---
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -329,46 +322,6 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const result = autoMorph(fromD, toD);
     return result?.selectedStrategy ?? 'fallback';
   }, [sourceSnapshot, targetSnapshot]);
-
-  // W4 audit fix: resolve the V2 cascade against the primary layer
-  // pair so the FallbackPicker / FallbackSentence reflect the
-  // resolver's actual landing tier instead of a hard-coded
-  // `radial-pop` placeholder. Gated on the V2 flag — when the flag
-  // is off, both stay null and the picker shows the legacy default.
-  const morphResolution = useMemo<MorphResolution | null>(() => {
-    if (!isResolverV2Enabled()) return null;
-    if (!sourceSnapshot || !targetSnapshot) return null;
-    const fromIds = Object.keys(sourceSnapshot.layers);
-    const toIds = Object.keys(targetSnapshot.layers);
-    if (fromIds.length === 0 || toIds.length === 0) return null;
-    const sharedId = fromIds.find((id) => Boolean(targetSnapshot.layers[id]));
-    const fromId = sharedId ?? fromIds[0]!;
-    const toId = sharedId ?? toIds[0]!;
-    const fromLayer = sourceSnapshot.layers[fromId];
-    const toLayer = targetSnapshot.layers[toId];
-    if (!fromLayer?.path?.d || !toLayer?.path?.d) return null;
-    try {
-      return resolveMorph(fromLayer, toLayer, {
-        cadence: formCadence,
-        hints: correspondenceHints,
-      });
-    } catch {
-      return null;
-    }
-  }, [sourceSnapshot, targetSnapshot, formCadence, correspondenceHints]);
-
-  // Derive the picker's "auto" suggestion from the cascade signal:
-  // `designed-fallback` carries an explicit `fallbackName`; any other
-  // tier means the cascade morphed without falling through, so the
-  // pre-V2 default of `radial-pop` is the right placeholder for the
-  // "if you opted out of auto-morph, here's the next-best motion"
-  // affordance.
-  const resolverPickedFallback: FallbackName =
-    morphResolution?.signal &&
-    'fallbackName' in morphResolution.signal &&
-    morphResolution.signal.fallbackName
-      ? morphResolution.signal.fallbackName
-      : 'radial-pop';
 
   // --- Scheduler lifecycle ---
   const stopScheduler = useCallback(() => {
@@ -738,15 +691,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </Select>
       </div>
 
-      {/* 3.5 Cadence + Fallback (W4-5 Layer-1 authored axes).
-          These persist to Transition.cadence and
-          Transition.fallbackOverride. They co-exist with the
-          legacy Easing/Direction during W3-W4 and become
-          canonical once the V2 cascade flips on (W4-10). The
-          plain-language fallback sentence renders only when
-          the resolver lands on a fallback tier — until the V2
-          cascade is wired into the preview path, the sentence
-          stays null on the legacy resolver. */}
+      {/* 3.5 Cadence (W4-5 Layer-1 authored axis). Persists to
+          Transition.cadence; co-exists with the legacy Easing /
+          Direction during W3-W4 and becomes canonical once the
+          V2 cascade flips on (W4-10). The fallback-motion picker
+          was removed — the resolver picks by topological signal
+          and authors no longer override. */}
       <div className="grid gap-1.5">
         <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
           Cadence
@@ -755,17 +705,6 @@ export const TransitionPanel = memo(function TransitionPanel() {
         <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
           Soft eases in and out; Snappy lands faster.
         </p>
-      </div>
-      <div className="grid gap-1.5">
-        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
-          Fallback motion
-        </Label>
-        <FallbackPicker
-          resolverPicked={resolverPickedFallback}
-          override={formFallbackOverride}
-          onChange={setFormFallbackOverride}
-        />
-        <FallbackSentence resolution={morphResolution} />
       </div>
 
       {/* 4. Preview */}

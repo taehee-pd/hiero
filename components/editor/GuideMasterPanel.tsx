@@ -20,10 +20,6 @@ import { selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import type { GuideItem, GuideMaster } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
-type GuideMasterPanelProps = {
-  onClose: () => void;
-};
-
 const SIZE_OPTIONS = ['12', '16', '20', '24', '32', '48', 'custom'] as const;
 const ITEM_KIND_OPTIONS: Array<GuideItem['kind']> = [
   'rect',
@@ -33,7 +29,7 @@ const ITEM_KIND_OPTIONS: Array<GuideItem['kind']> = [
   'drawPoint',
 ];
 
-export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
+export function GuideMasterPanel() {
   const project = useEditorStore((s) => s.project);
   const variant = useCurrentVariant();
   const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
@@ -155,25 +151,6 @@ export function GuideMasterPanel({ onClose }: GuideMasterPanelProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="workspace-panel-header flex items-start justify-between gap-3 px-4 py-4">
-        <div className="min-w-0">
-          <p className="workspace-kicker">Guides</p>
-          <p className="mt-2 text-sm font-semibold text-foreground">Guide masters</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {variant ? `${variant.size} px variant overlay` : 'No active variant'}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
-          onClick={onClose}
-          aria-label="Close guide panel"
-        >
-          <UiIcon name="x" size={16} className="size-4" />
-        </Button>
-      </div>
-
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-2.5">
           {editScope.kind === 'guideMaster' ? (

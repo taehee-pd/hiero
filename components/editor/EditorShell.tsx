@@ -767,7 +767,7 @@ function LeftSidebar({
 
       {leftTab === 'guides' ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <GuideMasterPanel onClose={() => onLeftTabChange('icon')} />
+          <GuideMasterPanel />
         </div>
       ) : (
         <ResizablePanelGroup direction="vertical" className="min-h-0 flex-1">

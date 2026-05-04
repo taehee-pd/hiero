@@ -86,7 +86,13 @@ function guideMasterAsVariant(master: GuideMaster): Variant {
     id: `guide-master:${master.id}`,
     size: master.targetSize,
     viewBox: master.viewBox,
-    layers: master.layers ?? {},
+    // Guide masters are authored as semantic `items` (rect / hline / vline /
+    // ellipse / drawPoint), rendered by the editor-overlay-canvas pipeline
+    // as thin dashed strokes. They are *not* icon paths, so the synthetic
+    // variant exposes an empty layer set — the icon-renderer path stays
+    // out of the guide overlay's territory regardless of any legacy
+    // `master.layers` data left over from an earlier migration model.
+    layers: {},
   };
   guideVariantCache.set(master, variant);
   return variant;

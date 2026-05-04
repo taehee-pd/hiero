@@ -2620,12 +2620,21 @@ function createActions(): EditorActions {
     enterGuideEditingMode(masterId) {
       editorStoreApi.setState((s) => {
         if (!s.project?.guideMasters?.[masterId]) return s;
-        // Migrate this master's items -> layers on first enter, so the user
-        // can edit the panel-parameter guides with the full toolbar. The
-        // migration is idempotent because it drops the converted items.
-        const migratedProject = migrateMasterItemsToLayers(s.project, masterId);
+        // Guides stay as semantic `items` (rect / hline / vline / ellipse /
+        // drawPoint). They're rendered by the overlay canvas
+        // (lib/editor-overlay-canvas) as thin dashed strokes — never as
+        // icon paths — so visual fidelity is preserved at any zoom and
+        // strokes don't scale with the viewBox. Editing happens in the
+        // GuideMasterPanel with item-shape-specific numeric fields.
+        //
+        // Earlier flow migrated items into Layer objects so the path
+        // editor and Inspector could mutate them, but that routed guide
+        // shapes through the icon-layer renderer (heavy strokes, thick
+        // black blocks at zoom) and through Inspector helpers that
+        // silently no-op'd in guide-master scope. The migration helper
+        // (`migrateMasterItemsToLayers`) is retained for legacy data but
+        // is no longer invoked on enter.
         return {
-          project: migratedProject,
           editScope: { kind: 'guideMaster', masterId },
           // Drop layer/point selection so the canvas clearly reflects
           // "editing guides, not the icon".
@@ -4095,120 +4104,3 @@ function normaliseLayerForGuideScope(layer: Layer): Layer {
   return clone;
 }
 
-/**
- * Convert the geometric `GuideItem` kinds on a master (`hline`, `vline`,
- * `rect`, `ellipse`) into full `Layer` records so the user can edit them on
- * canvas with the normal toolbar. Called on enter of Guide editing mode.
- *
- * - `rect` / `ellipse` → `Layer` with a `primitive` descriptor, so the
- *   Inspector's polygon/star-style Points/Sides affordance generalises.
- * - `hline` / `vline` → `Layer` with a plain path that spans the master's
- *   viewBox. They have no primitive.
- * - `drawPoint` → left in `items`; it references an icon layer and has no
- *   geometric footprint.
- *
- * Idempotent: subsequent calls find no convertible items (`drawPoint` is
- * left behind) and return the same project reference.
- */
-function migrateMasterItemsToLayers(project: Project, masterId: string): Project {
-  const master = project.guideMasters?.[masterId];
-  if (!master) return project;
-
-  const convertibleKinds = new Set<GuideItem['kind']>(['hline', 'vline', 'rect', 'ellipse']);
-  const convertible = (master.items ?? []).filter((item) => convertibleKinds.has(item.kind));
-  if (convertible.length === 0) return project;
-
-  const nextLayers: Record<string, Layer> = { ...(master.layers ?? {}) };
-  let seq = 1;
-  const nextLayerId = () => {
-    let id = `guide-${seq}`;
-    while (nextLayers[id]) {
-      seq += 1;
-      id = `guide-${seq}`;
-    }
-    seq += 1;
-    return id;
-  };
-
-  const [vbX, vbY, vbW, vbH] = master.viewBox;
-  const baseStyle: Layer['style'] = {
-    fill: { mode: 'fixed', value: 'none' },
-    stroke: { mode: 'currentColor' },
-    strokeWidth: 1,
-    lineCap: 'round',
-    lineJoin: 'round',
-  };
-
-  for (const item of convertible) {
-    const id = nextLayerId();
-    switch (item.kind) {
-      case 'rect': {
-        const primitive = {
-          kind: 'rectangle' as const,
-          x: item.x,
-          y: item.y,
-          width: item.width,
-          height: item.height,
-        };
-        nextLayers[id] = {
-          id,
-          visible: true,
-          path: { d: buildPrimitivePath(primitive) },
-          primitive,
-          style: baseStyle,
-        };
-        break;
-      }
-      case 'ellipse': {
-        const primitive = {
-          kind: 'ellipse' as const,
-          cx: item.cx,
-          cy: item.cy,
-          rx: item.rx,
-          ry: item.ry,
-        };
-        nextLayers[id] = {
-          id,
-          visible: true,
-          path: { d: buildPrimitivePath(primitive) },
-          primitive,
-          style: baseStyle,
-        };
-        break;
-      }
-      case 'hline':
-        nextLayers[id] = {
-          id,
-          visible: true,
-          path: { d: `M${vbX} ${item.y} L${vbX + vbW} ${item.y}` },
-          style: baseStyle,
-        };
-        break;
-      case 'vline':
-        nextLayers[id] = {
-          id,
-          visible: true,
-          path: { d: `M${item.x} ${vbY} L${item.x} ${vbY + vbH}` },
-          style: baseStyle,
-        };
-        break;
-      case 'drawPoint':
-        break; // Not reachable (filtered by `convertibleKinds`).
-    }
-  }
-
-  const nextItems = (master.items ?? []).filter((item) => !convertibleKinds.has(item.kind));
-
-  return {
-    ...project,
-    meta: { ...project.meta, updatedAt: new Date().toISOString() },
-    guideMasters: {
-      ...project.guideMasters,
-      [masterId]: {
-        ...master,
-        items: nextItems,
-        layers: nextLayers,
-      },
-    },
-  };
-}

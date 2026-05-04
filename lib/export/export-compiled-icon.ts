@@ -271,10 +271,25 @@ function sortJsonValue(value: unknown): unknown {
  * without `morph.keyframes` — the legacy SDK behaviour (snap on
  * variant change) is preserved.
  *
+ * **V2-rollout gating.** The `NEXT_PUBLIC_HIERO_RESOLVER_V2` flag
+ * is a *deployment-level* switch during the V2 rollout: every
+ * artifact built within a given deployment uses the same flag
+ * value, so output is deterministic per-deployment. Two
+ * deployments with different flag values will produce different
+ * `contentHash` for the same project — that is the intended
+ * behaviour while V2 is staged behind the flag, since the
+ * non-V2 path (no keyframes) and the V2 path (keyframes) are
+ * substantively different artifacts. When V2 graduates from the
+ * flag (W5 calibration sign-off, see `export-lottie.ts:251`),
+ * this gate is removed and emission becomes unconditional.
+ *
  * Cross-icon transitions (`fromIconId !== iconId`) are skipped:
  * the compiled-icon JSON describes one icon; a cross-icon morph
  * needs both icons' compiled forms to play. Cross-icon emission
- * lands when the package-level export grows that contract.
+ * lands when the package-level export grows that contract. Each
+ * skip emits a `console.warn` so authors can see when a
+ * cross-icon transition is being dropped from the per-icon
+ * output rather than wondering where it went.
  */
 function buildCompiledTransitions(icon: Icon): CompiledTransition[] {
   const transitions = icon.transitions;
@@ -288,9 +303,26 @@ function buildCompiledTransitions(icon: Icon): CompiledTransition[] {
   if (!v2) return [];
   const out: CompiledTransition[] = [];
   for (const transition of Object.values(transitions)) {
-    // Skip cross-icon transitions for now — see header note.
-    if (transition.fromIconId && transition.fromIconId !== icon.id) continue;
-    if (transition.toIconId && transition.toIconId !== icon.id) continue;
+    // Cross-icon transitions live at the package layer, not the
+    // per-icon compiled JSON — see header note. Surface the skip
+    // so authors can correlate "missing transition in compiled
+    // output" with the architectural limitation.
+    if (transition.fromIconId && transition.fromIconId !== icon.id) {
+      console.warn(
+        `[export-compiled-icon] skipping cross-icon transition ${transition.id} ` +
+          `for icon "${icon.id}" (fromIconId="${transition.fromIconId}"): ` +
+          `cross-icon emission lands at the package layer, not per-icon JSON.`,
+      );
+      continue;
+    }
+    if (transition.toIconId && transition.toIconId !== icon.id) {
+      console.warn(
+        `[export-compiled-icon] skipping cross-icon transition ${transition.id} ` +
+          `for icon "${icon.id}" (toIconId="${transition.toIconId}"): ` +
+          `cross-icon emission lands at the package layer, not per-icon JSON.`,
+      );
+      continue;
+    }
 
     const fromVariant = icon.variants?.[transition.fromVariantId];
     const toVariant = icon.variants?.[transition.toVariantId];
@@ -346,9 +378,20 @@ function compileBinding(
           resolution,
           transition.durationMs,
         );
-      } catch {
+      } catch (err) {
         // Cascade failure (degenerate input) — leave keyframes
-        // absent so the SDK falls back to snap.
+        // absent so the SDK falls back to snap. Surface the
+        // failure so a real cascade bug doesn't ship silently:
+        // graceful degradation is intentional, but observability
+        // is not optional. Authors and CI logs see the layer pair
+        // and the underlying error.
+        const reason = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `[export-compiled-icon] morph cascade failed for transition ` +
+            `${transition.id} layer pair ` +
+            `"${binding.fromLayerId}" → "${binding.toLayerId}": ${reason}. ` +
+            `Emitting morph block without keyframes — SDK will snap.`,
+        );
       }
     }
     compiled.morph = morph;

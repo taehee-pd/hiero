@@ -63,7 +63,15 @@ export function FallbackPicker({
           onChange((next as FallbackName) || effective);
         }}
         aria-labelledby={`${groupId}-legend`}
-        className="flex flex-wrap gap-1.5 [&>*]:flex-grow-0 [&>*]:rounded-full [&>*]:border [&>*]:border-border/60 [&>*]:px-2.5 [&>*]:text-[11px]"
+        // The shadcn `ToggleGroupItem` primitive ships segmented-
+        // control classes (`min-w-0 flex-1 shrink-0` + base
+        // `whitespace-nowrap`). Without overriding `flex-basis`
+        // and `min-width`, items collapse to ~0 width and their
+        // nowrap labels overflow on top of each other. `flex-none`
+        // gives content-sized basis with no grow/shrink, and
+        // `min-w-fit` neutralises `min-w-0` so each pill is at
+        // least as wide as its label.
+        className="flex flex-wrap gap-1.5 [&>*]:flex-none [&>*]:min-w-fit [&>*]:rounded-full [&>*]:border [&>*]:border-border/60 [&>*]:px-2.5 [&>*]:text-[11px]"
       >
         {FALLBACK_NAMES.map((name) => {
           const isAuto = name === resolverPicked && override === undefined;

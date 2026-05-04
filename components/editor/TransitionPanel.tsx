@@ -299,6 +299,84 @@ export const TransitionPanel = memo(function TransitionPanel() {
     [targetSnapshot],
   );
 
+  // --- Runtime snippet derivation ---
+  // The `<HieroIcon>` runtime API consumes only `variant`. Duration /
+  // easing / cadence / direction / playbackMode are not props — they
+  // live in the icon's `Transition` schema and are read by the
+  // scheduler when the variant changes. The snippet renders the JSX
+  // call (what to write in app code) and surfaces the timing config
+  // as a comment so authors know what they need to persist on the
+  // icon for the runtime to honour these values.
+  const importName = useMemo(() => {
+    if (!srcIconId) return 'icon';
+    const parts = srcIconId.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+    if (parts.length === 0) return 'icon';
+    return parts
+      .map((p, i) =>
+        i === 0 ? p.toLowerCase() : p[0]!.toUpperCase() + p.slice(1),
+      )
+      .join('');
+  }, [srcIconId]);
+
+  const runtimeSnippet = useMemo(() => {
+    if (!srcIconId) return '';
+    const lines: string[] = [];
+    lines.push(`import { HieroIcon } from '@hiero/runtime-react';`);
+    lines.push(`import ${importName} from './icons/${srcIconId}.json';`);
+    lines.push('');
+    if (tgtVariantId) {
+      lines.push(
+        `<HieroIcon icon={${importName}} variant="${tgtVariantId}" />`,
+      );
+      lines.push('');
+      lines.push(
+        `// Transition data — persist on the icon for runtime to honour:`,
+      );
+      lines.push(`//   from: ${srcVariantId} → ${tgtVariantId}`);
+      lines.push(
+        `//   ${formDuration}ms · ${formEasing} · ${formCadence} cadence`,
+      );
+      lines.push(
+        `//   direction: ${formDirection} · playback: ${formPlaybackMode}`,
+      );
+    } else {
+      lines.push(
+        `<HieroIcon icon={${importName}} variant="${srcVariantId || 'default'}" />`,
+      );
+    }
+    return lines.join('\n');
+  }, [
+    srcIconId,
+    srcVariantId,
+    tgtVariantId,
+    importName,
+    formDuration,
+    formEasing,
+    formCadence,
+    formDirection,
+    formPlaybackMode,
+  ]);
+
+  const onCopySnippet = useCallback(() => {
+    if (!runtimeSnippet) return;
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      toast({
+        description: 'Clipboard unavailable in this browser.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    navigator.clipboard
+      .writeText(runtimeSnippet)
+      .then(() => toast({ description: 'Snippet copied to clipboard.' }))
+      .catch(() =>
+        toast({
+          description: 'Copy failed — try selecting and copying manually.',
+          variant: 'destructive',
+        }),
+      );
+  }, [runtimeSnippet]);
+
   // --- Engine readout ---
   // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
   // power users can see which tier `autoMorph()` picks for the primary
@@ -726,6 +804,33 @@ export const TransitionPanel = memo(function TransitionPanel() {
           Pick a target icon + variant above to render a preview. You can also
           press <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd> to search icons by name.
         </p>
+      ) : null}
+
+      {/* 4.5 Runtime snippet — JSX usage + timing config comment.
+          Reflects the current source/target/timing selection so authors
+          can copy the call into their app. The runtime API only takes
+          `variant`; the timing values are surfaced as a comment so it's
+          obvious they need to be persisted on the icon's Transition. */}
+      {runtimeSnippet ? (
+        <div className="grid gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+              Runtime snippet
+            </Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              onClick={onCopySnippet}
+            >
+              Copy
+            </Button>
+          </div>
+          <pre className="overflow-x-auto whitespace-pre rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
+            {runtimeSnippet}
+          </pre>
+        </div>
       ) : null}
 
       {/* 5. Advanced disclosure (§2.3) */}

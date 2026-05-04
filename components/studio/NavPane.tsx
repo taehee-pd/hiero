@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { IconButton } from '@/components/ds/icon-button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -103,22 +104,15 @@ export function NavPane() {
         {/* Header */}
         <div className={cn('flex h-10 items-center border-b border-border/40', navExpanded ? 'justify-between px-2' : 'justify-center')}>
           {navExpanded && <span className="studio-kicker truncate px-1">Projects</span>}
-          <Tooltip delayDuration={200}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="h-7 w-7 shrink-0 rounded-lg"
-                onClick={toggleNavPane}
-                aria-label={navExpanded ? 'Close projects' : 'Open projects'}
-                aria-expanded={navExpanded}
-                aria-controls="nav-pane-content"
-              >
-                {navExpanded ? <UiIcon name="chevron-left" size={14} className="size-3.5" /> : <UiIcon name="chevron-right" size={14} className="size-3.5" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{navExpanded ? 'Close projects' : 'Open projects'}</TooltipContent>
-          </Tooltip>
+          <IconButton
+            icon={<UiIcon name={navExpanded ? 'chevron-left' : 'chevron-right'} />}
+            aria-label={navExpanded ? 'Close projects' : 'Open projects'}
+            tooltip={navExpanded ? 'Close projects' : 'Open projects'}
+            tooltipSide="right"
+            onClick={toggleNavPane}
+            aria-expanded={navExpanded}
+            aria-controls="nav-pane-content"
+          />
         </div>
 
         {/* Vertical label when collapsed */}

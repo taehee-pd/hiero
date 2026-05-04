@@ -23,7 +23,7 @@ import {
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
-import type { GuideMaster } from '@/lib/schema/types';
+import type { GuideItem, GuideMaster } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
 const SIZE_OPTIONS = ['12', '16', '20', '24', '32', '48', 'custom'] as const;
@@ -65,6 +65,9 @@ export function GuideMasterPanel() {
     addGuideMaster,
     updateGuideMaster,
     removeGuideMaster,
+    addGuideItem,
+    updateGuideItem,
+    removeGuideItem,
     toggleGuidesVisible,
     setGuideStyle,
     enterGuideEditingMode,
@@ -133,12 +136,20 @@ export function GuideMasterPanel() {
   };
 
   // -----------------------------------------------------------------------
-  // Editing state — focused view of one master. Shapes are authored on the
-  // canvas (rectangle / ellipse / line tools); the Inspector handles
-  // numeric coordinate tuning when a shape is selected. The "Done editing"
-  // affordance lives on the canvas banner, not in this panel.
+  // Editing state — focused view of one master. Guides are semantic
+  // primitives (rect, ellipse, hline, vline, drawPoint) rendered as
+  // overlay strokes by the editor-overlay-canvas pipeline. They are
+  // authored numerically here in the panel; the canvas shows a live
+  // dashed-overlay preview at every keystroke.
   // -----------------------------------------------------------------------
   if (editingMaster) {
+    const handleAddItem = (kind: GuideItem['kind']) => {
+      addGuideItem(
+        editingMaster.id,
+        createDefaultGuideItem(kind, editingMaster.viewBox),
+      );
+    };
+
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <ScrollArea className="flex-1">
@@ -155,9 +166,8 @@ export function GuideMasterPanel() {
                 </p>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Use the rectangle, ellipse, or line tools on the canvas to
-                draw guides. Click a shape and use the Inspector to tune its
-                coordinates.
+                Add guide primitives below. They render as a dashed overlay
+                on the canvas in real time.
               </p>
 
               <div className="mt-3 grid gap-3">
@@ -183,6 +193,75 @@ export function GuideMasterPanel() {
                     value={editingMaster.viewBox.join(' ')}
                   />
                 </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-border/70 bg-background/70 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    Guide items
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Lines, rectangles, and ellipses authored numerically.
+                  </p>
+                </div>
+                <span className="workspace-badge shrink-0">
+                  {editingMaster.items.length}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddItem('rect')}
+                >
+                  <UiIcon name="plus" size={14} className="size-3.5" />
+                  Rectangle
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddItem('ellipse')}
+                >
+                  <UiIcon name="plus" size={14} className="size-3.5" />
+                  Ellipse
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddItem('hline')}
+                >
+                  <UiIcon name="plus" size={14} className="size-3.5" />
+                  H-line
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAddItem('vline')}
+                >
+                  <UiIcon name="plus" size={14} className="size-3.5" />
+                  V-line
+                </Button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {editingMaster.items.length === 0 ? (
+                  <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
+                    No guide items yet
+                  </div>
+                ) : null}
+                {editingMaster.items.map((item, index) => (
+                  <GuideItemCard
+                    key={`${editingMaster.id}-${index}-${item.kind}`}
+                    item={item}
+                    onChange={(next) =>
+                      updateGuideItem(editingMaster.id, index, next)
+                    }
+                    onRemove={() => removeGuideItem(editingMaster.id, index)}
+                  />
+                ))}
               </div>
             </section>
           </div>
@@ -483,6 +562,186 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>
   );
+}
+
+function GuideItemCard({
+  item,
+  onChange,
+  onRemove,
+}: {
+  item: GuideItem;
+  onChange: (item: GuideItem) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-background/80 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+          {item.kind}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+          aria-label="Remove guide item"
+        >
+          <UiIcon name="trash-2" size={14} className="size-3.5" />
+        </Button>
+      </div>
+      <div className="mt-3">
+        <GuideItemFields item={item} onChange={onChange} />
+      </div>
+    </div>
+  );
+}
+
+function GuideItemFields({
+  item,
+  onChange,
+}: {
+  item: GuideItem;
+  onChange: (item: GuideItem) => void;
+}) {
+  switch (item.kind) {
+    case 'hline':
+      return (
+        <div className="grid gap-2">
+          <NumericField
+            label="Y"
+            value={item.y}
+            onValueChange={(y) => onChange({ kind: 'hline', y })}
+          />
+        </div>
+      );
+    case 'vline':
+      return (
+        <div className="grid gap-2">
+          <NumericField
+            label="X"
+            value={item.x}
+            onValueChange={(x) => onChange({ kind: 'vline', x })}
+          />
+        </div>
+      );
+    case 'rect':
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <NumericField
+            label="X"
+            value={item.x}
+            onValueChange={(x) => onChange({ ...item, x })}
+          />
+          <NumericField
+            label="Y"
+            value={item.y}
+            onValueChange={(y) => onChange({ ...item, y })}
+          />
+          <NumericField
+            label="Width"
+            value={item.width}
+            onValueChange={(width) => onChange({ ...item, width })}
+          />
+          <NumericField
+            label="Height"
+            value={item.height}
+            onValueChange={(height) => onChange({ ...item, height })}
+          />
+        </div>
+      );
+    case 'ellipse':
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          <NumericField
+            label="CX"
+            value={item.cx}
+            onValueChange={(cx) => onChange({ ...item, cx })}
+          />
+          <NumericField
+            label="CY"
+            value={item.cy}
+            onValueChange={(cy) => onChange({ ...item, cy })}
+          />
+          <NumericField
+            label="RX"
+            value={item.rx}
+            onValueChange={(rx) => onChange({ ...item, rx })}
+          />
+          <NumericField
+            label="RY"
+            value={item.ry}
+            onValueChange={(ry) => onChange({ ...item, ry })}
+          />
+        </div>
+      );
+    case 'drawPoint':
+      // Author-only primitive that doesn't render visually; kept as a
+      // read-only badge so users can see it exists and can delete it.
+      return (
+        <p className="text-xs text-muted-foreground">
+          Layer: {item.layerId || '(unset)'} · t={item.t.toFixed(2)} ·{' '}
+          {item.direction ?? 'forward'}
+        </p>
+      );
+  }
+}
+
+function NumericField({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <div className="grid gap-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        step="0.25"
+        value={value}
+        onChange={(event) => {
+          const next = Number.parseFloat(event.target.value);
+          if (Number.isFinite(next)) onValueChange(next);
+        }}
+      />
+    </div>
+  );
+}
+
+function createDefaultGuideItem(
+  kind: GuideItem['kind'],
+  viewBox: GuideMaster['viewBox'],
+): GuideItem {
+  const [vx, vy, vw, vh] = viewBox;
+  const cx = vx + vw / 2;
+  const cy = vy + vh / 2;
+  switch (kind) {
+    case 'hline':
+      return { kind: 'hline', y: cy };
+    case 'vline':
+      return { kind: 'vline', x: cx };
+    case 'rect':
+      return {
+        kind: 'rect',
+        x: vx + vw * 0.125,
+        y: vy + vh * 0.125,
+        width: vw * 0.75,
+        height: vh * 0.75,
+      };
+    case 'ellipse':
+      return {
+        kind: 'ellipse',
+        cx,
+        cy,
+        rx: vw * 0.4,
+        ry: vh * 0.4,
+      };
+    case 'drawPoint':
+      return { kind: 'drawPoint', layerId: '', t: 0.5, direction: 'forward' };
+  }
 }
 
 function createUniqueRecordName(base: string, existing: string[]) {

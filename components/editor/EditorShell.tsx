@@ -632,8 +632,8 @@ function GuideEditingBanner() {
           Editing guides: {master.name}
         </p>
         <p className="text-xs text-muted-foreground">
-          Draw rectangles, ellipses, or lines on the canvas. Shapes are saved
-          as layers on this master.
+          Add and adjust guide items in the side panel. They render here as
+          a dashed overlay in real time.
         </p>
       </div>
       <Button

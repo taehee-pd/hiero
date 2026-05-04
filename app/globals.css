@@ -1765,6 +1765,54 @@
     transition: background-color var(--duration-fast) ease;
   }
 
+  [data-hiero-ui-icon] {
+    flex-shrink: 0;
+    overflow: visible;
+  }
+
+  [data-hiero-ui-icon] [data-hiero-runtime-icon],
+  [data-hiero-runtime-icon],
+  [data-hiero-ui-icon] svg {
+    overflow: visible !important;
+  }
+
+  [data-hiero-ui-icon][class*='size-'] > [data-hiero-runtime-icon],
+  [data-hiero-ui-icon][class*='size-'] > [data-hiero-runtime-icon] > svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  button [data-hiero-ui-icon]:not([class*='size-']),
+  [role='button'] [data-hiero-ui-icon]:not([class*='size-']),
+  [data-slot] [data-hiero-ui-icon]:not([class*='size-']) {
+    width: var(--hiero-control-icon-size, 1rem) !important;
+    height: var(--hiero-control-icon-size, 1rem) !important;
+  }
+
+  button > [data-hiero-runtime-icon]:not([class*='size-']),
+  [role='button'] > [data-hiero-runtime-icon]:not([class*='size-']),
+  [data-slot='button'] > [data-hiero-runtime-icon]:not([class*='size-']) {
+    width: var(--hiero-control-icon-size, 1rem) !important;
+    height: var(--hiero-control-icon-size, 1rem) !important;
+  }
+
+  button [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon],
+  button [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon] > svg,
+  [role='button'] [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon],
+  [role='button'] [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon] > svg,
+  [data-slot] [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon],
+  [data-slot] [data-hiero-ui-icon]:not([class*='size-']) > [data-hiero-runtime-icon] > svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  button > [data-hiero-runtime-icon]:not([class*='size-']) > svg,
+  [role='button'] > [data-hiero-runtime-icon]:not([class*='size-']) > svg,
+  [data-slot='button'] > [data-hiero-runtime-icon]:not([class*='size-']) > svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .wire-mini-button > svg {
     flex-shrink: 0;
     overflow: visible;

@@ -1466,7 +1466,7 @@ function CanvasDock({
           return (
             <div key={item.tool} className="flex items-center gap-1">
               <IconButton
-                icon={<Icon className="size-4" />}
+                icon={<Icon />}
                 data-active={activeTool === item.tool ? 'true' : 'false'}
                 className="wire-dock-icon"
                 onClick={() => onToolSelect(item.tool)}
@@ -1479,7 +1479,7 @@ function CanvasDock({
                 <Popover open={shapeMenuOpen} onOpenChange={setShapeMenuOpen}>
                   <PopoverTrigger asChild>
                     <IconButton
-                      icon={<UiIcon name="chevron-down" className="size-3.5" />}
+                      icon={<UiIcon name="chevron-down" />}
                       className="wire-dock-icon"
                       aria-label="Choose guide shape"
                       tooltip={false}
@@ -1528,7 +1528,7 @@ function CanvasDock({
             return (
               <IconButton
                 key={action.mode}
-                icon={<Icon className="size-4" />}
+                icon={<Icon />}
                 className="wire-dock-icon"
                 disabled={selectedGuideCount === 0}
                 aria-label={action.label}
@@ -1635,7 +1635,7 @@ function CanvasDock({
 
       <div className="wire-dock-group">
         <IconButton
-          icon={<UiIcon name="magnet" className="size-4" />}
+          icon={<UiIcon name="magnet" />}
           data-active={snapEnabled ? 'true' : 'false'}
           aria-pressed={snapEnabled}
           aria-label="Toggle snap"
@@ -1646,7 +1646,7 @@ function CanvasDock({
           onClick={onToggleSnap}
         />
         <IconButton
-          icon={<UiIcon name="ruler" className="size-4" />}
+          icon={<UiIcon name="ruler" />}
           data-active={guidesVisible ? 'true' : 'false'}
           aria-pressed={guidesVisible}
           aria-label="Toggle guides"

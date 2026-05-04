@@ -45,9 +45,9 @@ interface IconButtonProps
 }
 
 const sizeClasses: Record<IconButtonSize, string> = {
-  sm: 'h-[var(--button-icon-size-sm)] w-[var(--button-icon-size-sm)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-sm)]',
-  md: 'h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-md)]',
-  lg: 'h-[var(--button-icon-size-lg)] w-[var(--button-icon-size-lg)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-lg)]',
+  sm: 'h-[var(--button-icon-size-sm)] w-[var(--button-icon-size-sm)] [--hiero-control-icon-size:var(--icon-inner-size-sm)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-sm)]',
+  md: 'h-[var(--button-icon-size-md)] w-[var(--button-icon-size-md)] [--hiero-control-icon-size:var(--icon-inner-size-md)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-md)]',
+  lg: 'h-[var(--button-icon-size-lg)] w-[var(--button-icon-size-lg)] [--hiero-control-icon-size:var(--icon-inner-size-lg)] [&_svg:not([class*="size-"])]:size-[var(--icon-inner-size-lg)]',
 };
 
 const radiusClasses: Record<IconButtonRadius, string> = {
@@ -113,7 +113,7 @@ function IconButton({
         'inline-flex items-center justify-center shrink-0 transition-all duration-[120ms] ease outline-none',
         'disabled:pointer-events-none disabled:opacity-50',
         'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
-        '[&_svg]:pointer-events-none [&_svg]:shrink-0',
+        '[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_[data-hiero-ui-icon]]:pointer-events-none [&_[data-hiero-ui-icon]]:shrink-0 [&_[data-hiero-runtime-icon]]:pointer-events-none [&_[data-hiero-runtime-icon]]:shrink-0',
         sizeClasses[size],
         radiusClasses[radius],
         variantClasses[variant],

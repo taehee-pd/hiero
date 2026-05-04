@@ -250,7 +250,17 @@ export function exportLottie(
             // we avoid changing the export shape until W5 calibration
             // signs off on the cascade output.
             if (isResolverV2Enabled()) {
-              const resolution = resolveMorph(fromLayerDef, toLayerDef);
+              // Forward the transition's authored resolver options so
+              // the Lottie keyframes match in-app preview / runtime
+              // exactly. `cadence` selects the motion curves; the
+              // pinning hints feed the cascade's hard constraints
+              // (Hungarian PIN_REWARD / FORBIDDEN_COST). Without this
+              // the export uses cascade defaults and diverges from
+              // what the author sees in the editor.
+              const resolution = resolveMorph(fromLayerDef, toLayerDef, {
+                cadence: transition.cadence ?? 'soft',
+                hints: transition.correspondenceHints,
+              });
               const samples = sampleForLottie(resolution, transition.durationMs);
               const beziers = samples.map((s) => svgPathToLottieBezier(s.d));
               const lastIndex = samples.length - 1;

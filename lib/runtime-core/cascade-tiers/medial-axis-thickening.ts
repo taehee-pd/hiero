@@ -238,16 +238,23 @@ export function skeletonsAlign(
 /**
  * Build a continuous-grow morph for an aligned stroke ↔ fill pair.
  *
- * Frame schedule:
+ * Frame schedule (positive delta in both halves — magnitude grows
+ * toward the midpoint and shrinks away from it):
  *  - `t ∈ [0, 0.5]`: source is offset outward by `2t·deltaMax` so
- *    the geometry grows from the source's exact shape (delta=0) to
- *    a "fattened" form at the midpoint.
- *  - `t ∈ (0.5, 1]`: target is offset *inward* by `2(1-t)·deltaMax`,
- *    arriving at the target's exact shape at t=1.
+ *    the geometry grows from the source's exact shape (delta=0) at
+ *    `t=0` to a "fattened" form at the midpoint.
+ *  - `t ∈ (0.5, 1]`: target is offset outward by `2(1-t)·deltaMax`,
+ *    deflating from a fattened form back to the target's exact
+ *    shape at `t=1`.
  *
- * `deltaMax` is the same scale-invariant inflation used by
- * {@link skeletonsAlign}, so the midpoint forms are guaranteed to
- * have ≥ 50% IoU — visually continuous across the swap point.
+ * Both halves use positive delta so the midpoint forms coincide:
+ * `src⊕deltaMax` (end of first half) and `tgt⊕deltaMax` (start of
+ * second half) are exactly the polygons {@link skeletonsAlign}
+ * tested for IoU ≥ 0.5, so the midpoint snap is bounded by that
+ * threshold. A negative delta on the second half would deflate the
+ * target *into* its actual shape, but the midpoint would jump from
+ * `src⊕deltaMax` (fat) to `tgt⊖deltaMax` (thin) — the opposite of
+ * what the IoU gate guarantees.
  *
  * Returns `null` when offsetting fails (degenerate input).
  */

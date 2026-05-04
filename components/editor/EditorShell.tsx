@@ -602,6 +602,53 @@ export function TypesSection({
   );
 }
 
+/**
+ * Distinctive banner shown above the canvas when the user is editing a
+ * guide master. Replaces the in-panel "Editing guides on canvas" banner —
+ * the mode signal lives where the work is happening, and the only "leave
+ * editing" affordance lives here so it's discoverable without bouncing
+ * back to the side panel.
+ */
+function GuideEditingBanner() {
+  const editScope = useEditorStore((s) => s.editScope);
+  const project = useEditorStore((s) => s.project);
+  const { exitGuideEditingMode } = useEditorActions();
+  if (editScope.kind !== 'guideMaster') return null;
+  const master = project?.guideMasters?.[editScope.masterId];
+  if (!master) return null;
+  return (
+    <div
+      className="flex items-center gap-3 border-b border-primary/30 bg-primary/10 px-4 py-2.5 text-sm"
+      role="status"
+      aria-live="polite"
+    >
+      <UiIcon
+        name="mouse-pointer-square-dashed"
+        size={16}
+        className="size-4 shrink-0 text-primary"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-primary">
+          Editing guides: {master.name}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Draw rectangles, ellipses, or lines on the canvas. Shapes are saved
+          as layers on this master.
+        </p>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="default"
+        className="shrink-0"
+        onClick={exitGuideEditingMode}
+      >
+        Done editing
+      </Button>
+    </div>
+  );
+}
+
 function InlineEditableTitle({
   value,
   onCommit,
@@ -2404,6 +2451,7 @@ export function EditorShell({
 
         <main className="wire-canvas-shell">
           <div className="wire-canvas-area">
+            <GuideEditingBanner />
             {currentIcon?.meta?.derivedSpecs &&
               currentIcon.meta.derivedSpecs.length > 0 &&
               currentVariantId &&

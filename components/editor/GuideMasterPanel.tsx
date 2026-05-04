@@ -4,6 +4,12 @@ import { Icon as UiIcon } from '@hiero/ui-icons';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,29 +21,34 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getDefaultGuideMaster } from '@/lib/editor-core/guide-presets';
-import { useCurrentVariant, useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
+import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
-import type { GuideItem, GuideMaster } from '@/lib/schema/types';
+import type { GuideMaster } from '@/lib/schema/types';
 import { cn } from '@/lib/utils';
 
 const SIZE_OPTIONS = ['12', '16', '20', '24', '32', '48', 'custom'] as const;
-const ITEM_KIND_OPTIONS: Array<GuideItem['kind']> = [
-  'rect',
-  'ellipse',
-  'hline',
-  'vline',
-  'drawPoint',
-];
 
 export function GuideMasterPanel() {
   const project = useEditorStore((s) => s.project);
-  const variant = useCurrentVariant();
   const activeGuideMaster = useEditorStore(selectCurrentGuideMaster);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const guideStyle = useEditorStore((s) => s.guideStyle);
-  const guideMasters = useMemo(() => project?.guideMasters ?? {}, [project?.guideMasters]);
-  const guideMasterList = useMemo(() => Object.values(guideMasters), [guideMasters]);
+  const editScope = useEditorStore((s) => s.editScope);
+  const guideMasters = useMemo(
+    () => project?.guideMasters ?? {},
+    [project?.guideMasters],
+  );
+  const guideMasterList = useMemo(
+    () => Object.values(guideMasters),
+    [guideMasters],
+  );
   const activeMasterId = activeGuideMaster?.id ?? null;
+  const editingMasterId =
+    editScope.kind === 'guideMaster' ? editScope.masterId : null;
+  const editingMaster = editingMasterId
+    ? (guideMasters[editingMasterId] ?? null)
+    : null;
+
   const groupedMasters = useMemo(() => {
     const groups = new Map<number, GuideMaster[]>();
     for (const master of guideMasterList) {
@@ -45,51 +56,30 @@ export function GuideMasterPanel() {
       bucket.push(master);
       groups.set(master.targetSize, bucket);
     }
-
     return Array.from(groups.entries())
       .sort((a, b) => a[0] - b[0])
-      .map(([size, masters]) => ({
-        size,
-        masters,
-      }));
+      .map(([size, masters]) => ({ size, masters }));
   }, [guideMasterList]);
-  const editScope = useEditorStore((s) => s.editScope);
-  const editingThisMaster = (masterId: string) =>
-    editScope.kind === 'guideMaster' && editScope.masterId === masterId;
+
   const {
     addGuideMaster,
     updateGuideMaster,
     removeGuideMaster,
-    addGuideItem,
-    updateGuideItem,
-    removeGuideItem,
     toggleGuidesVisible,
     setGuideStyle,
     enterGuideEditingMode,
-    exitGuideEditingMode,
   } = useEditorActions();
 
-  const [selectedMasterId, setSelectedMasterId] = useState<string | null>(activeMasterId);
-  const [newMasterSize, setNewMasterSize] = useState<(typeof SIZE_OPTIONS)[number]>('24');
+  const [newMasterSize, setNewMasterSize] =
+    useState<(typeof SIZE_OPTIONS)[number]>('24');
   const [customSize, setCustomSize] = useState('24');
-  const [newItemKind, setNewItemKind] = useState<GuideItem['kind']>('rect');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (selectedMasterId && guideMasters[selectedMasterId]) return;
-    setSelectedMasterId(activeMasterId ?? guideMasterList[0]?.id ?? null);
-  }, [activeMasterId, guideMasterList, guideMasters, selectedMasterId]);
 
   useEffect(() => {
     if (!pendingDeleteId) return;
     const timer = window.setTimeout(() => setPendingDeleteId(null), 5000);
     return () => window.clearTimeout(timer);
   }, [pendingDeleteId]);
-
-  const selectedMaster =
-    selectedMasterId && guideMasters[selectedMasterId]
-      ? guideMasters[selectedMasterId]
-      : null;
 
   const handleCreateMaster = () => {
     const parsedSize =
@@ -107,32 +97,33 @@ export function GuideMasterPanel() {
       preset.name,
       guideMasterList.map((master) => master.name),
     );
-    const nextMaster: GuideMaster = {
+    const next: GuideMaster = {
       ...preset,
       id: uniqueId,
       name: uniqueName,
     };
 
-    addGuideMaster(nextMaster);
-    setSelectedMasterId(nextMaster.id);
+    addGuideMaster(next);
+    enterGuideEditingMode(next.id);
   };
 
-  const handleDuplicateMaster = (master: GuideMaster) => {
+  const handleDuplicate = (master: GuideMaster) => {
     const duplicate: GuideMaster = {
       ...master,
-      id: createUniqueRecordId(`${master.id}-copy`, Object.keys(guideMasters)),
+      id: createUniqueRecordId(
+        `${master.id}-copy`,
+        Object.keys(guideMasters),
+      ),
       name: createUniqueRecordName(
         `${master.name} Copy`,
         guideMasterList.map((entry) => entry.name),
       ),
       items: master.items.map((item) => ({ ...item })),
     };
-
     addGuideMaster(duplicate);
-    setSelectedMasterId(duplicate.id);
   };
 
-  const handleDeleteMaster = (master: GuideMaster) => {
+  const confirmDelete = (master: GuideMaster) => {
     if (pendingDeleteId === master.id) {
       setPendingDeleteId(null);
       removeGuideMaster(master.id);
@@ -141,55 +132,98 @@ export function GuideMasterPanel() {
     }
   };
 
-  const handleAddGuideItem = () => {
-    if (!selectedMaster) return;
-    addGuideItem(
-      selectedMaster.id,
-      createDefaultGuideItem(newItemKind, selectedMaster.viewBox),
-    );
-  };
+  // -----------------------------------------------------------------------
+  // Editing state — focused view of one master. Shapes are authored on the
+  // canvas (rectangle / ellipse / line tools); the Inspector handles
+  // numeric coordinate tuning when a shape is selected. The "Done editing"
+  // affordance lives on the canvas banner, not in this panel.
+  // -----------------------------------------------------------------------
+  if (editingMaster) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col gap-4 p-2.5">
+            <section className="rounded-lg border border-border/70 bg-background/70 p-3">
+              <div className="flex items-center gap-2">
+                <UiIcon
+                  name="mouse-pointer-square-dashed"
+                  size={16}
+                  className="size-4 text-primary"
+                />
+                <p className="text-sm font-semibold text-foreground">
+                  Editing master
+                </p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use the rectangle, ellipse, or line tools on the canvas to
+                draw guides. Click a shape and use the Inspector to tune its
+                coordinates.
+              </p>
 
+              <div className="mt-3 grid gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="guide-master-name">Name</Label>
+                  <Input
+                    id="guide-master-name"
+                    value={editingMaster.name}
+                    onChange={(event) =>
+                      updateGuideMaster(editingMaster.id, {
+                        name: event.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <ReadOnlyField
+                    label="Target size"
+                    value={`${editingMaster.targetSize}px`}
+                  />
+                  <ReadOnlyField
+                    label="ViewBox"
+                    value={editingMaster.viewBox.join(' ')}
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+        </ScrollArea>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Idle state — library + create form + global settings.
+  // -----------------------------------------------------------------------
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-4 p-2.5">
-          {editScope.kind === 'guideMaster' ? (
-            <div
-              className="flex items-start justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs"
-              role="status"
-              aria-live="polite"
-            >
-              <div>
-                <p className="font-semibold text-primary">Editing guides on canvas</p>
-                <p className="mt-1 text-muted-foreground">
-                  Shapes you draw are added to the selected master. Polygon and star
-                  are hidden — guides support rectangles, ellipses, and axis lines.
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 shrink-0 rounded-md px-2 text-xs font-semibold text-primary hover:bg-primary/20"
-                onClick={exitGuideEditingMode}
-              >
-                Exit
-              </Button>
-            </div>
-          ) : null}
+          {/* Create form */}
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">New guide master</p>
+                <p className="text-sm font-semibold text-foreground">
+                  New guide master
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Start from a preset, then tune items live on canvas.
+                  Pick a target size; you'll draw shapes on the canvas next.
                 </p>
               </div>
-              <UiIcon name="ruler" size={16} className="size-4 text-muted-foreground" />
+              <UiIcon
+                name="ruler"
+                size={16}
+                className="size-4 text-muted-foreground"
+              />
             </div>
             <div className="mt-3 grid gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="guide-master-size">Target size</Label>
-                <Select value={newMasterSize} onValueChange={(value) => setNewMasterSize(value as (typeof SIZE_OPTIONS)[number])}>
+                <Select
+                  value={newMasterSize}
+                  onValueChange={(value) =>
+                    setNewMasterSize(value as (typeof SIZE_OPTIONS)[number])
+                  }
+                >
                   <SelectTrigger id="guide-master-size" className="w-full">
                     <SelectValue placeholder="Select size" />
                   </SelectTrigger>
@@ -217,21 +251,28 @@ export function GuideMasterPanel() {
               ) : null}
               <Button className="justify-center" onClick={handleCreateMaster}>
                 <UiIcon name="plus" size={16} className="size-4" />
-                <span>Create guide master</span>
+                <span>Create &amp; edit</span>
               </Button>
             </div>
           </section>
 
+          {/* Library */}
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">Guide library</p>
+                <p className="text-sm font-semibold text-foreground">
+                  Guide library
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Grouped by target size. The active overlay master is highlighted.
+                  Grouped by target size. The active overlay master is
+                  highlighted.
                 </p>
               </div>
-              <span className="workspace-badge shrink-0">{guideMasterList.length}</span>
+              <span className="workspace-badge shrink-0">
+                {guideMasterList.length}
+              </span>
             </div>
+
             <div className="mt-3 flex flex-col gap-3">
               {groupedMasters.length === 0 ? (
                 <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
@@ -245,37 +286,122 @@ export function GuideMasterPanel() {
                   </p>
                   <div className="space-y-2">
                     {group.masters.map((master) => {
-                      const isSelected = selectedMasterId === master.id;
                       const isActive = activeMasterId === master.id;
+                      const isPendingDelete = pendingDeleteId === master.id;
+                      const shapeCount =
+                        Object.keys(master.layers ?? {}).length +
+                        master.items.length;
 
                       return (
-                        <Button
+                        <div
                           key={master.id}
-                          variant="outline"
-                          onClick={() => setSelectedMasterId(master.id)}
                           className={cn(
-                            'h-auto w-full rounded-lg px-3 py-3 text-left transition',
-                            isSelected
+                            'rounded-lg border bg-background/80 p-3 transition',
+                            isActive
                               ? 'border-primary/40 bg-primary/6 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_24%,transparent)]'
-                              : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
+                              : 'border-border/70',
                           )}
                         >
-                          <div className="flex w-full items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {master.name}
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {master.items.length} items
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                  {master.name}
+                                </p>
+                                {isActive ? (
+                                  <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                    Active
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {shapeCount}{' '}
+                                {shapeCount === 1 ? 'shape' : 'shapes'}
                               </p>
                             </div>
-                            {isActive ? (
-                              <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary">
-                                Active
-                              </span>
-                            ) : null}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-7 w-7 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+                                  aria-label="Master actions"
+                                >
+                                  <UiIcon
+                                    name="more-horizontal"
+                                    size={14}
+                                    className="size-3.5"
+                                  />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => handleDuplicate(master)}
+                                >
+                                  <UiIcon
+                                    name="copy"
+                                    size={14}
+                                    className="size-3.5"
+                                  />
+                                  Duplicate
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onSelect={() => confirmDelete(master)}
+                                >
+                                  <UiIcon
+                                    name="trash-2"
+                                    size={14}
+                                    className="size-3.5"
+                                  />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </Button>
+
+                          <div className="mt-3 flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => enterGuideEditingMode(master.id)}
+                            >
+                              <UiIcon
+                                name="mouse-pointer-square-dashed"
+                                size={14}
+                                className="size-3.5"
+                              />
+                              Edit
+                            </Button>
+                          </div>
+
+                          {isPendingDelete ? (
+                            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-xs">
+                              <span className="text-destructive">
+                                Delete this master?
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                  onClick={() => setPendingDeleteId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs font-semibold text-destructive hover:bg-destructive/15"
+                                  onClick={() => confirmDelete(master)}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
@@ -284,196 +410,65 @@ export function GuideMasterPanel() {
             </div>
           </section>
 
+          {/* Global settings */}
           <section className="rounded-lg border border-border/70 bg-background/70 p-3">
-            {selectedMaster ? (
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Master details</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Rename, duplicate, or refine guide items. Changes preview immediately.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className={cn(
-                        'workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground',
-                        editingThisMaster(selectedMaster.id) && 'bg-primary/10 text-primary',
-                      )}
-                      onClick={() => {
-                        if (editingThisMaster(selectedMaster.id)) {
-                          exitGuideEditingMode();
-                        } else {
-                          enterGuideEditingMode(selectedMaster.id);
-                        }
-                      }}
-                      aria-label={
-                        editingThisMaster(selectedMaster.id)
-                          ? 'Exit guide editing on canvas'
-                          : 'Edit guides on canvas'
-                      }
-                      aria-pressed={editingThisMaster(selectedMaster.id)}
-                      title="Edit guides on canvas"
-                    >
-                      <UiIcon name="mouse-pointer-square-dashed" size={14} className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className={cn(
-                        'workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground',
-                        guidesVisible && 'bg-primary/10 text-primary',
-                      )}
-                      onClick={toggleGuidesVisible}
-                      aria-label={guidesVisible ? 'Hide guides' : 'Show guides'}
-                    >
-                      {guidesVisible ? <UiIcon name="eye" size={14} className="size-3.5" /> : <UiIcon name="eye-off" size={14} className="size-3.5" />}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
-                      onClick={() => handleDuplicateMaster(selectedMaster)}
-                      aria-label="Duplicate guide master"
-                    >
-                      <UiIcon name="copy" size={14} className="size-3.5" />
-                    </Button>
-                    {pendingDeleteId === selectedMaster.id ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-destructive">Confirm delete?</span>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="workspace-tool-button h-7 rounded-lg px-2 text-xs font-semibold text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteMaster(selectedMaster)}
-                          aria-label="Confirm delete guide master"
-                        >
-                          Delete
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="workspace-tool-button h-7 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => setPendingDeleteId(null)}
-                          aria-label="Cancel delete"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteMaster(selectedMaster)}
-                        aria-label="Delete guide master"
-                      >
-                        <UiIcon name="trash-2" size={14} className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid gap-3">
-                  <div className="grid gap-1.5">
-                    <Label>Guide style</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        variant={guideStyle === 'subtle' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setGuideStyle('subtle')}
-                      >
-                        Subtle
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={guideStyle === 'strong' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setGuideStyle('strong')}
-                      >
-                        Strong
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="guide-master-name">Name</Label>
-                    <Input
-                      id="guide-master-name"
-                      value={selectedMaster.name}
-                      onChange={(event) =>
-                        updateGuideMaster(selectedMaster.id, { name: event.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <ReadOnlyField label="Target size" value={`${selectedMaster.targetSize}px`} />
-                    <ReadOnlyField
-                      label="ViewBox"
-                      value={selectedMaster.viewBox.join(' ')}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Guide items</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Add primitives, then adjust coordinates numerically.
-                      </p>
-                    </div>
-                    <span className="workspace-badge">{selectedMaster.items.length}</span>
-                  </div>
-
-                  <div className="mt-3 flex gap-2">
-                    <Select
-                      value={newItemKind}
-                      onValueChange={(value) => setNewItemKind(value as GuideItem['kind'])}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ITEM_KIND_OPTIONS.map((kind) => (
-                          <SelectItem key={kind} value={kind}>
-                            {kind}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddGuideItem}>
-                      <UiIcon name="plus" size={16} className="size-4" />
-                      <span>Add</span>
-                    </Button>
-                  </div>
-
-                  <div className="mt-3 space-y-3">
-                    {selectedMaster.items.length === 0 ? (
-                      <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
-                        No guide items
-                      </div>
-                    ) : null}
-                    {selectedMaster.items.map((item, index) => (
-                      <GuideItemCard
-                        key={`${selectedMaster.id}-${index}-${item.kind}`}
-                        item={item}
-                        onChange={(nextItem) =>
-                          updateGuideItem(selectedMaster.id, index, nextItem)
-                        }
-                        onRemove={() => removeGuideItem(selectedMaster.id, index)}
+            <p className="text-sm font-semibold text-foreground">Display</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              How active guides appear over the icon canvas.
+            </p>
+            <div className="mt-3 grid gap-3">
+              <div className="grid gap-1.5">
+                <Label>Visibility</Label>
+                <Button
+                  type="button"
+                  variant={guidesVisible ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="justify-center"
+                  onClick={toggleGuidesVisible}
+                >
+                  {guidesVisible ? (
+                    <>
+                      <UiIcon
+                        name="eye"
+                        size={14}
+                        className="size-3.5"
                       />
-                    ))}
-                  </div>
+                      <span>Guides visible</span>
+                    </>
+                  ) : (
+                    <>
+                      <UiIcon
+                        name="eye-off"
+                        size={14}
+                        className="size-3.5"
+                      />
+                      <span>Guides hidden</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="grid gap-1.5">
+                <Label>Style</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={guideStyle === 'subtle' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setGuideStyle('subtle')}
+                  >
+                    Subtle
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={guideStyle === 'strong' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setGuideStyle('strong')}
+                  >
+                    Strong
+                  </Button>
                 </div>
               </div>
-            ) : (
-              <div className="workspace-empty-state rounded-lg px-3 py-6 text-center text-xs text-muted-foreground">
-                Select a guide master to edit it
-              </div>
-            )}
+            </div>
           </section>
         </div>
       </ScrollArea>
@@ -481,274 +476,33 @@ export function GuideMasterPanel() {
   );
 }
 
-function GuideItemCard({
-  item,
-  onChange,
-  onRemove,
-}: {
-  item: GuideItem;
-  onChange: (item: GuideItem) => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="rounded-lg border border-border/70 bg-background/80 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-          {item.kind}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="workspace-tool-button h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
-          onClick={onRemove}
-          aria-label="Remove guide item"
-        >
-          <UiIcon name="trash-2" size={14} className="size-3.5" />
-        </Button>
-      </div>
-      <div className="mt-3">
-        <GuideItemFields item={item} onChange={onChange} />
-      </div>
-    </div>
-  );
-}
-
-function GuideItemFields({
-  item,
-  onChange,
-}: {
-  item: GuideItem;
-  onChange: (item: GuideItem) => void;
-}) {
-  switch (item.kind) {
-    case 'hline':
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <NumericField
-            label="Y"
-            value={item.y}
-            onValueChange={(y) => onChange({ kind: 'hline', y })}
-          />
-        </div>
-      );
-    case 'vline':
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <NumericField
-            label="X"
-            value={item.x}
-            onValueChange={(x) => onChange({ kind: 'vline', x })}
-          />
-        </div>
-      );
-    case 'rect':
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <NumericField
-            label="X"
-            value={item.x}
-            onValueChange={(x) => onChange({ ...item, x })}
-          />
-          <NumericField
-            label="Y"
-            value={item.y}
-            onValueChange={(y) => onChange({ ...item, y })}
-          />
-          <NumericField
-            label="Width"
-            value={item.width}
-            onValueChange={(width) => onChange({ ...item, width })}
-          />
-          <NumericField
-            label="Height"
-            value={item.height}
-            onValueChange={(height) => onChange({ ...item, height })}
-          />
-        </div>
-      );
-    case 'ellipse':
-      return (
-        <div className="grid grid-cols-2 gap-2">
-          <NumericField
-            label="CX"
-            value={item.cx}
-            onValueChange={(cx) => onChange({ ...item, cx })}
-          />
-          <NumericField
-            label="CY"
-            value={item.cy}
-            onValueChange={(cy) => onChange({ ...item, cy })}
-          />
-          <NumericField
-            label="RX"
-            value={item.rx}
-            onValueChange={(rx) => onChange({ ...item, rx })}
-          />
-          <NumericField
-            label="RY"
-            value={item.ry}
-            onValueChange={(ry) => onChange({ ...item, ry })}
-          />
-        </div>
-      );
-    case 'drawPoint':
-      return (
-        <div className="grid gap-2">
-          <TextField
-            label="Layer ID"
-            value={item.layerId}
-            onValueChange={(layerId) => onChange({ ...item, layerId })}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <NumericField
-              label="T"
-              value={item.t}
-              onValueChange={(t) => onChange({ ...item, t })}
-            />
-            <div className="grid gap-1.5">
-              <Label className="text-sm text-muted-foreground">
-                Direction
-              </Label>
-              <Select
-                value={item.direction ?? 'forward'}
-                onValueChange={(direction) =>
-                  onChange({
-                    ...item,
-                    direction: direction as 'forward' | 'reverse',
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="forward">forward</SelectItem>
-                  <SelectItem value="reverse">reverse</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      );
-  }
-}
-
-function NumericField({
-  label,
-  value,
-  onValueChange,
-}: {
-  label: string;
-  value: number;
-  onValueChange: (value: number) => void;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <Label className="text-sm text-muted-foreground">
-        {label}
-      </Label>
-      <Input
-        type="number"
-        step="0.25"
-        value={value}
-        onChange={(event) => {
-          const nextValue = Number.parseFloat(event.target.value);
-          if (Number.isFinite(nextValue)) onValueChange(nextValue);
-        }}
-      />
-    </div>
-  );
-}
-
-function TextField({
-  label,
-  value,
-  onValueChange,
-}: {
-  label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <Label className="text-sm text-muted-foreground">
-        {label}
-      </Label>
-      <Input value={value} onChange={(event) => onValueChange(event.target.value)} />
-    </div>
-  );
-}
-
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
     </div>
   );
 }
 
-function createDefaultGuideItem(
-  kind: GuideItem['kind'],
-  viewBox: GuideMaster['viewBox'],
-): GuideItem {
-  const [vx, vy, vw, vh] = viewBox;
-  const centerX = vx + vw / 2;
-  const centerY = vy + vh / 2;
-
-  switch (kind) {
-    case 'hline':
-      return { kind: 'hline', y: centerY };
-    case 'vline':
-      return { kind: 'vline', x: centerX };
-    case 'rect':
-      return {
-        kind: 'rect',
-        x: vx + vw * 0.125,
-        y: vy + vh * 0.125,
-        width: vw * 0.75,
-        height: vh * 0.75,
-      };
-    case 'ellipse':
-      return {
-        kind: 'ellipse',
-        cx: centerX,
-        cy: centerY,
-        rx: vw * 0.4,
-        ry: vh * 0.4,
-      };
-    case 'drawPoint':
-      return {
-        kind: 'drawPoint',
-        layerId: '',
-        t: 0.5,
-        direction: 'forward',
-      };
-  }
-}
-
 function createUniqueRecordName(base: string, existing: string[]) {
   if (!existing.includes(base)) return base;
-
   let counter = 2;
   let nextValue = `${base} ${counter}`;
   while (existing.includes(nextValue)) {
     counter += 1;
     nextValue = `${base} ${counter}`;
   }
-
   return nextValue;
 }
 
 function createUniqueRecordId(base: string, existing: string[]) {
   if (!existing.includes(base)) return base;
-
   let counter = 2;
   let nextValue = `${base}-${counter}`;
   while (existing.includes(nextValue)) {
     counter += 1;
     nextValue = `${base}-${counter}`;
   }
-
   return nextValue;
 }

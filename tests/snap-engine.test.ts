@@ -362,4 +362,42 @@ describe('snap engine', () => {
 
     engine.destroy();
   });
+
+  test('can exclude the active guide item while snapping guide edits', () => {
+    const project = createProjectFixture();
+    project.icons.snap.variants.v24.guideMasterId = 'primary-guides';
+
+    const state = {
+      ...editorStore.getState(),
+      project,
+      currentIconId: 'snap',
+      currentVariantId: 'v24',
+      currentTypeId: 'default',
+      editScope: { kind: 'guideMaster', masterId: 'primary-guides' },
+      snapEnabled: true,
+      guidesVisible: true,
+      viewport: { zoom: 100, panX: 0, panY: 0 },
+    } as EditorStore;
+
+    const store = createMockStore(state);
+    const engine = new SnapEngine(store);
+
+    const withoutExclusion = engine.computeSnap(
+      { x: 4.05, y: 4.04 },
+      { sourceGuideIndex: undefined, tolerancePx: 10, gridStep: 0 },
+    );
+    expect(withoutExclusion.x).toBe(4);
+    expect(withoutExclusion.y).toBe(4);
+    expect(withoutExclusion.guides.some((guide) => guide.type === 'guide')).toBeTrue();
+
+    const withExclusion = engine.computeSnap(
+      { x: 4.05, y: 4.04 },
+      { sourceGuideIndex: 2, tolerancePx: 10, gridStep: 0 },
+    );
+    expect(withExclusion.x).toBe(4.05);
+    expect(withExclusion.y).toBe(4.04);
+    expect(withExclusion.guides.some((guide) => guide.type === 'guide')).toBeFalse();
+
+    engine.destroy();
+  });
 });

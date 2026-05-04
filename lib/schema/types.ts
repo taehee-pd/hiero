@@ -673,7 +673,8 @@ export type GuideMaster = {
 export type GuideItem =
   | { kind: 'hline'; y: number }
   | { kind: 'vline'; x: number }
-  | { kind: 'rect'; x: number; y: number; width: number; height: number }
+  | { kind: 'line'; x1: number; y1: number; x2: number; y2: number }
+  | { kind: 'rect'; x: number; y: number; width: number; height: number; radius?: number }
   | { kind: 'ellipse'; cx: number; cy: number; rx: number; ry: number }
   | {
       kind: 'drawPoint';

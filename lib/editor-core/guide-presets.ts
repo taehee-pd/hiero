@@ -22,6 +22,14 @@ function scaleGuideItem(item: GuideItem, factor: number): GuideItem {
       return { kind: 'hline', y: scaleCoordinate(item.y, factor) };
     case 'vline':
       return { kind: 'vline', x: scaleCoordinate(item.x, factor) };
+    case 'line':
+      return {
+        kind: 'line',
+        x1: scaleCoordinate(item.x1, factor),
+        y1: scaleCoordinate(item.y1, factor),
+        x2: scaleCoordinate(item.x2, factor),
+        y2: scaleCoordinate(item.y2, factor),
+      };
     case 'rect':
       return {
         kind: 'rect',
@@ -29,6 +37,9 @@ function scaleGuideItem(item: GuideItem, factor: number): GuideItem {
         y: scaleCoordinate(item.y, factor),
         width: scaleCoordinate(item.width, factor),
         height: scaleCoordinate(item.height, factor),
+        ...(item.radius !== undefined
+          ? { radius: scaleCoordinate(item.radius, factor) }
+          : null),
       };
     case 'ellipse':
       return {

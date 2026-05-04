@@ -12,6 +12,11 @@ import {
   resumeHistory,
 } from '@/lib/editor-store/history';
 import { buildPrimitivePath, translatePrimitive } from './path-shapes';
+import {
+  getGuideItemBounds,
+  resizeGuideItemToBounds,
+  translateGuideItem,
+} from './guide-item-geometry';
 import { getSelectedPointsBoundingBox, splitSegmentAtPoint } from './vector-commands';
 import type { EditablePath, PathPoint } from './path-model';
 import type { GuideItem, Layer, PrimitiveShape } from '@/lib/schema/types';
@@ -27,6 +32,7 @@ type DragMode =
   | 'point-marquee'
   | 'select-marquee'
   | 'shape'
+  | 'guide-item'
   | 'selection-move'
   | 'selection-resize'
   | null;
@@ -70,6 +76,17 @@ type ShapePlacement = {
   start: { x: number; y: number };
   previousSelection: SelectionState;
 };
+type GuideItemPlacement = {
+  masterId: string;
+  index: number;
+  pointerId: number;
+  start: { x: number; y: number };
+  baseItem: GuideItem;
+  previousSelection: SelectionState;
+  mode: 'create' | 'move' | 'resize';
+  handle?: BBoxHandle;
+  bounds?: SelectionBounds;
+};
 
 type BBoxHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
 type SelectionBounds = {
@@ -108,6 +125,7 @@ const SHAPE_EMPTY_EPSILON = 0.001;
 const BBOX_HIT_PADDING_PX = 12;
 const POINT_HIT_RADIUS_PX = 22;
 const MARQUEE_DRAG_THRESHOLD_PX = 4;
+const GUIDE_SNAP_TOLERANCE_PX = 7;
 /**
  * Screen-space drag threshold for the pen tool. A pointer movement below
  * this distance between pointerdown and pointerup produces a corner point
@@ -190,6 +208,7 @@ export class PathEditor {
   private animFrameId = 0;
   private penPlacement: PenPlacement | null = null;
   private shapePlacement: ShapePlacement | null = null;
+  private guideItemPlacement: GuideItemPlacement | null = null;
   private pointMarqueePlacement: PointMarqueePlacement | null = null;
   private selectionTransformPlacement: SelectionTransformPlacement | null = null;
   private layerResizePlacement: LayerResizePlacement | null = null;
@@ -258,7 +277,13 @@ export class PathEditor {
     const tool = state.tool;
     const target = e.target as Element;
     const layerId = target.getAttribute?.('data-layer-id') ?? target.getAttribute?.('data-layer-hit-id');
+    const guideIndexAttr = target.getAttribute?.('data-guide-index');
+    const guideIndex =
+      guideIndexAttr === null || guideIndexAttr === undefined
+        ? null
+        : Number.parseInt(guideIndexAttr, 10);
     const selectionHandle = target.getAttribute?.('data-selection-handle') as BBoxHandle | null;
+    const handleType = target.getAttribute?.('data-handle-type');
     const pointKey = target.getAttribute?.('data-point-key');
     const controlDirection = target.getAttribute?.('data-control-direction') as ControlDirection | null;
 
@@ -285,6 +310,16 @@ export class PathEditor {
       return;
     }
 
+    if (tool === 'shape' && state.editScope.kind === 'guideMaster') {
+      const placement = this.beginGuideItemPlacement(e);
+      if (placement) {
+        state.setSelection({ layerIds: [], pointIds: [], guideIndexes: [placement.index] });
+        state.setSelectedIconGuideIndex(placement.index);
+        this.capturePointer(e.pointerId);
+      }
+      return;
+    }
+
     if (tool === 'shape') {
       const placement = this.beginShapePlacement(e);
       if (placement) {
@@ -292,6 +327,34 @@ export class PathEditor {
         this.capturePointer(e.pointerId);
       }
       return;
+    }
+
+    if ((tool === 'select' || tool === 'direct-select') && state.editScope.kind === 'guideMaster') {
+      if (guideIndex !== null && Number.isInteger(guideIndex)) {
+        state.setSelection({ layerIds: [], pointIds: [], guideIndexes: [guideIndex] });
+        state.setSelectedIconGuideIndex(guideIndex);
+
+        if (selectionHandle) {
+          const placement = this.beginGuideItemResize(guideIndex, selectionHandle, e);
+          if (placement) this.capturePointer(e.pointerId);
+          return;
+        }
+
+        if (handleType === 'selection-bbox') {
+          const placement = this.beginGuideItemMove(guideIndex, e);
+          if (placement) this.capturePointer(e.pointerId);
+          return;
+        }
+      }
+
+      const hitGuideIndex = this.findGuideItemAtPointer(e.clientX, e.clientY);
+      if (hitGuideIndex !== null) {
+        state.setSelection({ layerIds: [], pointIds: [], guideIndexes: [hitGuideIndex] });
+        state.setSelectedIconGuideIndex(hitGuideIndex);
+        const placement = this.beginGuideItemMove(hitGuideIndex, e);
+        if (placement) this.capturePointer(e.pointerId);
+        return;
+      }
     }
 
     if (tool === 'direct-select') {
@@ -585,6 +648,11 @@ export class PathEditor {
 
     if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
       this.updateShapePreview(e);
+      return;
+    }
+
+    if (this.guideItemPlacement && e.pointerId === this.guideItemPlacement.pointerId) {
+      this.updateGuideItemPreview(e);
       return;
     }
 
@@ -1108,6 +1176,102 @@ export class PathEditor {
     return this.shapePlacement;
   }
 
+  private beginGuideItemPlacement(e: PointerEvent): GuideItemPlacement | null {
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster') return null;
+    const master = state.project?.guideMasters?.[state.editScope.masterId];
+    if (!master) return null;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+    const start = this.computeGuideSnappedPoint(svgPoint, true);
+    const nextItem = buildGuideItemFromDrag(state.shapeSubTool, start, start, e);
+    if (!nextItem) return null;
+
+    const index = master.items.length;
+    pauseHistory();
+    state.addGuideItem(master.id, nextItem);
+    state.setSelection({ layerIds: [], pointIds: [], guideIndexes: [index] });
+    state.setSelectedIconGuideIndex(index);
+
+    this.dragMode = 'guide-item';
+    this.isDragging = true;
+    this.guideItemPlacement = {
+      masterId: master.id,
+      index,
+      pointerId: e.pointerId,
+      start,
+      baseItem: nextItem,
+      previousSelection: state.selection,
+      mode: 'create',
+    };
+    return this.guideItemPlacement;
+  }
+
+  private beginGuideItemMove(index: number, e: PointerEvent): GuideItemPlacement | null {
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster') return null;
+    const master = state.project?.guideMasters?.[state.editScope.masterId];
+    const item = master?.items[index];
+    if (!master || !item) return null;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+
+    this.dragMode = 'guide-item';
+    this.isDragging = true;
+    this.guideItemPlacement = {
+      masterId: master.id,
+      index,
+      pointerId: e.pointerId,
+      start: svgPoint,
+      baseItem: item,
+      previousSelection: state.selection,
+      mode: 'move',
+    };
+    pauseHistory();
+
+    return this.guideItemPlacement;
+  }
+
+  private beginGuideItemResize(
+    index: number,
+    handle: BBoxHandle,
+    e: PointerEvent,
+  ): GuideItemPlacement | null {
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster') return null;
+    const master = state.project?.guideMasters?.[state.editScope.masterId];
+    const item = master?.items[index];
+    if (!master || !item) return null;
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return null;
+    const bounds = getGuideItemBounds(item, master.viewBox);
+    if (!bounds) return null;
+
+    this.dragMode = 'guide-item';
+    this.isDragging = true;
+    this.guideItemPlacement = {
+      masterId: master.id,
+      index,
+      pointerId: e.pointerId,
+      start: this.computeGuideSnappedPoint(svgPoint, true, index),
+      baseItem: item,
+      previousSelection: state.selection,
+      mode: 'resize',
+      handle,
+      bounds,
+    };
+    state.setPointTransformLabel({
+      width: bounds.maxX - bounds.minX,
+      height: bounds.maxY - bounds.minY,
+    });
+    pauseHistory();
+
+    return this.guideItemPlacement;
+  }
+
   private updateShapePreview(e: PointerEvent) {
     if (!this.shapePlacement) return;
 
@@ -1122,6 +1286,69 @@ export class PathEditor {
       path: { d: preview.d },
       primitive: preview.primitive,
     });
+  }
+
+  private updateGuideItemPreview(e: PointerEvent) {
+    const placement = this.guideItemPlacement;
+    if (!placement) return;
+
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster' || state.editScope.masterId !== placement.masterId) {
+      resumeHistory();
+      this.resetDrag();
+      return;
+    }
+    const master = state.project?.guideMasters?.[placement.masterId];
+    if (!master?.items[placement.index]) {
+      this.cancelGuideItemPlacement();
+      return;
+    }
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    if (!svgPoint) return;
+    const current = this.computeGuideSnappedPoint(svgPoint, true, placement.index);
+    const next = this.buildGuideItemTransformPreview(placement, current, e);
+    if (!next) return;
+
+    state.updateGuideItem(placement.masterId, placement.index, next);
+    if (placement.mode === 'resize') {
+      const bounds = getGuideItemBounds(next, master.viewBox);
+      if (bounds) {
+        state.setPointTransformLabel({
+          width: bounds.maxX - bounds.minX,
+          height: bounds.maxY - bounds.minY,
+        });
+      }
+    }
+  }
+
+  private buildGuideItemTransformPreview(
+    placement: GuideItemPlacement,
+    current: { x: number; y: number },
+    event: PointerEvent,
+  ): GuideItem | null {
+    const state = editorStore.getState();
+    if (placement.mode === 'create') {
+      return buildGuideItemFromDrag(state.shapeSubTool, placement.start, current, event);
+    }
+
+    if (placement.mode === 'move') {
+      return translateGuideItem(
+        placement.baseItem,
+        current.x - placement.start.x,
+        current.y - placement.start.y,
+      );
+    }
+
+    if (!placement.bounds || !placement.handle) return null;
+    const nextBounds = computeResizedBounds(
+      placement.bounds,
+      placement.handle,
+      current,
+      event.shiftKey,
+      event.altKey,
+    );
+    return resizeGuideItemToBounds(placement.baseItem, nextBounds);
   }
 
   private dragLayer(e: PointerEvent) {
@@ -1418,6 +1645,11 @@ export class PathEditor {
 
     if (this.shapePlacement && e.pointerId === this.shapePlacement.pointerId) {
       this.commitShapePlacement(e);
+      return;
+    }
+
+    if (this.guideItemPlacement && e.pointerId === this.guideItemPlacement.pointerId) {
+      this.commitGuideItemPlacement(e);
       return;
     }
 
@@ -1751,7 +1983,12 @@ export class PathEditor {
     maxY: number;
   }): number[] {
     const state = editorStore.getState();
-    const guides = state.currentIconId ? state.project?.icons[state.currentIconId]?.customGuides ?? [] : [];
+    const guides =
+      state.editScope.kind === 'guideMaster'
+        ? state.project?.guideMasters?.[state.editScope.masterId]?.items ?? []
+        : state.currentIconId
+          ? state.project?.icons[state.currentIconId]?.customGuides ?? []
+          : [];
     const matches: number[] = [];
 
     guides.forEach((guide, index) => {
@@ -1761,6 +1998,23 @@ export class PathEditor {
     });
 
     return matches;
+  }
+
+  private findGuideItemAtPointer(clientX: number, clientY: number): number | null {
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster') return null;
+    const master = state.project?.guideMasters?.[state.editScope.masterId];
+    if (!master?.items.length) return null;
+
+    const point = this.clientToSvg(clientX, clientY);
+    if (!point) return null;
+    const tolerance = this.svgUnitsPerScreenPx() * 8;
+
+    for (let index = master.items.length - 1; index >= 0; index -= 1) {
+      if (guideItemHitTest(master.items[index]!, point, tolerance)) return index;
+    }
+
+    return null;
   }
 
   private addPointAtPointer(layerId: string, clientX: number, clientY: number): string | null {
@@ -1860,8 +2114,14 @@ export class PathEditor {
     point: { x: number; y: number },
     sourceLayerId?: string,
     publishGuides = false,
+    sourceGuideIndex?: number,
+    tolerancePx?: number,
   ): SnapResult {
-    const result = this.snapEngine.computeSnap(point, { sourceLayerId });
+    const result = this.snapEngine.computeSnap(point, {
+      sourceLayerId,
+      sourceGuideIndex,
+      tolerancePx,
+    });
     if (publishGuides) {
       editorStore.getState().setActiveSnapGuides(result.guides);
     }
@@ -1870,6 +2130,20 @@ export class PathEditor {
 
   private snapPointToGrid(point: { x: number; y: number }) {
     return this.computeSnappedPoint(point);
+  }
+
+  private computeGuideSnappedPoint(
+    point: { x: number; y: number },
+    publishGuides = false,
+    sourceGuideIndex?: number,
+  ) {
+    return this.computeSnappedPoint(
+      point,
+      undefined,
+      publishGuides,
+      sourceGuideIndex,
+      GUIDE_SNAP_TOLERANCE_PX,
+    );
   }
 
   private clearActiveSnapGuides() {
@@ -2068,6 +2342,7 @@ export class PathEditor {
     this.originalPathD = null;
     this.originalEditable = null;
     this.shapePlacement = null;
+    this.guideItemPlacement = null;
     this.pointMarqueePlacement = null;
     this.selectionTransformPlacement = null;
     this.layerResizePlacement = null;
@@ -2261,6 +2536,47 @@ export class PathEditor {
     this.resetDrag();
   }
 
+  private commitGuideItemPlacement(e: PointerEvent) {
+    const placement = this.guideItemPlacement;
+    if (!placement) return;
+
+    const state = editorStore.getState();
+    if (state.editScope.kind !== 'guideMaster' || state.editScope.masterId !== placement.masterId) {
+      resumeHistory();
+      this.resetDrag();
+      return;
+    }
+
+    const svgPoint = this.clientToSvg(e.clientX, e.clientY);
+    const current = svgPoint
+      ? this.computeGuideSnappedPoint(svgPoint, true, placement.index)
+      : placement.start;
+    const next = this.buildGuideItemTransformPreview(placement, current, e);
+
+    if (!next || (placement.mode === 'create' && isGuideItemEmpty(next))) {
+      state.removeGuideItem(placement.masterId, placement.index);
+      state.setSelection(placement.previousSelection);
+      state.setSelectedIconGuideIndex(placement.previousSelection.guideIndexes?.[0] ?? null);
+      discardHistory();
+      this.resetDrag();
+      return;
+    }
+
+    state.updateGuideItem(placement.masterId, placement.index, next);
+    state.setSelection({ layerIds: [], pointIds: [], guideIndexes: [placement.index] });
+    state.setSelectedIconGuideIndex(placement.index);
+    state.setPointTransformLabel(null);
+    resumeHistory();
+    commitHistory(
+      placement.mode === 'create'
+        ? 'guide-item-draw'
+        : placement.mode === 'resize'
+          ? 'guide-item-resize'
+          : 'guide-item-move',
+    );
+    this.resetDrag();
+  }
+
   private cancelShapePlacement() {
     const previousSelection = this.shapePlacement?.previousSelection ?? {
       layerIds: [],
@@ -2269,6 +2585,17 @@ export class PathEditor {
 
     discardHistory();
     editorStore.getState().setSelection(previousSelection);
+    this.resetDrag();
+  }
+
+  private cancelGuideItemPlacement() {
+    const placement = this.guideItemPlacement;
+    if (placement?.mode === 'create') {
+      editorStore.getState().removeGuideItem(placement.masterId, placement.index);
+      editorStore.getState().setSelection(placement.previousSelection);
+    }
+    editorStore.getState().setPointTransformLabel(null);
+    discardHistory();
     this.resetDrag();
   }
 
@@ -2733,6 +3060,13 @@ function guideIntersectsMarquee(
       return guide.y >= marquee.minY && guide.y <= marquee.maxY;
     case 'vline':
       return guide.x >= marquee.minX && guide.x <= marquee.maxX;
+    case 'line':
+      return (
+        Math.max(guide.x1, guide.x2) >= marquee.minX &&
+        Math.min(guide.x1, guide.x2) <= marquee.maxX &&
+        Math.max(guide.y1, guide.y2) >= marquee.minY &&
+        Math.min(guide.y1, guide.y2) <= marquee.maxY
+      );
     case 'rect':
       return (
         guide.x + guide.width >= marquee.minX &&
@@ -2752,6 +3086,111 @@ function guideIntersectsMarquee(
     default:
       return false;
   }
+}
+
+function buildGuideItemFromDrag(
+  shapeType: ShapeType,
+  start: { x: number; y: number },
+  current: { x: number; y: number },
+  event: PointerEvent,
+): GuideItem | null {
+  const bounds = normalizeBounds(start, current);
+  if (shapeType === 'ellipse') {
+    return {
+      kind: 'ellipse',
+      cx: (bounds.minX + bounds.maxX) / 2,
+      cy: (bounds.minY + bounds.maxY) / 2,
+      rx: Math.abs(bounds.maxX - bounds.minX) / 2,
+      ry: Math.abs(bounds.maxY - bounds.minY) / 2,
+    };
+  }
+  if (shapeType === 'line') {
+    const dx = current.x - start.x;
+    const dy = current.y - start.y;
+    if (event.shiftKey) {
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        return { kind: 'line', x1: start.x, y1: start.y, x2: current.x, y2: start.y };
+      }
+      return { kind: 'line', x1: start.x, y1: start.y, x2: start.x, y2: current.y };
+    }
+    return { kind: 'line', x1: start.x, y1: start.y, x2: current.x, y2: current.y };
+  }
+  if (shapeType !== 'rectangle') return null;
+  return {
+    kind: 'rect',
+    x: bounds.minX,
+    y: bounds.minY,
+    width: Math.abs(bounds.maxX - bounds.minX),
+    height: Math.abs(bounds.maxY - bounds.minY),
+    radius: 0,
+  };
+}
+
+function isGuideItemEmpty(item: GuideItem): boolean {
+  switch (item.kind) {
+    case 'line':
+      return Math.hypot(item.x2 - item.x1, item.y2 - item.y1) < SHAPE_EMPTY_EPSILON;
+    case 'rect':
+      return item.width < SHAPE_EMPTY_EPSILON || item.height < SHAPE_EMPTY_EPSILON;
+    case 'ellipse':
+      return item.rx < SHAPE_EMPTY_EPSILON || item.ry < SHAPE_EMPTY_EPSILON;
+    default:
+      return false;
+  }
+}
+
+function guideItemHitTest(
+  item: GuideItem,
+  point: { x: number; y: number },
+  tolerance: number,
+): boolean {
+  switch (item.kind) {
+    case 'hline':
+      return Math.abs(point.y - item.y) <= tolerance;
+    case 'vline':
+      return Math.abs(point.x - item.x) <= tolerance;
+    case 'line':
+      return pointToSegmentDistance(point, { x: item.x1, y: item.y1 }, { x: item.x2, y: item.y2 }) <= tolerance;
+    case 'rect': {
+      const minX = Math.min(item.x, item.x + item.width);
+      const maxX = Math.max(item.x, item.x + item.width);
+      const minY = Math.min(item.y, item.y + item.height);
+      const maxY = Math.max(item.y, item.y + item.height);
+      const nearVertical =
+        point.y >= minY - tolerance &&
+        point.y <= maxY + tolerance &&
+        (Math.abs(point.x - minX) <= tolerance || Math.abs(point.x - maxX) <= tolerance);
+      const nearHorizontal =
+        point.x >= minX - tolerance &&
+        point.x <= maxX + tolerance &&
+        (Math.abs(point.y - minY) <= tolerance || Math.abs(point.y - maxY) <= tolerance);
+      return nearVertical || nearHorizontal;
+    }
+    case 'ellipse': {
+      const rx = Math.max(Math.abs(item.rx), tolerance);
+      const ry = Math.max(Math.abs(item.ry), tolerance);
+      const normalized =
+        ((point.x - item.cx) * (point.x - item.cx)) / (rx * rx) +
+        ((point.y - item.cy) * (point.y - item.cy)) / (ry * ry);
+      const band = tolerance / Math.max(rx, ry);
+      return Math.abs(normalized - 1) <= Math.max(0.08, band);
+    }
+    case 'drawPoint':
+      return false;
+  }
+}
+
+function pointToSegmentDistance(
+  point: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq === 0) return Math.hypot(point.x - a.x, point.y - a.y);
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSq));
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
 }
 
 function getSelectionHandlePositions(bounds: SelectionBounds): Record<BBoxHandle, { x: number; y: number }> {

@@ -111,6 +111,7 @@ export function useCanvasOverlay(
         drawGuideItems(
           scope,
           guideSet.items,
+          selection.guideIndexes ?? [],
           viewBox,
           guideSet.viewBox,
           toScreen,
@@ -372,6 +373,7 @@ function formatMeasure(value: number): string {
 function drawGuideItems(
   scope: PaperScopeInstance,
   items: GuideItem[],
+  selectedIndexes: number[],
   viewBox: [number, number, number, number],
   guideViewBox: [number, number, number, number] | undefined,
   toScreen: (x: number, y: number) => PaperPoint,
@@ -386,19 +388,26 @@ function drawGuideItems(
   const guideStroke = new scope.Color(
     guideStyle === 'strong' ? 'rgba(148,163,184,0.45)' : 'rgba(148,163,184,0.18)',
   );
+  const selectedStroke = new scope.Color('rgba(168,133,242,0.95)');
   const guideFill = new scope.Color('rgba(148,163,184,0.30)');
   const dashArray = guideStyle === 'strong' ? undefined : [4, 6];
+  const selectedSet = new Set(selectedIndexes);
 
-  for (const item of items) {
+  items.forEach((item, index) => {
+    const isSelected = selectedSet.has(index);
+    const stroke = isSelected ? selectedStroke : guideStroke;
+    const strokeWidth = isSelected ? 1.5 : 1;
+    const itemDash = isSelected ? undefined : dashArray;
+
     switch (item.kind) {
       case 'hline': {
         const y = mapY(item.y);
         const a = toScreen(vx, y);
         const b = toScreen(vx + vw, y);
         const line = new scope.Path.Line(a, b);
-        line.strokeColor = guideStroke;
-        line.strokeWidth = 1;
-        line.dashArray = dashArray;
+        line.strokeColor = stroke;
+        line.strokeWidth = strokeWidth;
+        line.dashArray = itemDash;
         break;
       }
       case 'vline': {
@@ -406,22 +415,41 @@ function drawGuideItems(
         const a = toScreen(x, vy);
         const b = toScreen(x, vy + vh);
         const line = new scope.Path.Line(a, b);
-        line.strokeColor = guideStroke;
-        line.strokeWidth = 1;
-        line.dashArray = dashArray;
+        line.strokeColor = stroke;
+        line.strokeWidth = strokeWidth;
+        line.dashArray = itemDash;
+        break;
+      }
+      case 'line': {
+        const a = toScreen(mapX(item.x1), mapY(item.y1));
+        const b = toScreen(mapX(item.x2), mapY(item.y2));
+        const line = new scope.Path.Line(a, b);
+        line.strokeColor = stroke;
+        line.strokeWidth = strokeWidth;
+        line.dashArray = itemDash;
         break;
       }
       case 'rect': {
         const p = toScreen(mapX(item.x), mapY(item.y));
         const q = toScreen(mapX(item.x + item.width), mapY(item.y + item.height));
+        const radius = Math.max(0, item.radius ?? 0);
+        const rx = Math.min(
+          Math.abs(q.x - p.x) / 2,
+          Math.abs(toScreen(mapX(item.x + radius), mapY(item.y)).x - p.x),
+        );
+        const ry = Math.min(
+          Math.abs(q.y - p.y) / 2,
+          Math.abs(toScreen(mapX(item.x), mapY(item.y + radius)).y - p.y),
+        );
         const rect = new scope.Path.Rectangle({
           from: p,
           to: q,
-          strokeColor: guideStroke,
-          strokeWidth: 1,
+          ...(radius > 0 ? { radius: new scope.Size(rx, ry) } : null),
+          strokeColor: stroke,
+          strokeWidth,
         });
         rect.fillColor = null;
-        rect.dashArray = dashArray;
+        rect.dashArray = itemDash;
         break;
       }
       case 'ellipse': {
@@ -433,11 +461,11 @@ function drawGuideItems(
         const ellipse = new scope.Path.Ellipse({
           center,
           radius: new scope.Size(rx, ry),
-          strokeColor: guideStroke,
-          strokeWidth: 1,
+          strokeColor: stroke,
+          strokeWidth,
         });
         ellipse.fillColor = null;
-        ellipse.dashArray = dashArray;
+        ellipse.dashArray = itemDash;
         break;
       }
       case 'drawPoint': {
@@ -451,7 +479,8 @@ function drawGuideItems(
         break;
       }
     }
-  }
+
+  });
 }
 
 function drawActiveSnapGuides(

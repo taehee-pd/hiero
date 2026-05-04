@@ -1183,27 +1183,29 @@ function LockedSourceEndpoint({
   return (
     <fieldset className="grid gap-1.5 rounded-lg border border-border/60 bg-background/60 p-2">
       <legend className="px-1.5 text-[10px] font-medium text-muted-foreground">Source</legend>
-      <div className="grid gap-1.5">
-        <Label className="text-[10px] font-medium text-muted-foreground">Source icon</Label>
-        <div className="flex h-8 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
-          {iconName}
+      <div className="grid grid-cols-[minmax(0,1fr)_96px] items-end gap-2">
+        <div className="grid min-w-0 gap-1.5">
+          <Label className="text-[10px] font-medium text-muted-foreground">Source icon</Label>
+          <div className="flex h-8 min-w-0 items-center rounded-lg border border-input bg-muted/30 px-3 text-xs text-foreground">
+            <span className="truncate">{iconName}</span>
+          </div>
         </div>
-      </div>
-      <div className="grid gap-1.5">
-        <Label className="text-[10px] font-medium text-muted-foreground">Source variant</Label>
-        <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
-          <SelectTrigger className="h-8 rounded-lg">
-            <SelectValue placeholder="Select variant…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Select variant…</SelectItem>
-            {variants.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.name || v.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid gap-1.5">
+          <Label className="text-[10px] font-medium text-muted-foreground">Variant</Label>
+          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)}>
+            <SelectTrigger className="h-8 rounded-lg">
+              <SelectValue placeholder="Variant…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select variant…</SelectItem>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name || v.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </fieldset>
   );
@@ -1230,37 +1232,39 @@ function CrossIconEndpointPicker({
   return (
     <fieldset className="grid gap-1.5 rounded-lg border border-border/60 bg-background/60 p-2">
       <legend className="px-1.5 text-[10px] font-medium text-muted-foreground">{label}</legend>
-      <div className="grid gap-1.5">
-        <Label className="text-[10px] font-medium text-muted-foreground">{qualifier} icon</Label>
-        <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
-          <SelectTrigger className="h-8 rounded-lg">
-            <SelectValue placeholder="Select icon…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Select icon…</SelectItem>
-            {iconEntries.map((icon) => (
-              <SelectItem key={icon.id} value={icon.id}>
-                {icon.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid gap-1.5">
-        <Label className="text-[10px] font-medium text-muted-foreground">{qualifier} variant</Label>
-        <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
-          <SelectTrigger className="h-8 rounded-lg">
-            <SelectValue placeholder="Select variant…" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Select variant…</SelectItem>
-            {variants.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.name || v.id}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-[minmax(0,1fr)_96px] items-end gap-2">
+        <div className="grid min-w-0 gap-1.5">
+          <Label className="text-[10px] font-medium text-muted-foreground">{qualifier} icon</Label>
+          <Select value={selectedIconId || '__none__'} onValueChange={(v) => onIconChange(v === '__none__' ? '' : v)}>
+            <SelectTrigger className="h-8 rounded-lg">
+              <SelectValue placeholder="Select icon…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select icon…</SelectItem>
+              {iconEntries.map((icon) => (
+                <SelectItem key={icon.id} value={icon.id}>
+                  {icon.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-1.5">
+          <Label className="text-[10px] font-medium text-muted-foreground">Variant</Label>
+          <Select value={selectedVariantId || '__none__'} onValueChange={(v) => onVariantChange(v === '__none__' ? '' : v)} disabled={!selectedIconId}>
+            <SelectTrigger className="h-8 rounded-lg">
+              <SelectValue placeholder="Variant…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Select variant…</SelectItem>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name || v.id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </fieldset>
   );

@@ -1,6 +1,19 @@
 'use client';
 
-import { Icon as UiIcon, MousePointer2, PenTool, Square } from '@hiero/ui-icons';
+import {
+  AlignHorizontalJustifyCenter,
+  AlignHorizontalJustifyEnd,
+  AlignHorizontalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
+  Circle,
+  Icon as UiIcon,
+  Minus,
+  MousePointer2,
+  PenTool,
+  Square,
+} from '@hiero/ui-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -41,7 +54,7 @@ import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { toast } from '@/components/ui/use-toast';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
-import type { Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
+import type { GuideItem, Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
@@ -54,6 +67,11 @@ import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
 import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
 import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
+import {
+  alignGuideItemsToViewBox,
+  type GuideAlignMode,
+} from '@/lib/editor-core/guide-item-geometry';
+import { commitHistory, pauseHistory, resumeHistory } from '@/lib/editor-store/history';
 import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
 import {
   Select,
@@ -78,7 +96,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
-import { ColorField } from '@/components/ds/color-field';
+import { ColorField, IconButton } from '@/components/ds';
 import { AnimatePanel, type AnimationKind } from './AnimatePanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
@@ -95,6 +113,30 @@ const TOOL_ITEMS = [
   { tool: 'shape', label: 'Shape', icon: Square, shortcut: 'U' },
   { tool: 'pen', label: 'Pen', icon: PenTool, shortcut: 'P' },
 ] as const;
+
+const GUIDE_TOOL_ITEMS = [
+  { tool: 'select', label: 'Select guide item', icon: MousePointer2, shortcut: 'V' },
+  { tool: 'shape', label: 'Shape', icon: Square, shortcut: 'U' },
+] as const;
+
+const GUIDE_SHAPE_ITEMS = [
+  { shape: 'rectangle', label: 'Rectangle', icon: Square },
+  { shape: 'ellipse', label: 'Ellipse', icon: Circle },
+  { shape: 'line', label: 'Line', icon: Minus },
+] as const;
+
+const GUIDE_ALIGN_ACTIONS: Array<{
+  mode: GuideAlignMode;
+  label: string;
+  icon: typeof AlignHorizontalJustifyStart;
+}> = [
+  { mode: 'left', label: 'Align left', icon: AlignHorizontalJustifyStart },
+  { mode: 'center-h', label: 'Align center horizontally', icon: AlignHorizontalJustifyCenter },
+  { mode: 'right', label: 'Align right', icon: AlignHorizontalJustifyEnd },
+  { mode: 'top', label: 'Align top', icon: AlignVerticalJustifyStart },
+  { mode: 'center-v', label: 'Align center vertically', icon: AlignVerticalJustifyCenter },
+  { mode: 'bottom', label: 'Align bottom', icon: AlignVerticalJustifyEnd },
+];
 
 const RENDERING_MODE_OPTIONS: Array<{ value: RenderingMode; label: string }> = [
   { value: 'monochrome', label: 'Monochrome' },
@@ -300,6 +342,141 @@ function DocumentSizeField({
       ) : null}
     </div>
   );
+}
+
+function GuideItemInspector({
+  item,
+  onChange,
+  onRemove,
+}: {
+  item: GuideItem;
+  onChange: (item: GuideItem) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <>
+      <TinyLabel>Guide item</TinyLabel>
+      <div className="wire-meta-row">
+        <span className="wire-field-name">Type</span>
+        <span className="text-[length:var(--text-label)] text-foreground">
+          {formatGuideItemKind(item)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <GuideItemFields item={item} onChange={onChange} />
+      </div>
+      <Separator className="my-1" />
+      <div className="flex justify-end pt-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 rounded-md px-2 text-[10px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          onClick={onRemove}
+        >
+          <UiIcon name="trash-2" size={16} className="size-4" />
+          Delete guide item
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function GuideItemFields({
+  item,
+  onChange,
+}: {
+  item: GuideItem;
+  onChange: (item: GuideItem) => void;
+}) {
+  switch (item.kind) {
+    case 'hline':
+      return (
+        <GuideNumberField label="Y" value={item.y} onValueChange={(y) => onChange({ ...item, y })} />
+      );
+    case 'vline':
+      return (
+        <GuideNumberField label="X" value={item.x} onValueChange={(x) => onChange({ ...item, x })} />
+      );
+    case 'line':
+      return (
+        <>
+          <GuideNumberField label="X1" value={item.x1} onValueChange={(x1) => onChange({ ...item, x1 })} />
+          <GuideNumberField label="Y1" value={item.y1} onValueChange={(y1) => onChange({ ...item, y1 })} />
+          <GuideNumberField label="X2" value={item.x2} onValueChange={(x2) => onChange({ ...item, x2 })} />
+          <GuideNumberField label="Y2" value={item.y2} onValueChange={(y2) => onChange({ ...item, y2 })} />
+        </>
+      );
+    case 'rect':
+      return (
+        <>
+          <GuideNumberField label="X" value={item.x} onValueChange={(x) => onChange({ ...item, x })} />
+          <GuideNumberField label="Y" value={item.y} onValueChange={(y) => onChange({ ...item, y })} />
+          <GuideNumberField label="Width" value={item.width} onValueChange={(width) => onChange({ ...item, width })} />
+          <GuideNumberField label="Height" value={item.height} onValueChange={(height) => onChange({ ...item, height })} />
+          <GuideNumberField label="Radius" value={item.radius ?? 0} onValueChange={(radius) => onChange({ ...item, radius: Math.max(0, radius) })} />
+        </>
+      );
+    case 'ellipse':
+      return (
+        <>
+          <GuideNumberField label="CX" value={item.cx} onValueChange={(cx) => onChange({ ...item, cx })} />
+          <GuideNumberField label="CY" value={item.cy} onValueChange={(cy) => onChange({ ...item, cy })} />
+          <GuideNumberField label="RX" value={item.rx} onValueChange={(rx) => onChange({ ...item, rx })} />
+          <GuideNumberField label="RY" value={item.ry} onValueChange={(ry) => onChange({ ...item, ry })} />
+        </>
+      );
+    case 'drawPoint':
+      return (
+        <div className="col-span-2 text-[length:var(--text-label)] text-muted-foreground">
+          Layer: {item.layerId || '(unset)'} · t={item.t.toFixed(2)}
+        </div>
+      );
+  }
+}
+
+function GuideNumberField({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: number;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <RowField label={label}>
+      <Input
+        type="number"
+        min={-9999}
+        max={9999}
+        step="0.25"
+        value={value}
+        onChange={(event) => {
+          const next = Number.parseFloat(event.target.value);
+          if (Number.isFinite(next)) onValueChange(next);
+        }}
+        variant="pane"
+        className="w-full"
+      />
+    </RowField>
+  );
+}
+
+function formatGuideItemKind(item: GuideItem) {
+  switch (item.kind) {
+    case 'hline':
+      return 'Horizontal line';
+    case 'vline':
+      return 'Vertical line';
+    case 'line':
+      return 'Line';
+    case 'rect':
+      return 'Rectangle';
+    case 'ellipse':
+      return 'Ellipse';
+    case 'drawPoint':
+      return 'Draw point';
+  }
 }
 
 /* ToolRail removed — search/import actions moved to sidebar head */
@@ -1219,25 +1396,37 @@ function LayerRowsList({
 
 function CanvasDock({
   activeTool,
+  guideEditingActive,
   zoom,
   guidesVisible,
   snapEnabled,
   onToolSelect,
+  onShapeSelect,
+  onGuideAlign,
   onZoomChange,
   onToggleGuides,
   onToggleSnap,
 }: {
   activeTool: string;
+  guideEditingActive: boolean;
   zoom: number;
   guidesVisible: boolean;
   snapEnabled: boolean;
   onToolSelect: (tool: (typeof TOOL_ITEMS)[number]['tool']) => void;
+  onShapeSelect: (shape: (typeof GUIDE_SHAPE_ITEMS)[number]['shape']) => void;
+  onGuideAlign: (mode: GuideAlignMode) => void;
   onZoomChange: (zoom: number | 'fit') => void;
   onToggleGuides: () => void;
   onToggleSnap: () => void;
 }) {
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
+  const [shapeMenuOpen, setShapeMenuOpen] = useState(false);
   const [zoomInput, setZoomInput] = useState(formatZoomPercent(zoom));
+  const shapeSubTool = useEditorStore((s) => s.shapeSubTool);
+  const selectedGuideCount = useEditorStore((s) => s.selection.guideIndexes?.length ?? 0);
+  const dockTools = guideEditingActive ? GUIDE_TOOL_ITEMS : TOOL_ITEMS;
+  const activeGuideShape =
+    GUIDE_SHAPE_ITEMS.find((item) => item.shape === shapeSubTool) ?? GUIDE_SHAPE_ITEMS[0]!;
 
   useEffect(() => {
     setZoomInput(formatZoomPercent(zoom));
@@ -1271,29 +1460,87 @@ function CanvasDock({
   return (
     <div className="wire-dock">
       <div className="wire-dock-group">
-        {TOOL_ITEMS.map((item) => {
-          const Icon = item.icon;
+        {dockTools.map((item) => {
+          const isGuideShape = guideEditingActive && item.tool === 'shape';
+          const Icon = isGuideShape ? activeGuideShape.icon : item.icon;
           return (
-            <Tooltip key={item.tool}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  data-active={activeTool === item.tool ? 'true' : 'false'}
-                  className="wire-dock-icon"
-                  onClick={() => onToolSelect(item.tool)}
-                  aria-label={item.label}
-                >
-                  <Icon className="size-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {item.label} ({item.shortcut})
-              </TooltipContent>
-            </Tooltip>
+            <div key={item.tool} className="flex items-center gap-1">
+              <IconButton
+                icon={<Icon className="size-4" />}
+                data-active={activeTool === item.tool ? 'true' : 'false'}
+                className="wire-dock-icon"
+                onClick={() => onToolSelect(item.tool)}
+                aria-label={isGuideShape ? `Shape: ${activeGuideShape.label}` : item.label}
+                tooltip={`${isGuideShape ? `Shape: ${activeGuideShape.label}` : item.label} (${item.shortcut})`}
+                size="sm"
+                radius="toolbar"
+              />
+              {isGuideShape ? (
+                <Popover open={shapeMenuOpen} onOpenChange={setShapeMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <IconButton
+                      icon={<UiIcon name="chevron-down" className="size-3.5" />}
+                      className="wire-dock-icon"
+                      aria-label="Choose guide shape"
+                      tooltip={false}
+                      size="sm"
+                      radius="toolbar"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="center"
+                    className="w-[168px] overflow-hidden rounded-lg border border-border/70 bg-background p-1 text-foreground shadow-[var(--shadow-panel)]"
+                  >
+                    {GUIDE_SHAPE_ITEMS.map((shape) => {
+                      const ShapeIcon = shape.icon;
+                      const selected = shape.shape === shapeSubTool;
+                      return (
+                        <Button
+                          key={shape.shape}
+                          variant="pane"
+                          size="pane"
+                          data-active={selected ? 'true' : 'false'}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            onShapeSelect(shape.shape);
+                            onToolSelect('shape');
+                            setShapeMenuOpen(false);
+                          }}
+                        >
+                          <ShapeIcon className="size-4" />
+                          {shape.label}
+                        </Button>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+              ) : null}
+            </div>
           );
         })}
       </div>
+
+      {guideEditingActive ? (
+        <div className="wire-dock-group">
+          {GUIDE_ALIGN_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <IconButton
+                key={action.mode}
+                icon={<Icon className="size-4" />}
+                className="wire-dock-icon"
+                disabled={selectedGuideCount === 0}
+                aria-label={action.label}
+                tooltip={action.label}
+                size="sm"
+                radius="toolbar"
+                onClick={() => onGuideAlign(action.mode)}
+              />
+            );
+          })}
+        </div>
+      ) : null}
 
       <Popover open={zoomMenuOpen} onOpenChange={setZoomMenuOpen}>
         <PopoverTrigger asChild>
@@ -1387,38 +1634,28 @@ function CanvasDock({
       </Popover>
 
       <div className="wire-dock-group">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              data-active={snapEnabled ? 'true' : 'false'}
-              aria-pressed={snapEnabled}
-              aria-label="Toggle snap"
-              className="wire-dock-icon"
-              onClick={onToggleSnap}
-            >
-              <UiIcon name="magnet" size={16} className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Snap {snapEnabled ? 'On' : 'Off'}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              data-active={guidesVisible ? 'true' : 'false'}
-              aria-pressed={guidesVisible}
-              aria-label="Toggle guides"
-              className="wire-dock-icon"
-              onClick={onToggleGuides}
-            >
-              <UiIcon name="ruler" size={16} className="size-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Guides {guidesVisible ? 'On' : 'Off'}</TooltipContent>
-        </Tooltip>
+        <IconButton
+          icon={<UiIcon name="magnet" className="size-4" />}
+          data-active={snapEnabled ? 'true' : 'false'}
+          aria-pressed={snapEnabled}
+          aria-label="Toggle snap"
+          tooltip={`Snap ${snapEnabled ? 'On' : 'Off'}`}
+          className="wire-dock-icon"
+          size="sm"
+          radius="toolbar"
+          onClick={onToggleSnap}
+        />
+        <IconButton
+          icon={<UiIcon name="ruler" className="size-4" />}
+          data-active={guidesVisible ? 'true' : 'false'}
+          aria-pressed={guidesVisible}
+          aria-label="Toggle guides"
+          tooltip={`Guides ${guidesVisible ? 'On' : 'Off'}`}
+          className="wire-dock-icon"
+          size="sm"
+          radius="toolbar"
+          onClick={onToggleGuides}
+        />
       </div>
     </div>
   );
@@ -1428,6 +1665,8 @@ function RightSidebar({
   rightTab,
   onRightTabChange,
   selectedLayer,
+  selectedGuideItem,
+  editingGuideMasterName,
   currentIcon,
   currentVariant,
   onRenameIcon,
@@ -1436,6 +1675,8 @@ function RightSidebar({
   onPatchSelectedLayer,
   onPatchSelectedLayerStyle,
   onPatchSelectedLayerTransform,
+  onPatchSelectedGuideItem,
+  onRemoveSelectedGuideItem,
   onDeleteVariant,
   guideMasterName,
   guidesVisible,
@@ -1443,6 +1684,8 @@ function RightSidebar({
   rightTab: RightTab;
   onRightTabChange: (tab: RightTab) => void;
   selectedLayer: Layer | null;
+  selectedGuideItem: GuideItem | null;
+  editingGuideMasterName: string | null;
   currentIcon: Icon | null;
   currentVariant: Variant | null;
   onRenameIcon: (value: string) => void;
@@ -1451,6 +1694,8 @@ function RightSidebar({
   onPatchSelectedLayer: (patch: Partial<Layer>) => void;
   onPatchSelectedLayerStyle: (patch: Partial<Layer['style']>) => void;
   onPatchSelectedLayerTransform: (patch: Partial<NonNullable<Layer['transform']>>) => void;
+  onPatchSelectedGuideItem: (item: GuideItem) => void;
+  onRemoveSelectedGuideItem: () => void;
   onDeleteVariant: () => void;
   guideMasterName: string | null;
   guidesVisible: boolean;
@@ -1484,8 +1729,15 @@ function RightSidebar({
       <div className="wire-sidebar-block wire-sidebar-head">
         <div className="wire-sidebar-title-row">
           <InlineEditableTitle
-            value={selectedLayer?.id ?? currentIcon?.name ?? 'Inspect'}
+            value={
+              selectedLayer?.id ??
+              (selectedGuideItem ? `${formatGuideItemKind(selectedGuideItem)} guide` : null) ??
+              editingGuideMasterName ??
+              currentIcon?.name ??
+              'Inspect'
+            }
             onCommit={(newValue) => {
+              if (selectedGuideItem) return;
               if (selectedLayer) {
                 onRenameLayer(selectedLayer.id, newValue);
               } else {
@@ -1531,7 +1783,13 @@ function RightSidebar({
           className="wire-section animate-in fade-in duration-150"
         >
           {rightTab === 'inspect' ? (
-            selectedLayer ? (
+            selectedGuideItem ? (
+              <GuideItemInspector
+                item={selectedGuideItem}
+                onChange={onPatchSelectedGuideItem}
+                onRemove={onRemoveSelectedGuideItem}
+              />
+            ) : selectedLayer ? (
               <>
                 <TinyLabel>Layer</TinyLabel>
                 <RowField
@@ -1836,6 +2094,32 @@ function RightSidebar({
                   </RowField>
                 </div>
               </>
+            ) : editingGuideMasterName ? (
+              <>
+                <TinyLabel>Guide master</TinyLabel>
+                <div className="wire-meta-row">
+                  <span className="wire-field-name">Name</span>
+                  <span className="text-[length:var(--text-label)] text-foreground">
+                    {editingGuideMasterName}
+                  </span>
+                </div>
+                <div className="wire-meta-row">
+                  <span className="wire-field-name">Selected item</span>
+                  <span className="text-[length:var(--text-label)] text-muted-foreground">
+                    None
+                  </span>
+                </div>
+                <div className="wire-meta-row">
+                  <span className="wire-field-name">Visible</span>
+                  <Switch
+                    checked={guidesVisible}
+                    onCheckedChange={() => {
+                      editorStore.getState().toggleGuidesVisible?.();
+                    }}
+                    aria-label="Toggle guides visibility"
+                  />
+                </div>
+              </>
             ) : (
               <>
                 <TinyLabel>Document</TinyLabel>
@@ -1882,27 +2166,23 @@ function RightSidebar({
                     </span>
                   }
                 >
-                  <ToggleGroup
-                    type="single"
-                    size="sm"
-                    variant="outline"
+                  <Select
                     value={currentVariant?.renderingMode ?? 'monochrome'}
                     onValueChange={(value) => {
-                      if (value) onPatchVariant({ renderingMode: value as RenderingMode });
+                      onPatchVariant({ renderingMode: value as RenderingMode });
                     }}
-                    className="h-7 w-full justify-stretch rounded-md border border-border/70"
                   >
-                    {RENDERING_MODE_OPTIONS.map((option) => (
-                      <ToggleGroupItem
-                        key={option.value}
-                        value={option.value}
-                        aria-label={option.label}
-                        className="flex-1 px-1 text-[length:var(--text-label)]"
-                      >
-                        {option.label}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
+                    <SelectTrigger className={editorSelectTriggerClassName}>
+                      <SelectValue placeholder="Select rendering mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RENDERING_MODE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </RowField>
                 <Separator className="my-1" />
                 <TinyLabel>Guides</TinyLabel>
@@ -1983,6 +2263,7 @@ export function EditorShell({
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
   const selection = useEditorStore((s) => s.selection);
   const tool = useEditorStore((s) => s.tool);
+  const editScope = useEditorStore((s) => s.editScope);
   const snapEnabled = useEditorStore((s) => s.snapEnabled);
   const guidesVisible = useEditorStore((s) => s.guidesVisible);
   const viewport = useEditorStore((s) => s.viewport);
@@ -2010,6 +2291,7 @@ export function EditorShell({
     setCurrentIcon,
     setCurrentVariant,
     setCurrentType,
+    setShapeSubTool,
     addType,
     removeType,
     renameType,
@@ -2019,6 +2301,8 @@ export function EditorShell({
     setTool,
     setTransitionPreview,
     setViewport,
+    updateGuideItem,
+    removeGuideItem,
     toggleGuidesVisible,
     toggleSnap,
   } = useEditorActions();
@@ -2060,6 +2344,49 @@ export function EditorShell({
 
   const selectedLayerId = selection.layerIds[0] ?? null;
   const selectedLayer = selectedLayerId ? (currentVariant?.layers[selectedLayerId] ?? null) : null;
+  const selectedGuideIndexes = selection.guideIndexes ?? [];
+  const selectedGuideIndex = selection.guideIndexes?.[0] ?? null;
+  const selectedGuideItem =
+    editScope.kind === 'guideMaster' && selectedGuideIndex !== null
+      ? (project?.guideMasters?.[editScope.masterId]?.items[selectedGuideIndex] ?? null)
+      : null;
+  const editingGuideMaster =
+    editScope.kind === 'guideMaster' ? (project?.guideMasters?.[editScope.masterId] ?? null) : null;
+
+  const handlePatchSelectedGuideItem = (item: GuideItem) => {
+    if (!editingGuideMaster || selectedGuideIndex === null) return;
+    updateGuideItem(editingGuideMaster.id, selectedGuideIndex, item);
+  };
+
+  const handleRemoveSelectedGuideItem = () => {
+    if (!editingGuideMaster || selectedGuideIndex === null) return;
+    removeGuideItem(editingGuideMaster.id, selectedGuideIndex);
+  };
+
+  const handleAlignSelectedGuideItems = (mode: GuideAlignMode) => {
+    if (!editingGuideMaster || selectedGuideIndexes.length === 0) return;
+    const nextItems = alignGuideItemsToViewBox(
+      mode,
+      editingGuideMaster.items,
+      selectedGuideIndexes,
+      editingGuideMaster.viewBox,
+    );
+    const selected = new Set(selectedGuideIndexes);
+    let changed = false;
+
+    pauseHistory();
+    try {
+      nextItems.forEach((item, index) => {
+        if (!selected.has(index)) return;
+        if (JSON.stringify(item) === JSON.stringify(editingGuideMaster.items[index])) return;
+        updateGuideItem(editingGuideMaster.id, index, item);
+        changed = true;
+      });
+    } finally {
+      resumeHistory();
+      if (changed) commitHistory(`guide-align-${mode}`);
+    }
+  };
 
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
@@ -2500,10 +2827,13 @@ export function EditorShell({
 
             <CanvasDock
               activeTool={tool}
+              guideEditingActive={editScope.kind === 'guideMaster'}
               zoom={viewport.zoom}
               guidesVisible={guidesVisible}
               snapEnabled={snapEnabled}
               onToolSelect={(nextTool) => setTool(nextTool)}
+              onShapeSelect={(shape) => setShapeSubTool(shape)}
+              onGuideAlign={handleAlignSelectedGuideItems}
               onZoomChange={(nextZoom) => {
                 if (nextZoom === 'fit') {
                   window.dispatchEvent(new CustomEvent('editor:fit-canvas'));
@@ -2521,6 +2851,8 @@ export function EditorShell({
           rightTab={rightTab}
           onRightTabChange={setRightTab}
           selectedLayer={selectedLayer}
+          selectedGuideItem={selectedGuideItem}
+          editingGuideMasterName={editingGuideMaster?.name ?? null}
           currentIcon={currentIcon}
           currentVariant={currentVariant}
           onRenameIcon={handleRenameIcon}
@@ -2529,6 +2861,8 @@ export function EditorShell({
           onPatchSelectedLayer={handlePatchSelectedLayer}
           onPatchSelectedLayerStyle={handlePatchSelectedLayerStyle}
           onPatchSelectedLayerTransform={handlePatchSelectedLayerTransform}
+          onPatchSelectedGuideItem={handlePatchSelectedGuideItem}
+          onRemoveSelectedGuideItem={handleRemoveSelectedGuideItem}
           onDeleteVariant={() =>
             currentVariant
               ? setPendingDelete({ type: 'variant', id: currentVariant.id })

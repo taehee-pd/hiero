@@ -25,6 +25,7 @@ export type SnapResult = {
 
 export type ComputeSnapOptions = {
   sourceLayerId?: string;
+  sourceGuideIndex?: number;
   tolerancePx?: number;
   gridStep?: number;
   zoom?: number;
@@ -92,7 +93,11 @@ export class SnapEngine {
     // pixel/grid/edge snapping remain gated only by `snapEnabled`.
     if (state.guidesVisible) {
       if (guideMaster?.items?.length) {
-        this.collectGuideTargets(guideMaster.items, candidates);
+        this.collectGuideTargets(
+          guideMaster.items,
+          candidates,
+          state.editScope.kind === 'guideMaster' ? options.sourceGuideIndex : undefined,
+        );
       }
 
       if (icon?.customGuides?.length) {
@@ -159,12 +164,25 @@ export class SnapEngine {
     out.push({ y: vy + vh / 2, type: 'center' });
   }
 
-  private collectGuideTargets(items: GuideItem[], out: SnapTarget[]) {
-    for (const item of items) {
+  private collectGuideTargets(
+    items: GuideItem[],
+    out: SnapTarget[],
+    sourceGuideIndex?: number,
+  ) {
+    for (const [index, item] of items.entries()) {
+      if (index === sourceGuideIndex) continue;
+
       if (item.kind === 'hline') {
         out.push({ y: item.y, type: 'guide' });
       } else if (item.kind === 'vline') {
         out.push({ x: item.x, type: 'guide' });
+      } else if (item.kind === 'line') {
+        out.push({ x: item.x1, type: 'guide' });
+        out.push({ x: item.x2, type: 'guide' });
+        out.push({ x: (item.x1 + item.x2) / 2, type: 'guide' });
+        out.push({ y: item.y1, type: 'guide' });
+        out.push({ y: item.y2, type: 'guide' });
+        out.push({ y: (item.y1 + item.y2) / 2, type: 'guide' });
       } else if (item.kind === 'rect') {
         out.push({ x: item.x, type: 'guide' });
         out.push({ x: item.x + item.width, type: 'guide' });
@@ -326,7 +344,12 @@ function getSnapPriority(type: SnapTarget['type']): number {
 }
 
 function areTargetsEquivalent(a: SnapTarget, b: SnapTarget): boolean {
-  return a.type === b.type && a.x === b.x && a.y === b.y && a.sourceLayerId === b.sourceLayerId;
+  return (
+    a.type === b.type &&
+    a.x === b.x &&
+    a.y === b.y &&
+    a.sourceLayerId === b.sourceLayerId
+  );
 }
 
 function snapToStep(value: number, step: number): number {

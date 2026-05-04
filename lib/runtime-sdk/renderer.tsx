@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useMemo, useRef } from 'react';
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   CompiledEffect,
@@ -192,6 +192,13 @@ export const RuntimeIconRenderer = forwardRef<SVGSVGElement, RuntimeIconRenderer
       [icon, resolvedStateId, transition],
     );
 
+    // Per-layer keyframe samples driven by a rAF progress tick. When
+    // `transitionPlan.mode === 'transition'` and the binding carries
+    // `morph.keyframes`, the path's `d` is overridden frame-by-frame
+    // for the duration. The progress tick resets whenever the
+    // transitionPlan changes (a new variant is being morphed to).
+    const interpolatedFrames = useTransitionKeyframes(transitionPlan);
+
     useEffect(() => {
       previousStateRef.current = resolvedStateId;
     }, [resolvedStateId]);
@@ -211,10 +218,11 @@ export const RuntimeIconRenderer = forwardRef<SVGSVGElement, RuntimeIconRenderer
       >
         {layerSet.layers.map((layer) => {
           const style = applyModeStyling(layer, resolvedMode, resolvedPalette);
+          const sample = interpolatedFrames.get(layer.id);
           return (
             <path
               key={layer.id}
-              d={layer.path.d}
+              d={sample?.d ?? layer.path.d}
               fill={style.fill}
               fillOpacity={style.fillOpacity}
               stroke={style.stroke}
@@ -224,6 +232,7 @@ export const RuntimeIconRenderer = forwardRef<SVGSVGElement, RuntimeIconRenderer
               strokeLinejoin={style.lineJoin}
               fillRule={layer.path.fillRule}
               transform={buildLayerTransform(layer)}
+              opacity={sample?.alpha}
             />
           );
         })}
@@ -231,3 +240,107 @@ export const RuntimeIconRenderer = forwardRef<SVGSVGElement, RuntimeIconRenderer
     );
   },
 );
+
+// ---------------------------------------------------------------------------
+// W4 D9 — keyframe playback
+// ---------------------------------------------------------------------------
+
+type KeyframeSample = { d: string; alpha: number };
+
+/**
+ * Drive per-layer keyframe playback for a `TransitionResolution`.
+ *
+ * When the plan's mode is `'transition'` and at least one of the
+ * compiled bindings carries `morph.keyframes`, this hook starts a
+ * rAF loop that samples the keyframes at the current elapsed
+ * fraction of `durationMs`. Returns a map from layer id (chosen
+ * from the binding's `toLayerId` when present, falling back to
+ * `fromLayerId`) to the current sample. Layers not present in the
+ * map render their static path verbatim.
+ *
+ * No-op (returns empty map) when:
+ *   - The plan is `'snap'`
+ *   - No binding has keyframes (legacy compile path)
+ *   - The runtime lacks `requestAnimationFrame` (SSR / test) — in
+ *     which case the snap behaviour is the safe fallback
+ */
+function useTransitionKeyframes(
+  plan: TransitionResolution,
+): Map<string, KeyframeSample> {
+  const [progress, setProgress] = useState(0);
+  const planRef = useRef(plan);
+
+  useEffect(() => {
+    planRef.current = plan;
+    setProgress(0);
+    if (plan.mode !== 'transition') return;
+    if (typeof requestAnimationFrame !== 'function') return;
+    const hasKeyframes = plan.transition.bindings.some(
+      (b) => b.morph?.keyframes && b.morph.keyframes.length > 0,
+    );
+    if (!hasKeyframes) return;
+
+    const start =
+      typeof performance !== 'undefined'
+        ? performance.now()
+        : Date.now();
+    let handle = 0;
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / Math.max(plan.durationMs, 1), 1);
+      setProgress(t);
+      if (t < 1 && planRef.current === plan) {
+        handle = requestAnimationFrame(tick);
+      }
+    };
+    handle = requestAnimationFrame(tick);
+    return () => {
+      if (handle) cancelAnimationFrame(handle);
+    };
+  }, [plan]);
+
+  if (plan.mode !== 'transition') return new Map();
+  const out = new Map<string, KeyframeSample>();
+  for (const binding of plan.transition.bindings) {
+    const keyframes = binding.morph?.keyframes;
+    if (!keyframes || keyframes.length === 0) continue;
+    const layerId = binding.toLayerId ?? binding.fromLayerId;
+    if (!layerId) continue;
+    out.set(layerId, sampleKeyframes(keyframes, progress));
+  }
+  return out;
+}
+
+/**
+ * Find the keyframe that brackets `t` and emit its `d` + `alpha`.
+ * The cascade samples densely enough (16 frames per
+ * `sampleForCompiledIcon` call) that nearest-prior lookup is
+ * imperceptible at typical 240-300 ms transition durations.
+ */
+export function sampleKeyframes(
+  keyframes: ReadonlyArray<{ t: number; d: string; alpha: number }>,
+  t: number,
+): KeyframeSample {
+  if (keyframes.length === 0) return { d: '', alpha: 1 };
+  if (t <= keyframes[0]!.t) {
+    return { d: keyframes[0]!.d, alpha: keyframes[0]!.alpha };
+  }
+  const last = keyframes[keyframes.length - 1]!;
+  if (t >= last.t) return { d: last.d, alpha: last.alpha };
+  let lo = 0;
+  let hi = keyframes.length - 1;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (keyframes[mid]!.t <= t) lo = mid;
+    else hi = mid;
+  }
+  const a = keyframes[lo]!;
+  const b = keyframes[hi]!;
+  // Linear interpolation on alpha; nearest-prior `d` (path strings
+  // can't safely linearly interpolate without aligned vertex
+  // counts; the cascade's pre-baked samples are already at the
+  // resolved cadence's frame density).
+  const span = Math.max(b.t - a.t, 1e-9);
+  const u = (t - a.t) / span;
+  return { d: a.d, alpha: a.alpha * (1 - u) + b.alpha * u };
+}

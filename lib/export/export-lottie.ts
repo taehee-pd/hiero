@@ -24,6 +24,9 @@ import type {
   GradientStop,
   SpringConfig,
 } from '@/lib/schema/types';
+import { isResolverV2Enabled } from '@/lib/runtime-core/resolver-flag';
+import { resolveMorph } from '@/lib/runtime-core/cascade';
+import { sampleForLottie } from '@/lib/runtime-core/cascade-export';
 
 // ---------------------------------------------------------------------------
 // Lottie JSON types (subset of Lottie 5.x schema)
@@ -233,22 +236,60 @@ export function exportLottie(
         const toLayerDef = toVariantLayers?.[binding.toLayerId];
 
         if (fromLayerDef?.path?.d && toLayerDef?.path?.d) {
-          const fromBezier = svgPathToLottieBezier(fromLayerDef.path.d);
-          const toBezier = svgPathToLottieBezier(toLayerDef.path.d);
           const easingHandles = easingToLottie(transition.easing ?? 'ease-in-out');
-
-          // Find the path shape in the Lottie layer and make it animated.
           const pathShape = targetLayer.shapes.find(
             (s): s is LottiePathShape => s.ty === 'sh',
           );
           if (pathShape) {
-            pathShape.ks = {
-              a: 1,
-              k: [
-                { t: 0, s: [fromBezier], e: [toBezier], ...easingHandles },
-                { t: durationFrames, s: [toBezier] },
-              ],
-            };
+            // W4-1 (D9): when the V2 resolver flag is on, sample the
+            // cascade `MorphResolution` and emit a multi-keyframe shape
+            // animation so the Lottie playback matches the in-app
+            // preview frame-for-frame. When the flag is off (default),
+            // keep the legacy 2-keyframe linear bezier interpolation
+            // — Lottie's tween still produces an acceptable morph and
+            // we avoid changing the export shape until W5 calibration
+            // signs off on the cascade output.
+            if (isResolverV2Enabled()) {
+              // Forward the transition's authored resolver options so
+              // the Lottie keyframes match in-app preview / runtime
+              // exactly. `cadence` selects the motion curves; the
+              // pinning hints feed the cascade's hard constraints
+              // (Hungarian PIN_REWARD / FORBIDDEN_COST). Without this
+              // the export uses cascade defaults and diverges from
+              // what the author sees in the editor.
+              const resolution = resolveMorph(fromLayerDef, toLayerDef, {
+                cadence: transition.cadence ?? 'soft',
+                hints: transition.correspondenceHints,
+              });
+              const samples = sampleForLottie(resolution, transition.durationMs);
+              const beziers = samples.map((s) => svgPathToLottieBezier(s.d));
+              const lastIndex = samples.length - 1;
+              pathShape.ks = {
+                a: 1,
+                k: samples.map((s, i) => {
+                  const frame = Math.round(s.t * durationFrames);
+                  if (i === lastIndex) {
+                    return { t: frame, s: [beziers[i]!] };
+                  }
+                  return {
+                    t: frame,
+                    s: [beziers[i]!],
+                    e: [beziers[i + 1]!],
+                    ...easingHandles,
+                  };
+                }),
+              };
+            } else {
+              const fromBezier = svgPathToLottieBezier(fromLayerDef.path.d);
+              const toBezier = svgPathToLottieBezier(toLayerDef.path.d);
+              pathShape.ks = {
+                a: 1,
+                k: [
+                  { t: 0, s: [fromBezier], e: [toBezier], ...easingHandles },
+                  { t: durationFrames, s: [toBezier] },
+                ],
+              };
+            }
           }
         }
       }

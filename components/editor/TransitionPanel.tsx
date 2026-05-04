@@ -17,10 +17,25 @@ import {
   resolveTransition,
   TransitionScheduler,
 } from '@/lib/runtime-core';
+import { canonicalizePath } from '@/lib/runtime-core/path-normalization';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
+import {
+  pinSubpath,
+  unpinSubpath,
+} from '@/lib/editor-store/correspondence-pinning';
+import { subpathIdFromIndex } from '@/lib/runtime-core/correspondence-hints';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
-import type { RuntimeTransitionIntent, LayerBinding, LayerSnapshot, TransitionStagger } from '@/lib/schema/types';
+import type {
+  Cadence,
+  CorrespondenceHints,
+  RuntimeTransitionIntent,
+  LayerBinding,
+  LayerSnapshot,
+  TransitionStagger,
+} from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
+import { CadenceToggle } from './CadenceToggle';
+import { CorrespondencePinsOverlay } from './CorrespondencePinsOverlay';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 
 // ---------------------------------------------------------------------------
@@ -199,12 +214,35 @@ export const TransitionPanel = memo(function TransitionPanel() {
   const [formEasing, setFormEasing] = useState<EasingValue>('ease-in-out');
   const [formDirection, setFormDirection] = useState<RuntimeTransitionIntent['direction']>('automatic');
   const [formPlaybackMode, setFormPlaybackMode] = useState<PlaybackMode>('byLayer');
+  // W4-5 Layer-1 authored cadence axis. Co-exists with the legacy
+  // easing/direction during W3-W4 and becomes canonical once the
+  // V2 cascade flips on (W4-10 / W5 ship-checklist gate). The
+  // schema's `Transition.cadence` carries it through to the
+  // runtime; the legacy easing field is `@deprecated W4` in
+  // lib/schema/types.ts. The fallback override UI was removed —
+  // the resolver picks by topological signal and authors no
+  // longer override; `Transition.fallbackOverride` remains in the
+  // schema for migration / programmatic authoring.
+  const [formCadence, setFormCadence] = useState<Cadence>('soft');
 
   // --- Advanced disclosure state (§2.3) ---
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [strategyOverride, setStrategyOverride] = useState<RuntimeTransitionIntent['strategy']>('auto');
   const [advancedStaggerOverride, setAdvancedStaggerOverride] =
     useState<TransitionStagger['mode'] | 'inherit'>('inherit');
+
+  // --- Correspondence pinning state (W4-7 Layer 2) ---
+  // Session-local draft of `Transition.correspondenceHints`. The
+  // schema field exists for icon-authored Transition persistence,
+  // but the editor-store doesn't yet expose transition-authoring
+  // actions — for now hints live on the panel and feed
+  // `resolveMorph(opts.hints)` directly. Vertex pins (W4-7 canvas
+  // drag) and subpath pins (Advanced disclosure UI) both write
+  // here through the pure helpers in
+  // `lib/editor-store/correspondence-pinning.ts`.
+  const [correspondenceHints, setCorrespondenceHints] = useState<CorrespondenceHints>(
+    () => ({ subpath: [], vertex: [] }),
+  );
 
   // --- Preview state ---
   const [activePreview, setActivePreview] = useState<ActivePreview | null>(null);
@@ -248,6 +286,96 @@ export const TransitionPanel = memo(function TransitionPanel() {
     const variant = projectIcons?.[tgtIconId]?.variants[tgtVariantId];
     return variant ? variantToSnapshot(variant) : null;
   }, [projectIcons, tgtIconId, tgtVariantId]);
+
+  // Per-side subpath count for the W4-7 pinning UI. Counted off the
+  // primary layer's path (first layer with a `d`) — matches what
+  // the cascade picks up at resolve time.
+  const sourceSubpathCount = useMemo(
+    () => subpathCountOfFirstLayer(sourceSnapshot),
+    [sourceSnapshot],
+  );
+  const targetSubpathCount = useMemo(
+    () => subpathCountOfFirstLayer(targetSnapshot),
+    [targetSnapshot],
+  );
+
+  // --- Runtime snippet derivation ---
+  // The `<HieroIcon>` runtime API consumes only `variant`. Duration /
+  // easing / cadence / direction / playbackMode are not props — they
+  // live in the icon's `Transition` schema and are read by the
+  // scheduler when the variant changes. The snippet renders the JSX
+  // call (what to write in app code) and surfaces the timing config
+  // as a comment so authors know what they need to persist on the
+  // icon for the runtime to honour these values.
+  const importName = useMemo(() => {
+    if (!srcIconId) return 'icon';
+    const parts = srcIconId.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+    if (parts.length === 0) return 'icon';
+    return parts
+      .map((p, i) =>
+        i === 0 ? p.toLowerCase() : p[0]!.toUpperCase() + p.slice(1),
+      )
+      .join('');
+  }, [srcIconId]);
+
+  const runtimeSnippet = useMemo(() => {
+    if (!srcIconId) return '';
+    const lines: string[] = [];
+    lines.push(`import { HieroIcon } from '@hiero/runtime-react';`);
+    lines.push(`import ${importName} from './icons/${srcIconId}.json';`);
+    lines.push('');
+    if (tgtVariantId) {
+      lines.push(
+        `<HieroIcon icon={${importName}} variant="${tgtVariantId}" />`,
+      );
+      lines.push('');
+      lines.push(
+        `// Transition data — persist on the icon for runtime to honour:`,
+      );
+      lines.push(`//   from: ${srcVariantId} → ${tgtVariantId}`);
+      lines.push(
+        `//   ${formDuration}ms · ${formEasing} · ${formCadence} cadence`,
+      );
+      lines.push(
+        `//   direction: ${formDirection} · playback: ${formPlaybackMode}`,
+      );
+    } else {
+      lines.push(
+        `<HieroIcon icon={${importName}} variant="${srcVariantId || 'default'}" />`,
+      );
+    }
+    return lines.join('\n');
+  }, [
+    srcIconId,
+    srcVariantId,
+    tgtVariantId,
+    importName,
+    formDuration,
+    formEasing,
+    formCadence,
+    formDirection,
+    formPlaybackMode,
+  ]);
+
+  const onCopySnippet = useCallback(() => {
+    if (!runtimeSnippet) return;
+    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+      toast({
+        description: 'Clipboard unavailable in this browser.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    navigator.clipboard
+      .writeText(runtimeSnippet)
+      .then(() => toast({ description: 'Snippet copied to clipboard.' }))
+      .catch(() =>
+        toast({
+          description: 'Copy failed — try selecting and copying manually.',
+          variant: 'destructive',
+        }),
+      );
+  }, [runtimeSnippet]);
 
   // --- Engine readout ---
   // §2.3: the Advanced disclosure shows a read-only "Engine chose" pill so
@@ -641,6 +769,22 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </Select>
       </div>
 
+      {/* 3.5 Cadence (W4-5 Layer-1 authored axis). Persists to
+          Transition.cadence; co-exists with the legacy Easing /
+          Direction during W3-W4 and becomes canonical once the
+          V2 cascade flips on (W4-10). The fallback-motion picker
+          was removed — the resolver picks by topological signal
+          and authors no longer override. */}
+      <div className="grid gap-1.5">
+        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          Cadence
+        </Label>
+        <CadenceToggle value={formCadence} onChange={setFormCadence} />
+        <p className="text-[length:var(--text-caption)] leading-snug text-muted-foreground/70">
+          Soft eases in and out; Snappy lands faster.
+        </p>
+      </div>
+
       {/* 4. Preview */}
       <Button
         type="button"
@@ -662,6 +806,33 @@ export const TransitionPanel = memo(function TransitionPanel() {
         </p>
       ) : null}
 
+      {/* 4.5 Runtime snippet — JSX usage + timing config comment.
+          Reflects the current source/target/timing selection so authors
+          can copy the call into their app. The runtime API only takes
+          `variant`; the timing values are surfaced as a comment so it's
+          obvious they need to be persisted on the icon's Transition. */}
+      {runtimeSnippet ? (
+        <div className="grid gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+              Runtime snippet
+            </Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              onClick={onCopySnippet}
+            >
+              Copy
+            </Button>
+          </div>
+          <pre className="overflow-x-auto whitespace-pre rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-[11px] font-mono leading-relaxed text-muted-foreground">
+            {runtimeSnippet}
+          </pre>
+        </div>
+      ) : null}
+
       {/* 5. Advanced disclosure (§2.3) */}
       <AdvancedDisclosure
         open={advancedOpen}
@@ -672,6 +843,12 @@ export const TransitionPanel = memo(function TransitionPanel() {
         advancedStaggerOverride={advancedStaggerOverride}
         onAdvancedStaggerOverrideChange={setAdvancedStaggerOverride}
         playbackMode={formPlaybackMode}
+        correspondenceHints={correspondenceHints}
+        onCorrespondenceHintsChange={setCorrespondenceHints}
+        sourceSubpathCount={sourceSubpathCount}
+        targetSubpathCount={targetSubpathCount}
+        sourceSnapshot={sourceSnapshot}
+        targetSnapshot={targetSnapshot}
       />
 
       {/* Playback controls */}
@@ -712,6 +889,12 @@ function AdvancedDisclosure({
   advancedStaggerOverride,
   onAdvancedStaggerOverrideChange,
   playbackMode,
+  correspondenceHints,
+  onCorrespondenceHintsChange,
+  sourceSubpathCount,
+  targetSubpathCount,
+  sourceSnapshot,
+  targetSnapshot,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -721,6 +904,12 @@ function AdvancedDisclosure({
   advancedStaggerOverride: TransitionStagger['mode'] | 'inherit';
   onAdvancedStaggerOverrideChange: (next: TransitionStagger['mode'] | 'inherit') => void;
   playbackMode: PlaybackMode;
+  correspondenceHints: CorrespondenceHints;
+  onCorrespondenceHintsChange: (next: CorrespondenceHints) => void;
+  sourceSubpathCount: number;
+  targetSubpathCount: number;
+  sourceSnapshot: LayerSnapshot | null;
+  targetSnapshot: LayerSnapshot | null;
 }) {
   return (
     <details
@@ -790,6 +979,18 @@ function AdvancedDisclosure({
             </SelectContent>
           </Select>
         </div>
+        <SubpathPinsSection
+          hints={correspondenceHints}
+          onChange={onCorrespondenceHintsChange}
+          sourceSubpathCount={sourceSubpathCount}
+          targetSubpathCount={targetSubpathCount}
+        />
+        <CorrespondencePinsOverlay
+          sourceSnapshot={sourceSnapshot}
+          targetSnapshot={targetSnapshot}
+          hints={correspondenceHints}
+          onChange={onCorrespondenceHintsChange}
+        />
       </div>
     </details>
   );
@@ -1063,4 +1264,153 @@ function CrossIconEndpointPicker({
       </div>
     </fieldset>
   );
+}
+
+// ---------------------------------------------------------------------------
+// W4-7 subpath-pinning helpers
+// ---------------------------------------------------------------------------
+
+function subpathCountOfFirstLayer(snapshot: LayerSnapshot | null): number {
+  if (!snapshot) return 0;
+  for (const layer of Object.values(snapshot.layers)) {
+    if (!layer.path?.d) continue;
+    return canonicalizePath(layer.path.d).stats.subpathCount;
+  }
+  return 0;
+}
+
+/**
+ * Subpath-pinning section for the Advanced disclosure. Renders two
+ * dropdowns (from-subpath, to-subpath) plus a list of pinned pairs
+ * as removable chips. Hides itself when neither side has more than
+ * one subpath — single-subpath pairs have nothing to pin and would
+ * just add noise. Vertex-level pinning lands in Stage C via canvas
+ * drag.
+ */
+function SubpathPinsSection({
+  hints,
+  onChange,
+  sourceSubpathCount,
+  targetSubpathCount,
+}: {
+  hints: CorrespondenceHints;
+  onChange: (next: CorrespondenceHints) => void;
+  sourceSubpathCount: number;
+  targetSubpathCount: number;
+}) {
+  const [draftFromIdx, setDraftFromIdx] = useState<number>(0);
+  const [draftToIdx, setDraftToIdx] = useState<number>(0);
+
+  if (sourceSubpathCount < 2 && targetSubpathCount < 2) return null;
+
+  const sourceOptions = Array.from({ length: sourceSubpathCount }, (_, i) => i);
+  const targetOptions = Array.from({ length: targetSubpathCount }, (_, i) => i);
+
+  const handleAdd = () => {
+    if (
+      draftFromIdx < 0 ||
+      draftFromIdx >= sourceSubpathCount ||
+      draftToIdx < 0 ||
+      draftToIdx >= targetSubpathCount
+    ) {
+      return;
+    }
+    const next = pinSubpath(
+      hints,
+      subpathIdFromIndex(draftFromIdx),
+      subpathIdFromIndex(draftToIdx),
+    );
+    onChange(next);
+  };
+
+  const handleRemove = (fromId: string) => {
+    onChange(unpinSubpath(hints, fromId));
+  };
+
+  return (
+    <div className="grid gap-1">
+      <Label className="text-[10px] font-medium text-muted-foreground">
+        Subpath pins
+      </Label>
+      <p className="text-[10px] text-muted-foreground/70">
+        Force a source subpath to pair with a target subpath.
+        Overrides automatic geometry-based matching.
+      </p>
+      <div className="flex items-center gap-1">
+        <Select
+          value={String(draftFromIdx)}
+          onValueChange={(v) => setDraftFromIdx(Number.parseInt(v, 10))}
+        >
+          <SelectTrigger
+            aria-label="Source subpath"
+            className="h-7 flex-1 rounded-md text-[length:var(--text-label)]"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sourceOptions.map((i) => (
+              <SelectItem key={i} value={String(i)}>
+                Source #{i}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span aria-hidden className="text-[10px] text-muted-foreground">↔</span>
+        <Select
+          value={String(draftToIdx)}
+          onValueChange={(v) => setDraftToIdx(Number.parseInt(v, 10))}
+        >
+          <SelectTrigger
+            aria-label="Target subpath"
+            className="h-7 flex-1 rounded-md text-[length:var(--text-label)]"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {targetOptions.map((i) => (
+              <SelectItem key={i} value={String(i)}>
+                Target #{i}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 rounded-md px-2 text-[10px]"
+          onClick={handleAdd}
+        >
+          Pin
+        </Button>
+      </div>
+      {hints.subpath.length > 0 ? (
+        <ul className="flex flex-wrap gap-1 pt-1">
+          {hints.subpath.map(([fromId, toId]) => (
+            <li
+              key={`${fromId}->${toId}`}
+              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 font-mono text-[10px] text-foreground/80"
+            >
+              <span>{shortSubpathId(fromId)} ↔ {shortSubpathId(toId)}</span>
+              <button
+                type="button"
+                aria-label={`Remove pin ${fromId} ↔ ${toId}`}
+                onClick={() => handleRemove(fromId)}
+                className="ml-0.5 rounded-full px-1 leading-none text-muted-foreground hover:text-foreground"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function shortSubpathId(id: string): string {
+  // `subpath:N` → `#N`. Anything else passes through verbatim so a
+  // future hint vocabulary doesn't silently lose information here.
+  const match = /^subpath:(\d+)$/.exec(id);
+  return match ? `#${match[1]}` : id;
 }

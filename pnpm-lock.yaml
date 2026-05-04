@@ -118,6 +118,9 @@ importers:
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
+      clipper2-ts:
+        specifier: 2.0.1-15
+        version: 2.0.1-15
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -133,6 +136,9 @@ importers:
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@19.2.4)
+      hungarian-on3:
+        specifier: ^0.3.1
+        version: 0.3.1
       input-otp:
         specifier: 1.4.2
         version: 1.4.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -151,6 +157,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      poly2tri:
+        specifier: ^1.5.0
+        version: 1.5.0
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -3318,6 +3327,13 @@ packages:
         integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==,
       }
 
+  clipper2-ts@2.0.1-15:
+    resolution:
+      {
+        integrity: sha512-roegGp2c3DIyBvTDZM6IwFxe1xRIkg4vvftmf4S6U9FYcRyzfiXVKZxtVL3F4JjqArXq78Cf4L1FzLWXOlE3cQ==,
+      }
+    engines: { node: '>=14.0.0' }
+
   clsx@2.1.1:
     resolution:
       {
@@ -3768,6 +3784,12 @@ packages:
       }
     engines: { node: '>=12.0.0' }
 
+  fast-bitset@1.3.2:
+    resolution:
+      {
+        integrity: sha512-6cy85OYZdL0ieGxZYH9tZpC3vSpmj/WDLihzM7ZVe+RU31CD61Amlovvu8eiIBUV/JWReb1o/Uev6zE6/57EHQ==,
+      }
+
   fast-deep-equal@3.1.3:
     resolution:
       {
@@ -3941,6 +3963,12 @@ packages:
     resolution:
       {
         integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==,
+      }
+
+  hungarian-on3@0.3.1:
+    resolution:
+      {
+        integrity: sha512-uBBitD6V8Y2OPuctqVR1XRvp7i18pj3fhHACYtq1HkRCh0kTSZcLE+7hjmCb/8I1Ehr0ycnBCkF1ZruK3jnE9A==,
       }
 
   ignore@5.3.2:
@@ -4518,6 +4546,12 @@ packages:
       }
     engines: { node: '>=18' }
     hasBin: true
+
+  poly2tri@1.5.0:
+    resolution:
+      {
+        integrity: sha512-5yACqznqRrlFA9RhdWyD2blNPVhlB3qK+iRYJCfHtJGINb+XNBgKTw+pJOsJZ+oaGxFsIyFmOVapuREHnRhXPg==,
+      }
 
   postcss-value-parser@4.2.0:
     resolution:
@@ -7268,6 +7302,8 @@ snapshots:
 
   client-only@0.0.1: {}
 
+  clipper2-ts@2.0.1-15: {}
+
   clsx@2.1.1: {}
 
   cmdk@1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
@@ -7538,6 +7574,8 @@ snapshots:
 
   expect-type@1.3.0: {}
 
+  fast-bitset@1.3.2: {}
+
   fast-deep-equal@3.1.3: {}
 
   fast-equals@5.4.0: {}
@@ -7624,6 +7662,10 @@ snapshots:
   hermes-parser@0.25.1:
     dependencies:
       hermes-estree: 0.25.1
+
+  hungarian-on3@0.3.1:
+    dependencies:
+      fast-bitset: 1.3.2
 
   ignore@5.3.2: {}
 
@@ -7886,6 +7928,8 @@ snapshots:
       playwright-core: 1.59.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  poly2tri@1.5.0: {}
 
   postcss-value-parser@4.2.0: {}
 

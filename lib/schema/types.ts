@@ -213,6 +213,29 @@ export type Layer = {
    * than silently hiding the Sides/Points control.
    */
   formerPrimitiveKind?: PrimitiveShape['kind'];
+  /**
+   * Optional non-destructive compound representation. When present,
+   * `path.d` is the *cached evaluation* of `compound.tree` over
+   * `compound.operands`. The renderer / exporter / hit-tester always
+   * reads `path.d`; only the Inspector and the W3+ resolver read
+   * `compound`.
+   *
+   * Path-invariant rule (mirrored on the `primitive` invariant
+   * above): when `path.d` is mutated outside the compound-evaluation
+   * flow, `compound` MUST be cleared. `patchLayer` enforces this;
+   * `applyBoolean` is the one path that writes both atomically.
+   *
+   * Plan: docs_canonical/ICON_TRANSITION_INTEGRATED_PLAN.md §2.2,
+   * docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §4.1.
+   */
+  compound?: LayerCompound;
+  /**
+   * Breadcrumb set when a compound is cleared because the path was
+   * mutated outside the compound-evaluation flow. Mirrors
+   * `formerPrimitiveKind` so the Inspector can explain why the
+   * operand-tree disclosure has gone away.
+   */
+  formerCompound?: true;
   style: {
     fill?: PaintRef;
     stroke?: PaintRef;
@@ -299,6 +322,60 @@ export type SvgUnsupportedFeature = {
 };
 
 // ---------------------------------------------------------------------------
+// Compound paths (non-destructive boolean operations)
+// ---------------------------------------------------------------------------
+
+/**
+ * Boolean operation kinds the editor authors. Mirrors the
+ * `BooleanMode` accepted by `lib/editor-core/boolean-ops.ts` (which
+ * consumes Paper.js).
+ */
+export type CompoundOp = 'unite' | 'subtract' | 'intersect' | 'exclude';
+
+/**
+ * One node in a compound expression tree. A leaf references a stored
+ * operand by id; an op applies a {@link CompoundOp} to its children
+ * in left-to-right order. The tree is shape-only; operand geometry
+ * lives in {@link LayerCompound.operands}.
+ *
+ * Trees are generally small (most compounds are one op + two leaves);
+ * deeper trees describe operator chains like `subtract(unite(A, B), C)`.
+ */
+export type CompoundNode =
+  | { kind: 'leaf'; operandId: string }
+  | { kind: 'op'; op: CompoundOp; children: CompoundNode[] };
+
+/**
+ * Operand geometry referenced by `CompoundNode.kind === 'leaf'`.
+ * `transform` is optional and applies before evaluation; in the
+ * common case operands have no transform and inherit the layer's.
+ */
+export type CompoundOperand = {
+  d: string;
+  transform?: {
+    x?: number;
+    y?: number;
+    rotate?: number;
+    scaleX?: number;
+    scaleY?: number;
+  };
+};
+
+/**
+ * The compound metadata block on `Layer`. See `Layer.compound` for
+ * the path-invariant contract.
+ */
+export type LayerCompound = {
+  tree: CompoundNode;
+  operands: Record<string, CompoundOperand>;
+  /**
+   * Bumped on every tree/operand edit. Drives resolver memoisation
+   * (W4 cache key) without depending on canonical-form tree-equality.
+   */
+  cacheVersion: number;
+};
+
+// ---------------------------------------------------------------------------
 // Paint
 // ---------------------------------------------------------------------------
 
@@ -321,19 +398,137 @@ export type GradientStop = { offset: number; color: string; opacity?: number };
 // Transitions — runtime-owned, icon-to-icon
 // ---------------------------------------------------------------------------
 
+/**
+ * Authored cadence (Layer 1 in the UX progressive-disclosure model).
+ * `'soft'` (default) and `'snappy'` are the only authored values
+ * today. The Layer-2 timing-curve override (W4-8) widens this back
+ * to include `'custom'` plus a separate `Transition.timing` block.
+ * Until that lands the union stays narrow — a silent soft fallback
+ * for an unknown cadence breaks the §1 motion contract (two
+ * distinct cadences, predictable).
+ *
+ * MUST stay in sync with `lib/runtime-core/motion-curves.ts`.
+ */
+export type Cadence = 'soft' | 'snappy';
+
+/**
+ * Named, art-directed fallback motions. Closed list — anything not in
+ * this union is a contract violation. The resolver picks a default
+ * by topological signal; the author can override at the `Transition`
+ * level when the cascade has landed in T8.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §5.8.
+ */
+export const FALLBACK_NAMES = [
+  'radial-pop',
+  'directional-replace-up',
+  'directional-replace-down',
+  'directional-replace-left',
+  'directional-replace-right',
+  'directional-replace-toward',
+  'directional-replace-away',
+  'draw-replace',
+  'scale-pop',
+] as const;
+
+export type FallbackName = (typeof FALLBACK_NAMES)[number];
+
+/**
+ * Address of a vertex within a canonicalized layer path. `subpathId`
+ * is a stable identifier derived during canonicalization; it survives
+ * non-destructive path edits. `vertexIndex` is the 0-based position
+ * within the subpath's resampled polyline.
+ */
+export type VertexAddr = {
+  subpathId: string;
+  vertexIndex: number;
+};
+
+/**
+ * Author-supplied correspondence pins. Subpath hints constrain the
+ * Hungarian assignment; vertex hints anchor per-pair vertex
+ * correspondence inside T1. Hints are pair-specific (live on
+ * `Transition`, not `Layer`) and feed the resolver as *hard*
+ * constraints, not soft penalties.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_ALGORITHMS_PLAN.md §4.4.
+ */
+export type CorrespondenceHints = {
+  subpath: Array<[fromId: string, toId: string]>;
+  vertex: Array<[from: VertexAddr, to: VertexAddr]>;
+};
+
 export type RuntimeTransitionIntent = {
   id: string;
   fromIconId: string;
   toIconId: string;
   fromVariantId: string;
   toVariantId: string;
+  /**
+   * @deprecated W4 — strategy selection moves into the resolver
+   * cascade. Authors no longer pick a tier. Surfaced only via the
+   * debug pill (NEXT_PUBLIC_HIERO_DEBUG=1). Retained on the schema
+   * during W1-W3 so the legacy resolver continues to render.
+   */
   strategy: 'auto' | 'strictMorph' | 'bestGuessMorph' | 'crossIconMorph' | 'lineAnimation' | 'replace';
+  /**
+   * @deprecated W4 — superseded by `Transition.duration` (seconds).
+   * The two co-exist during W1-W3; resolver derivation lives in
+   * transition-resolver.ts.
+   */
   durationMs: number;
+  /**
+   * @deprecated W4 — superseded by `Transition.cadence` and the
+   * Layer-2 timing-curve override.
+   */
   easing?: string | SpringConfig;
+  /**
+   * @deprecated W4 — superseded by `Transition.fallbackOverride`
+   * with the named fallback library (`directional-replace-*` etc.).
+   */
   direction?: 'downUp' | 'upUp' | 'offUp' | 'automatic';
 };
 
+/**
+ * `Transition` is the authored representation of an icon-to-icon
+ * transition. Algorithm reads it; UI writes it.
+ *
+ * **Authored axes (the contract):** `duration`, `cadence`,
+ * `fallbackOverride`, `correspondenceHints`. These are the only
+ * fields the user is *allowed* to configure. Anything else here is
+ * either identity (`id`, `fromIconId`, `toIconId`, variant ids),
+ * non-strategy infrastructure (`layerBindings.compoundTrimMode`,
+ * `stagger`, `effects`), or `@deprecated W4` legacy that ships out
+ * with the new cascade.
+ *
+ * Schema-lint enforces no NEW algorithm-mechanism field lands on
+ * `Transition` — see `scripts/check-non-debug-copy.ts` and the W1-U1
+ * contract test.
+ *
+ * Spec: docs_canonical/ICON_TRANSITION_INTEGRATED_PLAN.md §2.1.
+ */
 export type Transition = RuntimeTransitionIntent & {
+  /**
+   * Duration in **seconds**. Canonical authored value (Layer 1).
+   * Resolver derives the legacy `durationMs` from this; W4 will
+   * delete `durationMs` outright.
+   */
+  duration?: number;
+  /** Cadence axis (Layer 1). Defaults to `'soft'`. */
+  cadence?: Cadence;
+  /**
+   * Author override for the named fallback motion. Surfaced in the UI
+   * only when the resolver landed in T8 for this pair. Defaults to
+   * the resolver's pick when absent.
+   */
+  fallbackOverride?: FallbackName;
+  /**
+   * Author-supplied correspondence pins (Layer 2). Defaults to no
+   * pins on either axis.
+   */
+  correspondenceHints?: CorrespondenceHints;
+
+  // ── identity / infrastructure (not user-authored) ──
   from?: string;
   to?: string;
   variantId?: string;
@@ -341,6 +536,20 @@ export type Transition = RuntimeTransitionIntent & {
   stagger?: TransitionStagger;
   effects?: string[];
 };
+
+/**
+ * Authored fields the W1-U1 schema lint enforces. Used by the
+ * `scripts/check-transition-schema.ts` lint to ensure no new
+ * algorithm-mechanism field lands on `Transition`.
+ */
+export const TRANSITION_AUTHORED_AXES = [
+  'duration',
+  'cadence',
+  'fallbackOverride',
+  'correspondenceHints',
+] as const;
+
+export type TransitionAuthoredAxis = (typeof TRANSITION_AUTHORED_AXES)[number];
 
 export type LayerBinding = {
   fromLayerId?: string;

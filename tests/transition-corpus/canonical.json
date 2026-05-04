@@ -1,0 +1,79 @@
+{
+  "name": "canonical",
+  "description": "Wave-1 seed corpus. One representative pair per T1..T8. Roadmap target is >=40 pairs (>=5 per category) — this is the seed; corpus curation continues across waves.",
+  "pairs": [
+    {
+      "id": "t1-circle-to-rounded-square",
+      "description": "T1 single closed: circle approximated to rounded square outline.",
+      "fromD": "M50 0 L100 50 L50 100 L0 50 Z",
+      "toD": "M10 0 L90 0 L100 10 L100 90 L90 100 L10 100 L0 90 L0 10 Z",
+      "expectedTaxonomy": "T1",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "t2-checkmark-to-x",
+      "description": "T2 single open: checkmark stroke morphs to X stroke.",
+      "fromD": "M10 50 L40 80 L90 20",
+      "toD": "M20 20 L80 80",
+      "expectedTaxonomy": "T2",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "t3-dice-2-to-dice-3",
+      "description": "T3 multi closed: two dots morph to three dots.",
+      "fromD": "M20 20 L40 20 L40 40 L20 40 Z M60 60 L80 60 L80 80 L60 80 Z",
+      "toD": "M20 20 L40 20 L40 40 L20 40 Z M60 60 L80 60 L80 80 L60 80 Z M40 40 L60 40 L60 60 L40 60 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "t4-hamburger-to-equals",
+      "description": "T4 multi open: three lines morph to two lines.",
+      "fromD": "M10 20 L90 20 M10 50 L90 50 M10 80 L90 80",
+      "toD": "M10 35 L90 35 M10 65 L90 65",
+      "expectedTaxonomy": "T4",
+      "fromStyle": "stroke",
+      "toStyle": "stroke"
+    },
+    {
+      "id": "t5-bubble-with-tail-to-bubble",
+      "description": "T5 mixed: closed body plus open tail morphs to closed body alone (becomes a mixed→pure-closed pair, classified mixed).",
+      "fromD": "M10 10 L90 10 L90 70 L60 70 L50 90 L40 70 L10 70 Z M30 80 L20 95",
+      "toD": "M10 10 L90 10 L90 70 L60 70 L50 90 L40 70 L10 70 Z",
+      "expectedTaxonomy": "T5",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "t7-outline-square-to-filled-square",
+      "description": "T7 stroke-style to fill-style: outline square morphs to filled square. SF Symbols-class case.",
+      "fromD": "M10 10 L90 10 L90 90 L10 90 Z",
+      "toD": "M10 10 L90 10 L90 90 L10 90 Z",
+      "expectedTaxonomy": "T7",
+      "fromStyle": "stroke",
+      "toStyle": "fill"
+    },
+    {
+      "id": "t6-donut-to-disc",
+      "description": "T6 compound: donut (outer rect ∖ inner rect) morphs to a disc (outer rect alone). The cached path.d carries both subpaths on the source side; the rendered geometry is what the cascade morphs.",
+      "fromD": "M0 0 L100 0 L100 100 L0 100 Z M30 30 L70 30 L70 70 L30 70 Z",
+      "toD": "M0 0 L100 0 L100 100 L0 100 Z",
+      "expectedTaxonomy": "T3",
+      "fromStyle": "fill",
+      "toStyle": "fill"
+    },
+    {
+      "id": "t8-spinner-to-checkmark",
+      "description": "T8 hard-incompatible: open arc stroke vs closed check fill — structurally incompatible. Lands on draw-replace.",
+      "fromD": "M50 10 A40 40 0 1 1 49 10",
+      "toD": "M20 50 L40 70 L80 30 L70 20 L40 55 L30 45 Z",
+      "expectedTaxonomy": "T8",
+      "expectedFallback": "draw-replace",
+      "fromStyle": "stroke",
+      "toStyle": "fill"
+    }
+  ]
+}

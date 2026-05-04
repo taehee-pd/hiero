@@ -1,0 +1,2216 @@
+{
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "resolvers": [
+    "auto-morph",
+    "cascade-v2",
+    "hiero-legacy",
+    "flubber-style-greedy",
+    "d3-interpolate-path-style"
+  ],
+  "sets": [
+    {
+      "name": "canonical",
+      "description": "Wave-1 seed corpus. One representative pair per T1..T8. Roadmap target is >=40 pairs (>=5 per category) — this is the seed; corpus curation continues across waves.",
+      "pairs": [
+        {
+          "pairId": "t1-circle-to-rounded-square",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.365295,
+                "areaMonotonicityError": 0.046667,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.011798,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.365295,
+                "areaMonotonicityError": 0.046667,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.15045,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 12.596879
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.365295,
+                "areaMonotonicityError": 0.046667,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t2-checkmark-to-x",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.541674,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 14.142136
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.384599,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.333333
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.541674,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 14.142136
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 2.156183,
+                "areaMonotonicityError": 0.089645,
+                "selfIntersectionCount": 14,
+                "temporalJerkProxy": 7.682622
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.541674,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 14.142136
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t3-dice-2-to-dice-3",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 28.284271
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 28.284271
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.080028,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 37.797051
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 28.284271
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t4-hamburger-to-equals",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.313931,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2.499875
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t5-bubble-with-tail-to-bubble",
+          "expectedTaxonomy": "T5",
+          "observedTaxonomy": "T5",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.164326,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 29.816295
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t7-outline-square-to-filled-square",
+          "expectedTaxonomy": "T7",
+          "observedTaxonomy": "T7",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.079999,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 25.146889
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t6-donut-to-disc",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.08,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 31.433726
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "t8-spinner-to-checkmark",
+          "expectedTaxonomy": "T8",
+          "observedTaxonomy": "T8",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.357867,
+                "areaMonotonicityError": 0.068908,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 10.287335
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.473294,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 140.457981
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.357867,
+                "areaMonotonicityError": 0.068908,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 10.287335
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.357867,
+                "areaMonotonicityError": 0.068908,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 10.287335
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": false,
+              "reason": "no-interpolator"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "stress",
+      "description": "Adversarial pairs that stress the resolver cascade beyond the canonical seed: nested holes, alternation depth >= 3, mixed cardinality, extreme concavity, near-symmetric ambiguity, tangentially-touching rings, and cross-rule fill-rule changes. The W5 calibration corpus draws from this set.",
+      "pairs": [
+        {
+          "pairId": "stress-nested-holes",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.080009,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 53.438165
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-alternation-depth-3",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.079999,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 66.010456
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-tangential-rings",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.082672,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 3.395028
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-near-symmetric-ambiguity",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.080001,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 6.286945
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-mixed-cardinality-5-to-1",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.080419,
+                "areaMonotonicityError": 0.066312,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 30.848679
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.02618,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-extreme-concavity-star",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.484894,
+                "areaMonotonicityError": 0.378706,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35.355339
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.145738,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2.4
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.484894,
+                "areaMonotonicityError": 0.378706,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35.355339
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.375503,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.443305
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.484894,
+                "areaMonotonicityError": 0.378706,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 35.355339
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-extreme-concavity-gear",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.020977,
+                "areaMonotonicityError": 1.026803,
+                "selfIntersectionCount": 12,
+                "temporalJerkProxy": 25.333933
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.244687,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 66.666667
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.020977,
+                "areaMonotonicityError": 1.026803,
+                "selfIntersectionCount": 12,
+                "temporalJerkProxy": 25.333933
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.16787,
+                "areaMonotonicityError": 0.272499,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 5.001331
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.020977,
+                "areaMonotonicityError": 1.026803,
+                "selfIntersectionCount": 12,
+                "temporalJerkProxy": 25.333933
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-multi-open-7-to-3",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.313933,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 52.404727
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-mixed-closed-and-open",
+          "expectedTaxonomy": "T5",
+          "observedTaxonomy": "T5",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.235969,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 51.907163
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-curve-heavy-rotation",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.402144,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 16.666667
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.387117,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 66.666667
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.402144,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 16.666667
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.476226,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 19.568363
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.402144,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 16.666667
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-sliver-shape",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.12782,
+                "areaMonotonicityError": 0.645333,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.12782,
+                "areaMonotonicityError": 0.645333,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.12782,
+                "areaMonotonicityError": 0.645333,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.164381,
+                "areaMonotonicityError": 0.359941,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 7.333679
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.12782,
+                "areaMonotonicityError": 0.645333,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-rotational-symmetry-square",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.000005,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.385676
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.000005,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.385676
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.000005,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.385676
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.316474,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 27.052091
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.000005,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.385676
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-hole-grows-to-fill",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.08,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 31.433726
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-evenodd-self-intersecting",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.381772,
+                "areaMonotonicityError": 0.105822,
+                "selfIntersectionCount": 4,
+                "temporalJerkProxy": 1.18041
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.268152,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 5,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.381772,
+                "areaMonotonicityError": 0.105822,
+                "selfIntersectionCount": 4,
+                "temporalJerkProxy": 1.18041
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.789507,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 6,
+                "temporalJerkProxy": 2.791758
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.381772,
+                "areaMonotonicityError": 0.105822,
+                "selfIntersectionCount": 4,
+                "temporalJerkProxy": 1.18041
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-cross-rule-nonzero-to-evenodd",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.080001,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.400764
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-dot-grid-rotated",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 1.2225,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 267.024806
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0.2475,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 12
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 1.2225,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 267.024806
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.209527,
+                "areaMonotonicityError": 0.463398,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 45.150512
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 1.2225,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 267.024806
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-arrow-rotation-90",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.852655,
+                "areaMonotonicityError": 0.2,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 190.040236
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.120466,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 33.333333
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.852655,
+                "areaMonotonicityError": 0.2,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 190.040236
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.529004,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 214,
+                "temporalJerkProxy": 11.607331
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.855512,
+                "areaMonotonicityError": 0.293892,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 173.306465
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-arrow-rotation-180",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.307919,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.598873
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.231673,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 240
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.307919,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.598873
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.618201,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 11.606975
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.307919,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.598873
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-spinner-arc-different-sweeps",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.229598,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 12.543669
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-checkmark-shrink-to-prefix",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.509841,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.379108,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 156.062665
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.509841,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.183005,
+                "areaMonotonicityError": 0.006495,
+                "selfIntersectionCount": 12,
+                "temporalJerkProxy": 9.752872
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.509841,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-letter-l-to-square",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.075398,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.075398,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.075398,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.177045,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 5.607637
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.075398,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 4.714045
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-many-tiny-rings",
+          "expectedTaxonomy": "T3",
+          "observedTaxonomy": "T3",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2727.180201
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2727.180201
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.156638,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2151.515979
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 2727.180201
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-chevron-flip",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.561095,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.236099
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.47999,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 40
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.561095,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.236099
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.876571,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 10.122281
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.561095,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0.236099
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-plus-to-minus",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.313939,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 1.4065
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-eye-to-circle",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.196514,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.333333
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.196514,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.333333
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.196514,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.333333
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.247618,
+                "areaMonotonicityError": 0.501692,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 25.927101
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.196514,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 13.333333
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-pinch-narrow-isthmus",
+          "expectedTaxonomy": "T1",
+          "observedTaxonomy": "T1",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.215402,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 21.213203
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.215402,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 21.213203
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.215402,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 21.213203
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.171242,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 10.408497
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.215402,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 21.213203
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-stroke-to-fill-skeleton-aligned",
+          "expectedTaxonomy": "T7",
+          "observedTaxonomy": "T7",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.127783,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 9.57265
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-stroke-to-fill-skeleton-misaligned",
+          "expectedTaxonomy": "T8",
+          "observedTaxonomy": "T8",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.424339,
+                "areaMonotonicityError": 0.061386,
+                "selfIntersectionCount": 15,
+                "temporalJerkProxy": 24.075617
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.56322,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 15,
+                "temporalJerkProxy": 100.884973
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.424339,
+                "areaMonotonicityError": 0.061386,
+                "selfIntersectionCount": 15,
+                "temporalJerkProxy": 24.075617
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 1.424339,
+                "areaMonotonicityError": 0.061386,
+                "selfIntersectionCount": 15,
+                "temporalJerkProxy": 24.075617
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": false,
+              "reason": "no-interpolator"
+            }
+          }
+        },
+        {
+          "pairId": "stress-spinner-half-rotation",
+          "expectedTaxonomy": "T2",
+          "observedTaxonomy": "T2",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.314159,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.314159,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.314159,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.887021,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 15.453697
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.314159,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        },
+        {
+          "pairId": "stress-disconnected-multi-stroke-grow",
+          "expectedTaxonomy": "T4",
+          "observedTaxonomy": "T4",
+          "taxonomyMatch": true,
+          "resolverResults": {
+            "auto-morph": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "cascade-v2": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "hiero-legacy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            },
+            "flubber-style-greedy": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0.313948,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 127.151576
+              }
+            },
+            "d3-interpolate-path-style": {
+              "ok": true,
+              "sampleCount": 11,
+              "metrics": {
+                "boundaryDistortion": 0,
+                "areaMonotonicityError": 0,
+                "selfIntersectionCount": 0,
+                "temporalJerkProxy": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

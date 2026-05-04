@@ -113,6 +113,18 @@ export type CompiledLayerBinding = {
   }>;
   morph?: {
     topology: 'strict' | 'bestGuess';
+    /**
+     * Pre-baked path keyframes sampled from the resolver cascade.
+     * When present, the SDK runtime interpolates between adjacent
+     * frames at playback (preview ≡ runtime ≡ exported invariant
+     * — same `sampleMorph` runs both). Absent on the legacy export
+     * path (resolver V2 flag off); the SDK falls back to a snap.
+     *
+     * Each entry: `t ∈ [0, 1]` (normalized progress), `d` (path
+     * string), `alpha` (opacity). Endpoints `t=0` and `t=1` are
+     * always present.
+     */
+    keyframes?: Array<{ t: number; d: string; alpha: number }>;
   };
 };
 

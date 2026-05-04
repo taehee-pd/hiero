@@ -1,4 +1,5 @@
 import { editorStore } from '@/lib/editor-store/store';
+import { buildLeftLeaningCompound } from '@/lib/schema/compound';
 import type { Project } from '@/lib/schema/types';
 
 function buildSmokeProject(): Project {
@@ -65,4 +66,45 @@ function seedEditorStoryState() {
   state.setSelection({ layerIds: ['shape'], pointIds: [] });
 }
 
-export { seedEditorStoryState };
+/**
+ * Compound-layer story fixture (W2 audit cleanup) — gives the
+ * existing layer-panel + inspector-panel stories a layer with
+ * `compound` metadata so the op-glyph + Inspector affordances
+ * render in Storybook without bespoke setup. Stories that need
+ * this state call `seedEditorStoryStateWithCompound` instead of
+ * `seedEditorStoryState`.
+ */
+function seedEditorStoryStateWithCompound() {
+  const project = buildSmokeProject();
+  const variant = project.icons.sample!.variants.v24!;
+  const compoundLayer = {
+    id: 'donut',
+    path: { d: 'M0 0 L100 0 L100 100 L0 100 Z M30 30 L70 30 L70 70 L30 70 Z' },
+    style: { fill: { mode: 'fixed' as const, value: '#0ea5e9' } },
+    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotate: 0 },
+    compound: buildLeftLeaningCompound(
+      'subtract',
+      [
+        { d: 'M0 0 L100 0 L100 100 L0 100 Z' },
+        { d: 'M30 30 L70 30 L70 70 L30 70 Z' },
+      ],
+      'donut',
+    ),
+  };
+  variant.layers = { ...variant.layers, donut: compoundLayer };
+  if (variant.types?.default) {
+    variant.types.default.layers = {
+      ...variant.types.default.layers,
+      donut: compoundLayer,
+    };
+  }
+
+  const state = editorStore.getState();
+  state.loadProject(structuredClone(project));
+  state.setCurrentIcon('sample');
+  state.setCurrentVariant('v24');
+  state.setCurrentType('default');
+  state.setSelection({ layerIds: ['donut'], pointIds: [] });
+}
+
+export { seedEditorStoryState, seedEditorStoryStateWithCompound };

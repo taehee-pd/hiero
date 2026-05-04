@@ -38,6 +38,25 @@ const config: StorybookConfig = {
       ...(viteConfig.resolve.alias ?? {}),
       '@': projectRoot,
     };
+    // `fast-bitset@1.3.2` (transitive dep of `hungarian-on3`) declares its
+    // class as `BitSet = function(...)` without `var`/`let`/`const`,
+    // relying on sloppy-mode implicit globals. Vite/Rollup wraps the CJS
+    // file in an ESM module which is strict by default, so the assignment
+    // throws "BitSet is not defined" at runtime — Chromatic's iframe hits
+    // this even though `pnpm build-storybook` succeeds at parse time.
+    // Prepend a `var BitSet;` declaration to the offending file so the
+    // assignment lands on a real binding.
+    viteConfig.plugins ??= [];
+    viteConfig.plugins.push({
+      name: 'patch-fast-bitset-strict-mode',
+      enforce: 'pre',
+      transform(code: string, id: string) {
+        if (id.includes('fast-bitset') && id.endsWith('BitSet.js')) {
+          return { code: `var BitSet;\n${code}`, map: null };
+        }
+        return null;
+      },
+    });
     return viteConfig;
   },
 };

@@ -12,6 +12,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
+import { CompoundLayerSection } from './CompoundLayerSection';
 import { TransitionPanel } from './TransitionPanel';
 import { ColorField } from '@/components/ds/color-field';
 import { Tag, type TagVariant } from '@/components/ds/tag';
@@ -151,6 +152,9 @@ export const InspectorPanel = memo(function InspectorPanel() {
   } = useEditorActions();
   const currentState = useEditorStore(selectCurrentType);
   const applyBoolean = useEditorStore((s) => s.applyBoolean);
+  const flattenCompound = useEditorStore((s) => s.flattenCompound);
+  const convertToGroup = useEditorStore((s) => s.convertToGroup);
+  const editScope = useEditorStore((s) => s.editScope);
   const isDeriving = useEditorStore((s) => s.isDeriving);
   const applyDerivedVariantAction = useEditorStore((s) => s.applyDerivedVariant);
   const currentIconId = useEditorStore((s) => s.currentIconId);
@@ -161,6 +165,13 @@ export const InspectorPanel = memo(function InspectorPanel() {
   const renderingMode = useEditorStore((s) => s.renderingMode);
   const transitionPreview = useEditorStore((s) => s.transitionPreview);
   const [pendingBooleanMode, setPendingBooleanMode] = useState<BooleanMode | null>(null);
+  // W2-3 operand selection state. The CompoundLayerSection contract
+  // is "clicking an operand selects it"; the selection has to live
+  // in the parent so it survives re-renders and we can route it to
+  // the path-editor selection in a future patch. Local state is
+  // fine until that wiring lands — store-routed selection would
+  // require a new store slice and isn't part of W4 scope.
+  const [selectedOperandId, setSelectedOperandId] = useState<string | null>(null);
   const [newVariantSize, setNewVariantSize] = useState<string>(String(VARIANT_SIZE_PRESETS[3]));
   const [matrixSizes, setMatrixSizes] = useState<number[]>([16, 24]);
   const [matrixWeights, setMatrixWeights] = useState<SymbolWeight[]>(['regular', 'bold']);
@@ -1054,6 +1065,38 @@ export const InspectorPanel = memo(function InspectorPanel() {
                 <InlineMessage>
                   Shape was modified — {layer.formerPrimitiveKind === 'polygon' ? 'sides' : 'points'}{' '}
                   can no longer be edited parametrically. Draw a new {layer.formerPrimitiveKind} to edit it by count again.
+                </InlineMessage>
+              </Section>
+              <Separator />
+            </>
+          ) : null}
+
+          {layer.compound && currentIconId && editScope.kind === 'icon' ? (
+            <>
+              {/* W2 audit §1: keying on layer.id ensures the
+                  AlertDialog confirm-state resets when the user
+                  switches selection while a flatten dialog is
+                  open, so confirming flatten can't accidentally
+                  fire against a different layer. The scope guard
+                  above prevents the section rendering in
+                  guideMaster scope where its store actions no-op. */}
+              <CompoundLayerSection
+                key={layer.id}
+                layer={layer}
+                onFlatten={() => flattenCompound(currentIconId, layer.id)}
+                onConvertToGroup={() => convertToGroup(currentIconId, layer.id)}
+                onOperandSelect={setSelectedOperandId}
+                selectedOperandId={selectedOperandId}
+              />
+              <Separator />
+            </>
+          ) : layer.formerCompound ? (
+            <>
+              <Section title="Compound">
+                <InlineMessage>
+                  This was a compound shape — its operand structure was lost
+                  when the path was edited directly. Re-build with a Boolean
+                  action to make operands editable again.
                 </InlineMessage>
               </Section>
               <Separator />

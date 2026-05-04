@@ -4,18 +4,26 @@ import type {
   CompiledEffect,
   CompiledIcon,
   CompiledLayer,
+  CompiledLayerBinding,
   CompiledRenderingMode,
+  CompiledTransition,
 } from '@/lib/compiler-contracts';
 import {
   COMPILED_ICON_SCHEMA_URI,
   isCompiledIcon,
 } from '@/lib/compiler-contracts';
+import { resolveMorph } from '@/lib/runtime-core/cascade';
+import { sampleForCompiledIcon } from '@/lib/runtime-core/cascade-export';
+import { isResolverV2Enabled } from '@/lib/runtime-core/resolver-flag';
 import type {
   Effect,
   Icon,
   Layer,
+  LayerBinding,
   PaintRef,
   Project,
+  Transition,
+  Variant,
 } from '@/lib/schema/types';
 
 export function exportCompiledIcon(project: Project, iconId: string): CompiledIcon {
@@ -37,7 +45,7 @@ export function exportCompiledIcon(project: Project, iconId: string): CompiledIc
       contentHash: '',
     },
     variants: buildCompiledVariants(project, icon),
-    transitions: [],
+    transitions: buildCompiledTransitions(icon),
     effects: buildCompiledEffects(icon),
   };
 
@@ -245,4 +253,167 @@ function sortJsonValue(value: unknown): unknown {
   }
 
   return value;
+}
+
+// ---------------------------------------------------------------------------
+// Compiled transitions (W4 D9 wiring)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the compiled-icon transitions array from an authored
+ * `Icon.transitions`. When the resolver V2 flag is on, each layer
+ * binding's morph carries pre-baked path keyframes sampled from
+ * the cascade — the SDK runtime interpolates between adjacent
+ * frames at playback so preview, runtime, and export stay
+ * frame-for-frame identical (the §3 invariant 5).
+ *
+ * When the flag is off, this returns the same data structure but
+ * without `morph.keyframes` — the legacy SDK behaviour (snap on
+ * variant change) is preserved.
+ *
+ * **V2-rollout gating.** The `NEXT_PUBLIC_HIERO_RESOLVER_V2` flag
+ * is a *deployment-level* switch during the V2 rollout: every
+ * artifact built within a given deployment uses the same flag
+ * value, so output is deterministic per-deployment. Two
+ * deployments with different flag values will produce different
+ * `contentHash` for the same project — that is the intended
+ * behaviour while V2 is staged behind the flag, since the
+ * non-V2 path (no keyframes) and the V2 path (keyframes) are
+ * substantively different artifacts. When V2 graduates from the
+ * flag (W5 calibration sign-off, see `export-lottie.ts:251`),
+ * this gate is removed and emission becomes unconditional.
+ *
+ * Cross-icon transitions (`fromIconId !== iconId`) are skipped:
+ * the compiled-icon JSON describes one icon; a cross-icon morph
+ * needs both icons' compiled forms to play. Cross-icon emission
+ * lands when the package-level export grows that contract. Each
+ * skip emits a `console.warn` so authors can see when a
+ * cross-icon transition is being dropped from the per-icon
+ * output rather than wondering where it went.
+ */
+function buildCompiledTransitions(icon: Icon): CompiledTransition[] {
+  const transitions = icon.transitions;
+  if (!transitions) return [];
+  // Compiled transitions are gated on the V2 resolver flag. When
+  // off (default), the legacy SDK behaviour stands and the source
+  // roundtrip's not-yet-restored transition path doesn't drift the
+  // content hash. When V2 flips on, emission is real and the
+  // source roundtrip's transition restore lands alongside.
+  const v2 = isResolverV2Enabled();
+  if (!v2) return [];
+  const out: CompiledTransition[] = [];
+  for (const transition of Object.values(transitions)) {
+    // Cross-icon transitions live at the package layer, not the
+    // per-icon compiled JSON — see header note. Surface the skip
+    // so authors can correlate "missing transition in compiled
+    // output" with the architectural limitation.
+    if (transition.fromIconId && transition.fromIconId !== icon.id) {
+      console.warn(
+        `[export-compiled-icon] skipping cross-icon transition ${transition.id} ` +
+          `for icon "${icon.id}" (fromIconId="${transition.fromIconId}"): ` +
+          `cross-icon emission lands at the package layer, not per-icon JSON.`,
+      );
+      continue;
+    }
+    if (transition.toIconId && transition.toIconId !== icon.id) {
+      console.warn(
+        `[export-compiled-icon] skipping cross-icon transition ${transition.id} ` +
+          `for icon "${icon.id}" (toIconId="${transition.toIconId}"): ` +
+          `cross-icon emission lands at the package layer, not per-icon JSON.`,
+      );
+      continue;
+    }
+
+    const fromVariant = icon.variants?.[transition.fromVariantId];
+    const toVariant = icon.variants?.[transition.toVariantId];
+    if (!fromVariant || !toVariant) continue;
+
+    const bindings = (transition.layerBindings ?? []).map((binding) =>
+      compileBinding(binding, fromVariant, toVariant, transition),
+    );
+
+    out.push({
+      from: transition.fromVariantId,
+      to: transition.toVariantId,
+      durationMs: transition.durationMs,
+      easing: transition.easing ?? 'ease-in-out',
+      strategy: compileStrategy(transition.strategy),
+      bindings,
+    });
+  }
+  // Stable ordering for content-hash determinism.
+  out.sort((a, b) => {
+    const k1 = `${a.from}->${a.to}`;
+    const k2 = `${b.from}->${b.to}`;
+    return k1.localeCompare(k2);
+  });
+  return out;
+}
+
+function compileBinding(
+  binding: LayerBinding,
+  fromVariant: Variant,
+  toVariant: Variant,
+  transition: Transition,
+): CompiledLayerBinding {
+  const compiled: CompiledLayerBinding = {};
+  if (binding.fromLayerId) compiled.fromLayerId = binding.fromLayerId;
+  if (binding.toLayerId) compiled.toLayerId = binding.toLayerId;
+
+  if (binding.morph && binding.fromLayerId && binding.toLayerId) {
+    const fromLayer = fromVariant.layers?.[binding.fromLayerId];
+    const toLayer = toVariant.layers?.[binding.toLayerId];
+    const morph: NonNullable<CompiledLayerBinding['morph']> = {
+      topology: binding.morph.topology ?? 'bestGuess',
+    };
+    // V2 gate is on the outer caller (buildCompiledTransitions).
+    // When we get here the flag is true, so always sample.
+    if (fromLayer?.path?.d && toLayer?.path?.d) {
+      try {
+        const resolution = resolveMorph(fromLayer, toLayer, {
+          cadence: transition.cadence ?? 'soft',
+          hints: transition.correspondenceHints,
+        });
+        morph.keyframes = sampleForCompiledIcon(
+          resolution,
+          transition.durationMs,
+        );
+      } catch (err) {
+        // Cascade failure (degenerate input) — leave keyframes
+        // absent so the SDK falls back to snap. Surface the
+        // failure so a real cascade bug doesn't ship silently:
+        // graceful degradation is intentional, but observability
+        // is not optional. Authors and CI logs see the layer pair
+        // and the underlying error.
+        const reason = err instanceof Error ? err.message : String(err);
+        console.warn(
+          `[export-compiled-icon] morph cascade failed for transition ` +
+            `${transition.id} layer pair ` +
+            `"${binding.fromLayerId}" → "${binding.toLayerId}": ${reason}. ` +
+            `Emitting morph block without keyframes — SDK will snap.`,
+        );
+      }
+    }
+    compiled.morph = morph;
+  }
+
+  return compiled;
+}
+
+function compileStrategy(
+  strategy: Transition['strategy'],
+): CompiledTransition['strategy'] {
+  switch (strategy) {
+    case 'strictMorph':
+      return 'strictMorph';
+    case 'bestGuessMorph':
+    case 'crossIconMorph':
+      return 'bestGuessMorph';
+    case 'replace':
+      return 'replace';
+    case 'lineAnimation':
+    case 'auto':
+    default:
+      return 'track';
+  }
 }

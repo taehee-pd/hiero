@@ -2636,9 +2636,10 @@ function createActions(): EditorActions {
         // is no longer invoked on enter.
         return {
           editScope: { kind: 'guideMaster', masterId },
+          snapEnabled: true,
           // Drop layer/point selection so the canvas clearly reflects
           // "editing guides, not the icon".
-          selection: { layerIds: [], pointIds: [] },
+          selection: { layerIds: [], pointIds: [], guideIndexes: [] },
         };
       });
     },
@@ -2840,6 +2841,8 @@ function createActions(): EditorActions {
       editorStoreApi.setState((s) => {
         const guideMaster = s.project?.guideMasters?.[masterId];
         if (!s.project || !guideMaster) return s;
+        const nextItems = [...guideMaster.items, item];
+        const nextIndex = nextItems.length - 1;
 
         return {
           project: {
@@ -2849,10 +2852,12 @@ function createActions(): EditorActions {
               ...s.project.guideMasters,
               [masterId]: {
                 ...guideMaster,
-                items: [...guideMaster.items, item],
+                items: nextItems,
               },
             },
           },
+          selectedIconGuideIndex: nextIndex,
+          selection: { layerIds: [], pointIds: [], guideIndexes: [nextIndex] },
         };
       });
     },
@@ -2886,6 +2891,15 @@ function createActions(): EditorActions {
       editorStoreApi.setState((s) => {
         const guideMaster = s.project?.guideMasters?.[masterId];
         if (!s.project || !guideMaster || index < 0 || index >= guideMaster.items.length) return s;
+        const nextItems = guideMaster.items.filter((_, entryIndex) => entryIndex !== index);
+        const nextSelectedIndex =
+          s.selectedIconGuideIndex === null
+            ? null
+            : s.selectedIconGuideIndex === index
+              ? null
+              : s.selectedIconGuideIndex > index
+                ? s.selectedIconGuideIndex - 1
+                : s.selectedIconGuideIndex;
 
         return {
           project: {
@@ -2895,9 +2909,15 @@ function createActions(): EditorActions {
               ...s.project.guideMasters,
               [masterId]: {
                 ...guideMaster,
-                items: guideMaster.items.filter((_, entryIndex) => entryIndex !== index),
+                items: nextItems,
               },
             },
+          },
+          selectedIconGuideIndex: nextSelectedIndex,
+          selection: {
+            layerIds: [],
+            pointIds: [],
+            guideIndexes: nextSelectedIndex === null ? [] : [nextSelectedIndex],
           },
         };
       });
@@ -4103,4 +4123,3 @@ function normaliseLayerForGuideScope(layer: Layer): Layer {
   delete clone.drawOrder;
   return clone;
 }
-

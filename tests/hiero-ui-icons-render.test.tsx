@@ -41,6 +41,12 @@ describe('Icon wrapper', () => {
     expect(svg).not.toBeNull();
   });
 
+  test('marks wrapper/runtime nodes for button-safe icon sizing', () => {
+    const { container } = render(<Icon name="eye" />);
+    expect(container.querySelector('[data-hiero-ui-icon="eye"]')).not.toBeNull();
+    expect(container.querySelector('[data-hiero-runtime-icon]')).not.toBeNull();
+  });
+
   test('wrapper span carries the a11y label; inner svg stays decorative', () => {
     const { container } = render(<Icon name="plus" aria-label="Add" />);
     const span = container.querySelector('span');

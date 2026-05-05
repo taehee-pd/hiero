@@ -379,6 +379,7 @@ export const HieroIcon = forwardRef<HieroIconHandle, HieroIconProps>(
 
     return (
       <div
+        data-hiero-runtime-icon=""
         className={className}
         style={{
           ...style,

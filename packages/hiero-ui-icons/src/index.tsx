@@ -100,6 +100,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
   return (
     <span
       ref={ref}
+      data-hiero-ui-icon={name}
       className={className}
       style={wrapperStyle}
       role={resolvedRole}

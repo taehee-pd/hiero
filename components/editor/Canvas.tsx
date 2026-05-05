@@ -20,6 +20,7 @@ import { useEditorStore } from '@/lib/editor-store/hooks';
 import { useCanvasOverlay } from '@/lib/editor-overlay-canvas/use-overlay';
 import { Rulers } from './Rulers';
 import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
+import { getGuideItemBounds } from '@/lib/editor-core/guide-item-geometry';
 import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
@@ -397,6 +398,84 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     svg.querySelectorAll('[data-editor-handle="true"]').forEach((el) => el.remove());
 
     if (tool !== 'direct-select' && tool !== 'pen' && tool !== 'select') return;
+    if (tool === 'select' && guideEditingActive && activeGuideMaster) {
+      const selectedGuideIndex = selection.guideIndexes?.[0] ?? null;
+      const guideItem =
+        selectedGuideIndex === null ? null : activeGuideMaster.items[selectedGuideIndex];
+      const bounds = guideItem
+        ? getGuideItemBounds(guideItem, activeGuideMaster.viewBox)
+        : null;
+      if (!bounds || selectedGuideIndex === null) return;
+
+      const tbx = bounds.minX;
+      const tby = bounds.minY;
+      const tbw = bounds.maxX - bounds.minX;
+      const tbh = bounds.maxY - bounds.minY;
+
+      const outline = document.createElementNS(SVG_NS, 'rect');
+      outline.setAttribute('x', `${tbx}`);
+      outline.setAttribute('y', `${tby}`);
+      outline.setAttribute('width', `${Math.max(tbw, 0.001)}`);
+      outline.setAttribute('height', `${Math.max(tbh, 0.001)}`);
+      outline.setAttribute('fill', 'rgba(14,165,233,0.08)');
+      outline.setAttribute('stroke', 'rgba(14,165,233,0.95)');
+      outline.setAttribute('stroke-width', `${1 / Math.max(viewport.zoom, 0.01)}`);
+      outline.setAttribute('stroke-dasharray', `${4 / Math.max(viewport.zoom, 0.01)} ${3 / Math.max(viewport.zoom, 0.01)}`);
+      outline.setAttribute('data-editor-handle', 'true');
+      outline.setAttribute('data-handle-type', 'selection-bbox');
+      outline.setAttribute('data-guide-index', `${selectedGuideIndex}`);
+      outline.style.pointerEvents = 'all';
+      outline.style.cursor = 'move';
+      svg.appendChild(outline);
+
+      const midX = tbx + tbw / 2;
+      const midY = tby + tbh / 2;
+      const handles: Array<[string, number, number]> = [
+        ['nw', tbx, tby],
+        ['n', midX, tby],
+        ['ne', tbx + tbw, tby],
+        ['e', tbx + tbw, midY],
+        ['se', tbx + tbw, tby + tbh],
+        ['s', midX, tby + tbh],
+        ['sw', tbx, tby + tbh],
+        ['w', tbx, midY],
+      ];
+
+      const handleRadius = SELECTION_HANDLE_RADIUS_PX / Math.max(viewport.zoom, 0.01);
+      const handleHitRadius = SELECTION_HANDLE_HIT_RADIUS_PX / Math.max(viewport.zoom, 0.01);
+
+      handles.forEach(([handle, x, y]) => {
+        const hit = document.createElementNS(SVG_NS, 'circle');
+        hit.setAttribute('cx', `${x}`);
+        hit.setAttribute('cy', `${y}`);
+        hit.setAttribute('r', `${handleHitRadius}`);
+        hit.setAttribute('fill', 'rgba(0,0,0,0)');
+        hit.setAttribute('data-editor-handle', 'true');
+        hit.setAttribute('data-handle-type', 'selection-resize-hit');
+        hit.setAttribute('data-guide-index', `${selectedGuideIndex}`);
+        hit.setAttribute('data-selection-handle', handle);
+        hit.style.pointerEvents = 'all';
+        hit.style.cursor = handle === 'n' || handle === 's' ? 'ns-resize' :
+          handle === 'e' || handle === 'w' ? 'ew-resize' :
+          handle === 'ne' || handle === 'sw' ? 'nesw-resize' : 'nwse-resize';
+        svg.appendChild(hit);
+
+        const visible = document.createElementNS(SVG_NS, 'circle');
+        visible.setAttribute('cx', `${x}`);
+        visible.setAttribute('cy', `${y}`);
+        visible.setAttribute('r', `${handleRadius}`);
+        visible.setAttribute('fill', '#ffffff');
+        visible.setAttribute('stroke', '#0ea5e9');
+        visible.setAttribute('stroke-width', `${1 / Math.max(viewport.zoom, 0.01)}`);
+        visible.setAttribute('data-editor-handle', 'true');
+        visible.setAttribute('data-handle-type', 'selection-resize-visible');
+        visible.setAttribute('data-guide-index', `${selectedGuideIndex}`);
+        visible.style.pointerEvents = 'none';
+        svg.appendChild(visible);
+      });
+      return;
+    }
+
     const activeLayerId = selection.layerIds[0];
     if (!activeLayerId || !currentState) return;
 
@@ -657,7 +736,17 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         );
       });
     });
-  }, [tool, selection.layerIds, selection.pointIds, currentState, viewport.zoom, pendingPenHandle]);
+  }, [
+    tool,
+    selection.layerIds,
+    selection.pointIds,
+    selection.guideIndexes,
+    currentState,
+    viewport.zoom,
+    pendingPenHandle,
+    guideEditingActive,
+    activeGuideMaster,
+  ]);
 
   // Imperative pointer interaction engine.
   useEffect(() => {
@@ -920,6 +1009,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       data-canvas-root
       style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
       onPointerDown={(e) => {
+        if (guideEditingActive) return;
         // Click on empty canvas area → deselect (only for select/direct-select tools, no Shift)
         const target = e.target as HTMLElement;
         const isLayerHit = target.closest('[data-layer-hit-id], [data-layer-id], [data-editor-handle]');

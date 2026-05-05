@@ -96,6 +96,43 @@ function seedMaster() {
   return 'test-master';
 }
 
+function addLegacyMasterLayer(masterId: string) {
+  const primitive: PrimitiveShape = {
+    kind: 'rectangle',
+    x: 4,
+    y: 4,
+    width: 8,
+    height: 6,
+  };
+  const layer = {
+    id: 'legacy-guide-layer',
+    visible: true,
+    path: { d: buildPrimitivePath(primitive) },
+    primitive,
+    style: {},
+  };
+  editorStore.setState((s) => {
+    const master = s.project?.guideMasters?.[masterId];
+    if (!s.project || !master) return s;
+    return {
+      project: {
+        ...s.project,
+        guideMasters: {
+          ...s.project.guideMasters,
+          [masterId]: {
+            ...master,
+            layers: {
+              ...(master.layers ?? {}),
+              [layer.id]: layer,
+            },
+          },
+        },
+      },
+    };
+  });
+  return layer.id;
+}
+
 function createMockSvg(): SVGSVGElement {
   return {
     addEventListener() {},
@@ -136,16 +173,18 @@ function pointerEvent(init: {
 }
 
 describe('editScope lifecycle', () => {
-  test('enter flips editScope to guideMaster + clears selection', () => {
+  test('enter flips editScope to guideMaster, clears selection, and enables snapping', () => {
     bootstrap();
     const masterId = seedMaster();
 
     editorStore.getState().setSelection({ layerIds: ['roof'], pointIds: [] });
+    editorStore.setState({ snapEnabled: false });
     editorStore.getState().enterGuideEditingMode(masterId);
 
     const after = editorStore.getState();
     expect(after.editScope).toEqual({ kind: 'guideMaster', masterId });
-    expect(after.selection).toEqual({ layerIds: [], pointIds: [] });
+    expect(after.selection).toEqual({ layerIds: [], pointIds: [], guideIndexes: [] });
+    expect(after.snapEnabled).toBeTrue();
   });
 
   test('exit returns the scope to icon + keeps icon pointers intact', () => {
@@ -192,28 +231,24 @@ describe('editScope lifecycle', () => {
   });
 });
 
-describe('items → layers migration on enter', () => {
-  test('migrates rect/ellipse/hline/vline into layers; keeps drawPoint in items', () => {
+describe('semantic guide items on enter', () => {
+  test('keeps rect/ellipse/hline/vline as semantic overlay items', () => {
     bootstrap();
     const masterId = seedMaster();
     editorStore.getState().enterGuideEditingMode(masterId);
 
     const master = editorStore.getState().project!.guideMasters![masterId];
-    // 3 geometric items → 3 layers; drawPoint stays in items.
-    expect(Object.keys(master.layers ?? {})).toHaveLength(3);
-    expect(master.items).toHaveLength(1);
-    expect(master.items[0]!.kind).toBe('drawPoint');
-
-    // The migrated rect/ellipse layers should carry matching primitive
-    // metadata so the Inspector's Sides/Points surface generalises.
-    const layers = Object.values(master.layers ?? {});
-    const rectLayer = layers.find((l) => l.primitive?.kind === 'rectangle');
-    const ellipseLayer = layers.find((l) => l.primitive?.kind === 'ellipse');
-    expect(rectLayer).toBeDefined();
-    expect(ellipseLayer).toBeDefined();
+    expect(Object.keys(master.layers ?? {})).toHaveLength(0);
+    expect(master.items).toHaveLength(4);
+    expect(master.items.map((item) => item.kind)).toEqual([
+      'rect',
+      'ellipse',
+      'hline',
+      'drawPoint',
+    ]);
   });
 
-  test('migration is idempotent — a second enter is a no-op', () => {
+  test('entering twice leaves semantic items unchanged', () => {
     bootstrap();
     const masterId = seedMaster();
     editorStore.getState().enterGuideEditingMode(masterId);
@@ -223,9 +258,7 @@ describe('items → layers migration on enter', () => {
     editorStore.getState().enterGuideEditingMode(masterId);
     const secondPass = editorStore.getState().project!.guideMasters![masterId];
 
-    expect(Object.keys(secondPass.layers ?? {}).length).toBe(
-      Object.keys(firstPass.layers ?? {}).length,
-    );
+    expect(secondPass.layers ?? {}).toEqual(firstPass.layers ?? {});
     expect(secondPass.items.length).toBe(firstPass.items.length);
   });
 });
@@ -247,8 +280,7 @@ describe('selectors redirect to master layers in guide scope', () => {
     expect(variant).not.toBeNull();
     expect(variant!.size).toBe(24);
     expect(variant!.id).toBe(`guide-master:${masterId}`);
-    // Layers reflect the migrated set.
-    expect(Object.keys(variant!.layers).length).toBeGreaterThan(0);
+    expect(variant!.layers).toEqual({});
   });
 
   test('selectCurrentType returns the master snapshot', () => {
@@ -258,12 +290,12 @@ describe('selectors redirect to master layers in guide scope', () => {
 
     const snap = selectCurrentType(editorStore.getState());
     expect(snap).not.toBeNull();
-    expect(Object.keys(snap!.layers).length).toBeGreaterThan(0);
+    expect(snap!.layers).toEqual({});
   });
 });
 
 describe('shape-tool creation routes writes by scope', () => {
-  test('new shapes land on master.layers in guide scope (not on any icon)', () => {
+  test('new shapes land in master.items in guide scope (not on any icon)', () => {
     bootstrap();
     const masterId = seedMaster();
     const iconLayersBefore = Object.keys(
@@ -272,12 +304,11 @@ describe('shape-tool creation routes writes by scope', () => {
 
     const state = editorStore.getState();
     state.setTool('shape');
-    state.setShapeSubTool('polygon');
+    state.setShapeSubTool('rectangle');
     state.enterGuideEditingMode(masterId);
 
-    const beforeMasterCount = Object.keys(
-      editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
-    ).length;
+    const beforeMasterCount =
+      editorStore.getState().project!.guideMasters![masterId]!.items.length;
 
     const editor = new PathEditor(createMockSvg());
     (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
@@ -285,7 +316,8 @@ describe('shape-tool creation routes writes by scope', () => {
     (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
 
     const master = editorStore.getState().project!.guideMasters![masterId]!;
-    expect(Object.keys(master.layers ?? {}).length).toBe(beforeMasterCount + 1);
+    expect(master.items).toHaveLength(beforeMasterCount + 1);
+    expect(master.items.at(-1)).toMatchObject({ kind: 'rect' });
 
     // Icon's variant layers are untouched — the drawn shape went to the
     // master, not the icon.
@@ -297,25 +329,23 @@ describe('shape-tool creation routes writes by scope', () => {
     editor.destroy();
   });
 
-  test('polygon + star are available in guide mode (same toolbar)', () => {
+  test('rectangle, ellipse, and line are available in guide mode', () => {
     bootstrap();
     const masterId = seedMaster();
     const state = editorStore.getState();
     state.setTool('shape');
     state.enterGuideEditingMode(masterId);
 
-    for (const kind of ['polygon', 'star'] as const) {
+    for (const kind of ['rectangle', 'ellipse', 'line'] as const) {
       state.setShapeSubTool(kind);
       const editor = new PathEditor(createMockSvg());
-      const before = Object.keys(
-        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
-      ).length;
+      const before =
+        editorStore.getState().project!.guideMasters![masterId]!.items.length;
       (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
       (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
       (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
-      const after = Object.keys(
-        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
-      ).length;
+      const after =
+        editorStore.getState().project!.guideMasters![masterId]!.items.length;
       expect(after).toBe(before + 1);
       editor.destroy();
     }
@@ -326,10 +356,9 @@ describe('layer-writers respect editScope', () => {
   test('patchLayer writes to master.layers in guide scope', () => {
     bootstrap();
     const masterId = seedMaster();
+    const someLayerId = addLegacyMasterLayer(masterId);
     editorStore.getState().enterGuideEditingMode(masterId);
 
-    const master = editorStore.getState().project!.guideMasters![masterId]!;
-    const someLayerId = Object.keys(master.layers ?? {})[0]!;
     editorStore.getState().patchLayer('icon-home', someLayerId, { visible: false });
 
     const updated = editorStore.getState().project!.guideMasters![masterId]!
@@ -348,13 +377,9 @@ describe('layer-writers respect editScope', () => {
   test('setLayerPrimitive regenerates a master layer via the shared helper', () => {
     bootstrap();
     const masterId = seedMaster();
+    const rectLayerId = addLegacyMasterLayer(masterId);
     editorStore.getState().enterGuideEditingMode(masterId);
 
-    const master = editorStore.getState().project!.guideMasters![masterId]!;
-    // Pick the migrated rectangle layer.
-    const rectLayerId = Object.keys(master.layers ?? {}).find(
-      (id) => master.layers![id]!.primitive?.kind === 'rectangle',
-    )!;
     expect(rectLayerId).toBeDefined();
 
     const nextPrimitive: PrimitiveShape = {
@@ -375,6 +400,7 @@ describe('layer-writers respect editScope', () => {
   test('removeSelectedLayers deletes from master.layers in guide scope', () => {
     bootstrap();
     const masterId = seedMaster();
+    addLegacyMasterLayer(masterId);
     editorStore.getState().enterGuideEditingMode(masterId);
 
     const layersBefore =
@@ -432,9 +458,8 @@ describe('adversarial: history, clipboard, race, synthetic ids', () => {
     // Enter A. At this moment editScope flips to guideMaster(A) — and a
     // snapshot is pushed with editScope=icon (the state BEFORE the enter).
     state.enterGuideEditingMode(masterA);
-    const masterALayersBeforeDraw = Object.keys(
-      editorStore.getState().project!.guideMasters![masterA]!.layers ?? {},
-    ).length;
+    const masterAItemsBeforeDraw =
+      editorStore.getState().project!.guideMasters![masterA]!.items.length;
 
     // Draw one shape on A. A snapshot is pushed capturing editScope=A
     // (the state before the mutation).
@@ -451,10 +476,8 @@ describe('adversarial: history, clipboard, race, synthetic ids', () => {
 
     const afterUndo = editorStore.getState();
     expect(afterUndo.editScope).toEqual({ kind: 'guideMaster', masterId: masterA });
-    const masterAAfter = Object.keys(
-      afterUndo.project!.guideMasters![masterA]!.layers ?? {},
-    ).length;
-    expect(masterAAfter).toBe(masterALayersBeforeDraw);
+    const masterAAfter = afterUndo.project!.guideMasters![masterA]!.items.length;
+    expect(masterAAfter).toBe(masterAItemsBeforeDraw);
   });
 
 
@@ -554,33 +577,29 @@ describe('adversarial: history, clipboard, race, synthetic ids', () => {
   });
 });
 
-describe('canvas toolbar remains identical in guide scope', () => {
-  test('every SHAPE_SUB_TOOLS entry is still authorable on the master', () => {
+describe('canvas toolbar in guide scope', () => {
+  test('guide shape tools author semantic guide items', () => {
     bootstrap();
     const masterId = seedMaster();
     const state = editorStore.getState();
     state.setTool('shape');
     state.enterGuideEditingMode(masterId);
 
-    const kinds: Array<'rectangle' | 'ellipse' | 'polygon' | 'star' | 'line'> = [
+    const kinds: Array<'rectangle' | 'ellipse' | 'line'> = [
       'rectangle',
       'ellipse',
-      'polygon',
-      'star',
       'line',
     ];
     for (const kind of kinds) {
       state.setShapeSubTool(kind);
       const editor = new PathEditor(createMockSvg());
-      const before = Object.keys(
-        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
-      ).length;
+      const before =
+        editorStore.getState().project!.guideMasters![masterId]!.items.length;
       (editor as any).onPointerDown(pointerEvent({ clientX: 20, clientY: 20 }));
       (editor as any).onPointerMove(pointerEvent({ clientX: 80, clientY: 80 }));
       (editor as any).onPointerUp(pointerEvent({ clientX: 80, clientY: 80 }));
-      const after = Object.keys(
-        editorStore.getState().project!.guideMasters![masterId]!.layers ?? {},
-      ).length;
+      const after =
+        editorStore.getState().project!.guideMasters![masterId]!.items.length;
       expect(after).toBe(before + 1);
       editor.destroy();
     }

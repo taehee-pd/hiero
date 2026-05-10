@@ -23,11 +23,11 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['default', 'destructive', 'outline', 'secondary', 'ghost', 'link'],
+      options: ['default', 'destructive', 'outline', 'secondary', 'ghost', 'pane'],
     },
     size: {
       control: 'select',
-      options: ['default', 'sm', 'lg', 'icon', 'icon-sm', 'icon-lg'],
+      options: ['default', 'sm', 'icon-sm', 'pane'],
     },
     disabled: { control: 'boolean' },
   },
@@ -58,9 +58,6 @@ export const AllVariants: Story = {
       <Button {...args} variant="ghost">
         ghost
       </Button>
-      <Button {...args} variant="link">
-        link
-      </Button>
     </div>
   ),
 };
@@ -74,10 +71,7 @@ export const AllSizes: Story = {
       <Button {...args} size="default">
         default
       </Button>
-      <Button {...args} size="lg">
-        large
-      </Button>
-      <Button {...args} size="icon" aria-label="add">
+      <Button {...args} size="icon-sm" aria-label="add">
         <UiIcon name="plus" />
       </Button>
     </div>

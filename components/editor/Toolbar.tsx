@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ShortcutRow } from '@/components/ds';
 import { editorStore } from '@/lib/editor-store/store';
 import { undo, redo } from '@/lib/editor-store/history';
 import { useEditorStore } from '@/lib/editor-store/hooks';
@@ -755,16 +756,16 @@ export function Toolbar() {
             <DialogDescription>Core editor shortcuts and quick-access tools.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 text-sm">
-            <ShortcutRow label="Select tool" shortcut="V" />
-            <ShortcutRow label="Direct select tool" shortcut="A" />
-            <ShortcutRow label="Pen tool" shortcut="P" />
-            <ShortcutRow label="Shape tool" shortcut="U" />
-            <ShortcutRow label="Undo" shortcut="Cmd/Ctrl+Z" />
-            <ShortcutRow label="Redo" shortcut="Shift+Cmd/Ctrl+Z" />
-            <ShortcutRow label="Toggle guides" shortcut="Cmd/Ctrl+;" />
-            <ShortcutRow label="Toggle snap" shortcut="Shift+Cmd/Ctrl+;" />
-            <ShortcutRow label="Delete selected layer or guides" shortcut="Delete" />
-            <ShortcutRow label="Escape selection / direct-select mode" shortcut="Esc" />
+            <ShortcutRow label="Select tool" keys={['V']} />
+            <ShortcutRow label="Direct select tool" keys={['A']} />
+            <ShortcutRow label="Pen tool" keys={['P']} />
+            <ShortcutRow label="Shape tool" keys={['U']} />
+            <ShortcutRow label="Undo" keys={['Cmd', 'Z']} />
+            <ShortcutRow label="Redo" keys={['Shift', 'Cmd', 'Z']} />
+            <ShortcutRow label="Toggle guides" keys={['Cmd', ';']} />
+            <ShortcutRow label="Toggle snap" keys={['Shift', 'Cmd', ';']} />
+            <ShortcutRow label="Delete selected layer or guides" keys={['Delete']} />
+            <ShortcutRow label="Escape selection / direct-select mode" keys={['Escape']} />
           </div>
         </DialogContent>
       </Dialog>
@@ -839,13 +840,3 @@ function ToolbarButton({
   );
 }
 
-function ShortcutRow({ label, shortcut }: { label: string; shortcut: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-border/70 bg-background/60 px-3 py-1.5" style={{ boxShadow: 'var(--shadow-outline)' }}>
-      <span>{label}</span>
-      <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs">
-        {shortcut}
-      </span>
-    </div>
-  );
-}

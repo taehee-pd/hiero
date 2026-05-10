@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from '@/components/ui/use-toast';
+import { KbdHint } from '@/components/ds';
 import {
   autoMorph,
   interpolateTransitionValues,
@@ -802,7 +803,7 @@ export const TransitionPanel = memo(function TransitionPanel() {
           role="status"
         >
           Pick a target icon + variant above to render a preview. You can also
-          press <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd> to search icons by name.
+          press <KbdHint keys={['Cmd', 'K']} /> to search icons by name.
         </p>
       ) : null}
 

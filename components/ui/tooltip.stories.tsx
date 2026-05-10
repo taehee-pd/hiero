@@ -8,7 +8,7 @@ function TooltipFixture() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="add layer">
+        <Button variant="ghost" size="icon-sm" aria-label="add layer">
           +
         </Button>
       </TooltipTrigger>

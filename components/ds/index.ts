@@ -27,11 +27,8 @@ export type { KbdHintProps } from './kbd-hint';
 export { ColorField } from './color-field';
 export type { ColorFieldProps } from './color-field';
 export { IconButton } from './icon-button';
-export type {
-  IconButtonProps,
-  IconButtonSize,
-  IconButtonRadius,
-  IconButtonVariant,
-} from './icon-button';
+export type { IconButtonProps, IconButtonSize } from './icon-button';
 export { Tag } from './tag';
 export type { TagProps, TagVariant } from './tag';
+export { ShortcutRow } from './shortcut-row';
+export type { ShortcutRowProps } from './shortcut-row';

@@ -57,6 +57,24 @@ const config: StorybookConfig = {
         return null;
       },
     });
+    // In dev, Vite prebundles `fast-bitset` (via `optimizeDeps` → esbuild)
+    // before the regular transform pipeline runs, so the plugin above never
+    // sees it and the prebundled chunk still throws `BitSet is not defined`
+    // when the iframe loads. Apply the same one-line patch as an esbuild
+    // plugin so it lands during the prebundle step too.
+    viteConfig.optimizeDeps ??= {};
+    viteConfig.optimizeDeps.esbuildOptions ??= {};
+    viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+    viteConfig.optimizeDeps.esbuildOptions.plugins.push({
+      name: 'patch-fast-bitset-strict-mode-prebundle',
+      setup(build) {
+        build.onLoad({ filter: /fast-bitset[\\/].*BitSet\.js$/ }, async (args) => {
+          const { readFile } = await import('node:fs/promises');
+          const code = await readFile(args.path, 'utf8');
+          return { contents: `var BitSet;\n${code}`, loader: 'js' };
+        });
+      },
+    });
     return viteConfig;
   },
 };

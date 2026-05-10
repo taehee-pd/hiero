@@ -10,6 +10,7 @@ const meta: Meta<typeof Tag> = {
       control: 'select',
       options: ['default', 'muted', 'outline', 'success', 'warning', 'danger'],
     },
+    uppercase: { control: 'boolean' },
   },
 };
 
@@ -36,6 +37,20 @@ export const Danger: Story = {
   args: { children: 'Removed', variant: 'danger' },
 };
 
+export const Uppercase: Story = {
+  args: { children: 'Shipped', variant: 'success', uppercase: true },
+};
+
+export const AsChildLink: Story = {
+  render: () => (
+    <Tag asChild variant="muted">
+      <a href="https://hiero.dev" className="hover:underline">
+        hiero.dev
+      </a>
+    </Tag>
+  ),
+};
+
 export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-2">
@@ -47,6 +62,34 @@ export const AllVariants: Story = {
       <Tag variant="danger">Removed</Tag>
     </div>
   ),
+};
+
+export const ThemeMatrix: Story = {
+  render: () => (
+    <div className="grid gap-6">
+      {(['classic', 'minimal', 'brutalist'] as const).map((theme) => (
+        <div key={theme} data-theme={theme === 'classic' ? undefined : theme} className="grid gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">{theme}</span>
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/50 p-3">
+            <Tag variant="default">Added</Tag>
+            <Tag variant="muted">react</Tag>
+            <Tag variant="outline">npm-registry</Tag>
+            <Tag variant="success">auto-publish</Tag>
+            <Tag variant="warning">pending</Tag>
+            <Tag variant="danger">Removed</Tag>
+          </div>
+        </div>
+      ))}
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Same six variants under each design theme. Switching is a `data-theme` attribute on a parent — no component code changes.',
+      },
+    },
+  },
 };
 
 export const SyncTargetExample: Story = {

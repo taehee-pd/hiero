@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import { Button } from '@/components/ui/button';
+import { KbdHint } from '@/components/ds';
 import {
   useSelection,
   useEditorStore,
@@ -237,11 +238,11 @@ export const LayerPanel = memo(function LayerPanel() {
               </p>
               <div className="mt-3 flex flex-col gap-1.5">
                 <div className="flex items-center justify-center gap-2 text-[11px]">
-                  <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">P</kbd>
+                  <KbdHint keys={['P']} />
                   <span>Pen tool</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-[11px]">
-                  <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium">U</kbd>
+                  <KbdHint keys={['U']} />
                   <span>Shape tool</span>
                 </div>
                 <div className="mt-1 text-[11px] text-muted-foreground/70">

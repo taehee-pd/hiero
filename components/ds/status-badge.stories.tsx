@@ -8,7 +8,20 @@ const meta: Meta<typeof StatusBadge> = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['neutral', 'success', 'warning', 'danger', 'info', 'accent'],
+      options: [
+        // Intent-based (preferred)
+        'neutral',
+        'saved',
+        'unsaved',
+        'connected',
+        'error',
+        // Legacy aliases (kept for backwards compat with current call sites)
+        'success',
+        'warning',
+        'danger',
+        'info',
+        'accent',
+      ],
     },
   },
 };
@@ -16,39 +29,107 @@ const meta: Meta<typeof StatusBadge> = {
 export default meta;
 type Story = StoryObj<typeof StatusBadge>;
 
+// ─── Intent-based variants (use these in new code) ───
+
 export const Neutral: Story = {
-  args: { children: 'Saved', variant: 'neutral' },
+  args: { children: 'Idle', variant: 'neutral' },
 };
 
-export const Warning: Story = {
-  args: { children: 'Unsaved', variant: 'warning' },
+export const Saved: Story = {
+  args: { children: 'Saved', variant: 'saved' },
 };
 
-export const Success: Story = {
-  args: { children: 'Connected', variant: 'success' },
+export const Unsaved: Story = {
+  args: { children: 'Unsaved changes', variant: 'unsaved' },
 };
 
-export const Danger: Story = {
-  args: { children: 'Conflict', variant: 'danger' },
+export const Connected: Story = {
+  args: { children: 'Connected', variant: 'connected' },
 };
 
-export const Info: Story = {
-  args: { children: 'PR created', variant: 'info' },
+export const Error: Story = {
+  args: { children: 'Conflict', variant: 'error' },
 };
 
-export const Accent: Story = {
-  args: { children: '3 changes', variant: 'accent' },
+// ─── Composition ───
+
+export const AsChildButton: Story = {
+  render: () => (
+    <StatusBadge asChild variant="connected">
+      <button type="button" onClick={() => alert('clicked')} className="cursor-pointer">
+        PR #42 created
+      </button>
+    </StatusBadge>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Use `asChild` to render the badge as the immediate child element while keeping all StatusBadge styling — Radix Slot composition.',
+      },
+    },
+  },
 };
+
+// ─── All variants matrix ───
 
 export const AllVariants: Story = {
   render: () => (
-    <div className="flex flex-wrap items-center gap-2">
-      <StatusBadge variant="neutral">Saved</StatusBadge>
-      <StatusBadge variant="warning">Unsaved</StatusBadge>
-      <StatusBadge variant="success">Connected</StatusBadge>
-      <StatusBadge variant="danger">Auth expired</StatusBadge>
-      <StatusBadge variant="info">PR created</StatusBadge>
-      <StatusBadge variant="accent">Snapshot</StatusBadge>
+    <div className="grid gap-4">
+      <div>
+        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+          Intent-based (preferred)
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge variant="neutral">Idle</StatusBadge>
+          <StatusBadge variant="saved">Saved</StatusBadge>
+          <StatusBadge variant="unsaved">Unsaved changes</StatusBadge>
+          <StatusBadge variant="connected">Connected</StatusBadge>
+          <StatusBadge variant="error">Conflict</StatusBadge>
+        </div>
+      </div>
+      <div>
+        <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+          Legacy aliases (existing call sites; intent-named alternatives in
+          parens)
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge variant="success">success → saved</StatusBadge>
+          <StatusBadge variant="warning">warning → unsaved</StatusBadge>
+          <StatusBadge variant="danger">danger → error</StatusBadge>
+          <StatusBadge variant="info">info → connected</StatusBadge>
+          <StatusBadge variant="accent">accent (purple)</StatusBadge>
+        </div>
+      </div>
     </div>
   ),
+};
+
+export const ThemeMatrix: Story = {
+  render: () => (
+    <div className="grid gap-6">
+      {(['classic', 'minimal', 'brutalist'] as const).map((theme) => (
+        <div key={theme} data-theme={theme === 'classic' ? undefined : theme} className="grid gap-2">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+            {theme}
+          </span>
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/50 p-3">
+            <StatusBadge variant="neutral">Idle</StatusBadge>
+            <StatusBadge variant="saved">Saved</StatusBadge>
+            <StatusBadge variant="unsaved">Unsaved</StatusBadge>
+            <StatusBadge variant="connected">Connected</StatusBadge>
+            <StatusBadge variant="error">Error</StatusBadge>
+          </div>
+        </div>
+      ))}
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The same five intent variants under each design theme. Switching is a `data-theme` attribute on a parent.',
+      },
+    },
+  },
 };

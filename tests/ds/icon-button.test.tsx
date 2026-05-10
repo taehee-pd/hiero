@@ -87,16 +87,16 @@ test('size lg applies lg token', () => {
   expect(getByLabelText('Save').className).toContain('--button-icon-size-lg');
 });
 
-test('radius defaults to toolbar', () => {
+test('uses toolbar radius token', () => {
   const { getByLabelText } = render(
     <IconButton icon={<TestIcon />} aria-label="Save" tooltip={false} />,
   );
-  expect(getByLabelText('Save').className).toContain('--radius-toolbar-action');
+  expect(getByLabelText('Save').className).toContain('--btn-icon-radius-toolbar');
 });
 
-test('variant defaults to ghost', () => {
+test('uses ghost background token', () => {
   const { getByLabelText } = render(
     <IconButton icon={<TestIcon />} aria-label="Save" tooltip={false} />,
   );
-  expect(getByLabelText('Save').className).toContain('bg-transparent');
+  expect(getByLabelText('Save').className).toContain('var(--btn-icon-bg-ghost)');
 });

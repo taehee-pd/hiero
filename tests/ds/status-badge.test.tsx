@@ -13,42 +13,44 @@ test('renders children text', () => {
 
 test('default variant is neutral', () => {
   const { container } = render(<StatusBadge>Saved</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('bg-background/80');
+  expect(container.firstElementChild!.className).toContain('var(--badge-bg-neutral)');
 });
 
-test('warning variant applies status-warning-surface', () => {
+test('warning variant reads --badge-bg-unsaved', () => {
   const { container } = render(<StatusBadge variant="warning">Unsaved</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('status-warning-surface');
+  expect(container.firstElementChild!.className).toContain('var(--badge-bg-unsaved)');
 });
 
-test('danger variant applies status-error-surface', () => {
+test('danger variant reads --badge-bg-error', () => {
   const { container } = render(<StatusBadge variant="danger">Error</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('status-error-surface');
+  expect(container.firstElementChild!.className).toContain('var(--badge-bg-error)');
 });
 
-test('success variant applies status-success-surface', () => {
+test('success variant reads --badge-bg-saved', () => {
   const { container } = render(<StatusBadge variant="success">Connected</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('status-success-surface');
+  expect(container.firstElementChild!.className).toContain('var(--badge-bg-saved)');
 });
 
-test('info variant applies status-info-surface', () => {
+test('info variant reads --badge-bg-connected', () => {
   const { container } = render(<StatusBadge variant="info">PR created</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('status-info-surface');
+  expect(container.firstElementChild!.className).toContain('var(--badge-bg-connected)');
 });
 
-test('renders with pill radius token', () => {
+test('renders with badge radius token', () => {
   const { container } = render(<StatusBadge>Test</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('rounded-[var(--radius-pill)]');
+  expect(container.firstElementChild!.className).toContain('rounded-[var(--badge-radius)]');
+});
+
+test('asChild renders the provided child element', () => {
+  const { container } = render(
+    <StatusBadge asChild>
+      <button type="button">Saved</button>
+    </StatusBadge>,
+  );
+  expect(container.firstElementChild!.tagName).toBe('BUTTON');
 });
 
 test('accepts className override', () => {
   const { container } = render(<StatusBadge className="custom-class">Test</StatusBadge>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('custom-class');
+  expect(container.firstElementChild!.className).toContain('custom-class');
 });

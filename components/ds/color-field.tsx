@@ -35,15 +35,29 @@ interface ColorFieldProps {
 /**
  * ColorField — inline color swatch + hex input + optional opacity.
  *
- * Consolidates the color input pattern used across the editor inspector,
- * layer panel, and animation studio. The trigger swatch opens a full
- * ColorPicker popover; the hex field accepts direct text entry.
- *
- * Internal ColorSwatch is the trigger button (not exported standalone
- * per the DS plan §4).
- *
- * DESIGN.md sources: §4 input radius 0.5rem (8px), §7 focus ring.
+ * Style is driven by `--field-*` component tokens. To redesign, override
+ * `--field-radius`, `--field-border`, `--field-swatch-size`, etc.
  */
+
+const swatchClass = cn(
+  'shrink-0 transition-colors',
+  'h-[var(--field-swatch-size)] w-[var(--field-swatch-size)]',
+  'rounded-[var(--field-swatch-radius)]',
+  'border border-[color:var(--field-swatch-border)]',
+  'shadow-none hover:border-[color:var(--field-border-focus)]',
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--field-border-focus)]',
+);
+
+const fieldInputClass = cn(
+  'w-full min-w-0 bg-transparent shadow-none outline-none transition-colors',
+  'h-[var(--field-height)]',
+  'rounded-[var(--field-radius)]',
+  'border border-[color:var(--field-border)]',
+  'focus:border-[color:var(--field-border-focus)]',
+  'font-mono text-[length:var(--text-label)] text-[color:var(--field-fg)]',
+  'leading-[var(--field-height)] disabled:opacity-50',
+);
+
 function ColorField({
   value,
   onChange,
@@ -63,7 +77,7 @@ function ColorField({
         const hex = Color(rgba).hex();
         onChange(hex);
       } catch {
-        // ignore invalid colors during drag
+        /* ignore invalid colors during drag */
       }
     },
     [onChange],
@@ -79,7 +93,7 @@ function ColorField({
         const hex = Color(`#${cleaned}`).hex();
         onChange(hex);
       } catch {
-        // invalid
+        /* invalid */
       }
     }
     setHexDraft(null);
@@ -96,15 +110,11 @@ function ColorField({
 
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
-      {/* Color swatch trigger */}
       <Popover>
         <PopoverTrigger asChild disabled={disabled}>
           <button
             type="button"
-            className={cn(
-              'h-7 w-7 shrink-0 rounded-sm border border-border/70 shadow-none transition-colors hover:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              disabled && 'pointer-events-none opacity-50',
-            )}
+            className={cn(swatchClass, disabled && 'pointer-events-none opacity-50')}
             style={{ backgroundColor: value, ...style }}
             aria-label={ariaLabel ?? `Color: ${value}`}
           />
@@ -122,9 +132,8 @@ function ColorField({
         </PopoverContent>
       </Popover>
 
-      {/* Hex input */}
-      <div className="relative flex h-7 min-w-0 flex-1 items-center">
-        <span className="pointer-events-none absolute left-1.5 text-[10px] text-muted-foreground/60">
+      <div className="relative flex h-[var(--field-height)] min-w-0 flex-1 items-center">
+        <span className="pointer-events-none absolute left-1.5 text-[length:var(--text-caption)] text-[color:var(--field-fg)]/60">
           #
         </span>
         <input
@@ -137,25 +146,22 @@ function ColorField({
             if (e.key === 'Escape') setHexDraft(null);
           }}
           disabled={disabled}
-          className="h-7 w-full min-w-0 rounded-sm border border-border/70 bg-transparent pl-4 pr-1.5 font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
+          className={cn(fieldInputClass, 'pl-4 pr-1.5')}
           spellCheck={false}
           autoComplete="off"
         />
       </div>
 
-      {/* Opacity input */}
       {onOpacityChange != null && (
         <>
           <span
             aria-hidden="true"
-            className="h-4 w-px shrink-0 bg-border/70"
+            className="h-4 w-px shrink-0 bg-[color:var(--field-border)]"
           />
-          <div className="relative flex h-7 w-12 shrink-0 items-center">
+          <div className="relative flex h-[var(--field-height)] w-12 shrink-0 items-center">
             <input
               type="text"
-              value={
-                opacityDraft ?? String(Math.round((opacity ?? 1) * 100))
-              }
+              value={opacityDraft ?? String(Math.round((opacity ?? 1) * 100))}
               onChange={(e) => setOpacityDraft(e.target.value)}
               onBlur={commitOpacity}
               onKeyDown={(e) => {
@@ -163,9 +169,9 @@ function ColorField({
                 if (e.key === 'Escape') setOpacityDraft(null);
               }}
               disabled={disabled}
-              className="h-7 w-full rounded-sm border border-border/70 bg-transparent pl-1.5 pr-5 text-center font-mono text-[11px] leading-7 text-foreground shadow-none outline-none transition-colors focus:border-ring disabled:opacity-50"
+              className={cn(fieldInputClass, 'pl-1.5 pr-5 text-center')}
             />
-            <span className="pointer-events-none absolute right-1.5 text-[10px] text-muted-foreground/60">
+            <span className="pointer-events-none absolute right-1.5 text-[length:var(--text-caption)] text-[color:var(--field-fg)]/60">
               %
             </span>
           </div>

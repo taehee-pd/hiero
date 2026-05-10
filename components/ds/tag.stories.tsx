@@ -10,7 +10,6 @@ const meta: Meta<typeof Tag> = {
       control: 'select',
       options: ['default', 'muted', 'outline', 'success', 'warning', 'danger'],
     },
-    uppercase: { control: 'boolean' },
   },
 };
 
@@ -35,10 +34,6 @@ export const Warning: Story = {
 
 export const Danger: Story = {
   args: { children: 'Removed', variant: 'danger' },
-};
-
-export const Uppercase: Story = {
-  args: { children: 'Shipped', variant: 'success', uppercase: true },
 };
 
 export const AsChildLink: Story = {

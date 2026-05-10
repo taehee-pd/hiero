@@ -23,7 +23,10 @@ import { cn } from '@/lib/utils';
  * (e.g. an `<a>`) while keeping all Tag styling — Radix Slot pattern.
  */
 const tagVariants = cva(
-  // Base — every variant inherits these.
+  // Base — every variant inherits these. text-transform and letter-spacing
+  // are theme-driven (e.g. brutalist sets them to uppercase + 0.08em); the
+  // values come from the --tag-* component tokens, so callers don't pass
+  // a separate `uppercase` prop — switching the theme drives the visual.
   [
     'inline-flex items-center justify-center shrink-0',
     'rounded-[var(--tag-radius)]',
@@ -31,6 +34,7 @@ const tagVariants = cva(
     'text-[length:var(--tag-font-size)]',
     'font-[number:var(--tag-font-weight)]',
     'tracking-[var(--tag-letter-spacing)]',
+    '[text-transform:var(--tag-text-transform)]',
     'leading-tight whitespace-nowrap',
     'border',
     'transition-colors duration-[var(--duration-fast)]',
@@ -51,14 +55,9 @@ const tagVariants = cva(
         outline:
           'bg-[var(--tag-bg-outline)] text-[var(--tag-fg-outline)] border-[var(--tag-border-outline)]',
       },
-      uppercase: {
-        true: 'uppercase',
-        false: '',
-      },
     },
     defaultVariants: {
       variant: 'outline',
-      uppercase: false,
     },
   },
 );
@@ -76,14 +75,13 @@ interface TagProps
 function Tag({
   children,
   variant,
-  uppercase,
   asChild = false,
   className,
   ...rest
 }: TagProps) {
   const Comp = asChild ? Slot : 'span';
   return (
-    <Comp className={cn(tagVariants({ variant, uppercase }), className)} {...rest}>
+    <Comp className={cn(tagVariants({ variant }), className)} {...rest}>
       {children}
     </Comp>
   );

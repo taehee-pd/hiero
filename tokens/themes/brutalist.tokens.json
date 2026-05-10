@@ -1,0 +1,55 @@
+{
+  "$description": "Brutalist theme — raw, hard edges, heavy borders, maximal contrast. Anti-polish. Letter-spaced uppercase chips. Radii at zero, type tracked wide.",
+
+  "btn": {
+    "icon": {
+      "radius": {
+        "toolbar": { "$value": "0", "$type": "dimension" }
+      },
+      "bg": {
+        "ghost-hover": { "$value": "{semantic.foreground}", "$type": "color" }
+      },
+      "fg-ghost-hover": { "$value": "{semantic.background}", "$type": "color" }
+    }
+  },
+
+  "tag": {
+    "radius":         { "$value": "0",        "$type": "dimension" },
+    "text-transform": { "$value": "uppercase","$type": "string" },
+    "letter-spacing": { "$value": "0.08em",   "$type": "string" },
+    "font-weight":    { "$value": 700,        "$type": "fontWeight" },
+    "padding-x":      { "$value": "0.5rem",   "$type": "dimension" },
+    "border": {
+      "muted":   { "$value": "{semantic.foreground}",            "$type": "color" },
+      "info":    { "$value": "{semantic.foreground-highlight}",  "$type": "color" },
+      "success": { "$value": "{semantic.foreground-success}",    "$type": "color" },
+      "warning": { "$value": "{semantic.foreground-warning}",    "$type": "color" },
+      "danger":  { "$value": "{semantic.foreground-danger}",     "$type": "color" }
+    }
+  },
+
+  "badge": {
+    "radius":      { "$value": "0", "$type": "dimension" },
+    "font-weight": { "$value": 700, "$type": "fontWeight" }
+  },
+
+  "field": {
+    "radius": { "$value": "0",                       "$type": "dimension" },
+    "border": { "$value": "{semantic.foreground}",   "$type": "color" }
+  },
+
+  "kbd": {
+    "radius":      { "$value": "0",                       "$type": "dimension" },
+    "border":      { "$value": "{semantic.foreground}",   "$type": "color" },
+    "bg":          { "$value": "{semantic.background}",   "$type": "color" },
+    "fg":          { "$value": "{semantic.foreground}",   "$type": "color" },
+    "font-weight": { "$value": 700,                       "$type": "fontWeight" }
+  },
+
+  "shortcut-row": {
+    "radius": { "$value": "0",                       "$type": "dimension" },
+    "border": { "$value": "{semantic.foreground}",   "$type": "color" },
+    "shadow": { "$value": "none",                    "$type": "shadow" },
+    "bg":     { "$value": "transparent",             "$type": "color" }
+  }
+}

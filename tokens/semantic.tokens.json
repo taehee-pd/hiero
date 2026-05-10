@@ -1,0 +1,33 @@
+{
+  "$description": "Pointer file — semantic tokens are authored as CSS custom properties in app/globals.css (the runtime cascade is the source of truth). This file just declares the names so DTCG references like `{semantic.foreground}` resolve at build time without duplicating values. The build emits `var(--<name>)` for each ref.",
+
+  "semantic": {
+    "foreground":             { "$value": "var(--foreground)",             "$type": "color" },
+    "foreground-secondary":   { "$value": "var(--foreground-secondary)",   "$type": "color" },
+    "foreground-highlight":   { "$value": "var(--foreground-highlight)",   "$type": "color" },
+    "foreground-success":     { "$value": "var(--foreground-success)",     "$type": "color" },
+    "foreground-warning":     { "$value": "var(--foreground-warning)",     "$type": "color" },
+    "foreground-danger":      { "$value": "var(--foreground-danger)",      "$type": "color" },
+    "background":             { "$value": "var(--background)",             "$type": "color" },
+    "background-highlight":   { "$value": "var(--background-highlight)",   "$type": "color" },
+    "background-success":     { "$value": "var(--background-success)",     "$type": "color" },
+    "background-warning":     { "$value": "var(--background-warning)",     "$type": "color" },
+    "background-danger":      { "$value": "var(--background-danger)",      "$type": "color" },
+    "border":                 { "$value": "var(--border)",                 "$type": "color" },
+    "ring":                   { "$value": "var(--ring)",                   "$type": "color" },
+    "muted":                  { "$value": "var(--muted)",                  "$type": "color" },
+    "muted-foreground":       { "$value": "var(--muted-foreground)",       "$type": "color" },
+    "secondary":              { "$value": "var(--secondary)",              "$type": "color" },
+    "secondary-foreground":   { "$value": "var(--secondary-foreground)",   "$type": "color" },
+    "accent":                 { "$value": "var(--accent)",                 "$type": "color" },
+    "accent-foreground":      { "$value": "var(--accent-foreground)",      "$type": "color" },
+    "primary":                { "$value": "var(--primary)",                "$type": "color" },
+    "primary-foreground":     { "$value": "var(--primary-foreground)",     "$type": "color" },
+    "primary-soft":           { "$value": "var(--primary-soft)",           "$type": "color" },
+    "shadow-outline":         { "$value": "var(--shadow-outline)",         "$type": "shadow" },
+    "field-height-md":        { "$value": "var(--field-height-md)",        "$type": "dimension" },
+    "text-caption":           { "$value": "var(--text-caption)",           "$type": "dimension" },
+    "text-body":              { "$value": "var(--text-body)",              "$type": "dimension" },
+    "font-mono":              { "$value": "var(--font-mono)",              "$type": "fontFamily" }
+  }
+}

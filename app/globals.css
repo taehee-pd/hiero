@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+/* Generated component tokens — source of truth: tokens/component.tokens.json
+   plus tokens/themes/*.tokens.json. Run `pnpm tokens:build` after editing
+   any tokens/*.json file. The :root block here defines the classic theme;
+   `[data-theme="minimal"]` and `[data-theme="brutalist"]` blocks override
+   only the tokens those themes change. */
+@import './_generated/component-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -424,6 +430,7 @@
   --shadow-stage: 0 12px 40px rgba(0, 0, 0, 0.28);
   --shadow-error: 0 0 0 1px rgba(248, 113, 113, 0.12), 0 4px 12px rgba(248, 113, 113, 0.08);
 }
+
 
 /* ══════════════════════════════════════════════════
    Tailwind Theme Registration

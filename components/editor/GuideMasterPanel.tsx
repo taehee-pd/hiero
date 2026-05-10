@@ -410,7 +410,6 @@ export function GuideMasterPanel() {
                                   aria-label="Master actions"
                                   tooltip={false}
                                   size="sm"
-                                  radius="toolbar"
                                   className="text-muted-foreground hover:text-foreground"
                                 />
                               </DropdownMenuTrigger>
@@ -598,7 +597,6 @@ function GuideItemCard({
           aria-label="Remove guide item"
           tooltip={false}
           size="sm"
-          radius="toolbar"
           className="text-muted-foreground hover:text-destructive"
         />
       </div>

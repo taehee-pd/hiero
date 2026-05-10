@@ -13,46 +13,63 @@ test('renders children text', () => {
 
 test('default variant is outline', () => {
   const { container } = render(<Tag>label</Tag>);
-  const badge = container.firstElementChild!;
-  // outline variant from Badge
-  expect(badge.className).toContain('text-[10px]');
+  const tag = container.firstElementChild!;
+  expect(tag.className).toContain('var(--tag-bg-outline)');
 });
 
-test('muted variant uses secondary Badge variant', () => {
+test('muted variant reads --tag-bg-muted', () => {
   const { container } = render(<Tag variant="muted">react</Tag>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('bg-secondary');
+  expect(container.firstElementChild!.className).toContain('var(--tag-bg-muted)');
 });
 
-test('success variant adds emerald text color', () => {
+test('success variant reads --tag-bg-success', () => {
   const { container } = render(<Tag variant="success">auto-publish</Tag>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('text-emerald-600');
+  expect(container.firstElementChild!.className).toContain('var(--tag-bg-success)');
 });
 
-test('warning variant adds amber text color', () => {
+test('warning variant reads --tag-bg-warning', () => {
   const { container } = render(<Tag variant="warning">pending</Tag>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('text-amber-600');
+  expect(container.firstElementChild!.className).toContain('var(--tag-bg-warning)');
 });
 
-test('danger variant uses destructive Badge variant', () => {
+test('danger variant reads --tag-bg-danger', () => {
   const { container } = render(<Tag variant="danger">Removed</Tag>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('bg-destructive');
+  expect(container.firstElementChild!.className).toContain('var(--tag-bg-danger)');
 });
 
-test('consistent text-[10px] sizing across all variants', () => {
+test('default solid variant reads --primary', () => {
+  const { container } = render(<Tag variant="default">added</Tag>);
+  expect(container.firstElementChild!.className).toContain('var(--primary)');
+});
+
+test('font-size driven by --tag-font-size token', () => {
   const variants = ['default', 'muted', 'outline', 'success', 'warning', 'danger'] as const;
   for (const variant of variants) {
     const { container } = render(<Tag variant={variant}>test</Tag>);
-    expect(container.firstElementChild!.className).toContain('text-[10px]');
+    expect(container.firstElementChild!.className).toContain('var(--tag-font-size)');
     cleanup();
   }
 });
 
+test('binds text-transform to --tag-text-transform token', () => {
+  // Theme drives uppercase via --tag-text-transform (e.g. brutalist).
+  // Component itself binds the property; the value comes from the cascade.
+  const { container } = render(<Tag>shipped</Tag>);
+  expect(container.firstElementChild!.className).toContain('[text-transform:var(--tag-text-transform)]');
+});
+
+test('asChild renders as the provided child element', () => {
+  const { container } = render(
+    <Tag asChild>
+      <a href="/x">link</a>
+    </Tag>,
+  );
+  const child = container.firstElementChild!;
+  expect(child.tagName).toBe('A');
+  expect(child.className).toContain('var(--tag-bg-outline)');
+});
+
 test('accepts className override', () => {
   const { container } = render(<Tag className="text-[9px]">snapshot</Tag>);
-  const badge = container.firstElementChild!;
-  expect(badge.className).toContain('text-[9px]');
+  expect(container.firstElementChild!.className).toContain('text-[9px]');
 });

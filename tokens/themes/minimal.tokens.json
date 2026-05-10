@@ -1,0 +1,58 @@
+{
+  "$description": "Minimal theme — sharper, flatter, less chrome. Razor-thin radii, no shadows, monochrome chips. Restraint over decoration.",
+
+  "btn": {
+    "icon": {
+      "radius": {
+        "toolbar": { "$value": "0.125rem", "$type": "dimension" }
+      },
+      "bg": {
+        "ghost-hover": { "$value": "color-mix(in srgb, {semantic.foreground} 6%, transparent)", "$type": "color" }
+      }
+    }
+  },
+
+  "tag": {
+    "radius": { "$value": "0", "$type": "dimension" },
+    "bg": {
+      "muted":   { "$value": "transparent", "$type": "color" },
+      "info":    { "$value": "transparent", "$type": "color" },
+      "success": { "$value": "transparent", "$type": "color" },
+      "warning": { "$value": "transparent", "$type": "color" },
+      "danger":  { "$value": "transparent", "$type": "color" }
+    },
+    "border": {
+      "muted":   { "$value": "{semantic.border}",              "$type": "color" },
+      "info":    { "$value": "{semantic.foreground-highlight}", "$type": "color" },
+      "success": { "$value": "{semantic.foreground-success}",   "$type": "color" },
+      "warning": { "$value": "{semantic.foreground-warning}",   "$type": "color" },
+      "danger":  { "$value": "{semantic.foreground-danger}",    "$type": "color" }
+    }
+  },
+
+  "badge": {
+    "radius": { "$value": "0", "$type": "dimension" },
+    "bg": {
+      "saved":     { "$value": "transparent", "$type": "color" },
+      "unsaved":   { "$value": "transparent", "$type": "color" },
+      "connected": { "$value": "transparent", "$type": "color" },
+      "error":     { "$value": "transparent", "$type": "color" },
+      "neutral":   { "$value": "transparent", "$type": "color" }
+    }
+  },
+
+  "field": {
+    "radius": { "$value": "0", "$type": "dimension" }
+  },
+
+  "kbd": {
+    "radius": { "$value": "0",                                 "$type": "dimension" },
+    "bg":     { "$value": "transparent",                       "$type": "color" }
+  },
+
+  "shortcut-row": {
+    "radius": { "$value": "0",           "$type": "dimension" },
+    "bg":     { "$value": "transparent", "$type": "color" },
+    "shadow": { "$value": "none",        "$type": "shadow" }
+  }
+}

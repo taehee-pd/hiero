@@ -23,7 +23,7 @@ type SyncPrPanelProps = {
   iconSetId?: string | null;
   triggerLabel?: ReactNode;
   triggerVariant?: 'default' | 'outline' | 'ghost' | 'secondary';
-  triggerSize?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm';
+  triggerSize?: 'default' | 'sm' | 'icon-sm';
   className?: string;
 };
 

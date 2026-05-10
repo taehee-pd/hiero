@@ -1,61 +1,91 @@
-import { Badge } from '@/components/ui/badge';
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-
-type TagVariant = 'default' | 'muted' | 'outline' | 'success' | 'warning' | 'danger';
-
-interface TagProps {
-  /** Tag content — classification label text. */
-  children: React.ReactNode;
-  /**
-   * Visual variant:
-   *   default  → solid primary (used for "added", primary classification)
-   *   muted    → secondary background (platform, version, release kind)
-   *   outline  → border-only (delivery mode, paths, neutral metadata)
-   *   success  → green-tinted outline (auto-publish, connected)
-   *   warning  → amber-tinted outline (dry-run, pending)
-   *   danger   → destructive (removed, error states)
-   */
-  variant?: TagVariant;
-  className?: string;
-}
-
-const variantConfig: Record<
-  TagVariant,
-  { badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline'; extra: string }
-> = {
-  default: { badgeVariant: 'default', extra: '' },
-  muted: { badgeVariant: 'secondary', extra: '' },
-  outline: { badgeVariant: 'outline', extra: '' },
-  success: { badgeVariant: 'outline', extra: 'text-emerald-600 dark:text-emerald-400' },
-  warning: { badgeVariant: 'outline', extra: 'text-amber-600 dark:text-amber-400' },
-  danger: { badgeVariant: 'destructive', extra: '' },
-};
 
 /**
  * Tag — classification / metadata label for non-interactive data.
  *
- * Used for platform names, version numbers, delivery modes, change kinds,
- * directory paths, feature flags, format labels, and similar metadata
- * that classifies or describes an item.
+ * Used for platform names, version numbers, delivery modes, change
+ * kinds, directory paths, feature flags, format labels, and similar
+ * metadata that classifies or describes an item.
  *
- * Different from StatusBadge: Tags are informational labels, not semantic
- * status indicators. They don't represent system state (saved/unsaved,
- * connected/disconnected) — they classify data.
+ * Different from StatusBadge: Tags are informational labels, not
+ * semantic status indicators. They don't represent system state
+ * (saved/unsaved, connected/disconnected) — they classify data.
  *
- * Cross-feature consumers: SyncTargetPanel, PublishDialog, SyncDiffPreview,
- * SyncConflictPanel, LottieExportPanel.
+ * Style is driven entirely by `--tag-*` component tokens declared in
+ * app/globals.css. To redesign, override the tokens — never edit this
+ * file. To add a theme variant ("brutalist", "minimal", etc.), add a
+ * `[data-theme="..."]` block in globals.css.
+ *
+ * Composition: pass `asChild` to render as the immediate child element
+ * (e.g. an `<a>`) while keeping all Tag styling — Radix Slot pattern.
  */
-function Tag({ children, variant = 'outline', className }: TagProps) {
-  const { badgeVariant, extra } = variantConfig[variant];
+const tagVariants = cva(
+  // Base — every variant inherits these. text-transform and letter-spacing
+  // are theme-driven (e.g. brutalist sets them to uppercase + 0.08em); the
+  // values come from the --tag-* component tokens, so callers don't pass
+  // a separate `uppercase` prop — switching the theme drives the visual.
+  [
+    'inline-flex items-center justify-center shrink-0',
+    'rounded-[var(--tag-radius)]',
+    'px-[var(--tag-padding-x)] py-[var(--tag-padding-y)]',
+    'text-[length:var(--tag-font-size)]',
+    'font-[number:var(--tag-font-weight)]',
+    'tracking-[var(--tag-letter-spacing)]',
+    '[text-transform:var(--tag-text-transform)]',
+    'leading-tight whitespace-nowrap',
+    'border',
+    'transition-colors duration-[var(--duration-fast)]',
+  ],
+  {
+    variants: {
+      variant: {
+        default:
+          'bg-[var(--primary)] text-[color:var(--primary-foreground)] border-transparent',
+        muted:
+          'bg-[var(--tag-bg-muted)] text-[var(--tag-fg-muted)] border-[var(--tag-border-muted)]',
+        success:
+          'bg-[var(--tag-bg-success)] text-[var(--tag-fg-success)] border-[var(--tag-border-success)]',
+        warning:
+          'bg-[var(--tag-bg-warning)] text-[var(--tag-fg-warning)] border-[var(--tag-border-warning)]',
+        danger:
+          'bg-[var(--tag-bg-danger)] text-[var(--tag-fg-danger)] border-[var(--tag-border-danger)]',
+        outline:
+          'bg-[var(--tag-bg-outline)] text-[var(--tag-fg-outline)] border-[var(--tag-border-outline)]',
+      },
+    },
+    defaultVariants: {
+      variant: 'outline',
+    },
+  },
+);
+
+type TagVariant = NonNullable<VariantProps<typeof tagVariants>['variant']>;
+
+interface TagProps
+  extends Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'>,
+    VariantProps<typeof tagVariants> {
+  children: React.ReactNode;
+  /** Render as the immediate child (Radix Slot composition). */
+  asChild?: boolean;
+}
+
+function Tag({
+  children,
+  variant,
+  asChild = false,
+  className,
+  ...rest
+}: TagProps) {
+  const Comp = asChild ? Slot : 'span';
   return (
-    <Badge
-      variant={badgeVariant}
-      className={cn('text-[10px]', extra, className)}
-    >
+    <Comp className={cn(tagVariants({ variant }), className)} {...rest}>
       {children}
-    </Badge>
+    </Comp>
   );
 }
 
-export { Tag };
+export { Tag, tagVariants };
 export type { TagProps, TagVariant };

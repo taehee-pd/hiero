@@ -7,6 +7,7 @@ import { AutoSaveProvider } from '@/components/persistence/AutoSaveProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { BUILD_VERSION } from '@/lib/build-version';
+import { themeBootScript } from '@/lib/theme';
 import './globals.css';
 
 // Inlined into the HTML so Playwright smoke tests + bug-report tooling
@@ -68,6 +69,11 @@ export default function RootLayout({
           id="hiero-build-version"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: buildVersionScript }}
+        />
+        <Script
+          id="hiero-theme-boot"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeBootScript }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AutoSaveProvider />

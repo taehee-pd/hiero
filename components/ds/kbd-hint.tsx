@@ -1,12 +1,13 @@
 'use client';
 
+import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
 
 /**
- * Platform-aware modifier symbols.
- * Resolves "Cmd/Ctrl" style strings into the correct symbol for the
- * current platform (Mac vs. Windows/Linux).
+ * Platform-aware modifier symbols. Resolves "Cmd/Ctrl"-style strings
+ * into the correct symbol for the current platform.
  */
 const MOD_MAP: Record<string, { mac: string; other: string }> = {
   cmd: { mac: '⌘', other: 'Ctrl' },
@@ -25,28 +26,17 @@ const MOD_MAP: Record<string, { mac: string; other: string }> = {
   right: { mac: '→', other: '→' },
 };
 
-/**
- * Resolve a platform-specific key label. The `isMac` flag must be
- * computed in a useEffect on the client to avoid SSR/CSR mismatch —
- * `navigator` is undefined on the server, so we default to non-Mac
- * rendering during SSR and the first client render, then switch after
- * mount. See useIsMac() below.
- */
 function resolveKey(key: string, isMac = false): string {
   const entry = MOD_MAP[key.toLowerCase()];
   if (entry) return isMac ? entry.mac : entry.other;
-  // Single character keys are uppercased for display
   if (key.length === 1) return key.toUpperCase();
   return key;
 }
 
 /**
- * Hydration-safe platform detection. Returns `false` on the server and
- * during the first client render (so server HTML and initial client
- * DOM match), then flips to the real value after mount. The net effect
- * is a single post-mount swap of Ctrl→⌘ on Mac clients — acceptable
- * since KbdHint is typically rendered inside tooltips (hidden until
- * hover/focus, so the swap is invisible in practice).
+ * Hydration-safe platform detection. Returns false on SSR + first
+ * client render, then flips after mount. KbdHint is normally rendered
+ * inside tooltips, so the swap is invisible in practice.
  */
 function useIsMac(): boolean {
   const [isMac, setIsMac] = useState(false);
@@ -57,45 +47,61 @@ function useIsMac(): boolean {
   return isMac;
 }
 
-interface KbdHintProps {
-  /**
-   * Keyboard shortcut keys in order.
-   *   - `['Cmd', 'S']` → ⌘ S (Mac) / Ctrl S (Win)
-   *   - `['Shift', 'Cmd', 'Z']` → ⇧⌘Z (Mac) / Shift+Ctrl+Z (Win)
-   *   - `['?']` → ?
-   */
+/**
+ * Kbd glyph styling, driven entirely by `--kbd-*` component tokens.
+ * The `[[data-slot=tooltip-content]_&]` selectors invert the kbd inside
+ * a Radix tooltip so it stays legible against the dark tooltip surface.
+ */
+const kbdVariants = cva(
+  [
+    'inline-flex items-center justify-center pointer-events-none select-none',
+    'min-w-[var(--kbd-min-width)]',
+    'rounded-[var(--kbd-radius)]',
+    'px-[var(--kbd-padding-x)] py-[var(--kbd-padding-y)]',
+    'text-[length:var(--kbd-font-size)]',
+    'font-[var(--kbd-font-family)]',
+    'font-[number:var(--kbd-font-weight)]',
+    'border border-[var(--kbd-border)]',
+    'bg-[var(--kbd-bg)] text-[var(--kbd-fg)]',
+    '[[data-slot=tooltip-content]_&]:bg-background/20 [[data-slot=tooltip-content]_&]:text-background dark:[[data-slot=tooltip-content]_&]:bg-background/10 [[data-slot=tooltip-content]_&]:border-transparent',
+  ],
+  {
+    variants: {},
+    defaultVariants: {},
+  },
+);
+
+type KbdVariantProps = VariantProps<typeof kbdVariants>;
+
+interface KbdHintProps extends KbdVariantProps {
+  /** Keyboard shortcut keys, in order. e.g. ['Cmd','S'] → ⌘S / Ctrl+S. */
   keys: string[];
   className?: string;
 }
 
-/**
- * KbdHint — platform-aware keyboard shortcut display.
- *
- * Used in tooltips, toolbar hints, and dropdown menus to show
- * keyboard shortcuts in the correct platform format.
- *
- * Cross-feature consumers: Navbar tooltips, Toolbar hints, DropdownMenu
- * shortcuts, ContextMenu shortcuts, EditorShell dock tooltips.
- */
-function KbdHint({ keys, className }: KbdHintProps) {
+function KbdHint({ keys, className, ...variantProps }: KbdHintProps) {
   const isMac = useIsMac();
 
   if (keys.length === 0) return null;
 
   if (keys.length === 1) {
     return (
-      <Kbd className={className}>{resolveKey(keys[0], isMac)}</Kbd>
+      <kbd data-slot="kbd" className={cn(kbdVariants(variantProps), className)}>
+        {resolveKey(keys[0], isMac)}
+      </kbd>
     );
   }
 
   return (
-    <KbdGroup className={className}>
+    <kbd data-slot="kbd-group" className={cn('inline-flex items-center gap-1', className)}>
       {keys.map((key, i) => (
-        <Kbd key={`${i}-${key}`}>{resolveKey(key, isMac)}</Kbd>
+        <kbd key={`${i}-${key}`} data-slot="kbd" className={kbdVariants(variantProps)}>
+          {resolveKey(key, isMac)}
+        </kbd>
       ))}
-    </KbdGroup>
+    </kbd>
   );
 }
 
-export { KbdHint, resolveKey };
+export { KbdHint, kbdVariants, resolveKey };
 export type { KbdHintProps };

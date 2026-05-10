@@ -14,7 +14,7 @@ type SyncPanelProps = {
   iconSetId?: string | null;
   triggerLabel?: string;
   triggerVariant?: 'default' | 'outline' | 'ghost' | 'secondary';
-  triggerSize?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm';
+  triggerSize?: 'default' | 'sm' | 'icon-sm';
   className?: string;
 };
 

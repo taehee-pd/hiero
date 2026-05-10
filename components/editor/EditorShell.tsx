@@ -96,7 +96,7 @@ import {
 } from '@/components/ui/context-menu';
 import { Canvas } from './Canvas';
 import { ImportIconDialog } from './ImportIconDialog';
-import { ColorField, IconButton } from '@/components/ds';
+import { ColorField, IconButton, KbdHint } from '@/components/ds';
 import { AnimatePanel, type AnimationKind } from './AnimatePanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
@@ -1104,15 +1104,11 @@ function LeftSidebar({
                     </p>
                     <ul className="grid gap-1 text-[10px] text-muted-foreground">
                       <li className="flex items-center gap-1.5">
-                        <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">
-                          P
-                        </kbd>
+                        <KbdHint keys={['P']} />
                         <span>Pen tool</span>
                       </li>
                       <li className="flex items-center gap-1.5">
-                        <kbd className="rounded-sm border border-border bg-muted px-1 font-mono text-[9px]">
-                          U
-                        </kbd>
+                        <KbdHint keys={['U']} />
                         <span>Shape tool</span>
                       </li>
                       <li className="text-muted-foreground/70">
@@ -1473,7 +1469,6 @@ function CanvasDock({
                 aria-label={isGuideShape ? `Shape: ${activeGuideShape.label}` : item.label}
                 tooltip={`${isGuideShape ? `Shape: ${activeGuideShape.label}` : item.label} (${item.shortcut})`}
                 size="sm"
-                radius="toolbar"
               />
               {isGuideShape ? (
                 <Popover open={shapeMenuOpen} onOpenChange={setShapeMenuOpen}>
@@ -1484,7 +1479,6 @@ function CanvasDock({
                       aria-label="Choose guide shape"
                       tooltip={false}
                       size="sm"
-                      radius="toolbar"
                     />
                   </PopoverTrigger>
                   <PopoverContent
@@ -1534,7 +1528,6 @@ function CanvasDock({
                 aria-label={action.label}
                 tooltip={action.label}
                 size="sm"
-                radius="toolbar"
                 onClick={() => onGuideAlign(action.mode)}
               />
             );
@@ -1642,7 +1635,6 @@ function CanvasDock({
           tooltip={`Snap ${snapEnabled ? 'On' : 'Off'}`}
           className="wire-dock-icon"
           size="sm"
-          radius="toolbar"
           onClick={onToggleSnap}
         />
         <IconButton
@@ -1653,7 +1645,6 @@ function CanvasDock({
           tooltip={`Guides ${guidesVisible ? 'On' : 'Off'}`}
           className="wire-dock-icon"
           size="sm"
-          radius="toolbar"
           onClick={onToggleGuides}
         />
       </div>

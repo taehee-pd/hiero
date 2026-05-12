@@ -139,7 +139,7 @@ export function CompoundLayerSection({
     <div className="space-y-3">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground">
             Compound
           </h3>
           {opSummary ? (

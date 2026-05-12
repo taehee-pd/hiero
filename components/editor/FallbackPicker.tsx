@@ -42,7 +42,7 @@ export function FallbackPicker({
     <fieldset className="space-y-2">
       <legend
         id={`${groupId}-legend`}
-        className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        className="text-xs font-semibold tracking-wide text-muted-foreground"
       >
         Fallback motion
       </legend>
@@ -94,7 +94,7 @@ export function FallbackPicker({
               {isAuto ? (
                 <span
                   aria-label="Auto-picked by the resolver"
-                  className="rounded-sm bg-foreground/10 px-1 text-[9px] uppercase tracking-wide"
+                  className="rounded-sm bg-foreground/10 px-1 text-[9px] tracking-wide"
                 >
                   Auto
                 </span>
@@ -107,7 +107,7 @@ export function FallbackPicker({
         <button
           type="button"
           onClick={() => onChange(undefined)}
-          className="self-start text-[10px] uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          className="self-start text-[10px] tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         >
           Use auto ({FALLBACK_DISPLAY_NAME[resolverPicked]})
         </button>

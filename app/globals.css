@@ -1664,7 +1664,6 @@
     font-size: 10px;
     line-height: 14px;
     color: var(--foreground-tertiary);
-    text-transform: lowercase;
   }
 
   .wire-layer-meta,

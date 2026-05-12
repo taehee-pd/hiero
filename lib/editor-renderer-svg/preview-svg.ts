@@ -54,7 +54,14 @@ export function applyTransitionPreview(
       }
     }
 
-    if (binding.fallback === 'fade-through') {
+    // All four fallback modes (fade-through, scale-through, slide-through,
+    // replace-with-delay) render the target as a fading overlay and fade
+    // the source out. Without this branch covering every mode, target-only
+    // bindings — which the resolver assigns `replace-with-delay` whenever a
+    // cross-icon transition has more target layers than source layers —
+    // never reach the canvas at all (e.g. Star→Home dropping the `house`
+    // outline because Star's only layer pairs with Home's `roof`).
+    if (binding.fallback) {
       if (sourceId) {
         const baseEntry = getBaseElements(target, sourceId);
         if (baseEntry.path) {

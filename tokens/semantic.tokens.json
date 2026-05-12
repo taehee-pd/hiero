@@ -9,11 +9,13 @@
     "foreground-warning":     { "$value": "var(--foreground-warning)",     "$type": "color" },
     "foreground-danger":      { "$value": "var(--foreground-danger)",      "$type": "color" },
     "background":             { "$value": "var(--background)",             "$type": "color" },
+    "background-secondary":   { "$value": "var(--background-secondary)",   "$type": "color" },
     "background-highlight":   { "$value": "var(--background-highlight)",   "$type": "color" },
     "background-success":     { "$value": "var(--background-success)",     "$type": "color" },
     "background-warning":     { "$value": "var(--background-warning)",     "$type": "color" },
     "background-danger":      { "$value": "var(--background-danger)",      "$type": "color" },
     "border":                 { "$value": "var(--border)",                 "$type": "color" },
+    "border-secondary":       { "$value": "var(--border-secondary)",       "$type": "color" },
     "ring":                   { "$value": "var(--ring)",                   "$type": "color" },
     "muted":                  { "$value": "var(--muted)",                  "$type": "color" },
     "muted-foreground":       { "$value": "var(--muted-foreground)",       "$type": "color" },
@@ -28,6 +30,7 @@
     "field-height-md":        { "$value": "var(--field-height-md)",        "$type": "dimension" },
     "text-caption":           { "$value": "var(--text-caption)",           "$type": "dimension" },
     "text-body":              { "$value": "var(--text-body)",              "$type": "dimension" },
+    "font-sans":              { "$value": "var(--font-sans)",              "$type": "fontFamily" },
     "font-mono":              { "$value": "var(--font-mono)",              "$type": "fontFamily" }
   }
 }

@@ -55,15 +55,16 @@ function useIsMac(): boolean {
 const kbdVariants = cva(
   [
     'inline-flex items-center justify-center pointer-events-none select-none',
-    'min-w-[var(--kbd-min-width)]',
+    'min-w-[var(--kbd-min-width)] min-h-[var(--kbd-min-height)]',
     'rounded-[var(--kbd-radius)]',
     'px-[var(--kbd-padding-x)] py-[var(--kbd-padding-y)]',
     'text-[length:var(--kbd-font-size)]',
-    'font-[var(--kbd-font-family)]',
+    'leading-[var(--kbd-line-height)]',
+    'tracking-[var(--kbd-letter-spacing)]',
+    'font-[family-name:var(--kbd-font-family)]',
     'font-[number:var(--kbd-font-weight)]',
-    'border border-[var(--kbd-border)]',
+    'border-[length:var(--kbd-border-width)] border-solid border-[var(--kbd-border)]',
     'bg-[var(--kbd-bg)] text-[var(--kbd-fg)]',
-    '[[data-slot=tooltip-content]_&]:bg-background/20 [[data-slot=tooltip-content]_&]:text-background dark:[[data-slot=tooltip-content]_&]:bg-background/10 [[data-slot=tooltip-content]_&]:border-transparent',
   ],
   {
     variants: {},
@@ -93,7 +94,7 @@ function KbdHint({ keys, className, ...variantProps }: KbdHintProps) {
   }
 
   return (
-    <kbd data-slot="kbd-group" className={cn('inline-flex items-center gap-1', className)}>
+    <kbd data-slot="kbd-group" className={cn('inline-flex items-center gap-[var(--kbd-hint-gap)]', className)}>
       {keys.map((key, i) => (
         <kbd key={`${i}-${key}`} data-slot="kbd" className={kbdVariants(variantProps)}>
           {resolveKey(key, isMac)}

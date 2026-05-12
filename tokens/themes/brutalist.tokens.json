@@ -1,5 +1,5 @@
 {
-  "$description": "Brutalist theme — raw, hard edges, heavy borders, maximal contrast. Anti-polish. Letter-spaced uppercase chips. Radii at zero, type tracked wide.",
+  "$description": "Brutalist theme — raw, hard edges, heavy borders, maximal contrast. Anti-polish. Letter-spaced chips. Radii at zero, type tracked wide.",
 
   "btn": {
     "icon": {
@@ -15,10 +15,15 @@
 
   "tag": {
     "radius":         { "$value": "0",        "$type": "dimension" },
-    "text-transform": { "$value": "uppercase","$type": "string" },
     "letter-spacing": { "$value": "0.08em",   "$type": "string" },
     "font-weight":    { "$value": 700,        "$type": "fontWeight" },
-    "padding-x":      { "$value": "0.5rem",   "$type": "dimension" },
+    "bg": {
+      "muted":   { "$value": "transparent", "$type": "color" },
+      "info":    { "$value": "transparent", "$type": "color" },
+      "success": { "$value": "transparent", "$type": "color" },
+      "warning": { "$value": "transparent", "$type": "color" },
+      "danger":  { "$value": "transparent", "$type": "color" }
+    },
     "border": {
       "muted":   { "$value": "{semantic.foreground}",            "$type": "color" },
       "info":    { "$value": "{semantic.foreground-highlight}",  "$type": "color" },
@@ -39,11 +44,11 @@
   },
 
   "kbd": {
-    "radius":      { "$value": "0",                       "$type": "dimension" },
-    "border":      { "$value": "{semantic.foreground}",   "$type": "color" },
-    "bg":          { "$value": "{semantic.background}",   "$type": "color" },
-    "fg":          { "$value": "{semantic.foreground}",   "$type": "color" },
-    "font-weight": { "$value": 700,                       "$type": "fontWeight" }
+    "radius":      { "$value": "0",                          "$type": "dimension" },
+    "border":      { "$value": "{semantic.foreground}",      "$type": "color" },
+    "bg":          { "$value": "{semantic.background}",      "$type": "color" },
+    "fg":          { "$value": "{semantic.muted-foreground}", "$type": "color" },
+    "font-weight": { "$value": 700,                          "$type": "fontWeight" }
   },
 
   "shortcut-row": {

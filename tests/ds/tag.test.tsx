@@ -51,13 +51,6 @@ test('font-size driven by --tag-font-size token', () => {
   }
 });
 
-test('binds text-transform to --tag-text-transform token', () => {
-  // Theme drives uppercase via --tag-text-transform (e.g. brutalist).
-  // Component itself binds the property; the value comes from the cascade.
-  const { container } = render(<Tag>shipped</Tag>);
-  expect(container.firstElementChild!.className).toContain('[text-transform:var(--tag-text-transform)]');
-});
-
 test('asChild renders as the provided child element', () => {
   const { container } = render(
     <Tag asChild>

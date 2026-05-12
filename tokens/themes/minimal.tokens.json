@@ -47,7 +47,9 @@
 
   "kbd": {
     "radius": { "$value": "0",                                 "$type": "dimension" },
-    "bg":     { "$value": "transparent",                       "$type": "color" }
+    "bg":     { "$value": "transparent",                       "$type": "color" },
+    "fg":     { "$value": "{semantic.muted-foreground}",       "$type": "color" },
+    "border": { "$value": "{semantic.border-secondary}",       "$type": "color" }
   },
 
   "shortcut-row": {

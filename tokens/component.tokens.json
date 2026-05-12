@@ -21,14 +21,14 @@
   },
 
   "tag": {
-    "$description": "Classification chip tokens.",
+    "$description": "Classification chip tokens. Mirrors Figma component-collection variables in Hiero — Design System (tag/*).",
     "radius":         { "$value": "0.25rem",                "$type": "dimension" },
-    "padding-x":      { "$value": "0.375rem",               "$type": "dimension" },
+    "padding-x":      { "$value": "0.25rem",                "$type": "dimension" },
     "padding-y":      { "$value": "0.0625rem",              "$type": "dimension" },
     "font-size":      { "$value": "{semantic.text-caption}", "$type": "dimension" },
     "font-weight":    { "$value": 500,                       "$type": "fontWeight" },
+    "line-height":    { "$value": "0.875rem",                "$type": "dimension" },
     "letter-spacing": { "$value": "0",                       "$type": "string" },
-    "text-transform": { "$value": "none",                    "$type": "string" },
     "bg": {
       "muted":   { "$value": "{semantic.muted}",                  "$type": "color" },
       "info":    { "$value": "{semantic.background-highlight}",   "$type": "color" },
@@ -94,17 +94,40 @@
   },
 
   "kbd": {
-    "$description": "Kbd glyph tokens (used by KbdHint).",
-    "bg":          { "$value": "{semantic.muted}",            "$type": "color" },
-    "fg":          { "$value": "{semantic.muted-foreground}", "$type": "color" },
-    "border":      { "$value": "{semantic.border}",           "$type": "color" },
-    "radius":      { "$value": "0.25rem",                     "$type": "dimension" },
-    "padding-x":   { "$value": "0.3125rem",                   "$type": "dimension" },
-    "padding-y":   { "$value": "0",                           "$type": "dimension" },
-    "font-size":   { "$value": "0.625rem",                    "$type": "dimension" },
-    "font-family": { "$value": "{semantic.font-mono}",        "$type": "fontFamily" },
-    "font-weight": { "$value": 500,                           "$type": "fontWeight" },
-    "min-width":   { "$value": "1.25rem",                     "$type": "dimension" }
+    "$description": "Kbd glyph tokens (used by KbdHint). Mirrors Figma component-collection variables in Hiero — Design System (kbd/*).",
+    "bg":             { "$value": "{semantic.background-secondary}", "$type": "color" },
+    "fg":             { "$value": "{semantic.foreground-secondary}", "$type": "color" },
+    "border":         { "$value": "{semantic.border}",               "$type": "color" },
+    "border-width":   { "$value": "0.5px",                            "$type": "dimension" },
+    "radius":         { "$value": "0.25rem",                          "$type": "dimension" },
+    "padding-x":      { "$value": "0.125rem",                         "$type": "dimension" },
+    "padding-y":      { "$value": "0",                                "$type": "dimension" },
+    "font-size":      { "$value": "0.5625rem",                        "$type": "dimension" },
+    "font-family":    { "$value": "{semantic.font-mono}",             "$type": "fontFamily" },
+    "font-weight":    { "$value": 500,                                "$type": "fontWeight" },
+    "line-height":    { "$value": "0.6875rem",                        "$type": "dimension" },
+    "letter-spacing": { "$value": "0",                                "$type": "dimension" },
+    "min-width":      { "$value": "0.875rem",                         "$type": "dimension" },
+    "min-height":     { "$value": "0.875rem",                         "$type": "dimension" }
+  },
+
+  "kbd-hint": {
+    "$description": "KbdHint group tokens — spacing between Kbd glyphs in a shortcut combo. Mirrors Figma KbdHint component-set itemSpacing.",
+    "gap": { "$value": "0.0625rem", "$type": "dimension" }
+  },
+
+  "tooltip": {
+    "$description": "Tooltip surface tokens. Mirrors Figma Tooltip component-set (HasKbd=false/true). No arrow/tail — Figma design has none.",
+    "bg":             { "$value": "{semantic.foreground}",     "$type": "color" },
+    "fg":             { "$value": "{semantic.background}",     "$type": "color" },
+    "radius":         { "$value": "0.4375rem",                  "$type": "dimension" },
+    "padding-x":      { "$value": "0.375rem",                   "$type": "dimension" },
+    "padding-y":      { "$value": "0.1875rem",                  "$type": "dimension" },
+    "gap":            { "$value": "0.25rem",                    "$type": "dimension" },
+    "font-size":      { "$value": "{semantic.text-caption}",    "$type": "dimension" },
+    "font-weight":    { "$value": 500,                          "$type": "fontWeight" },
+    "line-height":    { "$value": "0.875rem",                   "$type": "dimension" },
+    "letter-spacing": { "$value": "0",                          "$type": "string" }
   },
 
   "shortcut-row": {

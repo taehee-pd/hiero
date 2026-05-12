@@ -66,7 +66,7 @@ export function TimingCurveEditor({ value, onChange, className }: Props) {
     <fieldset className={cn('space-y-3', className)}>
       <legend
         id={`${groupId}-legend`}
-        className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        className="text-xs font-semibold tracking-wide text-muted-foreground"
       >
         Custom timing
       </legend>

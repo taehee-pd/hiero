@@ -28,7 +28,7 @@ A snapshot of the live DS components and studio shell lives in `_src/` for refer
 | `SKILL.md` | Agent Skill manifest |
 | `colors_and_type.css` | All tokens + semantic type classes. Import this first. |
 | `fonts/` | Optional local variable WOFF2 fallbacks. By default `colors_and_type.css` `@import`s Instrument Sans + Geist Mono from Google Fonts; drop locally hosted WOFF2s here only for fully offline use. |
-| `assets/` | Hiero mark, wordmark, placeholders |
+| `assets/` | Design-system glyph mirror, wordmark, placeholders |
 | `preview/` | Design-system card specimens registered in the review pane |
 | `ui_kits/studio/` | High-fidelity React recreation of the Hiero Studio workspace |
 | `_src/` | Snapshots of the original DS + studio components (reference only) |
@@ -156,8 +156,23 @@ The codebase imports icons directly from `lucide-react` — `ChevronDown`, `Down
 - **Color:** always `currentColor` — inherit from parent. `text-muted-foreground` for idle, `text-foreground` for hovered/active.
 
 ### Brand marks
-- `assets/hiero.svg` — square glyph mark
-- `assets/hiero_wordmark.svg` — full wordmark (2144 × 408 aspect). Rendered as a CSS mask with `background: currentColor` so it inherits theme foreground — not as an `<img>`.
+
+Hiero has one glyph and one wordmark. Both are monochrome vectors and should
+inherit color from the surrounding UI rather than carrying their own brand
+fill.
+
+- `../public/hiero.svg` — production application logo glyph. This is a 24 × 24
+  stroked SVG with a `0 0 24 24` viewBox, 1px strokes, and embedded
+  `prefers-color-scheme` stroke colors for standalone browser and metadata use.
+  In app chrome, render it as a CSS mask and fill it from the foreground token
+  (`currentColor`/`var(--foreground)`), matching `components/studio/Navbar.tsx`.
+- `assets/hiero.svg` — design-system mirror of the same 24 × 24 glyph using
+  `currentColor` strokes. Use this copy for local previews, static artifacts,
+  and skill outputs that are outside the Next.js public asset path.
+- `assets/hiero_wordmark.svg` — full filled Hiero wordmark with a `2144 × 408`
+  intrinsic aspect ratio. Render it as a CSS mask with
+  `background: currentColor` so it inherits theme foreground — not as an `<img>`
+  unless the target medium cannot support masks.
 
 ### Emoji / unicode
 - **No emoji** in UI, ever.

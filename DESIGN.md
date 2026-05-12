@@ -235,6 +235,29 @@ Design intent:
 - Let typography weight and spacing do the work before reaching for color
   or decoration.
 
+## Brand marks
+
+Hiero has two maintained brand mark definitions:
+
+- **Application logo:** `public/hiero.svg` is the 24 × 24 stroked Hiero
+  glyph used by the production app shell and metadata icons. It declares a
+  `0 0 24 24` viewBox, uses 1px strokes, and contains an embedded
+  `prefers-color-scheme` rule so the standalone asset renders dark ink on
+  light backgrounds and light ink on dark backgrounds. In app chrome, render
+  it as a CSS mask filled with `currentColor`/the relevant foreground token,
+  not as a colored bitmap.
+- **Design-system wordmark:** `design-system/assets/hiero_wordmark.svg` is
+  the full Hiero wordmark with a `2144 × 408` intrinsic aspect ratio. It is
+  a filled vector intended for `mask`/`-webkit-mask` usage with
+  `background: currentColor`, so it inherits theme foreground. Do not render
+  the wordmark as an `<img>` unless the surrounding medium cannot support
+  masks.
+
+`design-system/assets/hiero.svg` mirrors the 24 × 24 glyph for
+design-system previews and offline artifacts. Treat these assets as brand
+primitives, not product-authored icons: product content icons still come from
+the Hiero runtime.
+
 ## Colors
 
 The palette is rooted in a high-contrast dark-first neutral system with a

@@ -9,7 +9,7 @@ High-fidelity React recreation of the Hiero Studio workspace. Modeled directly o
 | `index.html` | Interactive app shell — renders the full 3-pane studio layout with sample projects/icons |
 | `studio.css` | Component styles; reads tokens from `../../colors_and_type.css` |
 | `Primitives.jsx` | `IconButton`, `StatusBadge`, `Kbd` — atomic pieces used across the kit |
-| `Navbar.jsx` | Top 40px bar — logo, project name (inline-editable), save status, quick-action icons |
+| `Navbar.jsx` | Top 40px bar — wordmark menu trigger, project name (inline-editable), save status, quick-action icons |
 | `NavPane.jsx` | Left project list — 230px expanded / 40px collapsed |
 | `ListPane.jsx` | Middle icon grid — search + 3-col grid with selection states |
 | `Editor.jsx` | Right tools + canvas + properties panel |

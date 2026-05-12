@@ -1,6 +1,6 @@
 # Hiero — Design Document (Single Source of Truth)
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-05-12
 **Product:** Hiero — Icon design studio with SF Symbols-grade animation capabilities
 **gstack design docs:** `~/.gstack/projects/taehee-pd-hiero/`
 
@@ -12,6 +12,24 @@ Hiero is a web-based icon design studio that enables designers to create,
 animate, and distribute production-ready icons — with zero developer handoff for
 the distribution step. Designers edit, save, and publish. Developers consume via
 `npm install` or platform-native formats.
+
+## Brand Asset Definitions
+
+The current Hiero brand definitions are:
+
+- **Logo glyph:** `public/hiero.svg` — 24 × 24 stroked SVG, 1px strokes,
+  embedded light/dark `prefers-color-scheme` stroke colors for standalone
+  browser and metadata use. The production topbar uses this asset as a CSS
+  mask and fills it from the foreground token.
+- **Wordmark:** `design-system/assets/hiero_wordmark.svg` — full filled
+  wordmark, intrinsic `2144 × 408` aspect ratio, intended to be rendered as a
+  CSS mask with `background: currentColor` so it inherits the active theme.
+- **Design-system glyph mirror:** `design-system/assets/hiero.svg` — 24 × 24
+  currentColor version of the same glyph for design-system previews and
+  portable artifacts.
+
+These brand assets are chrome/identity primitives. User-authored icon content
+continues to be rendered through the Hiero runtime.
 
 ## Architecture Overview
 

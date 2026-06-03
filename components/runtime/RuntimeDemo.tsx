@@ -42,11 +42,11 @@ export function RuntimeDemo() {
   return (
     <main className="min-h-screen overflow-y-auto px-5 py-8 sm:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <section className="studio-panel overflow-hidden rounded-[28px] border border-border/70">
-          <div className="studio-dots flex flex-col gap-6 bg-gradient-to-br from-background via-background to-primary/6 px-6 py-8 sm:px-8">
+        <section className="studio-panel overflow-hidden rounded-xl border border-border/70">
+          <div className="studio-dots flex flex-col gap-6 bg-background px-6 py-8 sm:px-8">
             <div className="flex flex-col gap-3">
               <span className="studio-chip w-fit">Runtime React Demo</span>
-              <h1 className="max-w-3xl font-display text-2xl font-semibold tracking-[-0.08em] text-foreground sm:text-[3.25rem] sm:leading-[3.6rem]">
+              <h1 className="max-w-3xl font-display text-2xl font-semibold tracking-[-0.035em] text-foreground sm:text-[3.25rem] sm:leading-[3.6rem]">
                 Store-backed icons with controlled props, local state, and runtime-json playback.
               </h1>
               <p className="max-w-2xl text-base text-muted-foreground">
@@ -57,7 +57,7 @@ export function RuntimeDemo() {
             </div>
 
             <div className="grid gap-5 lg:grid-cols-2">
-              <article className="studio-card flex flex-col gap-5 rounded-[24px] p-5">
+              <article className="studio-card flex flex-col gap-5 rounded-xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="studio-kicker">Controlled</p>
@@ -73,7 +73,7 @@ export function RuntimeDemo() {
                   </div>
                 </div>
 
-                <div className="studio-preview flex min-h-72 items-center justify-center rounded-[20px] border border-border/60">
+                <div className="studio-preview flex min-h-72 items-center justify-center rounded-lg border border-border/60">
                   <Icon
                     payload={payload}
                     state={controlledState}
@@ -114,7 +114,7 @@ export function RuntimeDemo() {
                 </div>
               </article>
 
-              <article className="studio-card flex flex-col gap-5 rounded-[24px] p-5">
+              <article className="studio-card flex flex-col gap-5 rounded-xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="studio-kicker">Uncontrolled</p>
@@ -131,7 +131,7 @@ export function RuntimeDemo() {
                   </div>
                 </div>
 
-                <div className="studio-preview flex min-h-72 items-center justify-center rounded-[20px] border border-border/60">
+                <div className="studio-preview flex min-h-72 items-center justify-center rounded-lg border border-border/60">
                   <RuntimeSvgRenderer
                     snapshot={uncontrolled.snapshot}
                     size={148}

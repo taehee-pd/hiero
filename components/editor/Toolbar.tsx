@@ -689,10 +689,9 @@ export function Toolbar() {
 
       {/* E-2: Inline error toast replacing window.alert() */}
       {toolbarError && (
-        <div
-          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface"
-          style={{ boxShadow: 'var(--shadow-error)' }}
-          role="alert"
+	        <div
+	          className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface"
+	          role="alert"
           aria-live="assertive"
         >
           {toolbarError}
@@ -776,10 +775,10 @@ export function Toolbar() {
           className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
           key={zoomOverlay}
         >
-          <div
-            className="rounded-lg border border-border/50 bg-background/90 px-6 py-3 text-2xl text-foreground backdrop-blur-sm"
-            style={{ boxShadow: 'var(--shadow-lg)', animation: 'zoom-overlay-fade 900ms ease-out forwards' }}
-          >
+	          <div
+	            className="rounded-md border border-border/50 bg-background px-6 py-3 text-2xl text-foreground"
+	            style={{ animation: 'zoom-overlay-fade 900ms ease-out forwards' }}
+	          >
             {zoomOverlay}
           </div>
           <style>{`
@@ -839,4 +838,3 @@ function ToolbarButton({
     </Tooltip>
   );
 }
-

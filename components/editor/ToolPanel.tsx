@@ -124,8 +124,7 @@ export const ToolPanel = memo(function ToolPanel({
       className={cn(
         'flex flex-col gap-2',
         isDock &&
-          'flex-row items-center gap-2 rounded-[1.35rem] border bg-background/88 p-2 backdrop-blur-xl',
-        isDock && 'border-[var(--border-level-2)] shadow-[var(--shadow-panel)]',
+          'flex-row items-center gap-2 rounded-[var(--radius-panel-nav)] border border-[var(--border-level-2)] bg-background p-1.5',
       )}
     >
       {!isDock ? (
@@ -154,9 +153,12 @@ export const ToolPanel = memo(function ToolPanel({
               key={tool.id}
               className={cn(
                 'flex items-center',
-                // Chevron is now always visible on shape/select, so always
-                // carry the gap — not only when the tool is active.
-                (isShapeTool || isSelectEntry) && 'gap-1',
+                // Split tools share one outer border/radius; the chevron is an
+                // internal segment, not a second rounded button.
+                (isShapeTool || isSelectEntry) &&
+                  (isDock
+                    ? 'gap-1'
+                    : 'gap-0 overflow-hidden rounded-[var(--radius-toolbar-action)] border border-border/70 bg-background'),
               )}
             >
               <Tooltip>
@@ -181,8 +183,10 @@ export const ToolPanel = memo(function ToolPanel({
                     className={cn(
                       isDock
                         ? 'workspace-tool-button h-11 w-11 rounded-[var(--radius-toolbar-action)] border border-border/70 bg-background/90 px-0'
-                        : 'workspace-nav-button h-10 px-3 py-2',
-                      !isDock && (isShapeTool || isSelectEntry) && isActive && 'rounded-r-sm',
+                        : cn(
+                            'workspace-nav-button h-10 px-3 py-2',
+                            (isShapeTool || isSelectEntry) && 'rounded-none border-0 shadow-none',
+                          ),
                       tool.disabled && !isGuideEntry && 'opacity-50',
                     )}
                   >
@@ -246,7 +250,7 @@ export const ToolPanel = memo(function ToolPanel({
                             'border border-border bg-background px-0 hover:bg-accent/40',
                             isDock
                               ? 'h-11 w-8 rounded-[var(--radius-toolbar-action)] border-border/70 bg-background/92'
-                              : 'h-10 w-8 rounded-l-sm rounded-r-md',
+                              : 'h-10 w-8 rounded-none border-0 border-l border-border/70 bg-transparent',
                           )}
                         >
                           <UiIcon name="chevron-down" size={14} className="size-3.5" />
@@ -297,7 +301,7 @@ export const ToolPanel = memo(function ToolPanel({
                             'border border-border bg-background px-0 hover:bg-accent/40',
                             isDock
                               ? 'h-11 w-8 rounded-[var(--radius-toolbar-action)] border-border/70 bg-background/92'
-                              : 'h-10 w-8 rounded-l-sm rounded-r-md',
+                              : 'h-10 w-8 rounded-none border-0 border-l border-border/70 bg-transparent',
                           )}
                         >
                           <UiIcon name="chevron-down" size={14} className="size-3.5" />

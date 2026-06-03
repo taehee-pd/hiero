@@ -18,7 +18,7 @@ When in doubt, match the surrounding file rather than imposing a new house style
 Observed naming patterns:
 
 - React feature components in `components/editor/`, `components/explorer/`, and `components/export/` use PascalCase file names and component names.
-- Shared UI modules in `components/ui/` (shadcn/Radix primitives) and `components/ds/` (the cross-feature Hiero design system layer) use lowercase file names, following shadcn-style conventions. The prior `components/kibo-ui/` facade was removed in the Phase 2 refactor documented in `specs/design-system-storybook.plan.md`.
+- Shared UI modules in `components/ui/` (shadcn/Radix primitives) and `components/ds/` (the cross-feature Hiero design system layer) use lowercase file names, following shadcn-style conventions. Legacy facade components were removed in the Phase 2 refactor documented in `specs/design-system-storybook.plan.md`.
 - Library modules in `lib/` generally use lowercase or kebab-case file names with camelCase exports.
 - Tests use `*.test.ts` and `*.test.tsx`.
 
@@ -36,7 +36,7 @@ Observed naming patterns:
 
 - Utility-class styling is used heavily in TSX components.
 - Shared UI composition follows the shadcn-style component layout in `components/ui/`.
-- Global theme and design tokens are applied through `app/globals.css`, theme provider wiring, and utility helpers such as `cn()`.
+- Global semantic roles live in `app/globals.css`. Component-specific DS tokens live in `tokens/*.json`, build into `app/_generated/component-tokens.css`, and are consumed by `components/ds`. Theme switching uses `data-theme` helpers in `lib/theme/`.
 
 ## Formatting Guidance
 

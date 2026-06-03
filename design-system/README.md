@@ -13,7 +13,7 @@ This folder is the design system distilled from the Hiero codebase. It is cross-
 
 - **Codebase:** `github.com/taehee-pd/icon-authoring-tool` (private)
 - **Design SSOT in repo:** `DESIGN.md` (agent-facing prompt) + `app/globals.css` (primitive + semantic tokens)
-- **Design-system components in repo:** `components/ds/` — StatusBadge, Tag, KbdHint, ColorField, IconButton, ColorPicker
+- **Design-system components in repo:** `components/ds/` — StatusBadge, Tag, KbdHint, ShortcutRow, ColorField, IconButton, ColorPicker
 - **Product shell in repo:** `components/studio/` — StudioLayout, Navbar, NavPane, ListPane
 
 A snapshot of the live DS components and studio shell lives in `_src/` for reference.
@@ -28,7 +28,7 @@ A snapshot of the live DS components and studio shell lives in `_src/` for refer
 | `SKILL.md` | Agent Skill manifest |
 | `colors_and_type.css` | All tokens + semantic type classes. Import this first. |
 | `fonts/` | Optional local variable WOFF2 fallbacks. By default `colors_and_type.css` `@import`s Instrument Sans + Geist Mono from Google Fonts; drop locally hosted WOFF2s here only for fully offline use. |
-| `assets/` | Design-system glyph mirror, wordmark, placeholders |
+| `assets/` | Design-system glyph mirror and placeholders |
 | `preview/` | Design-system card specimens registered in the review pane |
 | `ui_kits/studio/` | High-fidelity React recreation of the Hiero Studio workspace |
 | `_src/` | Snapshots of the original DS + studio components (reference only) |
@@ -155,11 +155,10 @@ The codebase imports icons directly from `lucide-react` — `ChevronDown`, `Down
 - **Sizes:** `size-3` (12px) for tight chrome, `size-3.5` (14px) default, `size-4` (16px) for primary. Inner icon sizes in IconButton are 12/14/16 for sm/md/lg.
 - **Color:** always `currentColor` — inherit from parent. `text-muted-foreground` for idle, `text-foreground` for hovered/active.
 
-### Brand marks
+### Brand mark
 
-Hiero has one glyph and one wordmark. Both are monochrome vectors and should
-inherit color from the surrounding UI rather than carrying their own brand
-fill.
+Hiero uses one monochrome glyph that should inherit color from the surrounding
+UI rather than carrying its own brand fill.
 
 - `../public/hiero.svg` — production application logo glyph. This is a 24 × 24
   stroked SVG with a `0 0 24 24` viewBox, 1px strokes, and embedded
@@ -169,10 +168,6 @@ fill.
 - `assets/hiero.svg` — design-system mirror of the same 24 × 24 glyph using
   `currentColor` strokes. Use this copy for local previews, static artifacts,
   and skill outputs that are outside the Next.js public asset path.
-- `assets/hiero_wordmark.svg` — full filled Hiero wordmark with a `2144 × 408`
-  intrinsic aspect ratio. Render it as a CSS mask with
-  `background: currentColor` so it inherits theme foreground — not as an `<img>`
-  unless the target medium cannot support masks.
 
 ### Emoji / unicode
 - **No emoji** in UI, ever.
@@ -199,4 +194,4 @@ If you're an agent using this skill:
 
 - **Fonts:** Instrument Sans and Geist Mono are loaded from Google Fonts via an `@import` inside `colors_and_type.css`. The real repo loads the same families via `next/font/google`. Drop local variable WOFF2 fallbacks into `fonts/` only if you need fully offline use.
 - **Editor surface chrome:** the codebase has a secondary `.editor-lab` theme (warm cream/teal, "Iowan Old Style" display font) used for a specific editor experiment. It's **not** the canonical brand and is excluded here to avoid confusion.
-- **Components:** only the five `components/ds/*` pieces are the official design system. `components/ui/*` is shadcn/Radix and `components/studio/*` is product shell — both composed from DS primitives. This DS reflects the official set only.
+- **Components:** `components/ds/*` is the official shared design-system layer. `components/ui/*` is shadcn/Radix and `components/studio/*` is product shell — both composed from DS primitives. This DS reflects the official set only.

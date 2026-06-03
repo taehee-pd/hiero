@@ -552,7 +552,7 @@ Shared by Lucide, Heroicons, Phosphor, Material Symbols.
 ## 11. Shared Primitives (Design System Atoms)
 
 These are the base components that compose into all higher-level components.
-Most already exist as shadcn/ui or kibo-ui components.
+Most already exist as shadcn/ui primitives or Hiero DS components.
 
 ### Form Controls
 

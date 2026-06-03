@@ -13,7 +13,7 @@ If the user invokes this skill without any other guidance, ask them what they wa
 ## Quick map
 
 - `colors_and_type.css` — import this first; provides all tokens (`--primary`, `--foreground`, `--shadow-outline`, etc.) and semantic type classes (`.type-display`, `.type-h1`, `.type-body`, `.type-mono`, `.type-label`, `.type-caption`).
-- `assets/` — design-system brand marks (`hiero.svg`, `hiero_wordmark.svg`) and generic placeholders. The production app logo is `../public/hiero.svg`.
+- `assets/` — design-system glyph mirror (`hiero.svg`) and generic placeholders. The production app logo is `../public/hiero.svg`.
 - `ui_kits/studio/` — React recreation of the 3-pane studio workspace (Navbar / NavPane / ListPane / Editor). Open `index.html` for a live interactive reference.
 - `preview/` — individual token / component specimen cards.
 - `_src/components/` — verbatim snapshots of the original DS + studio components. Consult for exact behavior or copywriting.
@@ -31,7 +31,6 @@ If the user invokes this skill without any other guidance, ask them what they wa
 
 - Use `../public/hiero.svg` for the production application logo definition: 24 × 24 stroked SVG, 1px strokes, embedded light/dark `prefers-color-scheme` stroke colors for standalone use. In chrome, mask it and fill from the foreground token/current text color.
 - Use `assets/hiero.svg` for design-system previews and exported static artifacts that need the same 24 × 24 glyph with `currentColor` strokes.
-- Use `assets/hiero_wordmark.svg` for the full wordmark: filled vector, `2144 × 408` intrinsic aspect ratio, rendered as a CSS mask with `background: currentColor` whenever possible.
-- Treat logo and wordmark as identity chrome, not as product-authored icons. User icon previews should still come from `<HieroIcon>`.
+- Treat the logo as identity chrome, not as a product-authored icon. User icon previews should still come from `<HieroIcon>`.
 
 When in doubt, open a component in `_src/` and copy its exact copy / structure.

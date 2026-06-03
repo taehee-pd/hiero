@@ -97,8 +97,7 @@ export function NavPane() {
           'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200',
           navExpanded ? 'w-[230px]' : 'w-10',
         )}
-        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
-        role="region"
+	        role="region"
         aria-label="Projects"
       >
         {/* Header */}
@@ -148,14 +147,14 @@ export function NavPane() {
             {iconSets.map((iconSet) => (
               <Tooltip key={iconSet.id} delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      'group/item relative flex h-7 select-none items-center gap-2 rounded-lg px-2 text-left text-xs transition-all duration-[160ms]',
-                      activeIconSetId === iconSet.id
-                        ? 'bg-primary/12 text-foreground font-semibold shadow-[inset_2px_0_0_var(--primary),inset_0_0_0_1px_color-mix(in_srgb,var(--primary)_35%,transparent)]'
-                        : 'text-foreground/70 hover:bg-accent hover:text-foreground hover:shadow-[var(--shadow-outline)]',
-                    )}
-                  >
+	                  <div
+	                    className={cn(
+	                      'group/item relative flex h-7 select-none items-center gap-2 rounded-md border border-transparent px-2 text-left text-xs transition-colors duration-[160ms]',
+	                      activeIconSetId === iconSet.id
+	                        ? 'border-primary/35 bg-primary/10 text-foreground font-medium'
+	                        : 'text-foreground/70 hover:border-border/70 hover:bg-accent/70 hover:text-foreground',
+	                    )}
+	                  >
                     {/*
                       Rename input is rendered as a SIBLING of the row
                       button, not inside it. Previously the <Input> was
@@ -254,11 +253,11 @@ export function NavPane() {
             ) : (
               <Tooltip delayDuration={navExpanded ? 1000 : 200}>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setInlineNew(true)}
-                    className="h-auto w-full justify-start gap-2 rounded-lg border border-border/60 bg-background/60 px-2 py-1.5 text-xs text-foreground/80 transition-all duration-[160ms] hover:border-border hover:bg-background hover:text-foreground hover:shadow-[var(--shadow-outline)]"
-                  >
+	                  <Button
+	                    variant="ghost"
+	                    onClick={() => setInlineNew(true)}
+	                    className="h-auto w-full justify-start gap-2 rounded-md border border-border/60 bg-background/60 px-2 py-1.5 text-xs text-foreground/80 transition-colors duration-[160ms] hover:border-border hover:bg-background hover:text-foreground"
+	                  >
                     <UiIcon name="plus" size={14} className="size-3.5 shrink-0" />
                     <span>New Project</span>
                   </Button>

@@ -235,28 +235,23 @@ Design intent:
 - Let typography weight and spacing do the work before reaching for color
   or decoration.
 
-## Brand marks
+## Brand Mark
 
-Hiero has two maintained brand mark definitions:
+Hiero has one maintained logo glyph:
 
 - **Application logo:** `public/hiero.svg` is the 24 × 24 stroked Hiero
   glyph used by the production app shell and metadata icons. It declares a
   `0 0 24 24` viewBox, uses 1px strokes, and contains an embedded
   `prefers-color-scheme` rule so the standalone asset renders dark ink on
-  light backgrounds and light ink on dark backgrounds. In app chrome, render
-  it as a CSS mask filled with `currentColor`/the relevant foreground token,
-  not as a colored bitmap.
-- **Design-system wordmark:** `design-system/assets/hiero_wordmark.svg` is
-  the full Hiero wordmark with a `2144 × 408` intrinsic aspect ratio. It is
-  a filled vector intended for `mask`/`-webkit-mask` usage with
-  `background: currentColor`, so it inherits theme foreground. Do not render
-  the wordmark as an `<img>` unless the surrounding medium cannot support
-  masks.
+  light backgrounds and light ink on dark backgrounds.
+- **Design-system mirror:** `design-system/assets/hiero.svg` is the
+  currentColor version of the same 24 × 24 glyph for design-system previews,
+  static artifacts, and skill outputs outside the Next.js public asset path.
 
-`design-system/assets/hiero.svg` mirrors the 24 × 24 glyph for
-design-system previews and offline artifacts. Treat these assets as brand
-primitives, not product-authored icons: product content icons still come from
-the Hiero runtime.
+In app chrome and design-system artifacts, render the glyph as a CSS mask
+filled from `currentColor` or the relevant foreground token. Do not treat the
+logo glyph as product-authored icon content; product content icons still come
+from the Hiero runtime.
 
 ## Colors
 
@@ -309,11 +304,11 @@ not tokenized — dark is the single source of truth):
 | surface-warm           | `rgba(243, 247, 250, 0.8)`    |
 | foreground             | `#090D10`                     |
 | foreground-secondary   | `#3C464D`                     |
-| foreground-tertiary    | `#7E8991`                     |
+| foreground-tertiary    | `#58636A`                     |
 | primary (accent)       | `#a885f2`                     |
 | primary-foreground     | `#0A0A0A` (black)             |
 | primary-soft           | `color-mix(in srgb, var(--primary) 8%, transparent)` |
-| border                 | `rgba(0, 0, 0, 0.05)`         |
+| border                 | `rgba(0, 0, 0, 0.10)`         |
 | border-subtle          | `rgba(0, 0, 0, 0.06)`         |
 
 ### Usage rules

@@ -65,13 +65,13 @@ html, body {
   color: var(--foreground);
 }
 .nav-logo:hover { background: var(--accent); }
-.nav-logo .wordmark {
+.nav-logo .mark {
   display: inline-block;
-  height: 12px;
-  aspect-ratio: 2144 / 408;
+  width: 16px;
+  height: 16px;
   background: var(--foreground);
-  mask: url(../../assets/hiero_wordmark.svg) no-repeat center / contain;
-  -webkit-mask: url(../../assets/hiero_wordmark.svg) no-repeat center / contain;
+  mask: url(../../assets/hiero.svg) no-repeat center / contain;
+  -webkit-mask: url(../../assets/hiero.svg) no-repeat center / contain;
 }
 .nav-logo .chev {
   width: 12px; height: 12px;

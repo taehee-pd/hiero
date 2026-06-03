@@ -127,6 +127,21 @@ export function Navbar() {
 
   const project = useEditorStore((s) => s.project);
   const workspace = useEditorStore((s) => s.workspace);
+  const currentIconId = useEditorStore((s) => s.currentIconId);
+
+  // Single entry point for the command palette so every trigger (the search
+  // button, the menu items, and ⌘K) lands on the SAME palette for the current
+  // context. When an icon is open, EditorShell owns the (richer) palette and
+  // listens for this event; otherwise the navbar's own palette opens. This
+  // prevents two different palettes being reachable at once while editing.
+  const openCommandPalette = useCallback(() => {
+    if (editorStore.getState().currentIconId) {
+      window.dispatchEvent(new CustomEvent('hiero:open-command'));
+    } else {
+      setCommandOpen(true);
+    }
+  }, []);
+
   const commandIcons = useMemo(
     () => Object.values(project?.icons ?? {}).sort((a, b) => a.name.localeCompare(b.name)),
     [project?.icons],
@@ -619,7 +634,7 @@ export function Navbar() {
                       {resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onSelect={() => setCommandOpen(true)}><UiIcon name="search" size={16} className="size-4" />Search Icons<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+                  <DropdownMenuItem onSelect={openCommandPalette}><UiIcon name="search" size={16} className="size-4" />Search Icons<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
 
@@ -627,7 +642,7 @@ export function Navbar() {
 
               {/* Help */}
               <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}><UiIcon name="keyboard" size={16} className="size-4" />Keyboard Shortcuts<DropdownMenuShortcut>?</DropdownMenuShortcut></DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setCommandOpen(true)}><UiIcon name="search" size={16} className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
+              <DropdownMenuItem onSelect={openCommandPalette}><UiIcon name="search" size={16} className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -731,7 +746,7 @@ export function Navbar() {
           <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />
 
           {/* Search */}
-          <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={() => setCommandOpen(true)} kbd={['Cmd', 'K']} />
+          <IconButton icon={<UiIcon name="search" />} aria-label="Search icons" onClick={openCommandPalette} kbd={['Cmd', 'K']} />
 
           <BuildBadge />
         </div>
@@ -739,7 +754,7 @@ export function Navbar() {
 
       {/* Error toast */}
       {toolbarError && (
-        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface" style={{ boxShadow: 'var(--shadow-error)' }} role="alert" aria-live="assertive">
+	        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface" role="alert" aria-live="assertive">
           {toolbarError}
         </div>
       )}
@@ -799,9 +814,9 @@ export function Navbar() {
               ['Undo', 'Cmd/Ctrl+Z'], ['Redo', 'Shift+Cmd/Ctrl+Z'],
               ['Toggle guides', 'Cmd/Ctrl+;'], ['Toggle snap', 'Shift+Cmd/Ctrl+;'],
               ['Delete', 'Delete'], ['Escape', 'Esc'],
-            ].map(([label, shortcut]) => (
-              <div key={label} className="flex items-center justify-between rounded-lg border border-border/70 bg-background/60 px-3 py-1.5" style={{ boxShadow: 'var(--shadow-outline)' }}>
-                <span>{label}</span>
+	            ].map(([label, shortcut]) => (
+	              <div key={label} className="flex items-center justify-between rounded-md border border-border/70 bg-background/60 px-3 py-1.5">
+	                <span>{label}</span>
                 <span className="rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-xs">{shortcut}</span>
               </div>
             ))}
@@ -809,6 +824,11 @@ export function Navbar() {
         </DialogContent>
       </Dialog>
 
+      {/* Only mount the navbar's palette when no icon is open. While editing,
+          EditorShell owns the command palette (openCommandPalette routes there),
+          so rendering this one too would duplicate the palette in the DOM and
+          expose an inconsistent command set. */}
+      {!currentIconId && (
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandInput placeholder="Search icons or actions…" />
         <CommandList>
@@ -851,6 +871,7 @@ export function Navbar() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+      )}
     </>
   );
 }

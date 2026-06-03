@@ -1132,7 +1132,7 @@ function ProjectDetailView({
   return (
     <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)]">
       <aside
-        className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] backdrop-blur-xl lg:block"
+        className="hidden min-h-0 overflow-y-auto border-r border-[var(--border-separator)] bg-[var(--bg-sidebar)] lg:block"
         style={{ fontFamily: 'var(--font-system)' }}
       >
         <div className="space-y-4 px-2.5 py-3">

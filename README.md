@@ -1,4 +1,4 @@
-# Hiero — Hiero
+# Hiero
 
 A Next.js-based icon authoring studio with SF Symbols-grade animation capabilities. Hiero provides a single-screen workspace for creating, animating, and distributing production-ready icons.
 
@@ -40,7 +40,8 @@ Open [http://localhost:3000](http://localhost:3000).
 - `pnpm start` — run production server
 - `pnpm lint` — run repository lint checks
 - `pnpm format:check` — Prettier format check
-- `bun test` — run Bun test suites
+- `pnpm test` — run Bun test suites through the split repo entrypoint
+- `bun scripts/check-ds-exports.ts` — verify every DS export has a story and test
 - `pnpm test:sync` — run sync/export integration-focused tests
 - `pnpm validate:source-export` — validate canonical `icons/` + `manifest.json` source exports
 - `pnpm compile:from-source -- --source <dir> --out <dir> --package-name <name> --package-version <version> [--generate-react]` — compile from canonical source export input
@@ -56,9 +57,11 @@ pnpm storybook:test      # Run Vitest addon tests (headless Chromium)
 ```
 
 The design system barrel is `components/ds/` — shared cross-feature components
-(StatusBadge, Tag, KbdHint, ColorField, IconButton, ColorPicker). Primitives
-live in `components/ui/` (shadcn/Radix). See `specs/design-system-storybook.plan.md`
-for the full design system plan.
+(StatusBadge, Tag, KbdHint, ColorField, IconButton, ShortcutRow, ColorPicker).
+Primitives live in `components/ui/` (shadcn/Radix). Component and theme tokens
+live under `tokens/` and compile into `app/_generated/component-tokens.css`.
+See `components/ds/README.md`, `tokens/README.md`, and
+`specs/design-system-storybook.plan.md` for the design system architecture.
 
 ## Integration Guides
 
@@ -79,8 +82,8 @@ components/
 ├── export/             # Export workflow: PublishDialog (unified Publish), formats
 ├── persistence/        # AutoSaveProvider (IndexedDB)
 ├── runtime/            # Runtime preview components
-├── ui/                 # shadcn/ui components (57 files)
-└── kibo-ui/            # Kibo design system + color picker
+├── ds/                 # Hiero DS components with stable behavior/a11y contracts
+└── ui/                 # shadcn/Radix primitives composed by features and DS
 
 lib/
 ├── schema/             # Icon, Variant, State, Layer, Transition types
@@ -103,6 +106,7 @@ lib/
 ├── sync-service/       # GitHub PR sync orchestrator + connectors
 ├── sync-source/        # Source-of-truth export and reconstruction
 ├── install-config/     # Installation configuration for icon packages
+├── theme/              # data-theme helpers and boot script
 ├── platform/           # Web platform bridge and route helpers
 ├── rendering/          # Layer style resolution, auto-gradient
 ├── animation/          # Animation utilities
@@ -111,6 +115,7 @@ lib/
 
 packages/hiero-cli/    # @hiero/cli — command-line icon operations
 figma-plugin/           # Figma plugin for exporting to Hiero
+tokens/                 # Source tokens for component/theme redesigns
 scripts/                # Build, compile, validate, release scripts
 tests/                  # Bun test files (102+ test files)
 specs/                  # Spec-kit documentation (21 specs)

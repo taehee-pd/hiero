@@ -244,7 +244,11 @@
   /* ── Foreground ── */
   --foreground: var(--greyscale-800);
   --foreground-secondary: var(--greyscale-600);
-  --foreground-tertiary: var(--greyscale-400);
+  /* greyscale-500 (#58636A ≈ 6.2:1 on white), not greyscale-400
+   * (#7E8991 ≈ 3.57:1) which fails WCAG AA for normal text on the
+   * light background. Dark mode keeps greyscale-400 (passes on the
+   * near-black surface). */
+  --foreground-tertiary: var(--greyscale-500);
   --foreground-fixed-white: var(--greyscale-000);
   --foreground-highlight: var(--purple-600);
   --foreground-danger: var(--red-600);
@@ -252,9 +256,13 @@
   --foreground-warning: var(--yellow-600);
 
   /* ── Border ── */
-  --border: var(--darker-100);
-  --border-secondary: var(--darker-200);
-  --border-tertiary: var(--darker-300);
+  /* darker-200 (10% black) not darker-100 (5% ≈ 1.12:1 on white,
+   * near-invisible). Gives light-mode panels a readable hairline,
+   * matching the visual weight of dark mode's lighter-300 (20% white).
+   * Secondary/tertiary shift up one step to stay distinct. */
+  --border: var(--darker-200);
+  --border-secondary: var(--darker-300);
+  --border-tertiary: var(--darker-400);
   --border-selected: var(--purple-500);
   --border-danger: var(--red-500);
   --border-success: var(--green-500);
@@ -276,7 +284,8 @@
   --secondary: var(--greyscale-100);
   --secondary-foreground: var(--greyscale-600);
   --muted: var(--greyscale-100);
-  --muted-foreground: var(--greyscale-400);
+  /* greyscale-500 for AA on white (≈6.2:1); greyscale-400 fails at 3.57:1. */
+  --muted-foreground: var(--greyscale-500);
   --accent: var(--greyscale-100);
   --accent-foreground: var(--greyscale-800);
   --destructive: var(--red-400);
@@ -299,7 +308,7 @@
   --sidebar-primary-foreground: var(--greyscale-900);
   --sidebar-accent: var(--greyscale-100);
   --sidebar-accent-foreground: var(--greyscale-800);
-  --sidebar-border: var(--darker-100);
+  --sidebar-border: var(--darker-200);
   --sidebar-ring: var(--darker-700);
 
   /* ── Editor ── */
@@ -592,9 +601,7 @@
     @apply bg-background text-foreground;
     font-family: var(--type-family-default);
     font-weight: var(--type-weight-default);
-    background-image:
-      radial-gradient(circle at top center, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 30%),
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 98%, white 2%) 0%, var(--background) 100%);
+    background-image: none;
     height: 100%;
     overflow: hidden;
   }
@@ -671,42 +678,31 @@
 
   .studio-panel {
     background: var(--card);
-    border: 1px solid var(--border);
-    box-shadow:
-      var(--shadow-inset-edge),
-      var(--shadow-outline);
-    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-subtle);
+    box-shadow: none;
   }
 
   .studio-topbar {
     border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 92%, white 8%) 0%, color-mix(in srgb, var(--background) 98%, transparent) 100%);
-    box-shadow:
-      0 1px 0 color-mix(in srgb, var(--background) 72%, transparent) inset,
-      var(--shadow-outline);
-    backdrop-filter: blur(10px) saturate(1.2);
+    background: var(--background);
+    box-shadow: none;
   }
 
   .studio-pane {
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--background) 95%, var(--background-secondary) 5%) 0%, var(--background) 100%);
-    box-shadow: var(--shadow-inset-edge);
+    background: var(--background);
+    box-shadow: none;
   }
 
   .studio-card {
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     background: var(--card);
-    box-shadow: var(--shadow-outline);
-    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
+    box-shadow: none;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease;
   }
 
   .studio-card:hover {
-    border-color: var(--border-secondary);
-    box-shadow:
-      0 0 0 1px var(--border-secondary),
-      0 1px 2px var(--darker-100),
-      0 4px 12px var(--darker-100);
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--card) 96%, var(--foreground) 4%);
   }
 
   .studio-kicker {
@@ -734,8 +730,7 @@
   }
 
   .studio-dots {
-    background-image: radial-gradient(var(--darker-200) 0.8px, transparent 0.8px);
-    background-size: 14px 14px;
+    background-image: none;
   }
 
   .studio-preview {
@@ -753,7 +748,6 @@
     border: 1px solid var(--border-subtle);
     border-bottom-color: var(--border-separator);
     background: var(--bg-toolbar);
-    backdrop-filter: blur(20px) saturate(1.5);
   }
 
   .workspace-panel-header {
@@ -800,7 +794,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    border-radius: 0.875rem;
+    border-radius: var(--radius-search);
     border: 1px solid var(--border);
     background: var(--background);
     padding: 0.25rem;
@@ -819,10 +813,10 @@
   }
 
   .workspace-tool-button[data-active='true'] {
-    border-color: var(--primary);
-    background: color-mix(in srgb, var(--primary) 18%, var(--background));
+    border-color: color-mix(in srgb, var(--primary) 42%, transparent);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
     color: var(--foreground);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent);
+    box-shadow: none;
   }
 
   .workspace-tool-button:disabled {
@@ -860,9 +854,7 @@
   .workspace-stage {
     border: 1px solid var(--border);
     background: var(--background);
-    box-shadow:
-      var(--shadow-inset-edge),
-      var(--shadow-stage);
+    box-shadow: none;
   }
 
   .dark .workspace-stage {
@@ -894,19 +886,16 @@
 
   .workspace-insight-card {
     border-radius: 0.625rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     background: var(--card);
     padding: 0.9rem;
-    box-shadow: var(--shadow-outline);
-    transition: border-color var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
+    box-shadow: none;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease;
   }
 
   .workspace-insight-card:hover {
-    border-color: var(--border-secondary);
-    box-shadow:
-      0 0 0 1px var(--border-secondary),
-      0 1px 2px var(--darker-100),
-      0 4px 12px var(--darker-100);
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--card) 96%, var(--foreground) 4%);
   }
 
   .workspace-nav-button {
@@ -915,29 +904,24 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    border-radius: 0.875rem;
-    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    border: 1px solid var(--border-subtle);
     background: var(--background);
     padding: 0.72rem 0.9rem;
     text-align: left;
-    box-shadow: var(--shadow-outline);
-    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, box-shadow var(--duration-normal) ease;
+    box-shadow: none;
+    transition: border-color var(--duration-normal) ease, background var(--duration-normal) ease, color var(--duration-normal) ease;
   }
 
   .workspace-nav-button:hover {
-    border-color: var(--border-secondary);
+    border-color: var(--border);
     background: var(--background-hover);
-    box-shadow:
-      0 0 0 1px var(--border-secondary),
-      var(--shadow-sm);
   }
 
   .workspace-nav-button[data-active='true'] {
-    border-color: var(--border-selected);
-    background: var(--primary-soft);
-    box-shadow:
-      0 0 0 1px var(--border-selected),
-      var(--shadow-sm);
+    border-color: color-mix(in srgb, var(--primary) 44%, transparent);
+    background: color-mix(in srgb, var(--primary) 14%, var(--background));
+    box-shadow: none;
   }
 
   .workspace-status-strip {
@@ -946,8 +930,8 @@
   }
 
   .editor-lab {
-    --editor-panel: rgba(250, 245, 237, 0.78);
-    --editor-panel-strong: rgba(255, 250, 243, 0.95);
+    --editor-panel: rgba(250, 245, 237, 0.94);
+    --editor-panel-strong: rgba(255, 250, 243, 0.98);
     --editor-border: rgba(28, 23, 18, 0.12);
     --editor-border-strong: rgba(28, 23, 18, 0.22);
     --editor-ink: #17130f;
@@ -956,10 +940,7 @@
     --editor-accent-soft: rgba(6, 142, 160, 0.16);
     --editor-ui-font: var(--font-instrument-sans);
     --editor-display-font: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-    background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.76), transparent 30%),
-      radial-gradient(circle at 86% 8%, rgba(6, 142, 160, 0.16), transparent 24%),
-      linear-gradient(180deg, #ebe1cf 0%, #ddd1bd 100%);
+    background: #e8dece;
     color: var(--editor-ink);
     --editor-stage-bg: #fffdf8;
   }
@@ -973,30 +954,22 @@
     --editor-muted: #aaa18f;
     --editor-accent: #40b1bc;
     --editor-accent-soft: rgba(64, 177, 188, 0.15);
-    background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 24%),
-      radial-gradient(circle at 86% 8%, rgba(64, 177, 188, 0.12), transparent 22%),
-      linear-gradient(180deg, #14110f 0%, #0e0c0a 100%);
+    background: #100d0b;
     --editor-stage-bg: #15110d;
   }
 
   .editor-surface {
     border: 1px solid var(--editor-border);
     background: var(--editor-panel);
-    box-shadow:
-      0 16px 48px rgba(18, 14, 10, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.58);
-    backdrop-filter: blur(18px) saturate(0.92);
+    box-shadow: none;
   }
 
   .dark .editor-surface {
-    box-shadow:
-      0 18px 56px rgba(0, 0, 0, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: none;
   }
 
   .editor-topbar {
-    border-radius: 1rem;
+    border-radius: var(--radius-panel-nav);
     padding: 0.95rem 1rem 1rem;
   }
 
@@ -1035,7 +1008,7 @@
 
   .editor-command-button {
     min-height: 2.75rem;
-    border-radius: 0.85rem;
+    border-radius: var(--radius-search);
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 82%, transparent);
     padding: 0 0.85rem;
@@ -1051,7 +1024,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    border-radius: 0.85rem;
+    border-radius: var(--radius-search);
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 86%, transparent);
     padding: 0.22rem;
@@ -1063,7 +1036,7 @@
     justify-content: center;
     gap: 0.45rem;
     min-height: 2rem;
-    border-radius: 0.7rem;
+    border-radius: var(--radius-input);
     border: 1px solid transparent;
     padding: 0 0.8rem;
     font-family: var(--editor-ui-font);
@@ -1085,7 +1058,7 @@
   }
 
   .editor-primary-button {
-    border-radius: 0.8rem;
+    border-radius: var(--radius-input);
     border: 1px solid transparent;
     background: var(--editor-ink);
     color: #f8f2e9;
@@ -1097,7 +1070,7 @@
   }
 
   .editor-outline-button {
-    border-radius: 0.8rem;
+    border-radius: var(--radius-input);
     border-color: var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 88%, transparent);
     color: var(--editor-ink);
@@ -1110,7 +1083,7 @@
   }
 
   .editor-ghost-button {
-    border-radius: 0.75rem;
+    border-radius: var(--radius-input);
     color: var(--editor-ink);
   }
 
@@ -1125,7 +1098,7 @@
     align-items: center;
     justify-content: center;
     gap: 0.3rem;
-    border-radius: 0.8rem;
+    border-radius: var(--radius-input);
     border: 1px solid transparent;
     background: transparent;
     color: var(--editor-muted);
@@ -1148,7 +1121,7 @@
   .editor-select,
   .editor-color-input,
   .editor-toggle-button {
-    border-radius: 0.8rem;
+    border-radius: var(--radius-input);
     border-color: var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 84%, transparent);
     color: var(--editor-ink);
@@ -1199,7 +1172,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    border-radius: 0.95rem;
+    border-radius: var(--radius-search);
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 88%, transparent);
     padding: 0.8rem 0.9rem;
@@ -1209,7 +1182,6 @@
   .editor-list-row:hover,
   .editor-layer-row:hover {
     border-color: var(--editor-border-strong);
-    transform: translateY(-1px);
   }
 
   .editor-list-row[data-active='true'],
@@ -1260,7 +1232,7 @@
 
   .editor-empty {
     border: 1px dashed color-mix(in srgb, var(--editor-border-strong) 80%, transparent);
-    border-radius: 1rem;
+    border-radius: var(--radius-panel-nav);
     background: color-mix(in srgb, var(--editor-panel-strong) 78%, transparent);
     padding: 1rem;
   }
@@ -1268,7 +1240,7 @@
   .editor-metric-card {
     display: grid;
     gap: 0.45rem;
-    border-radius: 0.95rem;
+    border-radius: var(--radius-search);
     border: 1px solid var(--editor-border);
     background: color-mix(in srgb, var(--editor-panel-strong) 92%, transparent);
     padding: 0.9rem;
@@ -1285,10 +1257,9 @@
 
   .editor-floating-strip {
     border: 1px solid var(--editor-border);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--editor-panel-strong) 86%, transparent);
+    border-radius: var(--radius-search);
+    background: var(--editor-panel-strong);
     padding: 0.6rem 0.85rem;
-    backdrop-filter: blur(14px);
   }
 
   .editor-grid-overlay {
@@ -1299,10 +1270,8 @@
   }
 
   .editor-canvas-frame {
-    border-radius: 1.2rem;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
-      color-mix(in srgb, var(--editor-panel) 94%, transparent);
+    border-radius: var(--radius-panel-nav);
+    background: color-mix(in srgb, var(--editor-panel) 96%, transparent);
   }
 
   .editor-slider {
@@ -1338,13 +1307,13 @@
   .editor-lab .workspace-stage {
     border: 1px solid color-mix(in srgb, var(--editor-border-strong) 72%, transparent);
     background: var(--editor-stage-bg);
-    box-shadow: 0 26px 80px rgba(25, 20, 16, 0.16);
+    box-shadow: none;
   }
 
   .dark .editor-lab .workspace-stage {
     border-color: rgba(255, 248, 240, 0.08);
     background: var(--editor-stage-bg);
-    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.42);
+    box-shadow: none;
   }
 
   .editor-lab .workspace-empty-state {
@@ -1371,7 +1340,6 @@
     border-radius: 0;
     background: var(--bg-sidebar);
     color: var(--foreground);
-    backdrop-filter: blur(22px);
   }
 
   .wire-sidebar-left {
@@ -1880,12 +1848,11 @@
     gap: 2px;
     overflow: hidden;
     border: 1px solid var(--border-subtle);
-    border-radius: 9px;
-    background: color-mix(in srgb, var(--bg-content) 92%, transparent);
-    box-shadow: 0 4px 14px color-mix(in srgb, var(--foreground) 12%, transparent);
+    border-radius: var(--radius-search);
+    background: var(--bg-content);
+    box-shadow: none;
     transform: translateX(-50%);
     z-index: 25;
-    backdrop-filter: blur(18px);
   }
 
   .wire-dock-group {
@@ -1912,7 +1879,7 @@
   .wire-dock-icon[data-active='true'] {
     background: var(--primary);
     color: var(--primary-foreground);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent);
+    box-shadow: none;
   }
 
   .wire-zoom-trigger {
@@ -1920,7 +1887,7 @@
     height: 32px;
     align-items: center;
     gap: 6px;
-    border-right: 1px solid var(--border-subtle);
+    border-radius: 0;
     padding: 0 12px;
     font-family: var(--font-instrument-sans);
     font-size: 11px;

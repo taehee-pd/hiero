@@ -253,17 +253,18 @@ export function Navbar() {
                 aria-label="Main menu"
               >
                 <span
-                  className="inline-block h-3 shrink-0 bg-foreground"
+                  className="inline-block size-4 shrink-0 bg-foreground"
                   role="img"
-                  aria-label="Cuneiform logo"
+                  aria-label="Hiero logo"
                   style={{
-                    aspectRatio: '2144 / 408',
-                    maskImage: 'url(/cuneiform_wordmark.svg)',
+                    maskImage: 'url(/hiero.svg)',
                     maskSize: 'contain',
                     maskRepeat: 'no-repeat',
-                    WebkitMaskImage: 'url(/cuneiform_wordmark.svg)',
+                    maskPosition: 'center',
+                    WebkitMaskImage: 'url(/hiero.svg)',
                     WebkitMaskSize: 'contain',
                     WebkitMaskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
                   }}
                 />
                 <ChevronDown className="size-3 text-muted-foreground" />

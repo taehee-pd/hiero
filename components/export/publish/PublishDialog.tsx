@@ -299,7 +299,7 @@ export function PublishDialog({
               {state.outcome.kind === 'partial-failure' &&
                 `Published v${state.outcome.snapshot.version} with ${state.outcome.failedTargets.length} target(s) failed.`}
               {state.outcome.kind === 'all-failed' &&
-                'Publish failed — every target returned an error. Nothing was recorded.'}
+                'Publish failed: every target returned an error. Nothing was recorded.'}
             </p>
             <ul className="flex flex-col gap-1 text-xs">
               {(state.outcome.kind === 'all-failed'
@@ -346,7 +346,17 @@ export function PublishDialog({
             <Button disabled>Publishing…</Button>
           )}
           {state.phase === 'done' && (
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
+            <>
+              {/* On any failure, let the user recover without losing their
+                  version/notes/target selection: return to compose so they can
+                  deselect already-succeeded targets and retry the failed ones. */}
+              {state.outcome.kind !== 'success' && (
+                <Button variant="outline" onClick={() => setState({ phase: 'compose' })}>
+                  Try again
+                </Button>
+              )}
+              <Button onClick={() => onOpenChange(false)}>Close</Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

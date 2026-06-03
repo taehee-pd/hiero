@@ -106,12 +106,20 @@ export function IconGridItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <article
-          role="listitem"
+          // role="button": the item is Tab-focusable and activates on
+          // Enter/Space to open the icon, so screen readers must announce it as
+          // actionable, not as a passive list item. aria-current marks the icon
+          // currently open in the editor. (Container is role="group" in ListPane.)
+          role="button"
+          aria-current={active ? true : undefined}
+          aria-label={iconName}
           tabIndex={0}
           data-icon-id={iconId}
           onKeyDown={(event) => {
             if (renaming) return;
-            if (event.key === 'Enter') {
+            // Enter and Space both activate, matching native button semantics.
+            // preventDefault on Space stops the page from scrolling.
+            if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
               onOpen();
               return;
@@ -129,10 +137,10 @@ export function IconGridItem({
             //   active   → primary tint fill, primary label
             //              (the icon currently open in the editor)
             selected
-              ? 'border-primary bg-primary text-primary-foreground shadow-[0_2px_8px_color-mix(in_srgb,var(--primary)_28%,transparent)]'
+              ? 'border-primary bg-primary text-primary-foreground'
               : active
-                ? 'border-primary/70 bg-primary/15 shadow-[inset_0_0_0_1px_var(--primary)]'
-                : 'border-transparent hover:border-border/70 hover:bg-accent/60 hover:shadow-[var(--shadow-outline)]',
+                ? 'border-primary/70 bg-primary/15'
+                : 'border-transparent hover:border-border/70 hover:bg-accent/60',
           )}
         >
           {/*
@@ -207,7 +215,10 @@ export function IconGridItem({
                     selected
                       ? 'font-semibold text-primary-foreground'
                       : active
-                        ? 'font-semibold text-primary'
+                        ? // --foreground-highlight is theme-aware: purple-600 in light
+                          // (≈5.6:1 on the primary/15 tint, passes AA) and purple-300 in
+                          // dark. Plain text-primary (#a885f2) only hits 2.51:1 on the tint.
+                          'font-semibold text-[var(--foreground-highlight)]'
                         : 'font-medium text-foreground',
                   )}
                 >

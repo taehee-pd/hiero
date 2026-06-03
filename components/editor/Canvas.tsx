@@ -878,6 +878,48 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     };
   }, []);
 
+  // Canvas zoom keyboard shortcuts. These match the hints shown in the zoom
+  // menu (Shift+1 fit, ⌘/Ctrl+0 reset to 100%, ⌘/Ctrl +/- step) which
+  // previously had no handler. Uses event.code so it's keyboard-layout robust
+  // (Shift+1 reports key "!", and +/- vary by layout). preventDefault overrides
+  // the browser's own zoom, which is correct for this fixed full-screen editor.
+  useEffect(() => {
+    const handleZoomKeys = (event: KeyboardEvent) => {
+      if (isEditableEventTarget(event.target)) return;
+      const mod = event.metaKey || event.ctrlKey;
+
+      // Shift+1 → fit to view (no Cmd/Ctrl modifier).
+      if (!mod && event.shiftKey && event.code === 'Digit1') {
+        event.preventDefault();
+        fitCanvasToView();
+        return;
+      }
+      if (!mod) return;
+
+      let compute: ((zoom: number) => number) | null = null;
+      if (event.code === 'Digit0' || event.code === 'Numpad0') compute = () => 1;
+      else if (event.code === 'Equal' || event.code === 'NumpadAdd') compute = (z) => z * 1.25;
+      else if (event.code === 'Minus' || event.code === 'NumpadSubtract') compute = (z) => z / 1.25;
+      if (!compute) return;
+
+      event.preventDefault();
+      const state = editorStore.getState();
+      const current = state.viewport.zoom;
+      const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, compute(current)));
+      if (next === current) return;
+      // Pan is measured from the container center, so scaling it by the same
+      // factor keeps the current center point fixed while zooming.
+      const scale = next / current;
+      state.setViewport({
+        zoom: next,
+        panX: state.viewport.panX * scale,
+        panY: state.viewport.panY * scale,
+      });
+    };
+    window.addEventListener('keydown', handleZoomKeys);
+    return () => window.removeEventListener('keydown', handleZoomKeys);
+  }, [fitCanvasToView]);
+
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
       const session = panSessionRef.current;
@@ -1087,17 +1129,15 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         </div>
       ) : null}
 
-      {/* Icon-open loading overlay: blur the canvas while the SVG for a
-          newly selected icon is being built. Prevents the "frozen UI"
-          impression during the first-open lag. */}
-      {isIconLoading && icon && variant ? (
-        <div
-          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/40 backdrop-blur-[2px]"
-          role="status"
-          aria-live="polite"
-          aria-label="Loading icon"
-        >
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-background/90 px-4 py-3 shadow-[var(--shadow-outline)]">
+	      {/* Icon-open loading overlay for the first-open lag. */}
+	      {isIconLoading && icon && variant ? (
+	        <div
+	          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/40"
+	          role="status"
+	          aria-live="polite"
+	          aria-label="Loading icon"
+	        >
+	          <div className="flex flex-col items-center gap-2 rounded-lg border border-border/60 bg-background px-4 py-3">
             <UiIcon name="loader-2" size={20} className="size-5 animate-spin text-muted-foreground" />
             <span className="text-[length:var(--text-label)] text-muted-foreground">Loading icon…</span>
           </div>
@@ -1105,11 +1145,11 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       ) : null}
 
       {/* R6 / UX-3.2: editor empty state with actionable CTAs. */}
-      {(!icon || !variant || !currentState) && (
-        <div
-          className="workspace-empty-state absolute flex max-w-sm flex-col items-center gap-3 rounded-2xl px-8 py-7 text-center text-sm text-muted-foreground"
-          role="status"
-        >
+	      {(!icon || !variant || !currentState) && (
+	        <div
+	          className="workspace-empty-state absolute flex max-w-sm flex-col items-center gap-3 rounded-xl px-8 py-7 text-center text-sm text-muted-foreground"
+	          role="status"
+	        >
           <p className="text-base font-semibold text-foreground">No icon selected</p>
           <p className="text-[length:var(--text-label)] leading-snug text-muted-foreground">
             Pick an icon from the list on the left, or start a new one.
@@ -1150,7 +1190,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       )}
 
       {isDropActive ? (
-        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-lg border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100 backdrop-blur-sm">
+	        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-lg border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100">
           Drop SVG to import
         </div>
       ) : null}
@@ -1159,8 +1199,8 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
         <div
           role="alert"
           aria-live="assertive"
-          className="absolute bottom-4 left-1/2 z-50 max-w-sm -translate-x-1/2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur-sm"
-        >
+	          className="absolute bottom-4 left-1/2 z-50 max-w-sm -translate-x-1/2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+	        >
           {importError}
         </div>
       )}

@@ -1,6 +1,6 @@
 # Tasks
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-06-03
 **Canonical product name:** Hiero
 **Forward-looking roadmap:** See `docs_canonical/NEXT_PHASES.md` for the
 remaining phases (only R7 is still open).
@@ -9,7 +9,7 @@ remaining phases (only R7 is still open).
 
 ## Open Items
 
-The engineering phase backlog is fully shipped through 2026-04-13. The one
+The engineering phase backlog is fully shipped through 2026-06-03. The one
 remaining forward-looking phase is **R7 — Server-Side Embedding Readiness**,
 partially addressed by the repo-native distribution work. See
 `docs_canonical/NEXT_PHASES.md` for scope.
@@ -63,6 +63,7 @@ codebase, specs, and commit history.
 | — | Animate Panel Revamp (plan §2) | 2026-04-13 | Strip strategy dropdown + compatibility badges; restructure to Animation → Playback Mode → Timing → Preview → Advanced; `'simultaneous'` stagger mode; dev-only debug overlay; `autoMorph()` is the only public contract | #128 |
 | — | `@hiero/cli` deploy prep (plan §3) | 2026-04-13 | Finalize `packages/hiero-cli/package.json` metadata, provenance publish config, new `.github/workflows/cli-release.yml`, CLI README with usage + versioning + limitations | #128 |
 | R6 | Navigation & Discoverability (partial) | 2026-04-13 | `?` opens the shortcuts cheat sheet via global custom event; Canvas / Layer panel / Transition panel empty-state CTAs; `⌘K` command palette verified | #128 |
+| — | Design-system architecture cleanup | 2026-06-03 | Token-first redesign docs, DS component guide, glyph-only brand docs, stale static design-system snapshot removal | — |
 
 ---
 

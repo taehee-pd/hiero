@@ -2,7 +2,11 @@
 
 import { Icon as UiIcon } from '@hiero/ui-icons';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
+import {
+  interpolateTransitionValues,
+  resolveTransition,
+  getMotionPreference,
+} from '@/lib/runtime-core';
 import { computeTrimValues } from '@/lib/runtime-core/draw-executor';
 import type { TimelineTrack, Variant, Layer, LayerBinding } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
@@ -272,6 +276,13 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
   useEffect(() => {
     if (!playing) {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      return;
+    }
+    // Reduced motion: jump the playhead to the end and hold, rather than
+    // looping the scrub. Play is user-initiated, so the authored end state is
+    // still shown; we just skip the perpetual rAF loop.
+    if (getMotionPreference() === 'reduce') {
+      scrubTo(1);
       return;
     }
     const start = performance.now() - playhead * duration;
@@ -689,7 +700,7 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
                 Add Track ({layerId})
               </Button>
               {isOpen && (
-                <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-lg">
+	                <div ref={addTrackMenuRef} className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border bg-popover p-1 shadow-none">
                   {grouped.map((group) => (
                     <div key={group.category}>
                       <p className="px-2 pb-0.5 pt-1.5 text-[length:var(--text-caption)] font-medium tracking-tight text-muted-foreground/70">
@@ -732,7 +743,7 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
       {menu ? (
         <div
           ref={menuRef}
-          className="fixed z-50 rounded-md border border-border bg-popover p-1 shadow-lg"
+	          className="fixed z-50 rounded-md border border-border bg-popover p-1 shadow-none"
           style={{ left: clampMenuPosition(menu.x, menu.y).x, top: clampMenuPosition(menu.x, menu.y).y }}
         >
           <Button
@@ -767,7 +778,7 @@ export const TimelineEditor = memo(function TimelineEditor({ transition, variant
       {inlineEdit ? (
         <div className="fixed inset-0 z-50" onClick={cancelInlineEdit}>
           <div
-            className="absolute rounded-lg border border-primary/40 bg-popover p-2 shadow-lg"
+	            className="absolute rounded-md border border-primary/40 bg-popover p-2 shadow-none"
             style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
             onClick={(e) => e.stopPropagation()}
           >

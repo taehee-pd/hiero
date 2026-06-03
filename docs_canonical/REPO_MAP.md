@@ -12,7 +12,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 ## Top-Level Areas
 
 - `app/`: Next.js App Router entrypoints, API routes, and global app setup.
-- `components/`: React UI, split into product surfaces (`editor/`, `explorer/`, `studio/`, `export/`, `persistence/`, `runtime/`) and shared UI (`ui/`, `kibo-ui/`).
+- `components/`: React UI, split into product surfaces (`editor/`, `explorer/`, `studio/`, `export/`, `persistence/`, `runtime/`), the cross-feature DS layer (`ds/`), and shadcn/Radix primitives (`ui/`).
 - `lib/`: domain logic and non-route code.
 - `packages/hiero-cli/`: `@hiero/cli` command-line tool for icon operations.
 - `figma-plugin/`: Figma plugin for exporting to Hiero.
@@ -21,7 +21,8 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `specs/`: technical specification documents (21 specs).
 - `docs/`: guides, plans, architecture notes, and user guide.
 - `docs_canonical/`: canonical repository knowledge layer for agents and future contributors.
-- `DESIGN.md`: root-level Stitch-style design system prompt for UI-coding agents.
+- `DESIGN.md`: root-level design-system prompt for UI-coding agents.
+- `tokens/`: source tokens for DS component chrome and alternate `data-theme` visual directions.
 
 ## Key Entry Points
 
@@ -34,6 +35,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `packages/hiero-cli/src/bin.ts`: CLI entry point.
 - `scripts/compile-icons.ts`: CLI wrapper around the compile/export pipeline.
 - `scripts/compile-from-source.ts`: CI build path from canonical source exports.
+- `tokens/style-dictionary.config.mjs`: DS component-token build entry point.
 
 ## Core Modules
 
@@ -59,6 +61,7 @@ The repo also contains export, compile, runtime, integration code, and a CLI for
 - `lib/sync-ui/`: UI layer for sync operations (state, hooks, analytics).
 - `lib/platform/`: web platform bridge and route helpers.
 - `lib/rendering/`: layer style resolution and auto-gradient generation.
+- `lib/theme/`: `data-theme` helpers and first-paint boot script for token-based redesign themes.
 - `app/api/import/`: server-side adapter import routes (Figma, Heroicons, Lucide, Material Symbols, Phosphor).
 - `app/api/publish-npm/`: npm publish proxy route.
 - `app/api/github-sync/`: GitHub PR sync route.

@@ -53,7 +53,9 @@ async function enterRenameMode(container: HTMLElement) {
   //   2. Double-click on the <p> label
   // We use F2 here because it does not race with pointerdown/pointerup
   // the way double-click does under happy-dom.
-  const card = container.querySelector('article[role="listitem"]');
+  // The card is role="button" (it activates on Enter/Space to open the icon);
+  // see IconGridItem. It used to be role="listitem".
+  const card = container.querySelector('article[role="button"]');
   expect(card).not.toBeNull();
   (card as HTMLElement).focus();
   fireEvent.keyDown(card as Element, { key: 'F2' });

@@ -54,7 +54,6 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "lock",
   "magnet",
   "maximize-2",
-  "menu",
   "minus",
   "monitor",
   "moon",
@@ -90,4 +89,4 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /** Count exposed for diagnostics (drift checks, README pins, etc.). */
-export const USED_ICON_COUNT = 74;
+export const USED_ICON_COUNT = 73;

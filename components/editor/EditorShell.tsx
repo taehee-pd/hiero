@@ -72,7 +72,11 @@ import {
   type GuideAlignMode,
 } from '@/lib/editor-core/guide-item-geometry';
 import { commitHistory, pauseHistory, resumeHistory } from '@/lib/editor-store/history';
-import { interpolateTransitionValues, resolveTransition } from '@/lib/runtime-core';
+import {
+  interpolateTransitionValues,
+  resolveTransition,
+  getMotionPreference,
+} from '@/lib/runtime-core';
 import {
   Select,
   SelectTrigger,
@@ -100,7 +104,6 @@ import { ColorField, IconButton, KbdHint } from '@/components/ds';
 import { AnimatePanel, type AnimationKind } from './AnimatePanel';
 import { GuideMasterPanel } from './GuideMasterPanel';
 import { editorSelectTriggerClassName } from './editorSelectTriggerClassName';
-import { ListPane } from '@/components/studio/ListPane';
 import { cn } from '@/lib/utils';
 
 type RightTab = 'inspect' | 'animation';
@@ -1481,11 +1484,11 @@ function CanvasDock({
                       size="sm"
                     />
                   </PopoverTrigger>
-                  <PopoverContent
-                    side="top"
-                    align="center"
-                    className="w-[168px] overflow-hidden rounded-lg border border-border/70 bg-background p-1 text-foreground shadow-[var(--shadow-panel)]"
-                  >
+	                  <PopoverContent
+	                    side="top"
+	                    align="center"
+	                    className="w-[168px] overflow-hidden rounded-md border border-border/70 bg-background p-1 text-foreground shadow-none"
+	                  >
                     {GUIDE_SHAPE_ITEMS.map((shape) => {
                       const ShapeIcon = shape.icon;
                       const selected = shape.shape === shapeSubTool;
@@ -1542,11 +1545,11 @@ function CanvasDock({
             <UiIcon name="chevron-down" size={14} className="size-3.5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          side="top"
-          align="center"
-          className="w-[200px] overflow-hidden rounded-lg border border-border/70 bg-background p-0 text-foreground shadow-[var(--shadow-panel)]"
-        >
+	        <PopoverContent
+	          side="top"
+	          align="center"
+	          className="w-[200px] overflow-hidden rounded-md border border-border/70 bg-background p-0 text-foreground shadow-none"
+	        >
           <div className="flex flex-col">
             <form
               className="border-b border-border/70 px-2.5 py-2.5"
@@ -2308,7 +2311,6 @@ export function EditorShell({
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
@@ -2480,6 +2482,18 @@ export function EditorShell({
 
   useEffect(() => {
     if (!selectedTransition || !currentVariant || !previewPlaying) return;
+
+    // Reduced motion: render the end state once instead of looping the
+    // transition. Play is user-initiated (essential), so we still show the
+    // authored result — we just don't subject a reduce-motion user to the
+    // perpetual rAF loop. This is the instant alternative the design bar
+    // requires for demonstrative motion.
+    if (getMotionPreference() === 'reduce') {
+      setPreviewProgress(1);
+      const endPreview = buildTransitionPreview(selectedTransition, currentVariant, 1);
+      if (endPreview) setTransitionPreview(endPreview);
+      return;
+    }
 
     const duration = Math.max(selectedTransition.durationMs, 1);
     const startTime = performance.now() - previewProgress * duration;
@@ -2701,40 +2715,13 @@ export function EditorShell({
       {!embedded && <Toolbar />}
 
       <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
-        {/* Mobile/tablet sidebar toggle */}
-        <Button
-          variant="outline"
-          size="icon-sm"
-          className="fixed left-3 top-3 z-40 size-9 rounded-lg lg:hidden"
-          onClick={() => setLeftSidebarOpen((v) => !v)}
-          aria-label={leftSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-        >
-          {leftSidebarOpen ? (
-            <UiIcon name="x" size={16} className="size-4" />
-          ) : (
-            <UiIcon name="menu" size={16} className="size-4" />
-          )}
-        </Button>
-
-        {/* Left sidebar overlay for md breakpoint */}
-        {leftSidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-black/20 lg:hidden"
-            onClick={() => setLeftSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        )}
-
-        {/* Hamburger drawer: project/icon selector (ListPane) — mobile/tablet only */}
-        <div
-          className={`fixed inset-y-0 left-0 z-30 flex w-[272px] transition-transform duration-200 lg:hidden ${
-            leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="h-full w-full overflow-y-auto bg-background">
-            <ListPane onIconOpen={() => setLeftSidebarOpen(false)} />
-          </div>
-        </div>
+        {/*
+          The embedded editor used to ship its own hamburger + drawer ListPane
+          for narrow widths. That duplicated StudioLayout's icon-list pane (now
+          always present as a reachable rail at md+, with <md gated to the
+          desktop redirect), so it was removed. The icon selector lives in
+          StudioLayout; this grid owns only the editor's own panels + canvas.
+        */}
 
         {/* Layer panel — always visible at all breakpoints */}
         <div className="flex min-h-0">
@@ -3027,10 +3014,10 @@ export function EditorShell({
       <ImportIconDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} />
 
       {/* F-7: Save success flash */}
-      {saveSuccess && (
-        <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-success-surface"
-          role="status"
+	      {saveSuccess && (
+	        <div
+	          className="pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 animate-pulse rounded-md border px-4 py-2 text-sm font-medium status-success-surface"
+	          role="status"
           aria-live="polite"
         >
           Saved successfully
@@ -3038,9 +3025,9 @@ export function EditorShell({
       )}
 
       {/* REMAINING-4: Export loading indicator */}
-      {exporting && (
-        <div
-          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg status-info-surface"
+	      {exporting && (
+	        <div
+	          className="pointer-events-none fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium status-info-surface"
           role="status"
           aria-live="polite"
         >
@@ -3050,11 +3037,11 @@ export function EditorShell({
       )}
 
       {/* REMAINING-4: Export success/failure message */}
-      {!exporting && exportMessage && (
-        <div
-          className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
-            exportMessage.includes('failed') ? 'status-error-surface' : 'status-success-surface'
-          }`}
+	      {!exporting && exportMessage && (
+	        <div
+	          className={`pointer-events-none fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md border px-4 py-2 text-sm font-medium ${
+	            exportMessage.includes('failed') ? 'status-error-surface' : 'status-success-surface'
+	          }`}
           role="status"
           aria-live="polite"
         >

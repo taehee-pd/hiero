@@ -90,32 +90,71 @@ export function StudioLayout() {
   }, [activeIconSetId, currentIconId]);
 
   return (
-    <div
-      data-testid="studio-layout-root"
-      className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground"
-    >
-      <Navbar />
-      <div className="flex min-h-0 flex-1 bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--primary)_7%,transparent)_0%,transparent_55%)]">
-        <NavPane />
-        {activeIconSetId && (
-          <div className={currentIconId ? 'hidden lg:flex' : 'flex'}>
-            <ListPane />
-          </div>
-        )}
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-background/80">
-          {currentIconId ? (
-            <EditorShell initialIconId={currentIconId} embedded />
-          ) : (
-            <div className="studio-dots flex flex-1 items-center justify-center">
-              <div className="rounded-lg border border-border/70 bg-background/80 px-8 py-6 text-center backdrop-blur-sm" style={{ boxShadow: 'var(--shadow-outline)' }}>
-                <p className="text-sm font-medium tracking-tight text-muted-foreground">
-                  {activeIconSetId ? 'Select an icon to start editing' : 'Select a project to get started'}
-                </p>
-              </div>
+    <>
+      {/*
+        Small-viewport gate. The studio is a multi-pane vector editor that needs
+        a large, pointer-precise screen; the canvas, layer/inspector panels, and
+        toolbars don't reflow into a usable phone layout. Rather than ship a
+        broken overlap, phones get a clear, on-brand redirect. Pure CSS
+        (md:hidden / hidden md:flex) so it's SSR-safe with no hydration flash.
+      */}
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-background px-8 pb-[env(safe-area-inset-bottom)] text-center md:hidden">
+        <span
+          role="img"
+          aria-label="Hiero logo"
+          className="size-11 bg-foreground"
+          style={{
+            maskImage: 'url(/hiero.svg?v=5)',
+            maskSize: 'contain',
+            maskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            WebkitMaskImage: 'url(/hiero.svg?v=5)',
+            WebkitMaskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+          }}
+        />
+        <div className="max-w-xs space-y-2">
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">
+            Hiero is built for a bigger screen
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            The icon editor needs the room of a desktop or large tablet for its canvas and
+            panels. Open Hiero on a larger display to create and animate icons.
+          </p>
+        </div>
+      </div>
+
+      <div
+        data-testid="studio-layout-root"
+        className="fixed inset-0 hidden flex-col overflow-hidden bg-background text-foreground md:flex"
+      >
+        <Navbar />
+        <div className="flex min-h-0 flex-1 bg-background">
+          <NavPane />
+          {activeIconSetId && (
+            // Always present at md+ (mobile is gated above). When an icon is open
+            // the list collapses to its rail (see openIconTab) rather than hiding,
+            // so switching icons stays reachable without a tab strip.
+            <div className="flex">
+              <ListPane />
             </div>
           )}
-        </main>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
+            {currentIconId ? (
+              <EditorShell initialIconId={currentIconId} embedded />
+            ) : (
+              <div className="studio-dots flex flex-1 items-center justify-center">
+                <div className="rounded-md border border-border/70 bg-background px-8 py-6 text-center">
+                  <p className="text-sm font-medium tracking-tight text-muted-foreground">
+                    {activeIconSetId ? 'Select an icon to start editing' : 'Select a project to get started'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

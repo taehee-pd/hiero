@@ -4,10 +4,27 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Project Overview
 
-**Product:** Hiero — an Hiero with SF Symbols-grade animation capabilities
+**Product:** Hiero — icon authoring studio with SF Symbols-grade animation capabilities
 **Stack:** Next.js 16 + React 19 + TypeScript + Custom Store (`useSyncExternalStore`) + Tailwind CSS + Radix UI
 **Package Manager:** pnpm (with Bun test runner)
 **Dev Server:** `pnpm dev` (runs on port 3000)
+
+## Design Context
+
+Strategic and visual design context for UI work lives in canonical docs (read
+before any frontend/design task):
+
+- **docs_canonical/DESIGN.md** — product vision, architecture, brand asset
+  definitions, security posture, and canonical documentation index.
+- **DESIGN.md** — visual system (dark-first, lilac `#a885f2` accent, Instrument
+  Sans, ElevenLabs-inspired restraint), layout rules, component guidance, and
+  token references for UI coding agents.
+- **components/ds/README.md** and **tokens/README.md** — the active redesign
+  workflow: shared DS components are behavior/a11y contracts, while visual
+  revamps should start by changing component/theme tokens.
+
+A11y bar: **WCAG 2.1 AA + honor `prefers-reduced-motion`** (non-negotiable for
+an animation tool). The `/impeccable` skill reads these docs automatically.
 
 ## Common Commands
 
@@ -154,16 +171,15 @@ components/
 ├── export/           # PublishDialog (unified publish flow), export formats
 ├── persistence/      # AutoSaveProvider
 ├── runtime/          # Runtime preview
-├── ds/               # Hiero Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
+├── ds/               # Hiero Design System (StatusBadge, KbdHint, ColorField, IconButton, Tag, ShortcutRow, ColorPicker)
 ├── ui/               # shadcn/ui primitives (Radix-based)
-└── kibo-ui/          # (deleted — migrated to ds/ in Phase 2)
 
 packages/hiero-cli/   # @hiero/cli command-line tool
 figma-plugin/         # Figma plugin for exporting to Hiero
 specs/                # Spec-kit documentation (21 specs)
 docs_canonical/       # Canonical reference docs (TASKS, ARCHITECTURE, DESIGN, etc.)
 tests/                # Bun test files (1400+ tests)
-tests/ds/             # DS component tests (StatusBadge, KbdHint, ColorField, IconButton, Tag, ColorPicker)
+tests/ds/             # DS component tests (StatusBadge, KbdHint, ColorField, IconButton, Tag, ShortcutRow, ColorPicker)
 ```
 
 ## Key Conventions
@@ -184,6 +200,7 @@ Import shared cross-feature UI from `@/components/ds`:
 - **KbdHint** — platform-aware keyboard shortcut display
 - **ColorField** — color swatch + hex input + optional opacity
 - **IconButton** — icon-only action button with auto Tooltip + kbd hints
+- **ShortcutRow** — labeled, platform-aware shortcut rows for help surfaces
 - **ColorPicker** — composition-based color picker (HSL, eye dropper, format switching)
 
 **Admission criteria** (all five required to add a new DS component):
@@ -194,7 +211,7 @@ Import shared cross-feature UI from `@/components/ds`:
 5. DESIGN.md fidelity — no invented values
 
 Every DS component must have a `.stories.tsx` and a `tests/ds/*.test.tsx`.
-CI enforces this via `scripts/check-ds-exports.ts`.
+Run `bun scripts/check-ds-exports.ts` when adding or removing DS exports.
 
 ## Storybook
 

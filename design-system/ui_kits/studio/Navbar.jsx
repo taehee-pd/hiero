@@ -4,7 +4,7 @@ const { useState, useEffect, useRef } = React;
 function Logo() {
   return (
     <button className="nav-logo" aria-label="Main menu">
-      <span className="wordmark" />
+      <span className="mark" />
       <i data-lucide="chevron-down" className="chev" />
     </button>
   );

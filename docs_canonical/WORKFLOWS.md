@@ -74,14 +74,15 @@ Practical implication:
 
 ## Design System Prompt Workflow
 
-This repository now includes a root-level `DESIGN.md` (Stitch-style) to guide AI-assisted UI implementation.
+This repository includes a root-level `DESIGN.md` to guide AI-assisted UI implementation.
 
 When making UI changes:
 
 1. Read `DESIGN.md` before authoring visual changes.
-2. Reuse existing component primitives and dark editor surface patterns.
-3. Update `DESIGN.md` when visual language or interaction conventions materially change.
-4. Keep `docs_canonical/DESIGN.md` as product architecture SSOT and `DESIGN.md` as UI styling/prompt SSOT for agents.
+2. Reuse `components/ds` for shared cross-feature UI and `components/ui` for shadcn/Radix primitives.
+3. For visual revamps, edit `tokens/component.tokens.json` or `tokens/themes/*.tokens.json` first, then run `pnpm tokens:build`.
+4. Update `DESIGN.md`, `components/ds/README.md`, or `tokens/README.md` when visual language, DS admission rules, or token workflow materially change.
+5. Keep `docs_canonical/DESIGN.md` as product architecture SSOT and `DESIGN.md` as UI styling/prompt SSOT for agents.
 
 ## Agent Task Lifecycle
 

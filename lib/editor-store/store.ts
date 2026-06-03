@@ -1329,12 +1329,17 @@ function createActions(): EditorActions {
               }) ?? undefined),
       });
 
+      const builtState = buildWorkspaceState(migratedWorkspace, migratedWorkspace.activeIconSetId, {
+        previousState: editorStoreApi.getState(),
+        keepTabs,
+      });
       editorStoreApi.setState({
         ...initialState,
-        ...buildWorkspaceState(migratedWorkspace, migratedWorkspace.activeIconSetId, {
-          previousState: editorStoreApi.getState(),
-          keepTabs,
-        }),
+        ...builtState,
+        // Open focused: when we land directly in an icon, collapse the icon
+        // list to its rail (matches openIconTab). Keep it expanded when there's
+        // no current icon so the grid stays available for browsing.
+        listPaneExpanded: builtState.currentIconId ? false : initialState.listPaneExpanded,
         isDirty: markDirty,
       });
       if (resetHistory) {
@@ -3351,6 +3356,12 @@ function createActions(): EditorActions {
           currentVariantId: variantId,
           openTabs: nextTabs,
           activeTabId: tabId,
+          // Focus the canvas when an icon opens: collapse the icon list to its
+          // rail (still one click to reopen). Keeps the editing layout from
+          // stacking the 230px grid next to the editor's own panels. Re-clicking
+          // an already-open icon hits the idempotency guard above, so this only
+          // fires on a genuine switch.
+          listPaneExpanded: false,
         };
       });
       return tabId;

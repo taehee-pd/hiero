@@ -181,8 +181,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200',
           listExpanded ? 'w-[230px]' : 'w-10',
         )}
-        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
-        role="region"
+	        role="region"
         aria-label="Icon list"
       >
         <div className={cn('flex h-10 items-center border-b border-border/40', listExpanded ? 'px-2' : 'justify-center')}>
@@ -214,8 +213,7 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
           'studio-pane flex shrink-0 flex-col border-r border-border/70 transition-[width] duration-200 overflow-hidden',
           listExpanded ? 'w-[230px]' : 'w-10',
         )}
-        style={{ boxShadow: 'var(--shadow-inset-edge)' }}
-        role="region"
+	        role="region"
         aria-label="Icon list"
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
@@ -306,15 +304,14 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
               <div
                 ref={gridRef}
                 className="grid select-none grid-cols-3 content-start gap-1 p-2"
-                role="list"
+                role="group"
                 aria-label="Icons"
               >
                 {filtered.length === 0 ? (
                   <div className="col-span-3 flex flex-col items-center justify-center gap-2 py-8">
-                    <p
-                      className="max-w-full truncate rounded-full border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground"
-                      style={{ boxShadow: 'var(--shadow-outline)' }}
-                    >
+	                    <p
+	                      className="max-w-full truncate rounded-md border border-border/70 bg-background/80 px-4 py-1.5 text-xs text-muted-foreground"
+	                    >
                       {query ? `No icons match "${query}"` : 'No icons yet. Create or import one.'}
                     </p>
                     {query ? (
@@ -328,17 +325,17 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                     ) : (
                       <div className="flex items-center gap-2">
                         <button
-                          type="button"
-                          onClick={handleCreateBlankIcon}
-                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition hover:border-border hover:shadow-[var(--shadow-outline)]"
-                        >
+	                          type="button"
+	                          onClick={handleCreateBlankIcon}
+	                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:border-border hover:bg-accent/60"
+	                        >
                           New icon
                         </button>
                         <button
-                          type="button"
-                          onClick={() => setImportDialogOpen(true)}
-                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition hover:border-border hover:shadow-[var(--shadow-outline)]"
-                        >
+	                          type="button"
+	                          onClick={() => setImportDialogOpen(true)}
+	                          className="rounded-md border border-border/70 bg-background px-2 py-1 text-[10px] font-medium text-foreground transition-colors hover:border-border hover:bg-accent/60"
+	                        >
                           Import SVG
                         </button>
                       </div>

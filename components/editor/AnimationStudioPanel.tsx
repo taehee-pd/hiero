@@ -12,6 +12,7 @@ import { PRESET_CARDS, animationPresets } from '@/lib/animation/presets';
 import { EffectPlayer } from '@/lib/animation/effect-player';
 import type { Effect, Layer } from '@/lib/schema/types';
 import { filterDrawEligibleLayers } from '@/lib/runtime-core/open-path-guard';
+import { getMotionPreference } from '@/lib/runtime-core';
 import { cn } from '@/lib/utils';
 import { EasingPicker, type EasingValue } from './EasingPicker';
 import { ColorField } from '@/components/ds/color-field';
@@ -607,7 +608,14 @@ function previewCanvasEffect(effect: Effect, speed: number): () => void {
     // When p >= 1, the final frame stays rendered (hold at end)
   };
 
-  rafId = requestAnimationFrame(tick);
+  if (getMotionPreference() === 'reduce') {
+    // Reduced motion: render the final frame instantly instead of running the
+    // rAF loop. Preview is user-initiated, so the authored end state is still
+    // shown; the cleanup below still restores the original transforms.
+    applyFrame(1);
+  } else {
+    rafId = requestAnimationFrame(tick);
+  }
 
   return () => {
     cancelled = true;

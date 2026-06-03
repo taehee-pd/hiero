@@ -273,10 +273,10 @@ export const LayerPanel = memo(function LayerPanel() {
                 }}
                 data-layer-id={layer.id}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-[length:var(--text-body)] transition',
-                  isSelected
-                    ? 'border-primary/40 bg-primary-soft shadow-[inset_0_0_0_0.5px_var(--primary),_0_1px_3px_rgba(0,0,0,0.06)]'
-                    : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background hover:shadow-[var(--shadow-outline)]',
+	                  'group relative flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-[length:var(--text-body)] transition',
+	                  isSelected
+	                    ? 'border-primary/40 bg-primary-soft'
+	                    : 'border-border/70 bg-background/80 hover:border-foreground/12 hover:bg-background',
                   isFocused && !isSelected && 'ring-1 ring-primary/30',
                   // J7: Dim layers that are inactive at the current variableValue
                   hasVariableValue && !isVarActive && 'opacity-50',

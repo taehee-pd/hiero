@@ -20,10 +20,13 @@ const buildVersionScript = `window.__HIERO_BUILD__ = Object.freeze(${JSON.string
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: locking zoom at 1 blocks pinch-to-zoom, a WCAG 1.4.4
+  // failure. Users must be able to zoom.
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4efe5' },
-    { media: '(prefers-color-scheme: dark)', color: '#13100d' },
+    // Match the real shell surfaces (--background): white in light, near-black
+    // in dark. The previous #f4efe5 / #13100d were stale and off-brand.
+    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
+    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },
   ],
 };
 
@@ -75,7 +78,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: themeBootScript }}
         />
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <AutoSaveProvider />
           {children}
           <Toaster />

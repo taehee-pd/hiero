@@ -16,8 +16,8 @@
 // components/editor, components/studio, components/explorer, or
 // components/export — the ESLint no-restricted-imports rule enforces this.
 //
-// Populated incrementally by Phase 5 of the plan. Phase 2 only seeds it
-// with ColorPicker (moved from the deleted components/kibo-ui folder).
+// Add exports only after the component has source, story, and tests. Run
+// `bun scripts/check-ds-exports.ts` before landing changes here.
 
 export * from './color-picker';
 export { StatusBadge } from './status-badge';

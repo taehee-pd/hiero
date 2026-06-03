@@ -1,6 +1,6 @@
 # Hiero — Design Document (Single Source of Truth)
 
-**Last updated:** 2026-05-12
+**Last updated:** 2026-06-03
 **Product:** Hiero — Icon design studio with SF Symbols-grade animation capabilities
 **gstack design docs:** `~/.gstack/projects/taehee-pd-hiero/`
 
@@ -15,21 +15,19 @@ the distribution step. Designers edit, save, and publish. Developers consume via
 
 ## Brand Asset Definitions
 
-The current Hiero brand definitions are:
+The current Hiero brand definition is a single glyph:
 
-- **Logo glyph:** `public/hiero.svg` — 24 × 24 stroked SVG, 1px strokes,
+- **Application logo:** `public/hiero.svg` — 24 × 24 stroked SVG, 1px strokes,
   embedded light/dark `prefers-color-scheme` stroke colors for standalone
   browser and metadata use. The production topbar uses this asset as a CSS
   mask and fills it from the foreground token.
-- **Wordmark:** `design-system/assets/hiero_wordmark.svg` — full filled
-  wordmark, intrinsic `2144 × 408` aspect ratio, intended to be rendered as a
-  CSS mask with `background: currentColor` so it inherits the active theme.
 - **Design-system glyph mirror:** `design-system/assets/hiero.svg` — 24 × 24
   currentColor version of the same glyph for design-system previews and
-  portable artifacts.
+  portable artifacts outside the Next.js public asset path.
 
-These brand assets are chrome/identity primitives. User-authored icon content
-continues to be rendered through the Hiero runtime.
+Render the glyph as a CSS mask with `currentColor`/foreground-token fill in app
+chrome and design-system artifacts. This brand asset is an identity primitive;
+user-authored icon content continues to be rendered through the Hiero runtime.
 
 ## Architecture Overview
 
@@ -109,6 +107,8 @@ readiness), tracked in `NEXT_PHASES.md`.
 | `SYNC_TROUBLESHOOTING.md` | Sync pipeline error codes and resolution |
 | `ANIMATE_PANEL_REVAMP_PLAN.md` | Active design doc covering (§2) Animate panel revamp, (§3) `@hiero/cli` deploy prep, (§6) resolved open questions, and (§7) full workspace design audit |
 | `PLAN.md` | Archived production-readiness plan (all gaps shipped/removed); kept for decision history |
-| `DESIGN.md` (repo root) | Stitch-style UI design-system prompt for coding/design agents |
-| `specs/design-system-storybook.plan.md` | Active plan: three-layer component architecture (`ui`/`ds`/feature), Storybook gating, kibo-ui removal, toast fix, Phase 1–8 rollout |
+| `DESIGN.md` (repo root) | UI design-system prompt for coding/design agents |
+| `components/ds/README.md` | Active DS component architecture and admission rules |
+| `tokens/README.md` | Token and theme editing workflow for redesigns |
+| `specs/design-system-storybook.plan.md` | Active plan: three-layer component architecture (`ui`/`ds`/feature), Storybook gating, legacy facade removal, toast fix, Phase 1–8 rollout |
 | `.storybook/` (Storybook 10) | Component catalog + interaction tests via `@storybook/addon-vitest`; spike report in `.storybook/README.md` |

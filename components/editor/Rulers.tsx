@@ -407,10 +407,10 @@ export const Rulers = memo(function Rulers({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 select-none">
-      <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background/90 backdrop-blur-sm" />
+      <div className="absolute left-0 top-0 h-6 w-6 border-b border-r border-border/70 bg-background" />
 
       <svg
-        className="pointer-events-auto absolute left-6 top-0 h-6 w-[calc(100%-24px)] cursor-row-resize overflow-hidden border-b border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        className="pointer-events-auto absolute left-6 top-0 h-6 w-[calc(100%-24px)] cursor-row-resize touch-none overflow-hidden border-b border-border/70 bg-background"
         onPointerDown={(event) => startRulerDrag('hline', event)}
       >
         {horizontalTicks.map((tick) => (
@@ -439,7 +439,7 @@ export const Rulers = memo(function Rulers({
       </svg>
 
       <svg
-        className="pointer-events-auto absolute left-0 top-6 h-[calc(100%-24px)] w-6 cursor-col-resize overflow-hidden border-r border-border/70 bg-background/90 backdrop-blur-sm touch-none"
+        className="pointer-events-auto absolute left-0 top-6 h-[calc(100%-24px)] w-6 cursor-col-resize touch-none overflow-hidden border-r border-border/70 bg-background"
         onPointerDown={(event) => startRulerDrag('vline', event)}
       >
         {verticalTicks.map((tick) => (

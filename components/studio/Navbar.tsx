@@ -67,6 +67,8 @@ import { createTargetExecutor } from '@/lib/sync-ui/publish-target-executor';
 import { useHieroConfig } from '@/lib/install-config/use-hiero-config';
 import { useRouter } from 'next/navigation';
 import type { ChangesSummary } from '@/lib/sync-service/version-snapshot';
+import { diffWorkspaces } from '@/lib/sync-ui/version-compare';
+import type { Workspace } from '@/lib/schema/types';
 import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platform/bridge';
 import {
   resetPersistenceForNewProject,
@@ -181,16 +183,59 @@ export function Navbar() {
     });
   }, [workspace, project, projectName]);
 
-  // Empty changes summary for now — Phase 2.5 wedge defers per-icon
-  // diff against the last published snapshot to a follow-up. Phase 3's
-  // diffWorkspaces could compute this if the publish flow loaded the
-  // most recent snapshot first.
-  const publishChangesSummary: ChangesSummary = useMemo(
-    () => ({ added: [], modified: [], removed: [] }),
-    [],
-  );
+  // Real changes summary: when the Publish dialog opens, diff the current
+  // workspace against the most recently published snapshot so the user sees
+  // exactly what they're about to ship. With no prior snapshot (first
+  // publish) every icon reads as added. Computed on open rather than on
+  // every autosave to avoid thrashing the diff against a 500ms save cadence.
+  const [publishChangesSummary, setPublishChangesSummary] = useState<ChangesSummary>({
+    added: [],
+    modified: [],
+    removed: [],
+  });
 
   const persistence = useMemo(() => new IndexedDBAdapter(), []);
+
+  useEffect(() => {
+    if (!publishDialogOpen) return;
+    const current = editorStore.getState().workspace;
+    if (!current) return;
+    let cancelled = false;
+
+    const summarize = (before: Workspace) => {
+      const diff = diffWorkspaces(before, current);
+      if (!cancelled) {
+        setPublishChangesSummary({
+          added: diff.added,
+          modified: diff.modified,
+          removed: diff.removed,
+        });
+      }
+    };
+    // Baseline for a first publish: same workspace with no icon sets, so the
+    // diff surfaces every current icon as added rather than a blank summary.
+    const emptyBaseline: Workspace = { ...current, iconSets: {} };
+
+    void (async () => {
+      try {
+        const snapshots = await persistence.listVersionSnapshots();
+        if (snapshots.length === 0) {
+          summarize(emptyBaseline);
+          return;
+        }
+        const latest = await persistence.loadVersionSnapshot(snapshots[0].id);
+        summarize(latest?.workspaceSnapshot ?? emptyBaseline);
+      } catch {
+        // Persistence unavailable — still show what would ship (all added)
+        // rather than a misleading empty summary.
+        summarize(emptyBaseline);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publishDialogOpen, persistence]);
 
   // History dot — solid lilac when there's a published snapshot newer
   // than the last viewed timestamp. Read once on mount + whenever a
@@ -284,10 +329,19 @@ export function Navbar() {
     return () => window.removeEventListener('hiero:open-shortcuts', handler as EventListener);
   }, []);
 
+  const dismissToolbarError = useCallback(() => {
+    if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
+    setToolbarError(null);
+  }, []);
+
   const showToolbarError = useCallback((message: string) => {
     setToolbarError(message);
     if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
-    toolbarErrorTimerRef.current = setTimeout(() => setToolbarError(null), 3000);
+    // 8s, not 3s: long enough for a screen reader to finish announcing and
+    // for a user to read + act. The explicit dismiss button (below) is the
+    // real recall affordance; the timer is only a fallback so a stale error
+    // can't linger forever.
+    toolbarErrorTimerRef.current = setTimeout(() => setToolbarError(null), 8000);
   }, []);
 
   const runNewProject = useCallback(() => {
@@ -308,8 +362,15 @@ export function Navbar() {
       const json = JSON.parse(result.data);
       if (isWorkspace(json)) editorStore.getState().loadWorkspace(json);
       else if (isProject(json)) editorStore.getState().loadProject(json);
-      else { clearCurrentProjectPath(); showToolbarError('Invalid Hiero workspace file.'); }
-    } catch { clearCurrentProjectPath(); showToolbarError('Failed to parse JSON file.'); }
+      else {
+        clearCurrentProjectPath();
+        showToolbarError(`"${result.path}" isn't a Hiero workspace or project — open a .hiero.json export.`);
+      }
+    } catch (err) {
+      clearCurrentProjectPath();
+      const detail = err instanceof Error ? err.message : 'unexpected character';
+      showToolbarError(`Couldn't read "${result.path}" — invalid JSON (${detail}).`);
+    }
   }, [showToolbarError]);
 
   const serializeWorkspace = useCallback(() => {
@@ -754,8 +815,20 @@ export function Navbar() {
 
       {/* Error toast */}
       {toolbarError && (
-	        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface" role="alert" aria-live="assertive">
-          {toolbarError}
+        <div
+          className="fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border py-2 pl-5 pr-2 text-sm font-medium status-error-surface"
+          role="alert"
+          aria-live="assertive"
+        >
+          <span>{toolbarError}</span>
+          <button
+            type="button"
+            onClick={dismissToolbarError}
+            aria-label="Dismiss error"
+            className="inline-flex size-5 items-center justify-center rounded-full text-current/80 hover:bg-foreground/10 hover:text-current focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <UiIcon name="x" size={14} className="size-3.5" />
+          </button>
         </div>
       )}
 

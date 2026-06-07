@@ -114,12 +114,6 @@ export function selectCurrentLayers(s: EditorStore): Layer[] {
   return Object.values(variant.layers);
 }
 
-export function selectCurrentLayerPanelRows(s: EditorStore): LayerPanelRow[] {
-  const variant = selectCurrentVariant(s);
-  if (!variant) return [];
-  return buildLayerPanelRows(Object.values(variant.layers));
-}
-
 export function selectLayerById(
   s: EditorStore,
   layerId: string,

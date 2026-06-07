@@ -52,7 +52,6 @@ import { editorStore, type TransitionPreview } from '@/lib/editor-store/store';
 import { buildLayerPanelRows, selectCurrentGuideMaster } from '@/lib/editor-store/selectors';
 import { useEditorActions, useEditorStore } from '@/lib/editor-store/hooks';
 import { toast } from '@/components/ui/use-toast';
-import { Toolbar } from '@/components/editor/Toolbar';
 import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import type { GuideItem, Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
@@ -1155,29 +1154,78 @@ function LayerRowsList({
 }) {
   const [dragTargetIndex, setDragTargetIndex] = useState<number | null>(null);
   const dragSourceIdRef = useRef<string | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
   const [renamingLayerId, setRenamingLayerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+
+  // Roving-tabindex model: the listbox is one Tab stop. Tab lands on the
+  // active (selected, else first) row; Arrow keys move selection + focus
+  // between rows without leaving the widget. This is the listbox keyboard
+  // contract AT users expect — a per-row tabIndex={0} would force them to
+  // Tab through every layer instead.
+  const activeIndex = useMemo(() => {
+    const i = layerRows.findIndex((r) => r.layer.id === selectedLayerId);
+    return i >= 0 ? i : 0;
+  }, [layerRows, selectedLayerId]);
+
+  const moveFocus = useCallback(
+    (nextIndex: number) => {
+      const clamped = Math.max(0, Math.min(layerRows.length - 1, nextIndex));
+      const next = layerRows[clamped];
+      if (!next) return;
+      onSelectLayer(next.layer.id);
+      const nodes = listRef.current?.querySelectorAll<HTMLElement>('[role="option"]');
+      nodes?.[clamped]?.focus();
+    },
+    [layerRows, onSelectLayer],
+  );
 
   const beginRename = useCallback((layerId: string) => {
     setRenamingLayerId(layerId);
     setRenameValue(layerId);
+    setRenameError(null);
   }, []);
 
+  const cancelRename = useCallback(() => {
+    setRenamingLayerId(null);
+    setRenameError(null);
+  }, []);
+
+  // Error prevention: an empty name or a collision with another layer used to
+  // silently no-op and close the input, leaving the user unsure what happened.
+  // Now an explicit-commit (Enter) on an invalid name keeps the input open and
+  // surfaces why; only a blur falls back to cancel so focus can't get trapped.
   const commitRename = useCallback(
-    (layerId: string) => {
+    (layerId: string, opts?: { fromBlur?: boolean }) => {
       const trimmed = renameValue.trim();
-      if (trimmed && trimmed !== layerId && currentIconId) {
+      if (trimmed === layerId) {
+        cancelRename();
+        return;
+      }
+      if (!trimmed) {
+        if (opts?.fromBlur) cancelRename();
+        else setRenameError('Name can’t be empty.');
+        return;
+      }
+      const collides = layerRows.some((r) => r.layer.id === trimmed && r.layer.id !== layerId);
+      if (collides) {
+        if (opts?.fromBlur) cancelRename();
+        else setRenameError(`A layer named “${trimmed}” already exists.`);
+        return;
+      }
+      if (currentIconId) {
         editorStore.getState().renameLayer?.(currentIconId, layerId, trimmed);
       }
-      setRenamingLayerId(null);
+      cancelRename();
     },
-    [currentIconId, renameValue],
+    [currentIconId, renameValue, layerRows, cancelRename],
   );
 
   const viewBoxStr = currentVariant?.viewBox.join(' ') ?? '0 0 24 24';
 
   return (
-    <div role="listbox" aria-label="Layers" className="relative">
+    <div ref={listRef} role="listbox" aria-label="Layers" className="relative">
       {layerRows.map((row, index) => {
         const isSelected = row.layer.id === selectedLayerId;
         const isDropTarget = dragTargetIndex === index;
@@ -1200,13 +1248,43 @@ function LayerRowsList({
                 }}
                 onKeyDown={(e) => {
                   if (isRenaming) return;
-                  if (e.key === 'Enter') onSelectLayer(row.layer.id);
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    moveFocus(index + 1);
+                    return;
+                  }
+                  if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    moveFocus(index - 1);
+                    return;
+                  }
+                  if (e.key === 'Home') {
+                    e.preventDefault();
+                    moveFocus(0);
+                    return;
+                  }
+                  if (e.key === 'End') {
+                    e.preventDefault();
+                    moveFocus(layerRows.length - 1);
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    // Emergency exit: drop the selection without leaving the
+                    // widget. Keeps the row focused so arrow nav still works.
+                    e.preventDefault();
+                    editorStore.getState().setSelection?.({ layerIds: [], pointIds: [] });
+                    return;
+                  }
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectLayer(row.layer.id);
+                  }
                   if (e.key === 'F2') {
                     e.preventDefault();
                     beginRename(row.layer.id);
                   }
                 }}
-                tabIndex={0}
+                tabIndex={index === activeIndex ? 0 : -1}
                 onDragStart={(e) => {
                   dragSourceIdRef.current = row.layer.id;
                   try {
@@ -1287,18 +1365,29 @@ function LayerRowsList({
                       type="text"
                       className="wire-layer-rename-input inline-rename-input"
                       value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
+                      aria-invalid={renameError ? true : undefined}
+                      aria-label={renameError ?? undefined}
+                      title={renameError ?? undefined}
+                      style={
+                        renameError
+                          ? { boxShadow: '0 0 0 1px var(--border-danger)' }
+                          : undefined
+                      }
+                      onChange={(e) => {
+                        setRenameValue(e.target.value);
+                        if (renameError) setRenameError(null);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
                           commitRename(row.layer.id);
                         } else if (e.key === 'Escape') {
                           e.preventDefault();
-                          setRenamingLayerId(null);
+                          cancelRename();
                         }
                         e.stopPropagation();
                       }}
-                      onBlur={() => commitRename(row.layer.id)}
+                      onBlur={() => commitRename(row.layer.id, { fromBlur: true })}
                       onClick={(e) => e.stopPropagation()}
                       onDoubleClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -2712,8 +2801,6 @@ export function EditorShell({
         embedded ? 'h-full w-full' : 'fixed inset-0',
       )}
     >
-      {!embedded && <Toolbar />}
-
       <div className="grid min-h-0 flex-1 grid-cols-[180px_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)_304px] lg:grid-cols-[220px_minmax(0,1fr)_304px]">
         {/*
           The embedded editor used to ship its own hamburger + drawer ListPane

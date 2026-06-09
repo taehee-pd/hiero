@@ -1046,7 +1046,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       className={cn(
         'workspace-canvas-shell relative flex h-full w-full items-center justify-center',
         isDragPanning ? 'cursor-grabbing' : isSpacePanEnabled ? 'cursor-grab' : undefined,
-        isDropActive && 'ring-2 ring-sky-400/70 ring-offset-2 ring-offset-background',
+        isDropActive && 'ring-2 ring-primary/70 ring-offset-2 ring-offset-background',
       )}
       data-canvas-root
       style={{ touchAction: 'none', overscrollBehavior: 'contain' }}
@@ -1190,7 +1190,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
       )}
 
       {isDropActive ? (
-	        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-lg border border-dashed border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-100">
+	        <div className="pointer-events-none absolute inset-4 flex items-center justify-center rounded-lg border border-dashed border-primary/60 bg-primary/10 text-sm font-medium text-foreground">
           Drop SVG to import
         </div>
       ) : null}

@@ -41,7 +41,9 @@ const FORBIDDEN_IMPORTED_CONSTANT_GATE_RE =
   /^\s*if\s*\(\s*!\s*IS_INTERNAL_BUILD\s*\)\s*return/m;
 
 const FILES_WITH_THE_GATE = [
-  'components/editor/Toolbar.tsx',
+  // Navbar is the single chrome carrying the internal-build maintenance
+  // actions. (The former editor Toolbar carried a redundant copy of the
+  // same gated actions and was removed; Navbar is now the sole gate site.)
   'components/studio/Navbar.tsx',
 ];
 

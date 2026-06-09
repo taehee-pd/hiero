@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/components/ui/use-toast';
 import { KbdHint } from '@/components/ds';
 import {
@@ -64,6 +65,9 @@ const PLAYBACK_MODE_OPTIONS: Array<{ value: PlaybackMode; label: string; hint: s
   { value: 'wholeSymbol', label: 'Whole Symbol', hint: 'Every layer starts at the same instant.' },
   { value: 'individually', label: 'Individually', hint: 'Each layer finishes before the next begins.' },
 ];
+
+const PLAYBACK_MODE_HELP =
+  'How layers animate during a transition. By Layer: layers start one after another (staggered). Whole Symbol: every layer moves together. Individually: each layer finishes before the next starts.';
 
 const PLAYBACK_MODE_TO_STAGGER: Record<PlaybackMode, TransitionStagger['mode']> = {
   byLayer: 'linear',
@@ -691,8 +695,22 @@ export const TransitionPanel = memo(function TransitionPanel() {
 
       {/* 2. Playback Mode (§2.5) */}
       <div className="grid gap-1.5">
-        <Label className="text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
-          Playback mode
+        <Label className="flex items-center gap-1 text-[length:var(--text-label)] font-medium tracking-tight text-muted-foreground">
+          <span>Playback mode</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                tabIndex={0}
+                className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="What is playback mode?"
+              >
+                <UiIcon name="help-circle" size={12} className="size-3" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-[220px]">
+              {PLAYBACK_MODE_HELP}
+            </TooltipContent>
+          </Tooltip>
         </Label>
         <ToggleGroup
           type="single"
@@ -926,6 +944,10 @@ function AdvancedDisclosure({
         <span>Advanced</span>
       </summary>
       <div className="mt-2 grid gap-2 px-1">
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          Override what Hiero picked automatically. Leave these alone unless a
+          transition isn&rsquo;t morphing the way you want.
+        </p>
         <div className="grid gap-1">
           <Label className="text-[10px] font-medium text-muted-foreground">Engine chose</Label>
           <span className="inline-flex w-fit items-center rounded-full bg-muted/50 px-2 py-0.5 font-mono text-[10px] text-foreground/80">
@@ -933,6 +955,9 @@ function AdvancedDisclosure({
               ? AUTO_MORPH_TIER_LABELS[engineChoseTier] ?? engineChoseTier
               : 'Select source and target to compute'}
           </span>
+          <p className="text-[10px] text-muted-foreground">
+            The morph strategy auto-selected for this source/target pair.
+          </p>
         </div>
         <div className="grid gap-1">
           <Label className="text-[10px] font-medium text-muted-foreground">
@@ -953,7 +978,7 @@ function AdvancedDisclosure({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[10px] text-muted-foreground/70">
+          <p className="text-[10px] text-muted-foreground">
             Forced strategies still fall back silently if the paths can&rsquo;t support them.
           </p>
         </div>

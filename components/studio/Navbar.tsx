@@ -67,6 +67,8 @@ import { createTargetExecutor } from '@/lib/sync-ui/publish-target-executor';
 import { useHieroConfig } from '@/lib/install-config/use-hiero-config';
 import { useRouter } from 'next/navigation';
 import type { ChangesSummary } from '@/lib/sync-service/version-snapshot';
+import { diffWorkspaces } from '@/lib/sync-ui/version-compare';
+import type { Workspace } from '@/lib/schema/types';
 import { clearCurrentProjectPath, openProject, saveProject } from '@/lib/platform/bridge';
 import {
   resetPersistenceForNewProject,
@@ -181,16 +183,56 @@ export function Navbar() {
     });
   }, [workspace, project, projectName]);
 
-  // Empty changes summary for now — Phase 2.5 wedge defers per-icon
-  // diff against the last published snapshot to a follow-up. Phase 3's
-  // diffWorkspaces could compute this if the publish flow loaded the
-  // most recent snapshot first.
-  const publishChangesSummary: ChangesSummary = useMemo(
-    () => ({ added: [], modified: [], removed: [] }),
-    [],
-  );
+  // Changes summary shown in the Publish dialog: the current workspace diffed
+  // against the most recently published snapshot. With no prior snapshot
+  // (first publish) every icon reads as added.
+  const [publishChangesSummary, setPublishChangesSummary] = useState<ChangesSummary>({
+    added: [],
+    modified: [],
+    removed: [],
+  });
 
   const persistence = useMemo(() => new IndexedDBAdapter(), []);
+
+  // Resolve the diff BEFORE opening the dialog, then open — so the dialog
+  // never renders with a stale or empty summary. A post-open async effect
+  // would leave a window where a fast first publish (Publish enables as soon
+  // as a target + version exist) could persist an empty/previous summary even
+  // though the first-publish baseline should mark every icon as added. The
+  // IndexedDB read is sub-frame; resolving first removes the race entirely.
+  const openPublishDialog = useCallback(async () => {
+    const current = editorStore.getState().workspace;
+    if (!current) {
+      setPublishChangesSummary({ added: [], modified: [], removed: [] });
+      setPublishDialogOpen(true);
+      return;
+    }
+    // First-publish baseline: same workspace with no icon sets, so every
+    // current icon surfaces as added rather than a blank summary.
+    const emptyBaseline: Workspace = { ...current, iconSets: {} };
+    let before: Workspace = emptyBaseline;
+    try {
+      const snapshots = await persistence.listVersionSnapshots();
+      if (snapshots.length > 0) {
+        const latest = await persistence.loadVersionSnapshot(snapshots[0].id);
+        before = latest?.workspaceSnapshot ?? emptyBaseline;
+      }
+    } catch {
+      // Persistence unavailable — fall back to the all-added baseline rather
+      // than a misleading empty summary.
+      before = emptyBaseline;
+    }
+    // Re-read the workspace after the await so the "after" side reflects any
+    // edit that landed during the (sub-frame) snapshot read.
+    const after = editorStore.getState().workspace ?? current;
+    const diff = diffWorkspaces(before, after);
+    setPublishChangesSummary({
+      added: diff.added,
+      modified: diff.modified,
+      removed: diff.removed,
+    });
+    setPublishDialogOpen(true);
+  }, [persistence]);
 
   // History dot — solid lilac when there's a published snapshot newer
   // than the last viewed timestamp. Read once on mount + whenever a
@@ -284,10 +326,19 @@ export function Navbar() {
     return () => window.removeEventListener('hiero:open-shortcuts', handler as EventListener);
   }, []);
 
+  const dismissToolbarError = useCallback(() => {
+    if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
+    setToolbarError(null);
+  }, []);
+
   const showToolbarError = useCallback((message: string) => {
     setToolbarError(message);
     if (toolbarErrorTimerRef.current) clearTimeout(toolbarErrorTimerRef.current);
-    toolbarErrorTimerRef.current = setTimeout(() => setToolbarError(null), 3000);
+    // 8s, not 3s: long enough for a screen reader to finish announcing and
+    // for a user to read + act. The explicit dismiss button (below) is the
+    // real recall affordance; the timer is only a fallback so a stale error
+    // can't linger forever.
+    toolbarErrorTimerRef.current = setTimeout(() => setToolbarError(null), 8000);
   }, []);
 
   const runNewProject = useCallback(() => {
@@ -308,8 +359,15 @@ export function Navbar() {
       const json = JSON.parse(result.data);
       if (isWorkspace(json)) editorStore.getState().loadWorkspace(json);
       else if (isProject(json)) editorStore.getState().loadProject(json);
-      else { clearCurrentProjectPath(); showToolbarError('Invalid Hiero workspace file.'); }
-    } catch { clearCurrentProjectPath(); showToolbarError('Failed to parse JSON file.'); }
+      else {
+        clearCurrentProjectPath();
+        showToolbarError(`"${result.path}" isn't a Hiero workspace or project — open a .hiero.json export.`);
+      }
+    } catch (err) {
+      clearCurrentProjectPath();
+      const detail = err instanceof Error ? err.message : 'unexpected character';
+      showToolbarError(`Couldn't read "${result.path}" — invalid JSON (${detail}).`);
+    }
   }, [showToolbarError]);
 
   const serializeWorkspace = useCallback(() => {
@@ -380,14 +438,13 @@ export function Navbar() {
         }
       }
       event.preventDefault();
-      setPublishDialogOpen(true);
+      void openPublishDialog();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [openPublishDialog]);
 
-  // Internal-build only. See components/editor/Toolbar.tsx for the
-  // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
+  // Internal-build only. The gate uses `process.env.NEXT_PUBLIC_*`
   // literally rather than the imported IS_INTERNAL_BUILD constant —
   // Webpack folds the env-var literal but not cross-module bindings,
   // and only literal-folded gates produce a clean public bundle.
@@ -615,7 +672,7 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
                     <UiIcon name="file-json" size={16} className="size-4" />Lottie JSON…
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setPublishDialogOpen(true)}>
+                  <DropdownMenuItem onSelect={() => void openPublishDialog()}>
                     <UiIcon name="package" size={16} className="size-4" />Publish…
                     <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
                   </DropdownMenuItem>
@@ -712,7 +769,7 @@ export function Navbar() {
                 size="sm"
                 variant="default"
                 className="h-7 gap-1.5 px-2.5"
-                onClick={() => setPublishDialogOpen(true)}
+                onClick={() => void openPublishDialog()}
                 data-testid="navbar-publish"
               >
                 <UiIcon name="package" size={14} />
@@ -754,8 +811,20 @@ export function Navbar() {
 
       {/* Error toast */}
       {toolbarError && (
-	        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-full border px-5 py-2 text-sm font-medium status-error-surface" role="alert" aria-live="assertive">
-          {toolbarError}
+        <div
+          className="fixed left-1/2 top-16 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border py-2 pl-5 pr-2 text-sm font-medium status-error-surface"
+          role="alert"
+          aria-live="assertive"
+        >
+          <span>{toolbarError}</span>
+          <button
+            type="button"
+            onClick={dismissToolbarError}
+            aria-label="Dismiss error"
+            className="inline-flex size-5 items-center justify-center rounded-full text-current/80 hover:bg-foreground/10 hover:text-current focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <UiIcon name="x" size={14} className="size-3.5" />
+          </button>
         </div>
       )}
 
@@ -837,7 +906,7 @@ export function Navbar() {
             <CommandItem
               onSelect={() => {
                 setCommandOpen(false);
-                setPublishDialogOpen(true);
+                void openPublishDialog();
               }}
             >
               <UiIcon name="package" size={16} className="size-4" />

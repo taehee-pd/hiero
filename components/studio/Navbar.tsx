@@ -183,11 +183,9 @@ export function Navbar() {
     });
   }, [workspace, project, projectName]);
 
-  // Real changes summary: when the Publish dialog opens, diff the current
-  // workspace against the most recently published snapshot so the user sees
-  // exactly what they're about to ship. With no prior snapshot (first
-  // publish) every icon reads as added. Computed on open rather than on
-  // every autosave to avoid thrashing the diff against a 500ms save cadence.
+  // Changes summary shown in the Publish dialog: the current workspace diffed
+  // against the most recently published snapshot. With no prior snapshot
+  // (first publish) every icon reads as added.
   const [publishChangesSummary, setPublishChangesSummary] = useState<ChangesSummary>({
     added: [],
     modified: [],
@@ -196,46 +194,45 @@ export function Navbar() {
 
   const persistence = useMemo(() => new IndexedDBAdapter(), []);
 
-  useEffect(() => {
-    if (!publishDialogOpen) return;
+  // Resolve the diff BEFORE opening the dialog, then open — so the dialog
+  // never renders with a stale or empty summary. A post-open async effect
+  // would leave a window where a fast first publish (Publish enables as soon
+  // as a target + version exist) could persist an empty/previous summary even
+  // though the first-publish baseline should mark every icon as added. The
+  // IndexedDB read is sub-frame; resolving first removes the race entirely.
+  const openPublishDialog = useCallback(async () => {
     const current = editorStore.getState().workspace;
-    if (!current) return;
-    let cancelled = false;
-
-    const summarize = (before: Workspace) => {
-      const diff = diffWorkspaces(before, current);
-      if (!cancelled) {
-        setPublishChangesSummary({
-          added: diff.added,
-          modified: diff.modified,
-          removed: diff.removed,
-        });
-      }
-    };
-    // Baseline for a first publish: same workspace with no icon sets, so the
-    // diff surfaces every current icon as added rather than a blank summary.
+    if (!current) {
+      setPublishChangesSummary({ added: [], modified: [], removed: [] });
+      setPublishDialogOpen(true);
+      return;
+    }
+    // First-publish baseline: same workspace with no icon sets, so every
+    // current icon surfaces as added rather than a blank summary.
     const emptyBaseline: Workspace = { ...current, iconSets: {} };
-
-    void (async () => {
-      try {
-        const snapshots = await persistence.listVersionSnapshots();
-        if (snapshots.length === 0) {
-          summarize(emptyBaseline);
-          return;
-        }
+    let before: Workspace = emptyBaseline;
+    try {
+      const snapshots = await persistence.listVersionSnapshots();
+      if (snapshots.length > 0) {
         const latest = await persistence.loadVersionSnapshot(snapshots[0].id);
-        summarize(latest?.workspaceSnapshot ?? emptyBaseline);
-      } catch {
-        // Persistence unavailable — still show what would ship (all added)
-        // rather than a misleading empty summary.
-        summarize(emptyBaseline);
+        before = latest?.workspaceSnapshot ?? emptyBaseline;
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [publishDialogOpen, persistence]);
+    } catch {
+      // Persistence unavailable — fall back to the all-added baseline rather
+      // than a misleading empty summary.
+      before = emptyBaseline;
+    }
+    // Re-read the workspace after the await so the "after" side reflects any
+    // edit that landed during the (sub-frame) snapshot read.
+    const after = editorStore.getState().workspace ?? current;
+    const diff = diffWorkspaces(before, after);
+    setPublishChangesSummary({
+      added: diff.added,
+      modified: diff.modified,
+      removed: diff.removed,
+    });
+    setPublishDialogOpen(true);
+  }, [persistence]);
 
   // History dot — solid lilac when there's a published snapshot newer
   // than the last viewed timestamp. Read once on mount + whenever a
@@ -441,14 +438,13 @@ export function Navbar() {
         }
       }
       event.preventDefault();
-      setPublishDialogOpen(true);
+      void openPublishDialog();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [openPublishDialog]);
 
-  // Internal-build only. See components/editor/Toolbar.tsx for the
-  // detailed comment on why the gate uses `process.env.NEXT_PUBLIC_*`
+  // Internal-build only. The gate uses `process.env.NEXT_PUBLIC_*`
   // literally rather than the imported IS_INTERNAL_BUILD constant —
   // Webpack folds the env-var literal but not cross-module bindings,
   // and only literal-folded gates produce a clean public bundle.
@@ -676,7 +672,7 @@ export function Navbar() {
                   <DropdownMenuItem onSelect={() => setLottieSheetOpen(true)}>
                     <UiIcon name="file-json" size={16} className="size-4" />Lottie JSON…
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setPublishDialogOpen(true)}>
+                  <DropdownMenuItem onSelect={() => void openPublishDialog()}>
                     <UiIcon name="package" size={16} className="size-4" />Publish…
                     <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
                   </DropdownMenuItem>
@@ -773,7 +769,7 @@ export function Navbar() {
                 size="sm"
                 variant="default"
                 className="h-7 gap-1.5 px-2.5"
-                onClick={() => setPublishDialogOpen(true)}
+                onClick={() => void openPublishDialog()}
                 data-testid="navbar-publish"
               >
                 <UiIcon name="package" size={14} />
@@ -910,7 +906,7 @@ export function Navbar() {
             <CommandItem
               onSelect={() => {
                 setCommandOpen(false);
-                setPublishDialogOpen(true);
+                void openPublishDialog();
               }}
             >
               <UiIcon name="package" size={16} className="size-4" />

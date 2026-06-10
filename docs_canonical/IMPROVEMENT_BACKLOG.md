@@ -243,7 +243,12 @@ the blank-canvas first session into a guided one.
 
 ## Workstream D — Engineering Health (P2–P3)
 
-### D1. Decompose the three monoliths — **P2 · L (incremental)**
+### D1. Decompose the three monoliths — **P2 · L (incremental)** — **STARTED (2026-06-10)**
+> Slice 1 shipped: export/download handlers extracted to
+> `components/editor/use-export-actions.ts` and shared by EditorShell
+> and Navbar (which previously had a divergent copy that swallowed
+> failures). EditorShell ~-130 lines. Remaining: dialog cluster,
+> keyboard wiring, InspectorPanel sections, store slices.
 - [ ] `components/editor/EditorShell.tsx` (3,140 lines): extract export
       actions, dialog cluster, and keyboard/shortcut wiring into modules;
       target <800 lines for the shell itself.
@@ -258,7 +263,12 @@ the blank-canvas first session into a guided one.
 - **Note:** Do A-items first — refactoring is safer once editor
   interactions have test coverage (D2).
 
-### D2. Test the editor surfaces users actually touch — **P2 · L (incremental)**
+### D2. Test the editor surfaces users actually touch — **P2 · L (incremental)** — **STARTED (2026-06-10)**
+> Added: Canvas smoke tests (render + empty-state CTAs +
+> focusability), icon-list virtualization tests, first-run tour,
+> error-recovery screen, storage banner, history-discard, share-link
+> codec. Remaining: EditorShell shortcut/undo round-trip dom tests and
+> the import→animate→export Playwright flow.
 - [ ] Canvas: render, SVG drag-drop import, zoom/pan, selection
       (currently zero tests).
 - [ ] EditorShell: keyboard shortcuts, undo/redo round-trip, export
@@ -270,7 +280,11 @@ the blank-canvas first session into a guided one.
 - **Accept:** The e2e flow runs in CI; editor dom-test count goes from
   ~2 files to covering the four surfaces above.
 
-### D3. Virtualize the icon list — **P2 · S**
+### D3. Virtualize the icon list — **P2 · S** — **DONE (2026-06-10)**
+> Dependency-free windowing hook (`lib/editor-core/use-virtual-rows.ts`)
+> applied to `IconListPanel` above 150 rows; small lists keep the
+> styled ScrollArea path. `tests/icon-list-virtualization.test.tsx`.
+> Follow-up: apply to `ListPane` (needs drag-reorder interplay care).
 - [ ] `components/editor/IconListPanel.tsx:84` renders all icons
       unconditionally; add windowing (e.g. `@tanstack/react-virtual`)
       for lists >100 items. Remember the dual-lockfile rule when adding
@@ -278,7 +292,11 @@ the blank-canvas first session into a guided one.
 - **Accept:** 1,000-icon workspace scrolls at 60fps; keyboard
   navigation and inline rename still work.
 
-### D4. Canvas render efficiency — **P3 · M**
+### D4. Canvas render efficiency — **P3 · M** — **DEFERRED (2026-06-10)**
+> Deliberately not attempted in this pass: replacing the
+> clear-and-rebuild SVG render and narrowing the 19-property
+> subscription set is high-regression-risk without visual test
+> coverage. Do after D2's Playwright flow exists.
 - [ ] Replace the clear-and-rebuild render (`svg.innerHTML = ''`,
       `components/editor/Canvas.tsx:286`) with keyed/diffed node updates,
       or at minimum scope rebuilds to the changed layer.
@@ -288,13 +306,21 @@ the blank-canvas first session into a guided one.
 - **Accept:** Dragging a point on a 20-layer icon doesn't rebuild the
   full SVG tree (verify via DOM mutation count in a test or profile).
 
-### D5. Persistence write-path hardening — **P3 · M**
+### D5. Persistence write-path hardening — **P3 · M** — **DONE (2026-06-10)**
+> Every autosave now carries the previous well-formed workspace as
+> `backupData` (same IDB transaction); `load()` falls back to it when
+> the primary payload is corrupted. Helpers exported + pinned by
+> `tests/workspace-recovery.test.ts`.
 - [ ] Versioned snapshot writes: keep last-known-good payload so a
       corrupted write never strands the workspace (pairs with A2).
 - **Accept:** Simulated mid-write failure recovers the previous snapshot
   on next load.
 
-### D6. Pay down flagged debt — **P3 · S**
+### D6. Pay down flagged debt — **P3 · S** — **DONE (2026-06-10)**
+> `GitHubSyncPanel` was dead code (zero imports) — deleted, which
+> resolves the deprecation TODO. Adapter template placeholders
+> converted to neutral "Fill in" markers; `grep TODO` is clean in both
+> locations.
 - [ ] Finish the GitHubSyncPanel migration to `lib/sync-service/`
       (`components/export/GitHubSyncPanel.tsx:10` TODO).
 - [ ] Resolve or excise the `_template.ts` adapter TODOs

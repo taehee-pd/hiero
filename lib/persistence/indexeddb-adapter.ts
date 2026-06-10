@@ -48,7 +48,45 @@ type StoredProjectRecord = {
   data: Workspace;
   updatedAt: number;
   iconCount: number;
+  /**
+   * D5 — last-known-good payload. Every autosave keeps the previous
+   * (structurally valid) workspace alongside the new one, so a write
+   * that lands corrupted never strands the project: `load()` falls
+   * back to the backup instead of returning garbage.
+   */
+  backupData?: Workspace;
 };
+
+/** Cheap structural sanity check — catches truncated/corrupted payloads. */
+export function isWorkspaceShaped(data: unknown): data is Workspace {
+  if (!data || typeof data !== 'object') return false;
+  const candidate = data as { iconSets?: unknown; meta?: unknown };
+  return (
+    typeof candidate.iconSets === 'object' &&
+    candidate.iconSets !== null &&
+    typeof candidate.meta === 'object' &&
+    candidate.meta !== null
+  );
+}
+
+/**
+ * Pick the workspace to surface from a stored record: the primary
+ * payload when it is well-formed, otherwise the last-known-good
+ * backup. Returns null when neither survives.
+ * Exported for unit testing.
+ */
+export function resolveStoredWorkspace(record: {
+  data: unknown;
+  backupData?: unknown;
+}): { data: Workspace; recovered: boolean } | null {
+  if (isWorkspaceShaped(record.data)) {
+    return { data: record.data, recovered: false };
+  }
+  if (isWorkspaceShaped(record.backupData)) {
+    return { data: record.backupData, recovered: true };
+  }
+  return null;
+}
 
 type StoredCheckpointRecord = {
   id: string;
@@ -188,10 +226,17 @@ export class IndexedDBAdapter implements PersistenceAdapter {
         store.get(id),
       );
       if (!record) return null;
+      const resolved = resolveStoredWorkspace(record);
+      if (!resolved) return null;
+      if (resolved.recovered) {
+        console.warn(
+          `[persistence] project ${id}: primary payload was corrupted; recovered the previous snapshot.`,
+        );
+      }
       return {
         id: record.id,
         name: record.name,
-        data: record.data,
+        data: resolved.data,
         updatedAt: record.updatedAt,
       };
     } finally {
@@ -203,12 +248,22 @@ export class IndexedDBAdapter implements PersistenceAdapter {
     const db = await openDB();
     try {
       const store = txStore(db, PROJECTS_STORE, 'readwrite');
+      // Keep the previous well-formed payload as the last-known-good
+      // backup (D5). Same transaction, so the read can't race the put.
+      const existing = await requestToPromise<StoredProjectRecord | undefined>(
+        store.get(id),
+      );
       const record: StoredProjectRecord = {
         id,
         name: data.meta.name,
         data,
         updatedAt: Date.now(),
         iconCount: countIcons(data),
+        ...(existing && isWorkspaceShaped(existing.data)
+          ? { backupData: existing.data }
+          : existing?.backupData
+            ? { backupData: existing.backupData }
+            : {}),
       };
       await requestToPromise(store.put(record));
     } finally {

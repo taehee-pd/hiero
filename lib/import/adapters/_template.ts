@@ -3,7 +3,7 @@
  *
  * Steps:
  *   1. Copy this file and rename it (e.g. `heroicons-adapter.ts`).
- *   2. Replace every `TODO` with your implementation.
+ *   2. Replace every `Fill in` marker with your implementation.
  *   3. Register the adapter in `lib/import/adapters/index.ts`.
  *   4. Add tests in `tests/<your-adapter>.test.ts`.
  *
@@ -24,21 +24,21 @@ import {
   type ExternalIconSourceDescriptor,
 } from '../adapter-sdk';
 
-// TODO: Replace with your adapter's unique id and metadata.
+// Fill in: replace with your adapter's unique id and metadata.
 const ADAPTER_ID = 'my-library';
 
 const descriptor: ExternalIconSourceDescriptor = {
   id: ADAPTER_ID,
   capabilities: {
-    // TODO: Declare which input modes your adapter supports.
+    // Fill in: declare which input modes your adapter supports.
     inputModes: ['library-icon-name'],
     sourceType: 'library',
-    // TODO: Set to true and implement search() if your source is browsable.
+    // Fill in: set to true and implement search() if your source is browsable.
     searchable: false,
     displayName: 'My Icon Library',
-    // TODO: Set the library version if applicable.
+    // Fill in: set the library version if applicable.
     libraryVersion: undefined,
-    // TODO: Set the SPDX license identifier if applicable.
+    // Fill in: set the SPDX license identifier if applicable.
     license: undefined,
   },
 };
@@ -57,17 +57,17 @@ export const myLibraryAdapter: ExternalIconAdapter = {
       });
     }
 
-    // TODO: Resolve the icon id to raw SVG content.
+    // Fill in: resolve the icon id to raw SVG content.
     // For a library adapter, this typically means looking up icon data from
     // a vendored manifest or fetching from a known source.
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><!-- TODO --></svg>`;
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><!-- fill in path data --></svg>`;
     const suggestedName = request.name ?? request.iconId;
 
     return {
       intermediate: { kind: 'svg-source', svgContent },
       svgContent,
       suggestedName,
-      // TODO: Add tags from your library's metadata if available.
+      // Fill in: add tags from your library's metadata if available.
       suggestedTags: [],
       provenance: {
         adapterId: ADAPTER_ID,
@@ -77,18 +77,18 @@ export const myLibraryAdapter: ExternalIconAdapter = {
         sourceLicense: descriptor.capabilities.license,
         importedAt: new Date().toISOString(),
       },
-      // TODO: Collect any warnings about unsupported features or fidelity loss.
+      // Fill in: collect any warnings about unsupported features or fidelity loss.
       warnings: [],
     };
   },
 
-  // TODO: Uncomment and implement if capabilities.searchable is true.
+  // Fill in: uncomment and implement if capabilities.searchable is true.
   // async search(
   //   query: string,
   //   options?: { limit?: number },
   // ): Promise<ExternalIconSearchResult[]> {
   //   const limit = options?.limit ?? 50;
-  //   // TODO: Search your icon manifest and return matching results.
+  //   // Fill in: search your icon manifest and return matching results.
   //   return [];
   // },
 };

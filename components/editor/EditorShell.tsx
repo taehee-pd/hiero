@@ -56,19 +56,15 @@ import { SAMPLE_WORKSPACE } from '@/lib/schema/sample-project';
 import type { GuideItem, Icon, Layer, RenderingMode, Variant } from '@/lib/schema/types';
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
-import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
+import { clearCurrentProjectPath } from '@/lib/platform/bridge';
 import { DOCS_LINKS, openDocs } from '@/lib/platform/docs-links';
 import { EXAMPLE_ICONS } from '@/lib/schema/example-icons';
 import { FirstRunTour } from '@/components/editor/FirstRunTour';
+import { useExportActions } from '@/components/editor/use-export-actions';
 import { buildShareUrl } from '@/lib/platform/share-link';
 import { saveDraftCheckpoint } from '@/lib/persistence/use-persistence';
 import { toast as appToast } from '@/components/ui/use-toast';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
-import { exportSvgString } from '@/lib/export/export-svg';
-import { exportSvgPackage } from '@/lib/export/export-svg-package';
-import { exportRuntimeJson } from '@/lib/export/export-runtime-json';
-import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
-import { createZipBlob } from '@/lib/export/export-react/zip';
 import { handleEditorKeyDown } from '@/lib/editor-core/keyboard';
 import {
   alignGuideItemsToViewBox,
@@ -165,16 +161,6 @@ const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
 const ROLE_TOOLTIP =
   'Role drives theming layering: primary → main stroke/fill, secondary → supporting detail, tertiary → background, decorative → ignored at export.';
 
-function slugify(value: string) {
-  return (
-    value
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'untitled'
-  );
-}
-
 function formatVariantLabel(variant: { name?: string; size: number }) {
   const name = variant.name?.trim();
   if (!name || name === String(variant.size)) return `${variant.size}px`;
@@ -223,15 +209,6 @@ function buildTransitionPreview(
     resolvedTransition,
     interpolatedValues: interpolateTransitionValues(resolvedTransition, clampedProgress),
   };
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function clampZoomValue(value: number) {
@@ -2404,8 +2381,6 @@ export function EditorShell({
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeleteIntent | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [searchIconId, setSearchIconId] = useState<string | undefined>();
   const [searchIconSetId, setSearchIconSetId] = useState<string | undefined>();
   const previewFrameRef = useRef<number | null>(null);
@@ -2614,22 +2589,6 @@ export function EditorShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- previewProgress is read only for initial startTime; including it would teardown/restart the rAF loop every frame
   }, [currentVariant, previewPlaying, selectedTransition, setTransitionPreview]);
 
-  const serializeWorkspace = () => {
-    const { workspace: currentWorkspace } = editorStore.getState();
-    if (!currentWorkspace) return null;
-
-    const updatedAt = new Date().toISOString();
-    const updated = {
-      ...currentWorkspace,
-      meta: { ...currentWorkspace.meta, updatedAt },
-    };
-
-    return {
-      data: JSON.stringify(updated, null, 2),
-      updatedAt,
-    };
-  };
-
   // Unified Save — checkpoint, not file download (Phase 2.5 wiring fix).
   // Matches the studio Navbar's behavior so Cmd+S means the same thing
   // wherever the user invokes it. File-download flow stays available
@@ -2642,113 +2601,18 @@ export function EditorShell({
     appToast({ title: 'Saved draft', description: 'Checkpoint stored locally.' });
   };
 
-  const handleExportProjectFile = async () => {
-    const payload = serializeWorkspace();
-    if (!payload) return;
-    try {
-      const result = await saveProject(payload.data);
-      if (result) {
-        editorStore.getState().markSaved(payload.updatedAt);
-      }
-    } catch (error) {
-      console.error('[EditorShell] project file export failed:', error);
-      appToast({
-        title: 'Project file export failed',
-        description:
-          error instanceof Error ? error.message : 'Could not write the project file.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const runExport = async (label: string, fn: () => void | Promise<void>) => {
-    setExporting(true);
-    setExportMessage(null);
-    try {
-      await fn();
-      setExportMessage(`${label} exported`);
-      setTimeout(() => setExportMessage(null), 2000);
-    } catch (error) {
-      console.error(`[EditorShell] ${label} export failed:`, error);
-      setExportMessage(`${label} export failed`);
-      setTimeout(() => setExportMessage(null), 3000);
-      appToast({
-        title: `${label} export failed`,
-        description:
-          error instanceof Error ? error.message : 'Unexpected error during export.',
-        variant: 'destructive',
-      });
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportCurrentSvg = () =>
-    runExport('SVG', async () => {
-      const state = editorStore.getState();
-      if (!currentIcon || !currentVariant) return;
-
-      const svg = exportSvgString(
-        currentIcon,
-        currentVariant.id,
-        'default',
-        state.project?.tokenSet?.colors,
-        state.renderingMode,
-      );
-
-      await exportSvg(svg, `${slugify(currentIcon.name)}.svg`);
-    });
-
-  const handleExportSvgPackage = () =>
-    runExport('SVG package', () => {
-      if (!project) return;
-      const fileMap = exportSvgPackage(project);
-      const zipBlob = createZipBlob(fileMap);
-      downloadBlob(zipBlob, `${slugify(project.meta.name)}-svg-package.zip`);
-    });
-
-  const handleExportRuntimeJson = () =>
-    runExport('Runtime JSON', () => {
-      if (!currentIcon || !project) return;
-      const runtimeJson = exportRuntimeJson({
-        ...currentIcon,
-        tokenSet: project.tokenSet,
-      });
-      downloadBlob(
-        new Blob([runtimeJson], { type: 'application/json' }),
-        `${slugify(currentIcon.name)}.runtime.json`,
-      );
-    });
-
-  // C3 (scoped): bulk export — ZIP the multi-selected icons from the
-  // list pane, falling back to the open icon when nothing is selected.
-  const handleExportSelectedSvgs = () =>
-    runExport('Selected SVGs', () => {
-      if (!project) return;
-      const state = editorStore.getState();
-      const ids =
-        state.selectedIconIds.length > 0
-          ? state.selectedIconIds
-          : currentIcon
-            ? [currentIcon.id]
-            : [];
-      if (ids.length === 0) return;
-      const fileMap = exportSvgPackage(project, { icons: ids });
-      downloadBlob(
-        createZipBlob(fileMap),
-        `${slugify(project.meta.name)}-selected-svgs.zip`,
-      );
-    });
-
-  const handleExportReactLibrary = () =>
-    runExport('React library', () => {
-      if (!project) return;
-      const fileMap = generateIconLibrary(project, {
-        packageName: `${slugify(project.meta.name)}-react-icons`,
-        typescript: true,
-      });
-      downloadBlob(createZipBlob(fileMap), `${slugify(project.meta.name)}-react-library.zip`);
-    });
+  // D1 slice 1: download/export handlers live in the shared hook (also
+  // used by the studio Navbar) instead of duplicated component code.
+  const {
+    exporting,
+    exportMessage,
+    handleExportCurrentSvg,
+    handleExportSvgPackage,
+    handleExportSelectedSvgs,
+    handleExportRuntimeJson,
+    handleExportReactLibrary,
+    handleExportProjectFile,
+  } = useExportActions();
 
   const handleSelectIcon = (iconId: string) => {
     if (!iconId) return;

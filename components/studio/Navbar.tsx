@@ -53,9 +53,7 @@ import { editorStore } from '@/lib/editor-store/store';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { undo, redo } from '@/lib/editor-store/history';
 import { isProject, isWorkspace } from '@/lib/schema/guards';
-import { exportSvgPackage } from '@/lib/export/export-svg-package';
-import { generateIconLibrary } from '@/lib/export/export-react/generate-library';
-import { createZipBlob } from '@/lib/export/export-react/zip';
+import { useExportActions } from '@/components/editor/use-export-actions';
 import { LottieExportPanel } from '@/components/export/LottieExportPanel';
 import { PublishDialog, type PublishTargetOption } from '@/components/export/publish/PublishDialog';
 import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
@@ -126,7 +124,9 @@ export function Navbar() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [toolbarError, setToolbarError] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
+  // D1 slice 1: export handlers come from the shared hook (same
+  // implementation EditorShell uses), including failure toasts.
+  const { exporting, handleExportSvgPackage, handleExportReactLibrary } = useExportActions();
   const toolbarErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -545,34 +545,6 @@ export function Navbar() {
       );
     }
   }, [showToolbarError]);
-
-  const handleExportSvgPackage = useCallback(() => {
-    const { project } = editorStore.getState();
-    if (!project) return;
-    setExporting(true);
-    try {
-      const fileMap = exportSvgPackage(project);
-      const zipBlob = createZipBlob(fileMap);
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-svg-package.zip`;
-      a.click(); URL.revokeObjectURL(url);
-    } finally { setExporting(false); }
-  }, []);
-
-  const handleExportReactLibrary = useCallback(() => {
-    const { project } = editorStore.getState();
-    if (!project) return;
-    setExporting(true);
-    try {
-      const fileMap = generateIconLibrary(project, { packageName: `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-icons`, typescript: true });
-      const zipBlob = createZipBlob(fileMap);
-      const url = URL.createObjectURL(zipBlob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${project.meta.name.replace(/\s+/g, '-').toLowerCase()}-react-library.zip`;
-      a.click(); URL.revokeObjectURL(url);
-    } finally { setExporting(false); }
-  }, []);
 
   return (
     <>

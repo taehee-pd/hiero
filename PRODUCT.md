@@ -46,3 +46,26 @@ Target WCAG AA for contrast, keyboard access, focus visibility, and reduced
 motion. Preserve the existing commitment to readable contrast, screen-reader
 labels for icon-only actions, and `prefers-reduced-motion` alternatives for
 preview and interaction motion.
+
+## Positioning & Sustainability
+
+**Why this exists in two years:** Hiero is the repo-native icon pipeline for
+design-system teams — the tool that turns "designer exports SVGs, developer
+hand-wires animations" into "the icon set is a versioned, animated package the
+app imports." The moat is not drawing tools (Figma owns that); it is the
+SF Symbols-grade animation engine plus the publish pipeline (Git PR, npm,
+compiled runtime) that no icon tool ships end-to-end.
+
+**Operating model (current bet):** open-core, team-funded. The public Studio,
+runtime, and CLI stay free and open — adoption of the runtime format is the
+asset. If sustainability requires revenue, the credible tiers are (in order of
+fit): hosted team workspaces with shared libraries and access control, a
+managed publish service (provenance-signed releases, registry hosting), and
+support contracts for design-system teams. These are additive services around
+the open format, never a paywall in front of authoring or rendering.
+
+**What this gates:** real-time collaboration, team workspaces, and accounts
+are only worth building on top of the hosted tier. Until that bet is made,
+collaboration investment goes to the cheap asynchronous loop instead:
+shareable read-only preview links and Git-based review. (See
+docs_canonical/IMPROVEMENT_BACKLOG.md items C1/C2.)

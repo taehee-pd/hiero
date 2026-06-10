@@ -60,6 +60,7 @@ import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/
 import { DOCS_LINKS, openDocs } from '@/lib/platform/docs-links';
 import { EXAMPLE_ICONS } from '@/lib/schema/example-icons';
 import { FirstRunTour } from '@/components/editor/FirstRunTour';
+import { buildShareUrl } from '@/lib/platform/share-link';
 import { saveDraftCheckpoint } from '@/lib/persistence/use-persistence';
 import { toast as appToast } from '@/components/ui/use-toast';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
@@ -2719,6 +2720,26 @@ export function EditorShell({
       );
     });
 
+  // C3 (scoped): bulk export — ZIP the multi-selected icons from the
+  // list pane, falling back to the open icon when nothing is selected.
+  const handleExportSelectedSvgs = () =>
+    runExport('Selected SVGs', () => {
+      if (!project) return;
+      const state = editorStore.getState();
+      const ids =
+        state.selectedIconIds.length > 0
+          ? state.selectedIconIds
+          : currentIcon
+            ? [currentIcon.id]
+            : [];
+      if (ids.length === 0) return;
+      const fileMap = exportSvgPackage(project, { icons: ids });
+      downloadBlob(
+        createZipBlob(fileMap),
+        `${slugify(project.meta.name)}-selected-svgs.zip`,
+      );
+    });
+
   const handleExportReactLibrary = () =>
     runExport('React library', () => {
       if (!project) return;
@@ -2776,6 +2797,36 @@ export function EditorShell({
     if (playIcon && activeIconSetId && editorStore.getState().project?.icons[playIcon.id]) {
       openIconTab(activeIconSetId, playIcon.id);
       setCurrentIcon(playIcon.id);
+    }
+  };
+
+  // C1: copy a read-only /share link carrying the current icon in the
+  // URL fragment. No server round-trip — the link IS the payload.
+  const handleCopyPreviewLink = async () => {
+    const state = editorStore.getState();
+    const icon = state.currentIconId ? state.project?.icons[state.currentIconId] : null;
+    if (!icon) {
+      appToast({ title: 'No icon selected', description: 'Open an icon to share it.' });
+      return;
+    }
+    const url = buildShareUrl(window.location.origin, {
+      v: 1,
+      icon: structuredClone(icon),
+      colors: state.project?.tokenSet?.colors,
+    });
+    try {
+      await navigator.clipboard.writeText(url);
+      appToast({
+        title: 'Preview link copied',
+        description: 'Anyone with the link can play this icon — no account needed.',
+      });
+    } catch (error) {
+      console.error('[EditorShell] clipboard write failed:', error);
+      appToast({
+        title: 'Could not copy the link',
+        description: 'Clipboard access was blocked by the browser.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -3061,6 +3112,15 @@ export function EditorShell({
             <CommandItem
               onSelect={() => {
                 setCommandOpen(false);
+                handleExportSelectedSvgs();
+              }}
+            >
+              <UiIcon name="square" size={16} className="size-4" />
+              <span>Export selected icons (SVG ZIP)</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
                 handleExportRuntimeJson();
               }}
             >
@@ -3075,6 +3135,15 @@ export function EditorShell({
             >
               <UiIcon name="blend" size={16} className="size-4" />
               <span>Export React library</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                void handleCopyPreviewLink();
+              }}
+            >
+              <UiIcon name="link-2" size={16} className="size-4" />
+              <span>Copy preview link (read-only share)</span>
             </CommandItem>
             <CommandItem
               onSelect={() => {

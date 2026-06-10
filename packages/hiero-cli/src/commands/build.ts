@@ -9,18 +9,24 @@
  * Options:
  *   --config <path>   Path to hiero.config.ts
  *   --out <path>      Output directory override (bypasses releaseTargets)
+ *   --watch           Rebuild automatically when sourceDir changes
  *
  * For git-pr and npm-registry targets, this command prints instructions.
  * Those workflows remain in the Lane 2 sync-service (hiero sync-pr / hiero publish).
  */
 
 import path from 'node:path';
-import { existsSync } from 'node:fs';
+import { existsSync, watch } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { loadConfig } from '@/lib/install-config';
 import { projectFromSourceDir } from '@/lib/sync-source';
 import { compileProject } from '@/lib/export/compile-pipeline';
-import type { LocalDirectoryReleaseTarget } from '@/lib/install-config/types';
+import type {
+  HieroConfig,
+  LocalDirectoryReleaseTarget,
+} from '@/lib/install-config/types';
+
+const WATCH_DEBOUNCE_MS = 150;
 
 export async function runBuild(
   cwd: string,
@@ -33,6 +39,7 @@ export async function runBuild(
 
   const outOverride =
     typeof flags['out'] === 'string' ? flags['out'] : undefined;
+  const watchMode = flags['watch'] === true;
 
   // Config
   if (!existsSync(configPath)) {
@@ -40,7 +47,7 @@ export async function runBuild(
     process.exit(1);
   }
 
-  let config: import('@/lib/install-config/types').HieroConfig;
+  let config: HieroConfig;
   try {
     const rawModule = (await import(configPath)) as { default?: unknown };
     const result = loadConfig(rawModule.default, configPath);
@@ -74,6 +81,65 @@ export async function runBuild(
     process.exit(1);
   }
 
+  const ok = await buildOnce(cwd, config, sourceDir, outOverride, releaseTargets);
+  if (!ok && !watchMode) {
+    process.exit(1);
+  }
+
+  if (!watchMode) return;
+
+  // ── Watch mode ──
+  // Debounced rebuilds; per-rebuild failures log and keep watching so a
+  // mid-edit syntax error never kills the loop.
+  console.log(`\n[hiero] Watching ${config.sourceDir} for changes… (Ctrl+C to stop)`);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let building = false;
+  let dirtyWhileBuilding = false;
+
+  const rebuild = async () => {
+    if (building) {
+      dirtyWhileBuilding = true;
+      return;
+    }
+    building = true;
+    try {
+      do {
+        dirtyWhileBuilding = false;
+        console.log(`\n[hiero] Change detected — rebuilding…`);
+        await buildOnce(cwd, config, sourceDir, outOverride, releaseTargets);
+      } while (dirtyWhileBuilding);
+    } finally {
+      building = false;
+    }
+  };
+
+  const watcher = watch(sourceDir, { recursive: true }, () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      void rebuild();
+    }, WATCH_DEBOUNCE_MS);
+  });
+
+  await new Promise<void>((resolve) => {
+    process.on('SIGINT', () => {
+      watcher.close();
+      console.log('\n[hiero] Watch stopped.');
+      resolve();
+    });
+  });
+}
+
+/**
+ * One compile → write pass. Returns false instead of exiting so watch
+ * mode can keep running after a failed rebuild.
+ */
+async function buildOnce(
+  cwd: string,
+  config: HieroConfig,
+  sourceDir: string,
+  outOverride: string | undefined,
+  releaseTargets: NonNullable<HieroConfig['releaseTargets']>,
+): Promise<boolean> {
   console.log(`[hiero] Loading source from ${config.sourceDir}...`);
 
   let project;
@@ -83,7 +149,7 @@ export async function runBuild(
     console.error(
       `[hiero] Source read failed: ${err instanceof Error ? err.message : String(err)}`,
     );
-    process.exit(1);
+    return false;
   }
 
   const iconCount = Object.keys(project.icons).length;
@@ -107,7 +173,7 @@ export async function runBuild(
     console.error(
       `[hiero] Compile failed: ${err instanceof Error ? err.message : String(err)}`,
     );
-    process.exit(1);
+    return false;
   }
 
   // Determine output directories
@@ -118,17 +184,24 @@ export async function runBuild(
       ) as LocalDirectoryReleaseTarget[]);
 
   // Write outputs
-  for (const target of localDirTargets) {
-    const outDir = path.resolve(cwd, target.outputDir);
-    console.log(`[hiero] Writing to ${target.outputDir}...`);
+  try {
+    for (const target of localDirTargets) {
+      const outDir = path.resolve(cwd, target.outputDir);
+      console.log(`[hiero] Writing to ${target.outputDir}...`);
 
-    for (const file of compiled.files) {
-      const targetPath = path.join(outDir, file.path);
-      await mkdir(path.dirname(targetPath), { recursive: true });
-      await writeFile(targetPath, file.contents, 'utf8');
+      for (const file of compiled.files) {
+        const targetPath = path.join(outDir, file.path);
+        await mkdir(path.dirname(targetPath), { recursive: true });
+        await writeFile(targetPath, file.contents, 'utf8');
+      }
+
+      console.log(`         ${compiled.files.length} file(s) written`);
     }
-
-    console.log(`         ${compiled.files.length} file(s) written`);
+  } catch (err) {
+    console.error(
+      `[hiero] Write failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return false;
   }
 
   // Inform about other target kinds (handled by separate subcommands)
@@ -149,4 +222,5 @@ export async function runBuild(
 
   const elapsedMs = Date.now() - new Date(builtAt).getTime();
   console.log(`\n[hiero] Build complete — ${iconCount} icon(s) in ${elapsedMs}ms`);
+  return true;
 }

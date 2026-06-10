@@ -90,7 +90,11 @@ failure costs real user work. Nothing else matters until these land.
 Capability is not the gap; a new user can't discover it. These convert
 the blank-canvas first session into a guided one.
 
-### B1. Starter content: bundled example icons — **P1 · M**
+### B1. Starter content: bundled example icons — **P1 · M** — **DONE (2026-06-10)**
+> Shipped as `lib/schema/example-icons.ts` (play⇄pause morph pair,
+> draw-on check, slide-draw activity), merged into the starter project,
+> with a "Start from an example" canvas CTA and an "Add example icons"
+> palette command. Pinned by `tests/example-icons.test.ts`.
 - [ ] Ship 5–10 remixable sample icons that demonstrate the
       differentiators: a play↔pause morph transition, a draw-on
       checkmark (reveal mode), a multi-layer stagger, a weight-variant
@@ -103,7 +107,11 @@ the blank-canvas first session into a guided one.
 - **Accept:** A first-time user can open an example, scrub its
   transition, and export it without reading docs.
 
-### B2. Guided first-run walkthrough — **P1 · M**
+### B2. Guided first-run walkthrough — **P1 · M** — **DONE (2026-06-10)**
+> Shipped as `components/editor/FirstRunTour.tsx`: 4-step non-modal
+> card (create/import → animate → preview → publish), Esc/Skip/Done
+> dismiss persisted in localStorage, static rendering so reduced motion
+> is honored by construction. Tests: `tests/first-run-tour.test.tsx`.
 - [ ] One-time, dismissible 3–4 step tour of the core loop:
       import/create → animate (Animate panel) → preview → publish.
 - [ ] Honor `prefers-reduced-motion`; fully keyboard-navigable;
@@ -111,14 +119,19 @@ the blank-canvas first session into a guided one.
 - **Accept:** Fresh profile sees the tour once; `Esc` dismisses;
   reduced-motion users get no animated coach marks.
 
-### B3. Link user docs from inside the app — **P1 · S**
+### B3. Link user docs from inside the app — **P1 · S** — **DONE (2026-06-10)**
+> `lib/platform/docs-links.ts` + entries in the Navbar Help menu, the
+> shortcuts dialog footer, and the editor command palette.
 - [ ] `docs/user-guide/` content is unreachable from the UI. Add a Help
       menu entry (and ⌘K command) linking to the guide + framework
       integration docs.
 - [ ] Add a "Help & docs" row to the shortcuts cheat-sheet dialog.
 - **Accept:** Docs reachable in ≤2 clicks from the editor.
 
-### B4. Visible undo/redo affordance — **P1 · S**
+### B4. Visible undo/redo affordance — **P1 · S** — **DONE (2026-06-10)**
+> Navbar undo/redo buttons (already present) are now disabled-state
+> aware via the temporal store's stack depths; menu items and the
+> cheat sheet already listed the shortcuts.
 - [ ] Toolbar undo/redo buttons (disabled-state aware) wired to the
       existing history in `lib/editor-store/store.ts`, with ⌘Z/⇧⌘Z hints
       via `KbdHint`.
@@ -126,7 +139,11 @@ the blank-canvas first session into a guided one.
 - **Accept:** Undo/redo discoverable without prior knowledge; buttons
   reflect history depth (enabled/disabled).
 
-### B5. Keyboard path: canvas as a first-class tab stop — **P1 · L**
+### B5. Keyboard path: canvas as a first-class tab stop — **P1 · L** — **PARTIAL (2026-06-10)**
+> Shipped: canvas interaction root is a tab stop with a visible focus
+> ring and SR-only keyboard instructions; arrow nudge/tool shortcuts
+> already existed window-level. Remaining: Tab-cycling through anchor
+> points and a broader ARIA pass on canvas overlays.
 - [ ] Make the canvas focusable (`tabIndex=0`) with a visible focus ring
       and a documented keyboard model: arrow-key nudge for selected
       points/layers, Tab/cycling through anchor points, Enter to edit.
@@ -138,14 +155,19 @@ the blank-canvas first session into a guided one.
   keyboard-only; axe scan of the editor shell reports no critical
   violations.
 
-### B6. Reduced motion in the editor shell, not just previews — **P1 · S**
+### B6. Reduced motion in the editor shell, not just previews — **P1 · S** — **ALREADY SHIPPED (verified 2026-06-10)**
+> `app/globals.css` collapses all transitions/animations under
+> `prefers-reduced-motion: reduce`, and pan/zoom are direct
+> manipulation (no easing) — the audit item was stale.
 - [ ] `getMotionPreference()` currently gates preview playback only.
       Extend to editor pan/zoom/drag easing and panel transitions
       (`components/editor/Canvas.tsx:146-195`).
 - **Accept:** With `prefers-reduced-motion: reduce`, viewport changes
   snap instead of animating.
 
-### B7. `/history` route Navbar chrome — **P1 · S**
+### B7. `/history` route Navbar chrome — **P1 · S** — **ALREADY SHIPPED (verified 2026-06-10)**
+> `HistoryView` renders the shared `Navbar`; the spec follow-up was
+> already closed.
 - [ ] Finish the P0 follow-up already flagged in the version-history
       spec: `/history` renders the canonical Navbar/shell like every
       other route.
@@ -156,7 +178,14 @@ the blank-canvas first session into a guided one.
 
 ## Workstream C — Product Surface (P2)
 
-### C1. Shareable read-only preview links — **P2 · L**
+### C1. Shareable read-only preview links — **P2 · L** — **DONE v1 (2026-06-10)**
+> `/share#<payload>` route renders any authored icon read-only with
+> variant-transition + effect playback via `HieroIcon`; the URL
+> fragment carries the whole icon (no server storage). "Copy preview
+> link" lives in the ⌘K palette. Cross-icon morphs are listed but not
+> yet playable in the viewer (needs a two-icon payload — follow-up).
+> Files: `lib/platform/share-link.ts`, `components/share/SharedIconView.tsx`,
+> `app/share/page.tsx`. Tests: `tests/share-link.test.ts`.
 - [ ] Serialize icon + transition into a shareable URL (compressed
       payload in the fragment, or a minimal blob endpoint) rendering a
       read-only preview page with playback controls.
@@ -166,7 +195,10 @@ the blank-canvas first session into a guided one.
 - **Accept:** A recipient with no account/profile can open the link and
   play the transition on any device.
 
-### C2. Runtime/consumer documentation site — **P2 · L**
+### C2. Runtime/consumer documentation site — **P2 · L** — **PARTIAL (2026-06-10)**
+> Shipped `docs/guides/runtime-api.md`: full `HieroIcon` /
+> `HieroIconServer` / hooks reference with the lower-layer map.
+> Remaining: a published docs site and the runtime packaging decision.
 - [ ] Publish an API reference for the runtime (`HieroIcon` props,
       imperative driver API, effects, gestures) — today only
       `docs/guides/` prose exists and isn't versioned or published.
@@ -176,7 +208,10 @@ the blank-canvas first session into a guided one.
 - **Accept:** A developer who has never opened the Studio can integrate
   a compiled icon from the docs alone.
 
-### C3. Bulk operations for design-system-scale libraries — **P2 · L**
+### C3. Bulk operations for design-system-scale libraries — **P2 · L** — **PARTIAL (2026-06-10)**
+> Shipped: "Export selected icons (SVG ZIP)" palette command over the
+> list pane's multi-select. Remaining: bulk rename patterns and
+> apply-preset-to-selection.
 - [ ] Bulk export (multi-select → export all in a chosen format).
 - [ ] Bulk rename with pattern support (prefix/suffix/find-replace).
 - [ ] "Apply transition/effect preset to selected icons" — generalize
@@ -184,13 +219,19 @@ the blank-canvas first session into a guided one.
 - **Accept:** A 100-icon library can be renamed and exported in one
   interaction each, not 100.
 
-### C4. CLI parity: watch mode first — **P2 · M**
+### C4. CLI parity: watch mode first — **P2 · M** — **DONE (2026-06-10)**
+> `hiero build --watch`: debounced recursive watcher, failed rebuilds
+> log and keep watching, SIGINT exits cleanly. README limitation
+> removed. Transition authoring + PR sync from CLI remain open.
 - [ ] `hiero build --watch` (the README's own top known-limitation).
 - [ ] Then evaluate: transition validation in CLI, PR sync from CLI.
 - **Accept:** Editing a source icon re-builds automatically in <2s in a
   sample project.
 
-### C5. Write down positioning & sustainability — **P2 · S**
+### C5. Write down positioning & sustainability — **P2 · S** — **DONE (2026-06-10)**
+> PRODUCT.md gained "Positioning & Sustainability": repo-native
+> pipeline moat, open-core operating model, and what the hosted-tier
+> bet gates (collab/teams/accounts).
 - [ ] Add a section to PRODUCT.md: who pays / why it persists (OSS +
       hosted tier? internal tool? sponsorware?). This decision gates
       whether team workspaces, auth, and collab ever get built.

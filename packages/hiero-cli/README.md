@@ -60,6 +60,14 @@ Runs the **deterministic snapshot build**. Reads everything under
 package layout to the configured `releaseTargets`. Output is byte-stable
 across runs for the same input — safe to commit.
 
+Pass `--watch` to keep the process alive and rebuild automatically
+whenever a file under the source directory changes (debounced; a failed
+rebuild logs and keeps watching):
+
+```bash
+hiero build --watch
+```
+
 ### `hiero validate`
 
 Validates `hiero.config.ts` and every icon source file against the
@@ -83,7 +91,6 @@ The 0.2.x line is intentionally narrow:
   packages, but it does not yet expose a way to author cross-icon
   transitions from the terminal — that flow still lives in the web app's
   Animate panel (see [`docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md`](../../docs_canonical/ANIMATE_PANEL_REVAMP_PLAN.md)).
-- **No watch mode for `hiero build`.** Re-run on save manually for now.
 - **No GitHub PR sync.** Use the hosted Studio's Publish → GitHub PR flow.
 
 If a feature you need is missing, file an issue at

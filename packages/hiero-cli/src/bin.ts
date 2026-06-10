@@ -5,7 +5,7 @@
  * Usage:
  *   hiero init              Scaffold hiero.config.ts and source directory
  *   hiero dev [--port N]    Start live integration dev server (Lane 1)
- *   hiero build             Deterministic snapshot build (Lane 2)
+ *   hiero build [--watch]   Deterministic snapshot build (Lane 2)
  *   hiero validate          Validate config and source files
  *
  * Run via bun:

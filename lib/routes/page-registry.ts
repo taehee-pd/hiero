@@ -25,7 +25,8 @@ export type RoutePath =
   | '/editor/[iconId]'
   | '/history'
   | '/runtime-demo'
-  | '/demo/runtime';
+  | '/demo/runtime'
+  | '/share';
 
 export type PageDefinition =
   | { readonly kind: 'shell'; readonly shell: ShellId }
@@ -39,6 +40,7 @@ export const PAGE_REGISTRY = {
   '/history': { kind: 'standalone' },
   '/runtime-demo': { kind: 'standalone' },
   '/demo/runtime': { kind: 'standalone' },
+  '/share': { kind: 'standalone' },
 } as const satisfies Record<RoutePath, PageDefinition>;
 
 /** Route keys, derived from the registry so the two can never disagree. */

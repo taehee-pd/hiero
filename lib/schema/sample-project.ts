@@ -1,9 +1,12 @@
+import { EXAMPLE_ICONS } from './example-icons';
 import { normalizeVariant, type Project } from './types';
 import { createWorkspaceFromProject } from './workspace';
 
 /**
- * Sample project with popular Lucide icons for dev/testing.
- * Each icon uses official Lucide SVG paths (24x24 viewBox, stroke-based).
+ * Sample project with popular Lucide icons for dev/testing, plus the
+ * animated example icons (morph pair + draw effects) so a first-run
+ * user meets the differentiators on the starter canvas.
+ * Each static icon uses official Lucide SVG paths (24x24, stroke-based).
  */
 const BASE_SAMPLE_PROJECT: Project = {
   version: '1.0',
@@ -266,6 +269,12 @@ const BASE_SAMPLE_PROJECT: Project = {
   },
 };
 
-export const SAMPLE_PROJECT: Project = BASE_SAMPLE_PROJECT;
+export const SAMPLE_PROJECT: Project = {
+  ...BASE_SAMPLE_PROJECT,
+  icons: {
+    ...BASE_SAMPLE_PROJECT.icons,
+    ...Object.fromEntries(EXAMPLE_ICONS.map((icon) => [icon.id, icon])),
+  },
+};
 
 export const SAMPLE_WORKSPACE = createWorkspaceFromProject(SAMPLE_PROJECT, 'starter');

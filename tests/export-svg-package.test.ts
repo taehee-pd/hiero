@@ -8,9 +8,13 @@ describe('export svg package', () => {
     const keys = Object.keys(fileMap).sort();
 
     expect(keys).toEqual([
+      'icons/activity-draw-slide-demo/24.svg',
       'icons/bell/24.svg',
+      'icons/check-draw-on-demo/24.svg',
       'icons/heart/24.svg',
       'icons/home/24.svg',
+      'icons/pause-morph-demo/24.svg',
+      'icons/play-morph-demo/24.svg',
       'icons/search/24.svg',
       'icons/settings/24.svg',
       'icons/star/24.svg',

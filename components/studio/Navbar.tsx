@@ -80,6 +80,7 @@ import {
   type SaveState,
 } from '@/lib/persistence/save-state';
 import { toast } from '@/components/ui/use-toast';
+import { DOCS_LINKS, openDocs } from '@/lib/platform/docs-links';
 
 export function Navbar() {
   const projectName = useEditorStore((s) => s.project?.meta.name ?? 'Hiero');
@@ -89,6 +90,10 @@ export function Navbar() {
   const lastPublishedAt = useEditorStore((s) => s.lastPublishedAt);
   const lastPublishedVersion = useEditorStore((s) => s.lastPublishedVersion);
   const activeIconSetId = useEditorStore((s) => s.activeIconSetId);
+  // History depth piggybacks on the store's emit: every push/undo/redo
+  // coincides with a state change, so the selector re-runs in time.
+  const canUndo = useEditorStore(() => editorStore.temporal.getState().pastStates.length > 0);
+  const canRedo = useEditorStore(() => editorStore.temporal.getState().futureStates.length > 0);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingNameValue, setEditingNameValue] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -699,6 +704,8 @@ export function Navbar() {
 
               {/* Help */}
               <DropdownMenuItem onSelect={() => setShortcutsOpen(true)}><UiIcon name="keyboard" size={16} className="size-4" />Keyboard Shortcuts<DropdownMenuShortcut>?</DropdownMenuShortcut></DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openDocs(DOCS_LINKS.userGuide)}><UiIcon name="help-circle" size={16} className="size-4" />User Guide</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openDocs(DOCS_LINKS.frameworkIntegration)}><UiIcon name="file-json" size={16} className="size-4" />Framework Integration</DropdownMenuItem>
               <DropdownMenuItem onSelect={openCommandPalette}><UiIcon name="search" size={16} className="size-4" />Search<DropdownMenuShortcut>⌘K</DropdownMenuShortcut></DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -756,9 +763,10 @@ export function Navbar() {
             kbd={['Cmd', 'S']}
           />
 
-          {/* Undo/Redo */}
-          <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" onClick={undo} kbd={['Cmd', 'Z']} />
-          <IconButton icon={<UiIcon name="redo-2" />} aria-label="Redo" onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
+          {/* Undo/Redo — disabled state mirrors the history stacks so the
+              buttons double as an "is there anything to undo" indicator. */}
+          <IconButton icon={<UiIcon name="undo-2" />} aria-label="Undo" disabled={!canUndo} onClick={undo} kbd={['Cmd', 'Z']} />
+          <IconButton icon={<UiIcon name="redo-2" />} aria-label="Redo" disabled={!canRedo} onClick={redo} kbd={['Shift', 'Cmd', 'Z']} />
 
           <span className="mx-1 h-4 w-px bg-border/60" aria-hidden="true" />
 
@@ -890,6 +898,13 @@ export function Navbar() {
               </div>
             ))}
           </div>
+          <button
+            className="mt-1 flex w-full items-center gap-2 rounded-md border border-border/70 bg-background/60 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => openDocs(DOCS_LINKS.userGuide)}
+          >
+            <UiIcon name="help-circle" size={16} className="size-4" />
+            Full guide: drawing, animating, exporting, and more
+          </button>
         </DialogContent>
       </Dialog>
 

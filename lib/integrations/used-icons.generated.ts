@@ -78,6 +78,7 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
   "skip-back",
   "skip-forward",
   "square",
+  "star",
   "sun",
   "trash-2",
   "undo-2",
@@ -89,4 +90,4 @@ export const USED_ICON_NAMES: readonly string[] = Object.freeze([
 ]);
 
 /** Count exposed for diagnostics (drift checks, README pins, etc.). */
-export const USED_ICON_COUNT = 73;
+export const USED_ICON_COUNT = 74;

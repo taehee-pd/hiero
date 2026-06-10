@@ -57,6 +57,9 @@ import type { GuideItem, Icon, Layer, RenderingMode, Variant } from '@/lib/schem
 import { variantToSnapshot } from '@/lib/schema/types';
 import type { TransitionConfig } from '@/lib/runtime-core/transition-resolver';
 import { clearCurrentProjectPath, exportSvg, saveProject } from '@/lib/platform/bridge';
+import { DOCS_LINKS, openDocs } from '@/lib/platform/docs-links';
+import { EXAMPLE_ICONS } from '@/lib/schema/example-icons';
+import { FirstRunTour } from '@/components/editor/FirstRunTour';
 import { saveDraftCheckpoint } from '@/lib/persistence/use-persistence';
 import { toast as appToast } from '@/components/ui/use-toast';
 import { buildEditorRoute, parseEditorSearchParam } from '@/lib/platform/routes';
@@ -2559,14 +2562,18 @@ export function EditorShell({
       const id = createBlankIcon();
       if (id && activeIconSetId) openIconTab(activeIconSetId, id);
     };
+    const addExamples = () => handleAddExampleIcons();
     window.addEventListener('hiero:open-command', openCommand as EventListener);
     window.addEventListener('hiero:import-svg', openImport as EventListener);
     window.addEventListener('hiero:new-icon', newIcon as EventListener);
+    window.addEventListener('hiero:add-examples', addExamples as EventListener);
     return () => {
       window.removeEventListener('hiero:open-command', openCommand as EventListener);
       window.removeEventListener('hiero:import-svg', openImport as EventListener);
       window.removeEventListener('hiero:new-icon', newIcon as EventListener);
+      window.removeEventListener('hiero:add-examples', addExamples as EventListener);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleAddExampleIcons is re-created per render; the listener body reads fresh store state so a stale closure is harmless
   }, [activeIconSetId, createBlankIcon, openIconTab]);
 
   useEffect(() => {
@@ -2743,6 +2750,32 @@ export function EditorShell({
     // In standalone mode, navigate to editor route
     if (!embedded) {
       router.push(buildEditorRoute(iconId, activeIconSetId));
+    }
+  };
+
+  // B1: insert the bundled animated examples (play⇄pause morph, draw-on
+  // check) into the current project. Skips icons already present so the
+  // cross-icon transition ids keep pointing at each other.
+  const handleAddExampleIcons = () => {
+    const state = editorStore.getState();
+    const existing = new Set(Object.keys(state.project?.icons ?? {}));
+    let added = 0;
+    for (const icon of EXAMPLE_ICONS) {
+      if (existing.has(icon.id)) continue;
+      state.insertIcon(structuredClone(icon));
+      added += 1;
+    }
+    appToast({
+      title: added > 0 ? `Added ${added} example icons` : 'Examples already in this project',
+      description:
+        added > 0
+          ? 'Open "Play (morph demo)" and press Preview to see the morph.'
+          : undefined,
+    });
+    const playIcon = EXAMPLE_ICONS[0];
+    if (playIcon && activeIconSetId && editorStore.getState().project?.icons[playIcon.id]) {
+      openIconTab(activeIconSetId, playIcon.id);
+      setCurrentIcon(playIcon.id);
     }
   };
 
@@ -2982,6 +3015,15 @@ export function EditorShell({
             <CommandItem
               onSelect={() => {
                 setCommandOpen(false);
+                handleAddExampleIcons();
+              }}
+            >
+              <UiIcon name="star" size={16} className="size-4" />
+              <span>Add example icons (morph, draw-on)</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
                 void handleSave();
               }}
             >
@@ -3033,6 +3075,15 @@ export function EditorShell({
             >
               <UiIcon name="blend" size={16} className="size-4" />
               <span>Export React library</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setCommandOpen(false);
+                openDocs(DOCS_LINKS.userGuide);
+              }}
+            >
+              <UiIcon name="help-circle" size={16} className="size-4" />
+              <span>Open user guide</span>
             </CommandItem>
           </CommandGroup>
 
@@ -3152,6 +3203,9 @@ export function EditorShell({
           {exportMessage}
         </div>
       )}
+
+      {/* B2: one-time getting-started walkthrough (localStorage-gated). */}
+      <FirstRunTour />
     </div>
   );
 }

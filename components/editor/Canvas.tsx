@@ -1083,12 +1083,24 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
 
       <div
         ref={interactionRootRef}
-        className="absolute inset-0 flex items-center justify-center"
+        // B5: the canvas is a real tab stop so keyboard-only users can
+        // reach it; the editor shortcuts are window-level, so focus here
+        // is about discoverability (focus ring + SR instructions), not
+        // event routing.
+        tabIndex={0}
+        className="absolute inset-0 flex items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         data-canvas-interaction-root
         role="region"
         aria-label="Icon editor canvas"
         aria-roledescription="drawing canvas"
+        aria-describedby="canvas-keyboard-help"
       >
+        <p id="canvas-keyboard-help" className="sr-only">
+          Keyboard: V select, A direct select, P pen, U shape. Arrow keys
+          nudge the selected point or layer; hold Shift for larger steps.
+          Delete removes the selection. Press question mark for all
+          shortcuts.
+        </p>
         <div className="absolute inset-0" data-canvas-draft-surface />
 
         {icon && variant && currentState && (
@@ -1184,6 +1196,15 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
               <span className="ml-1 rounded-sm border border-border/60 bg-muted px-1 font-mono text-[9px] leading-none text-muted-foreground">
                 ⌘K
               </span>
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-7 items-center gap-1 rounded-full border border-border/70 bg-background px-2.5 text-[length:var(--text-label)] font-medium text-foreground transition hover:bg-accent"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('hiero:add-examples'));
+              }}
+            >
+              Start from an example
             </button>
           </div>
         </div>

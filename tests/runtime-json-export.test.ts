@@ -13,6 +13,14 @@ describe('runtime-json export', () => {
 
     expect(first.files.map((file) => file.path)).toEqual([
       'icons/index.json',
+      'icons/example-activity/meta.json',
+      'icons/example-activity/v24.json',
+      'icons/example-check/meta.json',
+      'icons/example-check/v24.json',
+      'icons/example-pause/meta.json',
+      'icons/example-pause/v24.json',
+      'icons/example-play/meta.json',
+      'icons/example-play/v24.json',
       'icons/icon-bell/meta.json',
       'icons/icon-bell/v24.json',
       'icons/icon-heart/meta.json',

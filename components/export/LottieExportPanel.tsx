@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from '@/components/ui/use-toast';
 import { useEditorStore } from '@/lib/editor-store/hooks';
 import { exportLottie, type LottieExportOptions } from '@/lib/export/export-lottie';
 import {
@@ -81,6 +82,11 @@ export function LottieExportPanel() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Lottie export failed:', err);
+      toast({
+        title: 'Lottie export failed',
+        description: err instanceof Error ? err.message : 'Unexpected error during export.',
+        variant: 'destructive',
+      });
     } finally {
       setIsExporting(false);
     }

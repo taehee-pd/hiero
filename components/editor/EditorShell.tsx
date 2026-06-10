@@ -2637,9 +2637,19 @@ export function EditorShell({
   const handleExportProjectFile = async () => {
     const payload = serializeWorkspace();
     if (!payload) return;
-    const result = await saveProject(payload.data);
-    if (result) {
-      editorStore.getState().markSaved(payload.updatedAt);
+    try {
+      const result = await saveProject(payload.data);
+      if (result) {
+        editorStore.getState().markSaved(payload.updatedAt);
+      }
+    } catch (error) {
+      console.error('[EditorShell] project file export failed:', error);
+      appToast({
+        title: 'Project file export failed',
+        description:
+          error instanceof Error ? error.message : 'Could not write the project file.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -2650,9 +2660,16 @@ export function EditorShell({
       await fn();
       setExportMessage(`${label} exported`);
       setTimeout(() => setExportMessage(null), 2000);
-    } catch {
+    } catch (error) {
+      console.error(`[EditorShell] ${label} export failed:`, error);
       setExportMessage(`${label} export failed`);
       setTimeout(() => setExportMessage(null), 3000);
+      appToast({
+        title: `${label} export failed`,
+        description:
+          error instanceof Error ? error.message : 'Unexpected error during export.',
+        variant: 'destructive',
+      });
     } finally {
       setExporting(false);
     }

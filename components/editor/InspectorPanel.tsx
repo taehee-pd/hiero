@@ -324,6 +324,7 @@ export const InspectorPanel = memo(function InspectorPanel() {
             error instanceof Error
               ? error.message
               : 'Selected layers could not be combined. Check that each layer has a valid path.',
+          variant: 'destructive',
         });
       } finally {
         setPendingBooleanMode(null);

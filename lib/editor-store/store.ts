@@ -3891,6 +3891,12 @@ function createActions(): EditorActions {
             selection: { layerIds: [primaryLayerId], pointIds: [] },
           };
         });
+      } catch (error) {
+        // A throw mid-transaction must never leave half-applied geometry:
+        // roll the store back to the pre-operation snapshot before
+        // re-throwing for the caller's error toast.
+        temporalState.discard();
+        throw error;
       } finally {
         temporalState.resume();
         temporalState.commit(`boolean:${mode}`);
@@ -4001,6 +4007,11 @@ function createActions(): EditorActions {
             },
           };
         });
+      } catch (error) {
+        // Failed derivation rolls back to the pre-operation snapshot so
+        // the icon is never left in a partially derived state.
+        temporalState.discard();
+        throw error;
       } finally {
         editorStoreApi.setState({ isDeriving: false });
         temporalState.resume();

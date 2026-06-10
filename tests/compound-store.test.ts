@@ -19,6 +19,8 @@ const SQUARE_C = 'M2 2 L8 2 L8 8 L2 8 Z';
 const UNION_AB = 'M0 0 L15 0 L15 15 L0 15 Z';
 const UNION_ABC = 'M0 0 L15 0 L15 15 L0 15 Z';
 const SUBTRACT_AB = 'M0 0 L5 0 L5 10 L0 10 Z';
+/** Sentinel path data that makes the fake paper ops throw (A5 rollback tests). */
+const THROWING_PATH = 'THROW';
 
 class FakeCompoundPath {
   pathData: string;
@@ -29,7 +31,10 @@ class FakeCompoundPath {
       intersects: (other) => this.pathData !== '' && other.pathData !== '',
     };
   }
-  unite(_other: FakeCompoundPath) {
+  unite(other: FakeCompoundPath) {
+    if (this.pathData === THROWING_PATH || other.pathData === THROWING_PATH) {
+      throw new Error('fake paper unite failure');
+    }
     return new FakeCompoundPath({ pathData: UNION_AB });
   }
   subtract(_other: FakeCompoundPath) {
@@ -193,6 +198,35 @@ describe('applyBoolean (W2-2)', () => {
     await editorStore.getState().applyBoolean('unite');
     const v2 = activeLayer('A')!.compound!.cacheVersion;
     expect(v2).toBeGreaterThan(v1);
+  });
+});
+
+describe('applyBoolean rollback on failure (A5)', () => {
+  beforeEach(() => {
+    editorStore.setState({ favorites: [], openTabs: [], activeTabId: null });
+  });
+
+  test('a throwing boolean op leaves layers, selection, and history untouched', async () => {
+    bootstrapWithLayers([
+      makeLayer('A', SQUARE_A),
+      makeLayer('B', THROWING_PATH),
+    ]);
+    const before = editorStore.getState();
+    const historyBefore = editorStore.temporal.getState().pastStates.length;
+
+    await expect(editorStore.getState().applyBoolean('unite')).rejects.toThrow(
+      'fake paper unite failure',
+    );
+
+    const after = editorStore.getState();
+    // Pre-operation geometry survives verbatim — a failed op is a no-op.
+    expect(after.project).toBe(before.project);
+    expect(activeLayer('A')!.path?.d).toBe(SQUARE_A);
+    expect(activeLayer('B')!.path?.d).toBe(THROWING_PATH);
+    expect(after.selection.layerIds.sort()).toEqual(['A', 'B']);
+    // No phantom undo entry for the failed operation.
+    expect(editorStore.temporal.getState().pastStates.length).toBe(historyBefore);
+    expect(after.isDirty).toBe(before.isDirty);
   });
 });
 

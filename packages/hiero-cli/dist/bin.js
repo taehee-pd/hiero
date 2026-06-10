@@ -4,20 +4,34 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: () => mod[key],
+        get: __accessProp.bind(mod, key),
         enumerable: true
       });
+  if (canCache)
+    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 
-// ../../node_modules/.pnpm/fast-bitset@1.3.2/node_modules/fast-bitset/app/BitSet.js
+// ../../node_modules/fast-bitset/app/BitSet.js
 var require_BitSet = __commonJS((exports, module) => {
   var BITS_PER_INT = 31;
   var multiplyDeBruijnBitPosition = [
@@ -397,7 +411,7 @@ var require_BitSet = __commonJS((exports, module) => {
   }
 });
 
-// ../../node_modules/.pnpm/hungarian-on3@0.3.1/node_modules/hungarian-on3/app/hungarianOn3.js
+// ../../node_modules/hungarian-on3/app/hungarianOn3.js
 var require_hungarianOn3 = __commonJS((exports, module) => {
   var BitSet2 = require_BitSet();
   module.exports = function(costMatrix, isProfit) {
@@ -704,12 +718,12 @@ var require_hungarianOn3 = __commonJS((exports, module) => {
   };
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/dist/version.json
+// ../../node_modules/poly2tri/dist/version.json
 var require_version = __commonJS((exports, module) => {
   module.exports = { version: "1.5.0" };
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/xy.js
+// ../../node_modules/poly2tri/src/xy.js
 var require_xy = __commonJS((exports, module) => {
   function toStringBase(p) {
     return "(" + p.x + ";" + p.y + ")";
@@ -736,7 +750,7 @@ var require_xy = __commonJS((exports, module) => {
   };
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/pointerror.js
+// ../../node_modules/poly2tri/src/pointerror.js
 var require_pointerror = __commonJS((exports, module) => {
   var xy = require_xy();
   var PointError = function(message, points) {
@@ -752,7 +766,7 @@ var require_pointerror = __commonJS((exports, module) => {
   module.exports = PointError;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/point.js
+// ../../node_modules/poly2tri/src/point.js
 var require_point = __commonJS((exports, module) => {
   var xy = require_xy();
   var Point = function(x, y) {
@@ -848,7 +862,7 @@ var require_point = __commonJS((exports, module) => {
   module.exports = Point;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/triangle.js
+// ../../node_modules/poly2tri/src/triangle.js
 var require_triangle = __commonJS((exports, module) => {
   var xy = require_xy();
   var Triangle = function(a, b, c) {
@@ -1132,7 +1146,7 @@ var require_triangle = __commonJS((exports, module) => {
   module.exports = Triangle;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/assert.js
+// ../../node_modules/poly2tri/src/assert.js
 var require_assert = __commonJS((exports, module) => {
   function assert(condition, message) {
     if (!condition) {
@@ -1142,7 +1156,7 @@ var require_assert = __commonJS((exports, module) => {
   module.exports = assert;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/advancingfront.js
+// ../../node_modules/poly2tri/src/advancingfront.js
 var require_advancingfront = __commonJS((exports, module) => {
   var Node = function(p, t) {
     this.point = p;
@@ -1232,7 +1246,7 @@ var require_advancingfront = __commonJS((exports, module) => {
   module.exports.Node = Node;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/utils.js
+// ../../node_modules/poly2tri/src/utils.js
 var require_utils = __commonJS((exports) => {
   var EPSILON2 = 0.000000000001;
   exports.EPSILON = EPSILON2;
@@ -1277,7 +1291,7 @@ var require_utils = __commonJS((exports) => {
   exports.isAngleObtuse = isAngleObtuse;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/sweep.js
+// ../../node_modules/poly2tri/src/sweep.js
 var require_sweep = __commonJS((exports) => {
   var assert = require_assert();
   var PointError = require_pointerror();
@@ -1744,7 +1758,7 @@ var require_sweep = __commonJS((exports) => {
   exports.triangulate = triangulate;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/sweepcontext.js
+// ../../node_modules/poly2tri/src/sweepcontext.js
 var require_sweepcontext = __commonJS((exports, module) => {
   var PointError = require_pointerror();
   var Point = require_point();
@@ -1953,7 +1967,7 @@ var require_sweepcontext = __commonJS((exports, module) => {
   module.exports = SweepContext;
 });
 
-// ../../node_modules/.pnpm/poly2tri@1.5.0/node_modules/poly2tri/src/poly2tri.js
+// ../../node_modules/poly2tri/src/poly2tri.js
 var require_poly2tri = __commonJS((exports) => {
   var previousPoly2tri = global.poly2tri;
   exports.noConflict = function() {
@@ -6993,7 +7007,7 @@ function estimateDistortion3(interpolator) {
   }
 }
 
-// ../../node_modules/.pnpm/clipper2-ts@2.0.1-15/node_modules/clipper2-ts/dist/Core.js
+// ../../node_modules/clipper2-ts/dist/Core.js
 var ClipType;
 (function(ClipType2) {
   ClipType2[ClipType2["NoClip"] = 0] = "NoClip";
@@ -7649,7 +7663,7 @@ var RectDUtils = {
 };
 var InvalidRect64 = Object.freeze(Rect64Utils.createInvalid());
 var InvalidRectD = Object.freeze(RectDUtils.createInvalid());
-// ../../node_modules/.pnpm/clipper2-ts@2.0.1-15/node_modules/clipper2-ts/dist/Engine.js
+// ../../node_modules/clipper2-ts/dist/Engine.js
 var B02 = BigInt(0);
 var B22 = BigInt(2);
 var B42 = BigInt(4);
@@ -10384,7 +10398,7 @@ var Clipper = {
   }
 };
 
-// ../../node_modules/.pnpm/clipper2-ts@2.0.1-15/node_modules/clipper2-ts/dist/Offset.js
+// ../../node_modules/clipper2-ts/dist/Offset.js
 var JoinType;
 (function(JoinType2) {
   JoinType2[JoinType2["Miter"] = 0] = "Miter";
@@ -10982,7 +10996,7 @@ class ClipperOffset {
     return result;
   }
 }
-// ../../node_modules/.pnpm/clipper2-ts@2.0.1-15/node_modules/clipper2-ts/dist/Clipper.js
+// ../../node_modules/clipper2-ts/dist/Clipper.js
 var B23 = BigInt(2);
 function intersectD(subject, clip, fillRule, precision = 2) {
   return booleanOpD(ClipType.Intersection, subject, clip, fillRule, precision);

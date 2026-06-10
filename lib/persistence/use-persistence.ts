@@ -10,6 +10,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { editorStore } from '@/lib/editor-store/store';
 import { IndexedDBAdapter } from './indexeddb-adapter';
+import { ResilientAdapter } from './resilient-adapter';
 import { PersistenceManager } from './persistence-manager';
 import type { ProjectMeta, SavedProject } from './adapter';
 import { toast } from '@/components/ui/use-toast';
@@ -18,7 +19,7 @@ let sharedManager: PersistenceManager | null = null;
 
 function getManager(): PersistenceManager {
   if (!sharedManager) {
-    sharedManager = new PersistenceManager(new IndexedDBAdapter(), {
+    sharedManager = new PersistenceManager(new ResilientAdapter(new IndexedDBAdapter()), {
       onSaved: () => {
         editorStore.getState().markSaved();
       },

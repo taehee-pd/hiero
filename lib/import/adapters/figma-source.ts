@@ -15,6 +15,75 @@
 
 const FIGMA_API = 'https://api.figma.com';
 
+/** Upstream calls abort after this long so the UI never spins forever. */
+export const FIGMA_FETCH_TIMEOUT_MS = 20_000;
+
+/**
+ * Machine-readable failure category. The API route forwards this to the
+ * client so it can distinguish "fix your token" (auth_invalid) from
+ * "wait and retry" (rate_limited / timeout) from "Figma is having a bad
+ * day" (upstream_error).
+ */
+export type FigmaErrorCode =
+  | 'auth_invalid'
+  | 'rate_limited'
+  | 'timeout'
+  | 'upstream_error';
+
+export class FigmaApiError extends Error {
+  readonly code: FigmaErrorCode;
+  readonly upstreamStatus: number | null;
+
+  constructor(code: FigmaErrorCode, message: string, upstreamStatus: number | null = null) {
+    super(message);
+    this.name = 'FigmaApiError';
+    this.code = code;
+    this.upstreamStatus = upstreamStatus;
+  }
+}
+
+export function figmaErrorFromStatus(status: number, detail: string): FigmaApiError {
+  if (status === 401 || status === 403) {
+    return new FigmaApiError(
+      'auth_invalid',
+      'Figma rejected the access token. Generate a new personal access token and try again.',
+      status,
+    );
+  }
+  if (status === 429) {
+    return new FigmaApiError(
+      'rate_limited',
+      'Figma rate limit reached. Wait a minute and try again.',
+      status,
+    );
+  }
+  return new FigmaApiError('upstream_error', `Figma API ${status}: ${detail}`, status);
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'TimeoutError' || error.name === 'AbortError')
+  );
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(FIGMA_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new FigmaApiError(
+        'timeout',
+        `Figma did not respond within ${FIGMA_FETCH_TIMEOUT_MS / 1000}s. Try again.`,
+      );
+    }
+    throw error;
+  }
+}
+
 export type FigmaComponent = {
   key: string;
   name: string;
@@ -68,14 +137,14 @@ export function parseFigmaUrl(url: string): { fileKey: string } | null {
 }
 
 async function figmaGet<T>(path: string, token: string): Promise<T> {
-  const response = await fetch(`${FIGMA_API}${path}`, {
+  const response = await fetchWithTimeout(`${FIGMA_API}${path}`, {
     headers: {
       'X-Figma-Token': token,
     },
   });
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(`Figma API ${response.status}: ${text.slice(0, 200)}`);
+    throw figmaErrorFromStatus(response.status, text.slice(0, 200));
   }
   return (await response.json()) as T;
 }
@@ -115,9 +184,13 @@ export async function exportNodeAsSvg(
   }
 
   // Step 2: Fetch the actual SVG content
-  const svgResponse = await fetch(imageUrl);
+  const svgResponse = await fetchWithTimeout(imageUrl);
   if (!svgResponse.ok) {
-    throw new Error(`Failed to download SVG from Figma CDN: ${svgResponse.status}`);
+    throw new FigmaApiError(
+      'upstream_error',
+      `Failed to download SVG from Figma CDN: ${svgResponse.status}`,
+      svgResponse.status,
+    );
   }
   return svgResponse.text();
 }

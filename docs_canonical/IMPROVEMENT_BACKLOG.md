@@ -16,61 +16,72 @@ Status legend: `[ ]` open · `[x]` done
 The tool's persistence story is local IndexedDB; any crash or silent
 failure costs real user work. Nothing else matters until these land.
 
-### A1. Editor error boundary + crash recovery screen — **P0 · M**
-- [ ] Add a React error boundary wrapping the editor surface (around
-      `StudioLayout` / `EditorShell` in `app/layout.tsx:53-91` or the
-      nearest route-level layout).
-- [ ] Recovery UI: "Something went wrong — your work is auto-saved"
-      with a Reload action and a copyable error digest for bug reports
-      (include `window.__HIERO_BUILD__` info).
-- [ ] Log boundary catches to console with component stack.
+### A1. Editor error boundary + crash recovery screen — **P0 · M** — **DONE (2026-06-10)**
+- [x] Add a React error boundary wrapping the editor surface — shipped as
+      `app/error.tsx` (route-segment boundary) + `app/global-error.tsx`
+      (root-layout fallback), both rendering
+      `components/error-recovery.tsx`.
+- [x] Recovery UI: "Hiero hit an unexpected error — your work is
+      auto-saved" with Try again / Reload actions and a copyable error
+      report (message, digest, `BUILD_VERSION` triple).
+- [x] Log boundary catches to console.
 - **Accept:** Throwing inside any editor panel in dev shows the recovery
   screen instead of a white page; reload restores the workspace from
   IndexedDB. Test: a `tests/` dom test that renders the boundary with a
   throwing child.
 
-### A2. IndexedDB integrity check + degraded mode — **P0 · M**
-- [ ] On adapter open (`lib/persistence/indexeddb-adapter.ts`), detect
-      corruption/unavailability (open failure, version error, quota) and
-      fall back to an in-memory session store instead of failing silently.
-- [ ] Surface a persistent (non-toast) banner when running in degraded
-      mode: "Changes won't survive this tab — export your work."
-- [ ] Warn *before* the first edit when storage is unavailable, not after
-      a failed save (`lib/persistence/use-persistence.ts:28-39`).
+### A2. IndexedDB integrity check + degraded mode — **P0 · M** — **DONE (2026-06-10)**
+- [x] Detect unavailability and fall back to an in-memory session store —
+      shipped as `lib/persistence/resilient-adapter.ts` (wraps
+      `IndexedDBAdapter`, degrades on SecurityError / InvalidStateError /
+      VersionError / missing API; quota errors still surface) +
+      `lib/persistence/memory-adapter.ts`.
+- [x] Persistent non-toast banner in degraded mode —
+      `components/persistence/StorageStatusBanner.tsx`, mounted via
+      `AutoSaveProvider`, driven by `lib/persistence/storage-status.ts`.
+- [x] Warn before the first edit — the adapter probes IndexedDB at
+      construction so the banner appears at startup.
 - **Accept:** With IndexedDB blocked (private-mode simulation / mocked
   adapter), the editor still works for the session and the banner shows.
 
-### A3. Export failures must toast, never console-only — **P0 · S**
-- [ ] Audit every export handler in `components/editor/EditorShell.tsx`
-      (SVG, runtime JSON, Lottie, React codegen, compiled): on throw,
-      show a destructive toast with the format name + error message.
-- [ ] Same for publish/release flows in `components/export/`.
+### A3. Export failures must toast, never console-only — **P0 · S** — **DONE (2026-06-10)**
+- [x] `EditorShell.tsx`: `runExport` and `handleExportProjectFile` now
+      show a destructive toast with the format name + error message
+      (the inline status pill already existed; it stays).
+- [x] `components/export/` audit: publish/sync panels already surfaced
+      errors; the one console-only path (`LottieExportPanel`
+      download) now toasts.
 - **Accept:** Forcing an exporter to throw produces a visible toast;
   grep shows no export path whose only failure channel is `console.*`.
 
-### A4. Import network resilience (timeout / retry / error states) — **P0 · M**
-- [ ] Add `AbortSignal.timeout(30_000)` (or equivalent) to all fetches in
-      `components/editor/ImportIconDialog.tsx` (token validation
-      :105-114, component search :139-149, library import :324-337) and
-      `lib/import/adapters/figma-source.ts:71`.
-- [ ] Every async import flow gets an inline error state with a Retry
-      button — no infinite spinners.
-- [ ] `app/api/import/figma/route.ts:90-92`: return structured error
-      codes (`auth_invalid` / `rate_limited` / `upstream_error`) so the
-      client can distinguish "fix your token" from "try again".
+### A4. Import network resilience (timeout / retry / error states) — **P0 · M** — **DONE (2026-06-10)**
+- [x] `AbortSignal.timeout` on every import fetch: 30s client-side in
+      `ImportIconDialog.tsx`, 20s server-side in `figma-source.ts`
+      (Figma API + CDN download).
+- [x] Inline error states everywhere — component search failures now
+      render in the connected view (previously invisible), timeouts
+      produce "timed out after 30s" copy, and the action buttons double
+      as retry.
+- [x] Structured error codes — `FigmaApiError` with
+      `auth_invalid` / `rate_limited` / `timeout` / `upstream_error`;
+      the route maps them to 401/429/504/502 and the dialog renders
+      code-specific guidance.
 - **Accept:** Killing the network mid-import shows an actionable error
   within 30s in every import path.
 
-### A5. Checkpoint before destructive geometry operations — **P1 · M**
-- [ ] Boolean ops, compound merges, and morph rebinds snapshot store
-      state first and roll back on throw (today
-      `components/editor/InspectorPanel.tsx:319-325` catches but leaves
-      partial state).
-- [ ] Reuse the existing undo-history mechanism in
-      `lib/editor-store/store.ts` — a failed op should be a no-op, not a
-      half-applied edit.
+### A5. Checkpoint before destructive geometry operations — **P1 · M** — **DONE (2026-06-10)**
+- [x] Audit outcome: `applyBoolean` / `applyDerivedVariant` were already
+      atomic (async work completes before a single `setState`), so no
+      half-applied state was reachable. Hardened anyway: both now
+      `temporalState.discard()` explicitly on throw so a future
+      mid-transaction failure also rolls back, and the boolean-failure
+      toast is now `destructive`.
+- [x] Contract pinned by tests: `tests/history-discard.test.ts`
+      (pause → mutate → discard/commit primitives) and the
+      `applyBoolean rollback on failure (A5)` suite in
+      `tests/compound-store.test.ts`.
 - **Accept:** A boolean op that throws mid-way leaves geometry identical
-  to pre-op state; covered by a store-level test.
+  to pre-op state; covered by a store-level test. ✓
 
 ---
 

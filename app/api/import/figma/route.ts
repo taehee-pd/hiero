@@ -16,6 +16,8 @@ import {
   getFileComponents,
   exportNodeAsSvg,
   filterComponents,
+  FigmaApiError,
+  type FigmaErrorCode,
 } from '@/lib/import/adapters/figma-source';
 import { formatFigmaName } from '@/lib/import/adapters/figma-adapter';
 
@@ -89,6 +91,22 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Figma API error';
-    return NextResponse.json({ error: message }, { status: 502 });
+    const code: FigmaErrorCode =
+      error instanceof FigmaApiError ? error.code : 'upstream_error';
+    return NextResponse.json(
+      { error: message, code },
+      { status: HTTP_STATUS_BY_CODE[code] },
+    );
   }
 }
+
+/**
+ * HTTP status per error category so generic clients behave sensibly,
+ * while the `code` field stays the contract the import dialog reads.
+ */
+const HTTP_STATUS_BY_CODE: Record<FigmaErrorCode, number> = {
+  auth_invalid: 401,
+  rate_limited: 429,
+  timeout: 504,
+  upstream_error: 502,
+};

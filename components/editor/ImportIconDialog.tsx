@@ -23,6 +23,52 @@ import { sanitizeSvg } from '@/lib/import/sanitize';
 
 const DEBUG_IMPORT = process.env.NEXT_PUBLIC_IMPORT_DEBUG === '1';
 
+/** Client-side ceiling on import API calls so a dead network can't spin forever. */
+const IMPORT_FETCH_TIMEOUT_MS = 30_000;
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'TimeoutError' || error.name === 'AbortError')
+  );
+}
+
+function postJson(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(IMPORT_FETCH_TIMEOUT_MS),
+  });
+}
+
+/**
+ * Read the structured `{ error, code }` body the Figma proxy route
+ * returns and turn it into actionable copy. Falls back to `fallback`
+ * when the body is missing or unparseable.
+ */
+async function figmaFailureMessage(res: Response, fallback: string): Promise<string> {
+  const body = (await res.json().catch(() => null)) as
+    | { error?: string; code?: string }
+    | null;
+  switch (body?.code) {
+    case 'auth_invalid':
+      return 'Figma rejected the token. Generate a new one at figma.com/developers/api#access-tokens.';
+    case 'rate_limited':
+      return 'Figma rate limit reached — wait a minute, then try again.';
+    case 'timeout':
+      return 'Figma took too long to respond. Try again.';
+    default:
+      return body?.error ?? fallback;
+  }
+}
+
+function networkFailureMessage(error: unknown, context: string): string {
+  return isAbortError(error)
+    ? `${context} timed out after ${IMPORT_FETCH_TIMEOUT_MS / 1000}s. Check your connection and try again.`
+    : `Network error: ${context.toLowerCase()} could not reach the server. Try again.`;
+}
+
 type Props = {
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -102,26 +148,35 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     setFigmaConnecting(true);
     try {
       // Validate token
-      const valRes = await fetch('/api/import/figma', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'validate', token: figmaToken.trim() }),
+      const valRes = await postJson('/api/import/figma', {
+        action: 'validate',
+        token: figmaToken.trim(),
       });
       if (!valRes.ok) {
-        setFigmaError('Invalid token. Generate one at figma.com/developers/api#access-tokens');
+        setFigmaError(
+          await figmaFailureMessage(
+            valRes,
+            'Invalid token. Generate one at figma.com/developers/api#access-tokens',
+          ),
+        );
         return;
       }
       const valData = await valRes.json() as { user: { handle: string } };
       setFigmaUserName(valData.user.handle);
 
       // Fetch components
-      const compRes = await fetch('/api/import/figma', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'components', fileKey: parsed.fileKey, token: figmaToken.trim() }),
+      const compRes = await postJson('/api/import/figma', {
+        action: 'components',
+        fileKey: parsed.fileKey,
+        token: figmaToken.trim(),
       });
       if (!compRes.ok) {
-        setFigmaError('Could not access file. Check the URL and permissions.');
+        setFigmaError(
+          await figmaFailureMessage(
+            compRes,
+            'Could not access file. Check the URL and permissions.',
+          ),
+        );
         return;
       }
       const compData = await compRes.json() as { components: typeof figmaComponents; total: number };
@@ -129,8 +184,8 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
       setFigmaComponentTotal(compData.total);
       setFigmaFileKey(parsed.fileKey);
       setFigmaConnected(true);
-    } catch {
-      setFigmaError('Network error connecting to Figma.');
+    } catch (error) {
+      setFigmaError(networkFailureMessage(error, 'Connecting to Figma'));
     } finally {
       setFigmaConnecting(false);
     }
@@ -139,16 +194,22 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
   const searchFigmaComponents = useCallback(async (query: string) => {
     if (!figmaFileKey || !figmaToken) return;
     setFigmaSearching(true);
+    setFigmaError(null);
     try {
-      const res = await fetch('/api/import/figma', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'components', fileKey: figmaFileKey, token: figmaToken.trim(), query }),
+      const res = await postJson('/api/import/figma', {
+        action: 'components',
+        fileKey: figmaFileKey,
+        token: figmaToken.trim(),
+        query,
       });
       if (res.ok) {
         const data = await res.json() as { components: typeof figmaComponents; total: number };
         setFigmaComponents(data.components);
+      } else {
+        setFigmaError(await figmaFailureMessage(res, 'Component search failed. Try again.'));
       }
+    } catch (error) {
+      setFigmaError(networkFailureMessage(error, 'Component search'));
     } finally {
       setFigmaSearching(false);
     }
@@ -158,13 +219,18 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     if (!figmaFileKey || !figmaToken) return;
     setFigmaImporting(nodeId);
     try {
-      const res = await fetch('/api/import/figma', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'import', fileKey: figmaFileKey, nodeId, token: figmaToken.trim(), name }),
+      const res = await postJson('/api/import/figma', {
+        action: 'import',
+        fileKey: figmaFileKey,
+        nodeId,
+        token: figmaToken.trim(),
+        name,
       });
       if (!res.ok) {
-        dispatch({ type: 'failed', message: `Failed to import "${name}" from Figma.` });
+        dispatch({
+          type: 'failed',
+          message: await figmaFailureMessage(res, `Failed to import "${name}" from Figma.`),
+        });
         return;
       }
       const payload = await res.json() as {
@@ -179,8 +245,11 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         tags: payload.suggestedTags,
         provenance: payload.provenance,
       });
-    } catch {
-      dispatch({ type: 'failed', message: `Network error importing "${name}" from Figma.` });
+    } catch (error) {
+      dispatch({
+        type: 'failed',
+        message: networkFailureMessage(error, `Importing "${name}" from Figma`),
+      });
     } finally {
       setFigmaImporting(null);
     }
@@ -324,14 +393,20 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
   async function runLibraryImport(adapterId: string, iconName: string) {
     dispatch({ type: 'start_validating' });
     try {
-      const response = await fetch(`/api/import/${adapterId}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ iconName: iconName.trim() }),
+      const response = await postJson(`/api/import/${adapterId}`, {
+        iconName: iconName.trim(),
       });
       if (!response.ok) {
         const source = LIBRARY_SOURCES.find((s) => s.id === adapterId);
-        dispatch({ type: 'failed', message: `${source?.label ?? adapterId} icon "${iconName}" was not found.` });
+        const label = source?.label ?? adapterId;
+        // 404 means "no such icon"; anything else is the source/network failing.
+        dispatch({
+          type: 'failed',
+          message:
+            response.status === 404
+              ? `${label} icon "${iconName}" was not found.`
+              : `${label} import failed (HTTP ${response.status}). Try again.`,
+        });
         return;
       }
       const payload = await response.json() as {
@@ -346,8 +421,11 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
         tags: payload.suggestedTags,
         provenance: payload.provenance,
       });
-    } catch {
-      dispatch({ type: 'failed', message: `Unable to contact ${adapterId} source. Please try again.` });
+    } catch (error) {
+      dispatch({
+        type: 'failed',
+        message: networkFailureMessage(error, `Contacting the ${adapterId} source`),
+      });
     }
   }
 
@@ -486,6 +564,12 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                       className="pl-8"
                     />
                   </div>
+
+                  {figmaError && (
+                    <p className="text-sm text-destructive" role="alert" aria-live="assertive">
+                      {figmaError}
+                    </p>
+                  )}
 
                   <ScrollArea className="h-64 rounded-lg border border-border/70">
                     {figmaSearching ? (

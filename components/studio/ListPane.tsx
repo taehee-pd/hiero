@@ -1,7 +1,7 @@
 'use client';
 
 import { Icon as UiIcon } from '@hiero/ui-icons';
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef, memo } from 'react';
 
 import { IconButton } from '@/components/ds/icon-button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,73 @@ import { ImportIconDialog } from '@/components/editor/ImportIconDialog';
 import { cn } from '@/lib/utils';
 
 type ListIcon = { id: string; name: string; category?: string; tags?: string[] };
+
+// Adapter props — callers pass stable (iconId: string) => void callbacks
+// so the parent can define them once with useCallback instead of creating
+// a new closure per icon per render.
+type MemoIconGridItemProps = {
+  iconId: string;
+  iconName: string;
+  svg: string;
+  active: boolean;
+  selected: boolean;
+  favorite: boolean;
+  onOpen: (iconId: string) => void;
+  onSelect: (iconId: string) => void;
+  onShiftClick: (iconId: string) => void;
+  onToggleFavorite: (iconId: string) => void;
+  onDuplicate: (iconId: string) => void;
+  onDelete: (iconId: string) => void;
+  onRename: (iconId: string, nextName: string) => void;
+};
+
+// MemoIconGridItem bridges the stable (iconId) callbacks from ListPane
+// into the zero-argument callbacks that IconGridItem expects, creating
+// the per-icon closures here (inside a memoized subtree) rather than
+// in the parent's render loop. React.memo with default shallow equality
+// prevents re-renders unless iconId/svg/active/selected/favorite or one
+// of the stable parent callbacks changes.
+const MemoIconGridItem = memo(function MemoIconGridItem({
+  iconId,
+  iconName,
+  svg,
+  active,
+  selected,
+  favorite,
+  onOpen,
+  onSelect,
+  onShiftClick,
+  onToggleFavorite,
+  onDuplicate,
+  onDelete,
+  onRename,
+}: MemoIconGridItemProps) {
+  const handleOpen = useCallback(() => onOpen(iconId), [onOpen, iconId]);
+  const handleSelect = useCallback(() => onSelect(iconId), [onSelect, iconId]);
+  const handleShiftClick = useCallback(() => onShiftClick(iconId), [onShiftClick, iconId]);
+  const handleToggleFavorite = useCallback(() => onToggleFavorite(iconId), [onToggleFavorite, iconId]);
+  const handleDuplicate = useCallback(() => onDuplicate(iconId), [onDuplicate, iconId]);
+  const handleDelete = useCallback(() => onDelete(iconId), [onDelete, iconId]);
+  const handleRename = useCallback((nextName: string) => onRename(iconId, nextName), [onRename, iconId]);
+
+  return (
+    <IconGridItem
+      iconId={iconId}
+      iconName={iconName}
+      svg={svg}
+      active={active}
+      selected={selected}
+      favorite={favorite}
+      onOpen={handleOpen}
+      onSelect={handleSelect}
+      onShiftClick={handleShiftClick}
+      onToggleFavorite={handleToggleFavorite}
+      onDuplicate={handleDuplicate}
+      onDelete={handleDelete}
+      onRename={handleRename}
+    />
+  );
+});
 
 function filterIcons(icons: ListIcon[], query: string): ListIcon[] {
   const q = query.trim().toLowerCase();
@@ -101,6 +168,25 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
   const favoritesSet = useMemo(() => new Set(favorites), [favorites]);
   const selectedSet = useMemo(() => new Set(selectedIconIds), [selectedIconIds]);
 
+  // SVG cache: keyed by `iconId|variantId`. Recomputed only when project.icons
+  // or project.tokenSet changes — NOT on query/selection/favorites changes.
+  // This prevents exportSvgString (full path serialization) from running on
+  // every unrelated state update.
+  const svgCache = useMemo(() => {
+    const cache = new Map<string, string>();
+    const icons = project?.icons ?? {};
+    const tokenColors = project?.tokenSet?.colors;
+    for (const iconId of Object.keys(icons)) {
+      const iconDef = icons[iconId]!;
+      const firstVariantId = Object.keys(iconDef.variants)[0];
+      if (firstVariantId) {
+        const svg = exportSvgString(iconDef, firstVariantId, firstVariantId, tokenColors);
+        cache.set(`${iconId}|${firstVariantId}`, svg);
+      }
+    }
+    return cache;
+  }, [project?.icons, project?.tokenSet]);
+
   const handleOpenIcon = useCallback(
     (iconId: string) => {
       editorStore.getState().setCurrentIcon(iconId);
@@ -110,6 +196,39 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
       onIconOpen?.();
     },
     [activeIconSetId, openIconTab, onIconOpen],
+  );
+
+  // Stable per-icon action callbacks — passed to MemoIconGridItem so its
+  // reference identity doesn't change on selection/favorites state updates.
+  // Each callback receives the iconId so MemoIconGridItem can be wrapped
+  // in React.memo with default shallow equality (functions stay stable).
+  const handleSelectIcon = useCallback(
+    (iconId: string) => {
+      handleOpenIcon(iconId);
+      clearIconSelection();
+      setSelectedIconIds([iconId]);
+    },
+    [handleOpenIcon, clearIconSelection, setSelectedIconIds],
+  );
+  const handleShiftClickIcon = useCallback(
+    (iconId: string) => toggleIconSelection(iconId),
+    [toggleIconSelection],
+  );
+  const handleToggleFavoriteIcon = useCallback(
+    (iconId: string) => toggleFavorite(iconId),
+    [toggleFavorite],
+  );
+  const handleDuplicateIcon = useCallback(
+    (iconId: string) => editorStore.getState().duplicateIcon(iconId),
+    [],
+  );
+  const handleDeleteIcon = useCallback(
+    (iconId: string) => editorStore.getState().removeIcon(iconId),
+    [],
+  );
+  const handleRenameIcon = useCallback(
+    (iconId: string, nextName: string) => editorStore.getState().renameIcon(iconId, nextName),
+    [],
   );
 
   const handleCreateBlankIcon = useCallback(() => {
@@ -346,12 +465,12 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                     const iconDef = project?.icons[icon.id];
                     const firstVariantId = iconDef ? Object.keys(iconDef.variants)[0] : null;
                     const svg =
-                      iconDef && firstVariantId
-                        ? exportSvgString(iconDef, firstVariantId, firstVariantId, project?.tokenSet?.colors)
+                      firstVariantId
+                        ? (svgCache.get(`${icon.id}|${firstVariantId}`) ?? '')
                         : '';
 
                     return (
-                      <IconGridItem
+                      <MemoIconGridItem
                         key={icon.id}
                         iconId={icon.id}
                         iconName={icon.name}
@@ -359,17 +478,13 @@ export function ListPane({ onIconOpen }: { onIconOpen?: () => void } = {}) {
                         active={currentIconId === icon.id}
                         selected={selectedSet.has(icon.id)}
                         favorite={favoritesSet.has(icon.id)}
-                        onOpen={() => handleOpenIcon(icon.id)}
-                        onSelect={() => {
-                          handleOpenIcon(icon.id);
-                          clearIconSelection();
-                          setSelectedIconIds([icon.id]);
-                        }}
-                        onShiftClick={() => toggleIconSelection(icon.id)}
-                        onToggleFavorite={() => toggleFavorite(icon.id)}
-                        onDuplicate={() => editorStore.getState().duplicateIcon(icon.id)}
-                        onDelete={() => editorStore.getState().removeIcon(icon.id)}
-                        onRename={(nextName) => editorStore.getState().renameIcon(icon.id, nextName)}
+                        onOpen={handleOpenIcon}
+                        onSelect={handleSelectIcon}
+                        onShiftClick={handleShiftClickIcon}
+                        onToggleFavorite={handleToggleFavoriteIcon}
+                        onDuplicate={handleDuplicateIcon}
+                        onDelete={handleDeleteIcon}
+                        onRename={handleRenameIcon}
                       />
                     );
                   })

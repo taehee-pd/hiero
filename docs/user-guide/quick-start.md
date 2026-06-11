@@ -4,23 +4,24 @@
 
 ## First Launch
 
-When the app opens, you land in the icon library. If you have not loaded your own project yet, the app opens with starter icons so you can explore the workspace immediately.
+When the app opens, you see the studio. If you have not loaded your own project yet, the app opens with starter icons so you can explore the workspace immediately.
 
 ## Fastest Way to Try It
 
-1. Open an icon from the library.
-2. In the editor, pick the drawing or point-editing tool from the left side.
-3. Click a layer in the structure list to target it.
-4. Adjust color, stroke, or transform settings from the right side.
-5. Export the active icon as SVG from the top bar.
+1. Click an icon in the icon browser (ListPane) to open it in the editor.
+2. In the editor, use the selection tool (`V`) or point-editing tool (`A`) from the canvas toolbar or keyboard shortcut.
+3. Click a layer in the layer list (left panel) to target it.
+4. Adjust color, stroke, or transform settings from the right inspector.
+5. Export the project from the Hiero menu in the top bar.
 
 ## Main Areas
 
-- Library screen: browse and organize all icons
-- Top bar: create, open, save, import, export, undo, redo, and zoom
-- Left side: tools, guides, and the layer list
-- Center: drawing canvas
-- Right side: appearance and geometry controls
+- NavPane: the collapsible projects sidebar on the far left
+- ListPane: icon browser — search, browse, and open icons
+- Navbar: project name, save/undo/redo, Publish, Search, and the Hiero menu (File, Edit, Export, View)
+- Editor left panel: layer list and guide manager
+- Editor center: drawing canvas
+- Editor right inspector: appearance and geometry controls
 
 ## Best First Exercises
 
@@ -28,11 +29,11 @@ When the app opens, you land in the icon library. If you have not loaded your ow
 - Add a new size version such as `16` or `32`
 - Turn on guide overlays and drag out your own guide lines
 - Use the point-editing tool to move anchor points
-- Export the result as SVG
+- Export the result using the Hiero menu > Export
 
 ## If You Already Have Artwork
 
-Use the top bar `Open` menu and choose `Import SVG`. You can also drag an SVG file directly onto the canvas while an icon is open.
+Open the Hiero menu in the top bar, choose File > Import Icons. You can also drag SVG files directly onto the ListPane to import them in bulk, or onto the canvas while an icon is open.
 
 ## Related Pages
 

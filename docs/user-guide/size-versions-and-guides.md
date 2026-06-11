@@ -15,15 +15,11 @@ Examples:
 
 ## Switching Versions
 
-Above the canvas, you will see size chips for the current icon. Choose a chip to switch editing focus to that version.
-
-The canvas header shows which version you are editing right now.
+In the editor's left panel, you will see the Sizes section listing each size variant for the current icon. Click a size to switch editing focus to that version.
 
 ## Adding a New Version
 
-Use the `Variant` button above the canvas to add a new version.
-
-You can:
+Click the **+** button next to the "Sizes" heading in the left panel to add a new version. A dialog opens where you can:
 
 - choose a common preset size such as `12`, `16`, `20`, `24`, `32`, or `48`
 - type any custom numeric size
@@ -38,7 +34,7 @@ That means the new version starts as a close copy, but you can fine-tune it inde
 
 ## Removing a Version
 
-Use the remove button near the version picker to delete the current version. The app will not let you remove the last remaining version.
+Right-click a size in the Sizes list and choose Delete to remove it. The app will not let you remove the last remaining version.
 
 ## Guide Overlays
 

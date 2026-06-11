@@ -2,48 +2,39 @@
 
 [Home](./index.md) | [Previous: Quick Start](./quick-start.md) | [Next: Editor Workspace](./editor-workspace.md)
 
-## What the Library Does
+## What the Icon Browser Does
 
-The library is the home screen for your icon collection. It lets you:
+The icon browser (ListPane) shows the icons in the active project. It lets you:
 
 - search by name, identifier, category, or tags
-- browse by category
 - preview each icon
-- select multiple icons at once
-- assign a category to selected icons
+- select multiple icons at once (shift-click or marquee drag)
 - open any icon in the editor
 
 ## Search
 
-Use the search box at the top to narrow the list. Search works across:
+Use the search box at the top of the ListPane to narrow the list. Search works across:
 
 - visible icon names
 - stored labels
 - category names
 - tags
 
-## Categories
-
-The left side groups icons by category. Choose `All` to see everything, or switch to a specific category to focus the grid.
-
-If you type a new category name in the assignment area and apply it to selected icons, those icons move into that group.
-
 ## Selecting Icons
 
-Each icon card has a selection button. Use it when you want to:
+Shift-click or Cmd-click an icon to add it to the multi-select set. You can also drag a marquee across the grid to select a group. When icons are selected the header shows the count and a bulk ZIP export button.
 
-- assign the same category to several icons
-- review a subset before organizing them
-
-Selecting an icon card does not open it. Opening happens through the main card link.
+Selecting an icon does not open it. Opening happens by clicking the card.
 
 ## Opening an Icon
 
-Choose `Open` on the icon card to enter the editor. The app switches from the library view into the full editing workspace.
+Click an icon card to open it in the editor. The editor panel fills the main area with the layer list, canvas, and right inspector.
+
+Right-click a card for additional options including Rename, Duplicate, Favorite, and Delete.
 
 ## Preview Behavior
 
-The library uses the first available version of each icon to render its preview. This keeps the grid fast and consistent, but it also means the preview is only a snapshot, not a full summary of every size you may have created.
+The icon browser uses the first available size variant of each icon to render its preview. This keeps the grid fast and consistent, but the preview is only a snapshot, not a summary of every size you may have created.
 
 ## Related Pages
 

@@ -4,16 +4,20 @@
 
 ## Project Files
 
-Use `Save` in the top bar to download the current project as a JSON file. This keeps your icon collection, categories, size versions, guide setups, and styling choices together.
+The Navbar has a dedicated **Save draft** button (`Cmd/Ctrl+S`) that stores a checkpoint in the browser (IndexedDB). This keeps your icon collection, categories, size versions, guide setups, and styling choices together without downloading a file.
 
-Use `Open Project` to load that project again later.
+To download a portable copy, open the Hiero menu and choose **File > Export project file…**. This saves a `.hiero.json` file you can share or back up.
+
+To reload a saved file, open the Hiero menu and choose **File > Open Project**.
 
 ## Importing SVG
 
 There are two ways to bring SVG artwork into the app:
 
-- choose `Import SVG` from the top bar
-- drag an SVG file directly onto the editor canvas
+- open the Hiero menu and choose **File > Import Icons**
+- drag SVG files directly onto the ListPane (icon browser)
+
+You can also drag an SVG file onto the editor canvas while an icon is open.
 
 When an SVG is imported:
 
@@ -24,9 +28,9 @@ When an SVG is imported:
 
 ## Exporting SVG
 
-Use `Export SVG` in the top bar to export the active icon version.
+To export the active project as a ZIP of SVG files, open the Hiero menu and choose **Export > Quick ZIP (SVG package)**, or use the download button in the ListPane header.
 
-The exported SVG is cleaned for output:
+The exported SVG files are cleaned for output:
 
 - editor-only overlays are excluded
 - guide visuals are excluded
@@ -35,11 +39,11 @@ The exported SVG is cleaned for output:
 
 ## Undo and Redo
 
-The top bar includes buttons for undo and redo. These let you safely explore drawing changes without losing earlier work.
+The Navbar includes **Undo** and **Redo** buttons. These let you safely explore drawing changes without losing earlier work.
 
 ## Zoom Controls
 
-The top bar also includes:
+The canvas header in the editor includes:
 
 - zoom percentage readout
 - zoom out

@@ -23,6 +23,8 @@ import { getSelectedPointsBoundingBox, PathEditor } from '@/lib/editor-core';
 import { getGuideItemBounds } from '@/lib/editor-core/guide-item-geometry';
 import { isEditableEventTarget } from '@/lib/editor-core/keyboard';
 import { isPathDirectlyEditable, parseSvgPath } from '@/lib/editor-core/parse';
+import { computePinchViewport } from '@/lib/editor-core/pointer-pinch';
+import { createPanAccumulator, shouldEndPan } from '@/lib/editor-core/pointer-pan';
 import { importSvgFileIntoEditor, isSvgFile } from '@/lib/import';
 import {
   ContextMenu,
@@ -67,7 +69,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   const dragDepthRef = useRef(0);
   const spacePanEnabledRef = useRef(false);
   const panSessionRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
-  const panDeltaRef = useRef({ x: 0, y: 0 });
+  const panAccRef = useRef(createPanAccumulator());
   const panFrameRef = useRef<number | null>(null);
   const pinchFrameRef = useRef<number | null>(null);
   const pinchFactorRef = useRef(1);
@@ -145,8 +147,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
 
   const flushPanDelta = useCallback(() => {
     panFrameRef.current = null;
-    const { x, y } = panDeltaRef.current;
-    panDeltaRef.current = { x: 0, y: 0 };
+    const { x, y } = panAccRef.current.drain();
     if (x === 0 && y === 0) return;
     const state = editorStore.getState();
     state.setViewport({
@@ -156,10 +157,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
   }, []);
 
   const queuePanDelta = useCallback((deltaX: number, deltaY: number) => {
-    panDeltaRef.current = {
-      x: panDeltaRef.current.x + deltaX,
-      y: panDeltaRef.current.y + deltaY,
-    };
+    panAccRef.current.add(deltaX, deltaY);
     if (panFrameRef.current !== null) return;
     panFrameRef.current = requestAnimationFrame(() => {
       flushPanDelta();
@@ -172,24 +170,23 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     const cursor = pinchCursorRef.current;
     pinchFactorRef.current = 1;
     pinchCursorRef.current = null;
-    if (!Number.isFinite(factor) || factor <= 0 || !cursor) return;
+    if (!cursor) return;
 
     const container = containerRef.current;
     if (!container) return;
 
     const state = editorStore.getState();
-    const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, state.viewport.zoom * factor));
-    if (nextZoom === state.viewport.zoom) return;
-
     const rect = container.getBoundingClientRect();
-    const cursorX = cursor.x - rect.left - rect.width / 2;
-    const cursorY = cursor.y - rect.top - rect.height / 2;
-    const scaleFactor = nextZoom / state.viewport.zoom;
-    state.setViewport({
-      zoom: nextZoom,
-      panX: cursorX - scaleFactor * (cursorX - state.viewport.panX),
-      panY: cursorY - scaleFactor * (cursorY - state.viewport.panY),
+    const next = computePinchViewport({
+      current: state.viewport,
+      factor,
+      cursor,
+      rect,
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM,
     });
+    if (!next) return;
+    state.setViewport(next);
   }, []);
 
   const queuePinchZoom = useCallback((factor: number, clientX: number, clientY: number) => {
@@ -932,7 +929,7 @@ export const Canvas = memo(function Canvas({ showStatusHud = true }: { showStatu
     };
 
     const endPan = (pointerId?: number) => {
-      if (pointerId !== undefined && panSessionRef.current?.pointerId !== pointerId) return;
+      if (!shouldEndPan(panSessionRef.current, pointerId)) return;
       panSessionRef.current = null;
       if (panFrameRef.current !== null) {
         cancelAnimationFrame(panFrameRef.current);

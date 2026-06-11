@@ -84,6 +84,36 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+/**
+ * Returns true if the given URL is an allowed Figma CDN origin.
+ *
+ * Accepted origins:
+ *   - figma.com itself
+ *   - Any *.figma.com subdomain (e.g. figma-alpha-api.figma.com)
+ *   - AWS S3 hosts whose hostname starts with "figma-" (Figma image exports
+ *     are served from figma-alpha-api.s3.us-west-2.amazonaws.com and similar).
+ *
+ * Rejected:
+ *   - Non-https protocols
+ *   - Any host that contains "figma" as a substring but is not one of the
+ *     above (e.g. evilfigma.com, figma.com.attacker.com).
+ */
+export function isAllowedFigmaCdnUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  const h = parsed.hostname;
+  // Exact match or *.figma.com subdomain
+  if (h === 'figma.com' || h.endsWith('.figma.com')) return true;
+  // AWS S3 hosts for Figma image exports (hostname starts with "figma-" and ends with ".amazonaws.com")
+  if (h.startsWith('figma-') && h.endsWith('.amazonaws.com')) return true;
+  return false;
+}
+
 export type FigmaComponent = {
   key: string;
   name: string;
@@ -119,7 +149,7 @@ export type FigmaUserResponse = {
 export function parseFigmaUrl(url: string): { fileKey: string } | null {
   try {
     const parsed = new URL(url);
-    if (!parsed.hostname.includes('figma.com')) return null;
+    if (parsed.hostname !== 'figma.com' && !parsed.hostname.endsWith('.figma.com')) return null;
 
     const parts = parsed.pathname.split('/').filter(Boolean);
     // /design/:fileKey/... or /file/:fileKey/...
@@ -183,7 +213,21 @@ export async function exportNodeAsSvg(
     throw new Error(`Figma did not return an image for node ${nodeId}`);
   }
 
-  // Step 2: Fetch the actual SVG content
+  // Step 2: Validate the CDN origin before fetching (SSRF guard)
+  if (!isAllowedFigmaCdnUrl(imageUrl)) {
+    let origin = imageUrl;
+    try {
+      origin = new URL(imageUrl).origin;
+    } catch {
+      // keep raw url
+    }
+    throw new FigmaApiError(
+      'upstream_error',
+      `Refusing to fetch icon SVG from unexpected origin: ${origin}`,
+    );
+  }
+
+  // Step 3: Fetch the actual SVG content
   const svgResponse = await fetchWithTimeout(imageUrl);
   if (!svgResponse.ok) {
     throw new FigmaApiError(

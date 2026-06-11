@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { parseFigmaUrl, filterComponents } from '@/lib/import/adapters/figma-source';
+import { parseFigmaUrl, filterComponents, isAllowedFigmaCdnUrl } from '@/lib/import/adapters/figma-source';
 import { formatFigmaName } from '@/lib/import/adapters/figma-adapter';
 import type { FigmaComponent } from '@/lib/import/adapters/figma-source';
 
@@ -44,6 +44,72 @@ describe('parseFigmaUrl', () => {
 
   it('returns null for non-design Figma URL', () => {
     expect(parseFigmaUrl('https://figma.com/community/plugin/12345')).toBeNull();
+  });
+
+  // Tightened hostname check — exact/suffix match only
+  it('rejects lookalike hostname evilfigma.com', () => {
+    expect(parseFigmaUrl('https://evilfigma.com/design/X/Y')).toBeNull();
+  });
+
+  it('rejects subdomain-spoofing figma.com.attacker.com', () => {
+    expect(parseFigmaUrl('https://figma.com.attacker.com/design/X/Y')).toBeNull();
+  });
+
+  it('accepts www.figma.com (subdomain)', () => {
+    expect(parseFigmaUrl('https://www.figma.com/design/ABC123/My-Icon-Set')).toEqual({
+      fileKey: 'ABC123',
+    });
+  });
+});
+
+describe('isAllowedFigmaCdnUrl', () => {
+  it('accepts figma.com', () => {
+    expect(isAllowedFigmaCdnUrl('https://figma.com/foo')).toBe(true);
+  });
+
+  it('accepts *.figma.com subdomain', () => {
+    expect(isAllowedFigmaCdnUrl('https://figma-alpha-api.figma.com/img/abc')).toBe(true);
+    expect(isAllowedFigmaCdnUrl('https://cdn.figma.com/img/xyz')).toBe(true);
+  });
+
+  it('accepts figma- prefixed amazonaws.com S3 host', () => {
+    expect(
+      isAllowedFigmaCdnUrl('https://figma-alpha-api.s3.us-west-2.amazonaws.com/img/abc'),
+    ).toBe(true);
+  });
+
+  it('rejects non-https protocol', () => {
+    expect(isAllowedFigmaCdnUrl('http://figma.com/img/abc')).toBe(false);
+  });
+
+  it('rejects non-Figma S3 bucket', () => {
+    expect(isAllowedFigmaCdnUrl('https://attacker.s3.us-east-1.amazonaws.com/evil')).toBe(false);
+  });
+
+  it('rejects evilfigma.com lookalike', () => {
+    expect(isAllowedFigmaCdnUrl('https://evilfigma.com/img/abc')).toBe(false);
+  });
+
+  it('rejects figma.com.attacker.com spoofing', () => {
+    expect(isAllowedFigmaCdnUrl('https://figma.com.attacker.com/img/abc')).toBe(false);
+  });
+
+  it('rejects arbitrary private/internal URL', () => {
+    expect(isAllowedFigmaCdnUrl('https://169.254.169.254/latest/meta-data/')).toBe(false);
+    expect(isAllowedFigmaCdnUrl('file:///etc/passwd')).toBe(false);
+  });
+
+  it('rejects unparseable input', () => {
+    expect(isAllowedFigmaCdnUrl('not-a-url')).toBe(false);
+  });
+
+  // "notfigma-" hostname starts with "notfigma-", not "figma-" — must be rejected
+  it('rejects notfigma- prefixed amazonaws.com host', () => {
+    expect(isAllowedFigmaCdnUrl('https://notfigma-x.amazonaws.com/img')).toBe(false);
+  });
+
+  it('accepts https://www.figma.com (www subdomain)', () => {
+    expect(isAllowedFigmaCdnUrl('https://www.figma.com/foo')).toBe(true);
   });
 });
 

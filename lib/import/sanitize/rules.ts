@@ -146,7 +146,7 @@ export function isEventHandler(attrName: string): boolean {
 }
 
 /** URI schemes that must never appear in attribute values. */
-const DANGEROUS_URI_SCHEMES = /^\s*(javascript|data|vbscript)\s*:/i;
+const DANGEROUS_URI_SCHEMES = /^\s*(javascript|data|vbscript|file|blob)\s*:/i;
 
 export function hasDangerousUri(value: string): boolean {
   return DANGEROUS_URI_SCHEMES.test(value);

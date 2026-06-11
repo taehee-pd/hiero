@@ -46,6 +46,31 @@ export function encodeSharePayload(payload: SharePayload): string {
   return toBase64Url(JSON.stringify(payload));
 }
 
+/** Maximum raw fragment length (chars) before base64 decode. */
+const MAX_RAW_FRAGMENT_CHARS = 700_000;
+/** Maximum decoded JSON string length (bytes) before JSON.parse. */
+const MAX_JSON_CHARS = 512 * 1024;
+/** Maximum object/array nesting depth after parse. */
+const MAX_NESTING_DEPTH = 64;
+
+/** Returns the nesting depth of a parsed JSON value (arrays count as a level). */
+function nestingDepth(value: unknown, depth = 0): number {
+  if (depth > MAX_NESTING_DEPTH) return depth;
+  if (Array.isArray(value)) {
+    let max = depth + 1;
+    for (const item of value) max = Math.max(max, nestingDepth(item, depth + 1));
+    return max;
+  }
+  if (value !== null && typeof value === 'object') {
+    let max = depth + 1;
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      max = Math.max(max, nestingDepth(v, depth + 1));
+    }
+    return max;
+  }
+  return depth;
+}
+
 /**
  * Decode and structurally validate a share fragment. Returns null for
  * anything that isn't a well-formed v1 payload — the viewer treats
@@ -54,8 +79,12 @@ export function encodeSharePayload(payload: SharePayload): string {
 export function decodeSharePayload(fragment: string): SharePayload | null {
   const raw = fragment.startsWith('#') ? fragment.slice(1) : fragment;
   if (!raw) return null;
+  // Reject oversized raw fragments before any allocation-heavy operation.
+  if (raw.length > MAX_RAW_FRAGMENT_CHARS) return null;
   const json = fromBase64Url(raw);
   if (!json) return null;
+  // Reject oversized decoded payloads before JSON.parse.
+  if (json.length > MAX_JSON_CHARS) return null;
 
   let parsed: unknown;
   try {
@@ -63,6 +92,8 @@ export function decodeSharePayload(fragment: string): SharePayload | null {
   } catch {
     return null;
   }
+  // Reject pathologically deep structures to avoid stack exhaustion.
+  if (nestingDepth(parsed) > MAX_NESTING_DEPTH) return null;
 
   if (!parsed || typeof parsed !== 'object') return null;
   const candidate = parsed as Partial<SharePayload>;

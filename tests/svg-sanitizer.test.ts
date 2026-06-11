@@ -146,6 +146,30 @@ describe('sanitizeSvg — dangerous content stripped', () => {
     expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
   });
 
+  test('strips file: URIs in href', () => {
+    const input = wrap(`<use href="file:///etc/passwd"/>`);
+    const result = sanitizeSvg(input);
+    expect(result.svg).not.toContain('file:');
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
+  });
+
+  test('strips blob: URIs in href', () => {
+    const input = wrap(`<use href="blob:https://example.com/some-uuid"/>`);
+    const result = sanitizeSvg(input);
+    expect(result.svg).not.toContain('blob:');
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
+  });
+
+  test('strips file: URIs in xlink:href', () => {
+    const input =
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24">` +
+      `<use xlink:href="file:///etc/shadow"/>` +
+      `</svg>`;
+    const result = sanitizeSvg(input);
+    expect(result.svg).not.toContain('file:');
+    expect(result.warnings.some((w) => w.code === 'unsupported_feature_dropped')).toBe(true);
+  });
+
   test('strips inline style attributes', () => {
     const input = wrap(`<path d="M0 0" style="fill: red; background: url(javascript:alert(1))"/>`);
     const result = sanitizeSvg(input);

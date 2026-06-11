@@ -92,6 +92,30 @@ const nextConfig = {
     ? {}
     : {
         async headers() {
+          // Content-Security-Policy directives:
+          //   default-src 'self'          — baseline; everything else explicit
+          //   script-src  'self' 'unsafe-inline' https://mcp.figma.com
+          //                               — app/layout.tsx injects inline boot
+          //                                 scripts (build version + theme) via
+          //                                 dangerouslySetInnerHTML, AND loads
+          //                                 https://mcp.figma.com/mcp/html-to-design/capture.js
+          //                                 + @vercel/analytics injects a script tag
+          //   style-src   'self' 'unsafe-inline'
+          //                               — Tailwind + Radix UI write inline styles
+          //   img-src     'self' data: blob: https:
+          //                               — icon previews use data: SVG URLs;
+          //                                 Figma thumbnails come from https: CDNs
+          //   connect-src 'self' https:   — Figma API calls, analytics, etc.
+          //   font-src    'self'          — fonts are bundled / self-hosted
+          const csp = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' https://mcp.figma.com",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https:",
+            "connect-src 'self' https:",
+            "font-src 'self'",
+          ].join('; ');
+
           return [
             {
               source: '/:path*',
@@ -99,6 +123,7 @@ const nextConfig = {
                 { key: 'X-Hiero-Build-Channel', value: buildChannel },
                 { key: 'X-Hiero-App-Version', value: appVersion },
                 { key: 'X-Hiero-Build-Commit', value: buildCommit },
+                { key: 'Content-Security-Policy', value: csp },
               ],
             },
           ];

@@ -14,11 +14,11 @@ they are not re-audited next run.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | Memoize + virtualize the ListPane icon browser | P2 | M | — | TODO |
-| 002 | Harden import/share input boundaries (SSRF, SVG schemes, hostname, payload limits, CSP) | P2 | M | — | TODO |
-| 003 | Extract & unit-test the Canvas pointer state machine | P2 | M | — | TODO |
-| 004 | Add a full import→edit→animate→export workflow test | P2 | M | — | TODO |
-| 005 | Add `.env.example` and refresh the stale user guide | P3 | S | — | TODO |
+| 001 | Memoize + virtualize the ListPane icon browser | P2 | M | — | DONE (memoization shipped; windowing skipped via the plan's decision gate — CSS-grid marquee hit-testing) |
+| 002 | Harden import/share input boundaries (SSRF, SVG schemes, hostname, payload limits, CSP) | P2 | M | — | IN PROGRESS (revision round: rebasing onto the feature branch's FigmaApiError/share-link implementations) |
+| 003 | Extract & unit-test the Canvas pointer state machine | P2 | M | — | DONE (pointer-pan/pinch modules + 28 unit tests; Canvas delegates, behavior unchanged) |
+| 004 | Add a full import→edit→animate→export workflow test | P2 | M | — | DONE (tests/full-workflow.test.ts — 4 legs incl. real SVG-import chain via dom-parser shim) |
+| 005 | Add `.env.example` and refresh the stale user guide | P3 | S | — | DONE (.env.example with 14 vars; 5 user-guide pages corrected) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (one-line reason) | REJECTED (one-line rationale)
 

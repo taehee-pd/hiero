@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { editorStore } from '@/lib/editor-store/store';
 import { decodeSharePayload } from '@/lib/platform/share-link';
+import { lottieToSvg } from '@/lib/import/lottie-import';
 import { convertNormalizedIconToIcon } from '@/lib/import/convert-normalized-icon';
 import { reduceImportUxState, INITIAL_IMPORT_UX_STATE } from '@/lib/import/import-ux-model';
 import { normalizeSvg } from '@/lib/import/normalize';
@@ -84,6 +85,7 @@ type LibrarySourceId =
   | 'raw-svg'
   | 'hiero-plugin'
   | 'share-link'
+  | 'lottie'
   | 'lucide'
   | 'heroicons'
   | 'phosphor'
@@ -98,6 +100,7 @@ const LIBRARY_SOURCES: Array<{
   { id: 'raw-svg', label: 'Raw SVG' },
   { id: 'hiero-plugin', label: 'Hiero Plugin', badges: ['Batch', 'Figma export'] },
   { id: 'share-link', label: 'Share link', badges: ['Round-trip', 'Keeps animation'] },
+  { id: 'lottie', label: 'Lottie', badges: ['Static shapes', 'JSON'] },
   { id: 'figma', label: 'Figma', badges: ['Searchable', 'File URL'] },
   { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
   { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
@@ -471,6 +474,41 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     setShareImported({ id: inserted?.id ?? icon.id, name: inserted?.name ?? icon.name });
   }
 
+  // DIRECTION-01 v1: static Lottie shape import. First-frame geometry,
+  // fills, and strokes only — lottieToSvg reports skipped features as
+  // warnings and the result rides the normal SVG import pipeline.
+  const [lottiePayloadText, setLottiePayloadText] = useState('');
+  const lottieFileRef = useRef<HTMLInputElement>(null);
+
+  async function runLottieImport(jsonText: string) {
+    dispatch({ type: 'start_validating' });
+    setPluginImportSummary(null);
+    try {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(jsonText) as unknown;
+      } catch {
+        dispatch({ type: 'failed', message: 'Invalid JSON — please paste a valid Lottie JSON file.' });
+        return;
+      }
+      const lottieResult = lottieToSvg(parsed);
+      await runSvgImport({
+        svg: lottieResult.svg,
+        name: lottieResult.name,
+        provenance: {
+          adapterId: 'lottie',
+          sourceLibrary: 'Lottie',
+          importedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      dispatch({
+        type: 'failed',
+        message: error instanceof Error ? error.message : 'Lottie import failed. Please try again.',
+      });
+    }
+  }
+
   async function runBatchImport(adapterId: string, names: string[]) {
     const limited = names.slice(0, 50);
     setBatchProgress({ done: 0, total: limited.length });
@@ -731,6 +769,53 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                   }}
                 >
                   Validate & Import
+                </Button>
+              </TabsContent>
+            </Tabs>
+          ) : sourceId === 'lottie' ? (
+            <Tabs defaultValue="paste">
+              <TabsList aria-label="Lottie import mode">
+                <TabsTrigger value="paste">Paste JSON</TabsTrigger>
+                <TabsTrigger value="upload">Upload JSON</TabsTrigger>
+              </TabsList>
+              <TabsContent value="paste" className="space-y-2">
+                <Label htmlFor="lottie-payload">Lottie JSON</Label>
+                <Textarea
+                  id="lottie-payload"
+                  value={lottiePayloadText}
+                  onChange={(e) => setLottiePayloadText(e.target.value)}
+                  className="min-h-40"
+                  placeholder='{"v":"5.12.1","w":24,"h":24,"layers":[...]}'
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Paste a Lottie JSON file exported by Hiero or another tool. First-frame shapes only — animation is not imported.
+                </p>
+                <Button
+                  disabled={busy || !lottiePayloadText.trim()}
+                  onClick={() => void runLottieImport(lottiePayloadText)}
+                >
+                  Import Lottie
+                </Button>
+              </TabsContent>
+              <TabsContent value="upload" className="space-y-2">
+                <Label htmlFor="lottie-payload-file">Lottie JSON file</Label>
+                <input
+                  id="lottie-payload-file"
+                  ref={lottieFileRef}
+                  type="file"
+                  accept=".json,application/json"
+                />
+                <Button
+                  disabled={busy}
+                  onClick={async () => {
+                    const file = lottieFileRef.current?.files?.[0];
+                    if (!file) return;
+                    const jsonText = await file.text();
+                    setLottiePayloadText(jsonText);
+                    await runLottieImport(jsonText);
+                  }}
+                >
+                  Upload &amp; Import
                 </Button>
               </TabsContent>
             </Tabs>

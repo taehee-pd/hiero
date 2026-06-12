@@ -66,11 +66,11 @@ These are grounded forward-looking options, presented for a human to weigh, not
 ranked against the bug/debt plans above. Each would start as a design/spike,
 not a build-everything plan.
 
-1. **Lottie round-trip import** (DIRECTION-01): `lib/export/export-lottie.ts`
+1. **Lottie round-trip import** (DIRECTION-01) — **v1 SHIPPED (2026-06-11)**: static-shape import (`lib/import/lottie-import.ts` + dialog wiring); keyframes/expressions remain future work. Original note: `lib/export/export-lottie.ts`
    is mature, but there is no Lottie *import* adapter — users can't re-open
    their own exports. An 80%-fidelity adapter (shapes, basic keyframes, fills)
    is M-effort; full fidelity (expressions) is L.
-2. **Import-from-share round-trip** (DIRECTION-03): `/share` renders a
+2. **Import-from-share round-trip** (DIRECTION-03) — **SHIPPED (2026-06-11)**: 'Share link' source in the import dialog. Original note: `/share` renders a
    read-only icon decoded from the URL fragment, but there is no
    "import this shared icon into my project" path. The decoder
    (`lib/platform/share-link.ts`) already produces a valid `Icon`; wiring it

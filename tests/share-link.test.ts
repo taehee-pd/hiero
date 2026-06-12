@@ -63,22 +63,17 @@ describe('share-link codec (C1)', () => {
   });
 
   // Size guard: decoded JSON larger than 512 KB is rejected before JSON.parse.
+  // The payload is sized just barely over the decoded limit so the raw
+  // (base64, ~4/3 larger) fragment stays under the raw-length guard and this
+  // test exercises the JSON limit specifically.
   test('rejects payload whose decoded JSON exceeds 512 KB → null', () => {
-    // Build a JSON string whose length exceeds 512 * 1024 bytes.
-    // We use a valid v1 shell but stuff a massive string into it.
-    const bigString = 'x'.repeat(513 * 1024);
-    const json = JSON.stringify({ v: 1, icon: bigString });
-    // Use TextEncoder-safe base64url so the raw fragment passes the size check
-    // (base64 expands by ~4/3; 513 KB JSON → ~700 KB base64 — would normally
-    // fail the raw check too, so we encode only what we need).
-    // Instead, build a JSON that is just barely over the limit (513 KB decoded).
     const justOver = 'y'.repeat(512 * 1024 + 1);
-    const json2 = JSON.stringify({ v: 1, icon: justOver });
-    const bytes2 = new TextEncoder().encode(json2);
+    const json = JSON.stringify({ v: 1, icon: justOver });
+    const bytes = new TextEncoder().encode(json);
     let binary = '';
-    for (const b of bytes2) binary += String.fromCharCode(b);
-    const encoded2 = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    expect(decodeSharePayload(encoded2)).toBeNull();
+    for (const b of bytes) binary += String.fromCharCode(b);
+    const encoded = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    expect(decodeSharePayload(encoded)).toBeNull();
   });
 
   // Depth guard: object nesting deeper than 64 levels is rejected after parse.

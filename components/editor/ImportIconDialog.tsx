@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { editorStore } from '@/lib/editor-store/store';
+import { decodeSharePayload } from '@/lib/platform/share-link';
 import { convertNormalizedIconToIcon } from '@/lib/import/convert-normalized-icon';
 import { reduceImportUxState, INITIAL_IMPORT_UX_STATE } from '@/lib/import/import-ux-model';
 import { normalizeSvg } from '@/lib/import/normalize';
@@ -82,6 +83,7 @@ type Prepared = {
 type LibrarySourceId =
   | 'raw-svg'
   | 'hiero-plugin'
+  | 'share-link'
   | 'lucide'
   | 'heroicons'
   | 'phosphor'
@@ -95,6 +97,7 @@ const LIBRARY_SOURCES: Array<{
 }> = [
   { id: 'raw-svg', label: 'Raw SVG' },
   { id: 'hiero-plugin', label: 'Hiero Plugin', badges: ['Batch', 'Figma export'] },
+  { id: 'share-link', label: 'Share link', badges: ['Round-trip', 'Keeps animation'] },
   { id: 'figma', label: 'Figma', badges: ['Searchable', 'File URL'] },
   { id: 'lucide', label: 'Lucide', badges: ['Searchable', 'MIT'] },
   { id: 'heroicons', label: 'Heroicons', badges: ['Searchable', 'MIT'] },
@@ -429,6 +432,45 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
     }
   }
 
+  // DIRECTION-03: round-trip a /share#… link back into the project. The
+  // fragment already encodes a full schema Icon (transitions + effects
+  // included), so this bypasses the SVG sanitize/normalize pipeline — no
+  // fidelity loss, unlike re-importing an exported SVG.
+  const [shareLinkText, setShareLinkText] = useState('');
+  const [shareImported, setShareImported] = useState<{ id: string; name: string } | null>(null);
+
+  function runShareLinkImport(text: string) {
+    setShareImported(null);
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    // Accept a full URL, a bare fragment, or a fragment with leading '#'.
+    let fragment = trimmed;
+    try {
+      const url = new URL(trimmed);
+      fragment = url.hash;
+    } catch {
+      // Not a URL — treat the text as the fragment itself.
+    }
+    const payload = decodeSharePayload(fragment);
+    if (!payload) {
+      dispatch({
+        type: 'failed',
+        message:
+          'Not a valid Hiero share link. Paste the full /share#… URL copied from "Copy preview link".',
+      });
+      return;
+    }
+    const icon = structuredClone(payload.icon);
+    editorStore.getState().insertIcon(icon);
+    // insertIcon dedupes ids; read back the inserted icon for display.
+    const inserted =
+      editorStore.getState().project?.icons[icon.id] ??
+      Object.values(editorStore.getState().project?.icons ?? {}).find(
+        (candidate) => candidate.name === icon.name,
+      );
+    setShareImported({ id: inserted?.id ?? icon.id, name: inserted?.name ?? icon.name });
+  }
+
   async function runBatchImport(adapterId: string, names: string[]) {
     const limited = names.slice(0, 50);
     setBatchProgress({ done: 0, total: limited.length });
@@ -468,6 +510,7 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                     setSourceId(source.id);
                     setLibraryIconName('');
                     setBatchNames('');
+                    setShareImported(null);
                   }}
                   aria-pressed={sourceId === source.id}
                   className="gap-1.5"
@@ -691,6 +734,32 @@ export function ImportIconDialog({ open, onOpenChange }: Props) {
                 </Button>
               </TabsContent>
             </Tabs>
+          ) : sourceId === 'share-link' ? (
+            <div className="space-y-2">
+              <Label htmlFor="share-link-input">Hiero share link</Label>
+              <Input
+                id="share-link-input"
+                value={shareLinkText}
+                onChange={(e) => setShareLinkText(e.target.value)}
+                placeholder="https://…/share#…"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Paste a link created with “Copy preview link”. The icon imports with its
+                variants, transitions, and effects intact.
+              </p>
+              <Button
+                disabled={!shareLinkText.trim()}
+                onClick={() => runShareLinkImport(shareLinkText)}
+              >
+                Import shared icon
+              </Button>
+              {shareImported ? (
+                <p className="text-sm text-emerald-600" role="status" aria-live="polite">
+                  <UiIcon name="check-circle-2" size={16} className="mr-1 inline size-4" />
+                  Imported as {shareImported.name} ({shareImported.id})
+                </p>
+              ) : null}
+            </div>
           ) : (
             <div className="space-y-2">
               <Label htmlFor="lib-name">{LIBRARY_SOURCES.find((s) => s.id === sourceId)?.label ?? sourceId} icon name</Label>
